@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.btn-primarynew {
+	color: #fff !important;
+	background-color: #0d6efd;
+	border-color: #0d6efd;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+/*.form-group label {
+        	font-size: 12px;
+        	position: relative;
+        	top: 4px;
+        }*/
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+
+.blueClsWT {
+	background: #0076ba;
+	color: #fff;
+}
+
+.blueCls {
+	background: #0076ba;
+	color: #fff;
+}
+
+.blueClsWT::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	padding-right: 7px;
+}
+
+.modal-body table td input[type=checkbox] {
+	width: 0px;
+	margin-right: 16px;
+	position: relative;
+	top: 0px;
+	float: none;
+}
+
+.firstnode {
+	color: #929292;
+	border-top: 1px solid transparent !important;
+	border-left: 1px solid transparent !important;
+	border-bottom: 1px solid transparent !important;
+	width: 320px;
+	font-size: 12px;
+	font-weight: 100;
+}
+
+.simple-tree-table-closed .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'Font Awesome 6 Pro';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+	transform: rotate(90deg);
+}
+
+.simple-tree-table-opened .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'Font Awesome 6 Pro';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+}
+
+.simple-tree-table-icon {
+	display: inline-block;
+	width: 1.5em;
+	line-height: 1.5em;
+	margin: 0.1em;
+	background-color: transparent;
+	text-align: center;
+	cursor: pointer;
+}
+
+.tptCls {
+	background: transparnt;
+}
+
+.rupees-space input {
+	padding-left: 10px;
+}
+
+.rupees-space span {
+	font-size: 17px;
+	margin-top: 4px;
+}
+
+ul#autocomplete-list1 {
+	position: relative;
+	z-index: 999;
+}
+
+.sugg-cls ul {
+	height: 150px;
+	overflow-x: scroll;
+	position: relative;
+}
+</style>
+<script
+	src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script
+	src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js"></script>
+<script>
+var formattedFirstDay='';
+var formattedLastDay='';
+   $(document).ready(function () {
+        	
+        	viewReportList();
+        
+        	var gridDiv = document.querySelector('#salesReportGrid');
+        	new agGrid.Grid(gridDiv, gridOptionsSalesReport);
+        
+        	var gridDiv = document.querySelector('#myGrid');
+        	new agGrid.Grid(gridDiv, gridOptions);
+        
+        	var gridDiv = document.querySelector('#poReportGrid');
+        	new agGrid.Grid(gridDiv, gridOptionsPO);
+        	
+        	var gridDiv = document.querySelector('#soReportGrid');
+        	new agGrid.Grid(gridDiv, gridOptionsSO);
+        	
+        	gridOptionsPO.api.setRowData([]);
+        	gridOptionsSO.api.setRowData([]);
+        	
+        	$('#empId').select2({
+        	
+        	});
+        	
+        	var dateFormat = localStorage.getItem("dateFormat");
+            $("#toDateCalendar").datetimepicker({
+                format: dateFormat,
+                closeOnDateSelect: true,
+                timepicker: false,
+               // minDate: 0,
+            }).on("change", function() {
+                $('#toDate').val($(this).val());
+            })
+        
+            $('#toDate').blur(function() {
+                $("#toDateCalendar").val($(this).val());
+            })
+            
+            var dateFormat = localStorage.getItem("dateFormat");
+            $("#fromDateCalendar").datetimepicker({
+                format: dateFormat,
+                closeOnDateSelect: true,
+                timepicker: false,
+               // minDate: 0,
+            }).on("change", function() {
+                $('#fromDate').val($(this).val());
+            })
+        
+            $('#fromDate').blur(function() {
+                $("#fromDateCalendar").val($(this).val());
+                
+            })
+          
+            var dateFormat = localStorage.getItem("dateFormat") || "d-m-Y"; // fallback format
+            var today = new Date();
+            var firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            var lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        
+            // Format helper function (based on your dateFormat)
+            function formatDate(date) {
+                let dd = String(date.getDate()).padStart(2, '0');
+                let mm = String(date.getMonth() + 1).padStart(2, '0'); // January is 0!
+                let yyyy = date.getFullYear();
+        
+                // Handle format string dynamically
+                switch (dateFormat) {
+                    case "Y-m-d":
+                        return `${yyyy}-${mm}-${dd}`;
+                    case "d-m-Y":
+                        return `${dd}-${mm}-${yyyy}`;
+                    case "m/d/Y":
+                        return `${mm}/${dd}/${yyyy}`;
+                    default:
+                        return `${dd}-${mm}-${yyyy}`; 
+                }
+            }
+        
+            formattedFirstDay = formatDate(firstDay);
+            formattedLastDay = formatDate(lastDay);
+        
+            // Set default values
+            $('#fromDate').val(formattedFirstDay);
+            $('#toDate').val(formattedLastDay);
+        });
+        var columnDefsPO = [
+        	{
+        		headerCheckboxSelection: false,
+        		headerCheckboxSelectionFilteredOnly: true,
+        		checkboxSelection: true,
+        		width: 10,
+        		sortable: false,
+        		filter: false,
+        		resizable: true,
+        		pinned: 'left',
+        	},{
+        
+        
+        		headerName: 'Created By',
+        		field: "createdBy",
+        		pinned: 'left',
+        		width: 100,
+        	},{
+        		headerName: 'Customer Name',
+        		field: "customerName",
+        		width: 200,
+        	},{
+        		headerName: "Po No",
+        		field: "poNo",
+        		width: 120
+        	},{
+        
+        		headerName: 'Po Date',
+        		field: "poDate",
+        		width: 80,
+        		cellStyle: {
+        			textAlign: 'center'
+        		}
+        	},{
+        		headerName: 'Po Status',
+        		field: "approveStatus",
+        		width: 100,
+        		//hide:true,
+        		cellStyle: {
+        			textAlign: 'center'
+        		},
+        		cellRenderer: function(params) {
+        			if (params.data.approveStatus == "Approved") {
+        				return '<div style="color:#0642f5">' + params.data.approveStatus + '</div>';
+        			} else if (params.data.approveStatus == "Revised") {
+        				return '<div style="color:#bf05ff">' + params.data.approveStatus + '</div>';
+        			} else {
+        				return '<div style="color:#a9a9a9">' + params.data.approveStatus + '</div>';
+        			}
+        		}
+        	},{
+        		headerName: 'Item Code',
+        		field: "itemCode",
+        		width: 130,
+        		cellStyle: {
+        			textAlign: 'center'
+        		}
+        	},{
+        		headerName: 'Item Name',
+        		field: "itemName",
+        		width: 130,
+        		cellStyle: {
+        			textAlign: 'center'
+        		}
+        	},{
+        		headerName: 'Item Description',
+        		field: "itemDescription",
+        		width: 130,
+        		cellRenderer: params => params.value
+        	},{
+        		headerName: 'Item Quantity',
+        		field: "itemQty",
+        		width: 130,
+        		cellStyle: {
+        			textAlign: 'right'
+        		}
+        	},{
+        		headerName: 'Unit',
+        		field: "serveTypeName",
+        		width: 130,
+        		cellStyle: {
+        			textAlign: 'center'
+        		}
+        	},	
+        	
+        	{
+        		headerName: 'Unit Price',
+        		field: "unitPrice",
+        		width: 130,
+        		cellStyle: {
+        			textAlign: 'right'
+        		}
+        	},{
+        		headerName: 'GST Rate(%)',
+        		field: "gstRate",
+        		width: 130,
+        		cellStyle: {
+        			textAlign: 'center'
+        		}
+        	},{
+        		headerName: 'Line Total',
+        		field: "lineTotal",
+        		width: 130,
+        		cellStyle: {
+        			textAlign: 'right'
+        		}
+        	},{
+        		headerName: 'Taxable Amount',
+        		field: "taxableAmount",
+        		width: 130,
+        		cellStyle: {
+        			textAlign: 'right'
+        		}
+        	},{
+        		headerName: 'PO Amount',
+        		field: "total",
+        		type: 'rightAligned',
+        		width: 100,
+        		cellStyle: {
+        			textAlign: 'right'
+        		},
+        		valueFormatter: indianNumberFormatterWithDecimal
+        	},
+        	{
+        		headerName: "Quotation No",
+        		field: "quotationId",
+        		width: 132,
+        	},
+        	{
+        		headerName: "Reference No",
+        		field: "quotationRef",
+        		width: 134,
+        	},
+        	
+        	{
+        		headerName: "Po ID",
+        		field: "poId",
+        		
+        		width: 150
+        		
+        
+        	},
+        	{
+        		headerName: "PO Ref No",
+        		field: "poRef",
+        		width: 132,
+        	},
+        	{
+        		headerName: "Version",
+        		field: "version",
+        		width: 70,
+        		hide:true
+        	},{
+        		headerName: 'Project',
+        		field: "projectName",
+        		width: 90,
+        		hide: true,
+        	},
+        	 {
+        		headerName: "Order Type",
+        		field: "orderType",
+        		width: 100,
+        	},
+        	{
+        
+        		headerName: "Order Status",
+        		field: "orderStatus",
+        		width: 130,
+        	},
+        	{
+        
+        		headerName: "Order Date",
+        		field: "salesOrderDate",
+        		width: 130,
+        	},
+        	{
+        		headerName: "Sales Order Id",
+        		field: "saleOrderId",
+        	},
+        	
+        
+        	{
+        		headerName: 'Expected Delivery',
+        		field: "expectedShipmentDate",
+        		width: 130,
+        		cellStyle: {
+        			textAlign: 'center'
+        		}
+        	},
+        
+        	
+        	
+        	
+        	 ];
+        
+        var gridOptionsPO = {
+        	columnDefs: columnDefsPO,
+        	rowSelection: 'single',
+        	suppressRowClickSelection: true,
+        	suppressAggFuncInHeader: true,
+        	pagination: true,
+        	paginationPageSize: 15,
+        	defaultColDef: {
+        		sortable: true,
+        		filter: true,
+        		resizable: true,
+        		width: 150
+        	},
+        	//onSelectionChanged: rowSelectPO,
+        };
+//
+var columnDefsSO = [
+	{
+		headerCheckboxSelection: false,
+		headerCheckboxSelectionFilteredOnly: true,
+		checkboxSelection: true,
+		width: 10,
+		sortable: false,
+		filter: false,
+		resizable: true,
+		pinned: 'left',
+	},{
+		headerName: "Created By",
+		field: "createdBy",
+		pinned: 'left',
+		width: 150,
+	},
+	{
+		headerName: "Sales Order No",
+		field: "saleOrderId",
+		pinned: 'left',
+		width: 150,
+	}, {
+		headerName: "Sales Order Date",
+		field: "salesOrderDate",
+		pinned: 'left',
+		width: 150,
+	},{
+		headerName: "SO Status",
+		field: "soStatus",
+		pinned: 'left',
+		width: 150,
+	}, {
+		headerName: 'Customer Name',
+		field: "customerName",
+		width: 150,
+	},  
+	{
+		headerName: "PO No",
+		field: "poNo",
+		width: 100,
+	}, {
+
+		headerName: 'PO Receive Date',
+		field: "salesOrderDate",
+		width: 120,
+	}, {
+		headerName: 'Expected Delivery',
+		field: "expectedShipmentDate",
+		width: 120,
+		cellStyle: {
+			textAlign: 'center'
+		}
+	},{
+		headerName: 'Item SKU',
+		field: "itemSku",
+		width: 110
+	}, {
+		headerName: 'Item Name',
+		field: "itemName",
+		width: 110
+	}, {
+		headerName: 'Item Description',
+		field: "itemDescription",
+		width: 110,
+		cellRenderer: params => params.value
+	},
+	{
+		headerName: 'Order Quantity',
+		field: "itemQty",
+		width: 110,
+		type: 'rightAligned',
+		
+	},{
+		headerName: 'Dispatch Quantity',
+		field: "dispatchQnt",
+		width: 110,
+		type: 'rightAligned',
+		
+	},{
+		headerName: 'Pending Quantity',
+		field: "pendingQnt",
+		width: 110,
+		type: 'rightAligned',
+		
+	},{
+		headerName: 'Item Unit',
+		field: "serveTypeName",
+		width: 110,
+		cellStyle: {
+			textAlign: 'center'
+		},
+	}, {
+		headerName: 'Item Price',
+		field: "unitPrice",
+		width: 110
+	},{
+		headerName: 'Line Total',
+		field: "lineTotal",
+		width: 75
+	}, {
+		headerName: 'Taxable Amount',
+		field: "taxableAmount",
+		width: 110,
+		
+	},{
+		headerName: 'SO Ref',
+		field: "soRef",
+		width: 110
+	},   {
+
+		headerName: 'Invoice No',
+		field: "invoiceNo",
+		width: 110,
+		cellStyle: {
+			textAlign: 'center'
+		},
+		
+	},{
+
+		headerName: 'Invoice Date',
+		field: "invoiceDate",
+		width: 110,
+		cellStyle: {
+			textAlign: 'center'
+		},
+		
+	}, ];
+
+var gridOptionsSO = {
+	columnDefs: columnDefsSO,
+	rowSelection: 'single',
+	groupSelectsChildren: true,
+	suppressRowClickSelection: true,
+	suppressAggFuncInHeader: true,
+	pagination: true,
+	paginationPageSize: 15,
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 150,
+		height: 10
+	},
+	
+};
+
+//
+        var columnDefsSalesReport = [
+        
+        	{
+        		headerName: "Sl.No",
+        		field: "slNo",
+        		pinned: 'left',
+        		width: 70,
+        	},{
+        		
+        		headerName: 'Quotation No',
+        		field: "Qno",
+        		width: 150,
+        	},{
+        		headerName: 'Executive Name',
+        		field: "qutCreatedBy",
+        		width: 150,
+        	},{
+        		headerName: "PO ID",
+        		field: "poId",
+        		width: 150,
+        	}, {
+        		headerName: "Sales Order ID",
+        		field: "salesOrder",
+        		pinned: 'left',
+        		width: 145,
+        	},
+        	
+        	{
+        		headerName: 'Customer Name',
+        		field: "custName",
+        		width: 250,
+        	}, {
+        
+        		headerName: 'Order Qty',
+        		field: "quantity",
+        		width: 90,
+        		type: 'rightAligned',
+        		
+        	}, {
+        		headerName: 'Packed Qty',
+        		field: "packedQut",
+        		width: 100,
+        		type: 'rightAligned',
+        		
+        	}, {
+        		headerName: 'Pending Qty',
+        		field: "pendingQut",
+        		width: 120,
+        		type: 'rightAligned',
+        		
+        	},
+        	{
+        		headerName: 'Status',
+        		field: "approveStatus",
+        		width: 90,
+        		cellStyle: {
+        			textAlign: 'center'
+        		},
+        		cellRenderer: function(params) {
+        			if (params.data.approveStatus == "Approved") {
+        				return '<div style="color:#0642f5">' + params.data.approveStatus + '</div>';
+        			} else {
+        				return '<div style="color:#a9a9a9">' + params.data.approveStatus + '</div>';
+        			}
+        		}
+        	}];
+        
+        var gridOptionsSalesReport = {
+        	columnDefs: columnDefsSalesReport,
+        	rowSelection: 'single',
+        
+        	groupSelectsChildren: true,
+        	suppressRowClickSelection: true,
+        	suppressAggFuncInHeader: true,
+        	defaultColDef: {
+        		sortable: true,
+        		filter: true,
+        		resizable: true,
+        		width: 251,
+        		height: 10
+        	}
+        };
+        //
+        var columnDefs = [
+        	{
+        		headerCheckboxSelection: false,
+        		headerCheckboxSelectionFilteredOnly: true,
+        		checkboxSelection: true,
+        		width: 10,
+        		sortable: false,
+        		filter: false,
+        		resizable: true,
+        		pinned: 'left',
+        	},
+        	/* {
+        		headerName: "Sl No.",
+        		field: "slNo",
+        		pinned: 'left',
+        		width: 200,
+        
+        	}, */ {
+        		headerName: 'Report List',
+        		field: "reportName",
+        		flex: 4,
+        	}];
+        
+        var gridOptions = {
+        	columnDefs: columnDefs,
+        	rowSelection: 'single',
+        
+        	groupSelectsChildren: true,
+        	suppressRowClickSelection: true,
+        	suppressAggFuncInHeader: true,
+        	defaultColDef: {
+        		sortable: true,
+        		filter: true,
+        		resizable: true,
+        		width: 251,
+        		height: 10
+        	},
+        	onFirstDataRendered: function(params) {
+        		setTimeout(function() {
+        			var firstRow = params.api.getDisplayedRowAtIndex(0);
+        			if (firstRow) {
+        				params.api.selectNode(firstRow, true);
+        			}
+        		}, 100);
+        	},
+        	onSelectionChanged: rowSelect,
+   };
+        
+  function viewReportList() {
+        	$(".loader").show();
+        	agGrid.simpleHttpRequest({
+        		url: "sales-report-list",
+        	}).then(function(data) {
+        		$(".loader").hide();
+        		var jsonData = JSON.parse(data.body);
+        		var allData = jsonData.reportList;
+        		gridOptions.api.setRowData(allData);
+        	});
+        }
+  function rowSelect() {
+	  $("#quickFilter").val('');
+        	var selectedNodes = gridOptions.api.getSelectedNodes();
+        	var selectedData = selectedNodes.map(node => node.data);
+        	var reportNames = selectedData.map(item => item.reportName);
+        	$("#empId").val('All').select2();
+        	if (reportNames == 'Sales Order Summary') {
+        		$("#poReportGrid,#soReportGrid").addClass("d-none");
+        		$("#salesReportGrid").removeClass("d-none");
+        		viewSalesReport();
+        	} else if(reportNames == 'PO Report'){
+        		$("#salesReportGrid,#soReportGrid").addClass("d-none");
+        		$("#poReportGrid").removeClass("d-none");
+        		viewPOReport();
+        	}else if(reportNames == 'SO Report'){
+        		$("#salesReportGrid,#poReportGrid").addClass("d-none");
+        		$("#soReportGrid").removeClass("d-none");
+        		viewSOReport();
+        	}
+        	else {
+        		gridOptionsSalesReport.api.setRowData([]);
+        		gridOptionsPO.api.setRowData([]);
+        		gridOptionsSO.api.setRowData([]);
+        		$("#downloadExcel").hide();
+        	} 
+        
+        }      
+        
+ function viewSalesReport() {
+        	var empId =$("#empId").val();
+        	var fDate = $("#fromDate").val();
+        	var tDate = $("#toDate").val();
+        	$(".loader").show();
+        	agGrid.simpleHttpRequest({
+        		url: "sales-report-view?fDate=" + fDate + "&tDate=" + tDate + "&empId=" + empId,
+        	}).then(function(data) {
+        		$(".loader").hide();
+        		var jsonData = JSON.parse(data.body);
+        		var allData = jsonData.viewSalesReport;
+        		console.log("DATA=================",allData);
+        		gridOptionsSalesReport.api.setRowData(allData);
+        		
+        	});
+  }
+ function viewPOReport() {
+    	var empId =$("#empId").val();
+ 	var fDate = $("#fromDate").val();
+ 	var tDate = $("#toDate").val();
+	    $(".loader").show();
+	   	 agGrid.simpleHttpRequest({
+	 		url: "sales-report-viewPO?fDate=" + fDate + "&tDate=" + tDate+ "&empId=" + empId,
+	 	}).then(function(data) {
+	 		$(".loader").hide();
+	 		var jsonData = JSON.parse(data.body);
+	 		var allData = jsonData.viewSalesPOReport;
+	 		console.log("DATA=================",allData);
+	 		gridOptionsPO.api.setRowData(allData);
+	 		
+	 	});
+	}
+    
+function viewSOReport() {
+       	var empId =$("#empId").val();
+     	var fDate = $("#fromDate").val();
+     	var tDate = $("#toDate").val();
+ 	    $(".loader").show();
+ 	    agGrid.simpleHttpRequest({
+ 	        url: "sales-report-viewSO?fDate=" + fDate + "&tDate=" + tDate + "&empId=" + empId
+ 	    }).then(function (data) {
+ 	        $(".loader").hide();
+ 	        var jsonData = JSON.parse(data.body);
+ 	        var allData = jsonData.viewSalesSOReport;
+ 	        console.log("DATA=================", allData);
+ 	        gridOptionsSO.api.setRowData(allData);
+ 	    });
+ 	}
+function filter(){
+  	var selectedNodes = gridOptions.api.getSelectedNodes();
+	var selectedData = selectedNodes.map(node => node.data);
+	var reportNames = selectedData.map(item => item.reportName);
+	if (reportNames == 'Sales Order Summary') {
+		viewSalesReport();
+	} else if(reportNames == 'PO Report'){
+		viewPOReport();
+	}else if(reportNames == 'SO Report'){
+		viewSOReport();
+	}
+	  
+  }
+  function onQuickFilterChanged() {
+        	var selectedNodes = gridOptions.api.getSelectedNodes();
+        	var selectedData = selectedNodes.map(node => node.data);
+        	var reportNames = selectedData.map(item => item.reportName);
+        	if (reportNames == 'Sales Order Summary') {
+        		gridOptionsSalesReport.api.setQuickFilter(document.getElementById('quickFilter').value);
+        	}else if (reportNames == 'PO Report') {
+        		gridOptionsPO.api.setQuickFilter(document.getElementById('quickFilter').value);
+        	}else if (reportNames == 'SO Report') {
+        		gridOptionsSO.api.setQuickFilter(document.getElementById('quickFilter').value);
+        	}else{
+        		
+        	}
+        }
+        
+        function handleEnter(event) {
+        	if (event.key === "Enter") {
+        		onQuickFilterChanged()
+        	}
+        }
+
+        function resetBtn() {
+        	$("#quickFilter").val('');
+        	gridOptionsSalesReport.api.setQuickFilter('');
+        	gridOptionsPO.api.setQuickFilter('');
+        	gridOptionsSO.api.setQuickFilter('');
+        	
+        }
+        
+        function validateDatesOnly() {
+            var fromdate = $('#fromDate').val();
+            var todate = $('#toDate').val();
+        
+            if (fromdate === '' && todate === '') {
+                toastr.error("Please select both From Date and To Date");
+                return;
+            }
+        
+            if (fromdate !== '' && todate !== '') {
+                var fromDateArray = fromdate.split("-").map(Number);
+                var toDateArray = todate.split("-").map(Number);
+        
+                var fromDateObj = new Date(fromDateArray[2], fromDateArray[1] - 1, fromDateArray[0]);
+                var toDateObj = new Date(toDateArray[2], toDateArray[1] - 1, toDateArray[0]);
+        
+                if (fromDateObj > toDateObj) {
+                    toastr.error("Please choose To Date greater than or equal to From Date");
+                    $("#fromDate, #fromDateCalendar").val(formattedFirstDay);
+                    $("#toDate, #toDateCalendar").val(formattedLastDay);
+                }
+            }
+        }
+         
+        function excelDownload() {
+        	
+         	var selectedNodes = gridOptions.api.getSelectedNodes();
+        	 var selectedData = selectedNodes.map(node => node.data);
+        	var reportNames = selectedData.map(item => item.reportName);
+        	if (reportNames == 'Sales Order Summary') {
+        	/* var params = {
+        			fileName: 'Sales_Summary_Report.csv',
+        		};
+        	gridOptionsSalesReport.api.exportDataAsCsv(params); */
+        	
+        		const selectedHeaders = [
+    			    'SL_No',
+    			    'QUOTATION NO',
+    			    'PO ID',
+    			    'SALES ORDER ID',
+    			    'CUSTOMER NAME',
+    			    'APPROVE STATUS',
+    			    'ORDER QUANTITY',
+    			    'PACKED QUANTITY',
+    			    'PENDING QUANTITY'
+    			    
+    			   
+    			  ];
+
+    			/*   const fieldsToSum = [
+    			    'AMOUNT',
+    			  ]; */
+
+    			  // Get fromDate and toDate values
+    			  const fromDate = $("#fromDate").val();
+    			  const toDate = $("#toDate").val();
+
+    			  // Dynamically get company name (orgDiv) from first row of grid
+    			  let companyName = "Akanksha Power and Infrastructure Ltd"; // default fallback
+    			  const firstNode = gridOptionsSalesReport.api.getDisplayedRowAtIndex(0);
+    			  if (firstNode && firstNode.data && firstNode.data.orgDiv) {
+    			    companyName = firstNode.data.orgDiv.toUpperCase();
+    			  }
+
+    			  const currentDate = new Date().toLocaleDateString('en-GB', {
+    			    day: '2-digit',
+    			    month: '2-digit',
+    			    year: 'numeric'
+    			  }).split('/').join('_');
+
+    			  const fileName = 'SALES SUMMARY REPORT_' + currentDate + '.xlsx';
+    			  const rowData = [];
+    			  const fieldMap = {};
+
+    			  // Map column headers to fields
+    			  gridOptionsSalesReport.columnApi.getAllColumns().forEach((col) => {
+    			    const colDef = col.getColDef();
+    			    if (colDef.headerName && colDef.field) {
+    			      fieldMap[colDef.headerName.toUpperCase()] = colDef.field;
+    			    }
+    			  });
+
+    			  const totals = {};
+    			//  fieldsToSum.forEach(header => totals[header] = 0);
+
+    			  // Collect row data
+    			  gridOptionsSalesReport.api.forEachNodeAfterFilterAndSort((node) => {
+    			    const row = {};
+    			    selectedHeaders.forEach((header) => {
+    			      const field = fieldMap[header.toUpperCase()];
+    			      let value = node.data?.[field] ?? '';
+
+    			      // Sum numeric fields
+    			      /* if (fieldsToSum.includes(header)) {
+    			        const num = parseFloat(value.toString().replace(/,/g, ''));
+    			        totals[header] += isNaN(num) ? 0 : num;
+    			        value = amountFormatter(isNaN(num) ? 0 : num.toFixed(2));
+    			      } */
+
+    			      row[header] = value;
+    			    });
+    			    rowData.push(row);
+    			  });
+
+    			  
+
+    			  // Create top rows
+    			  const headingRow1 = {}, headingRow2 = {}, dividerRow = {}, spacerRow = {};
+    			  selectedHeaders.forEach(header => {
+    			    headingRow1[header] = '';
+    			    headingRow2[header] = '';
+    			    dividerRow[header] = '';
+    			    spacerRow[header] = '';
+    			  });
+
+    			  headingRow1[selectedHeaders[0]] = companyName;
+    			  headingRow2[selectedHeaders[0]] = `SALES SUMMARY REPORT From ${fromDate} To ${toDate}`;
+    			  dividerRow[selectedHeaders[0]] = '―'.repeat(80);
+
+    			  rowData.unshift(spacerRow);
+    			  rowData.unshift(dividerRow);
+    			  rowData.unshift(headingRow2);
+    			  rowData.unshift(headingRow1);
+
+    			  // Convert to sheet
+    			  const ws = XLSX.utils.json_to_sheet(rowData, {
+    			    header: selectedHeaders,
+    			    skipHeader: true
+    			  });
+
+    			  // Merge and style heading rows
+    			  ws['!merges'] = [
+    			    { s: { r: 0, c: 0 }, e: { r: 0, c: selectedHeaders.length - 1 } },
+    			    { s: { r: 1, c: 0 }, e: { r: 1, c: selectedHeaders.length - 1 } },
+    			    { s: { r: 2, c: 0 }, e: { r: 2, c: selectedHeaders.length - 1 } }
+    			  ];
+
+    			  ws['A1'] = {
+    			    v: companyName,
+    			    t: 's',
+    			    s: {
+    			      font: { bold: true, sz: 16 },
+    			      alignment: { horizontal: 'center', vertical: 'center' },
+    			      fill: { fgColor: { rgb: 'DCE6F1' } }
+    			    }
+    			  };
+
+    			  ws['A2'] = {
+    			    v: `SALES SUMMARY REPORT From ${fromDate} To ${toDate}`,
+    			    t: 's',
+    			    s: {
+    			      font: { bold: true, sz: 14 },
+    			      alignment: { horizontal: 'center', vertical: 'center' },
+    			      fill: { fgColor: { rgb: 'E2EFDA' } }
+    			    }
+    			  };
+
+    			  ws['A3'] = {
+    			    v: '―'.repeat(80),
+    			    t: 's',
+    			    s: {
+    			      alignment: { horizontal: 'center', vertical: 'center' },
+    			      font: { color: { rgb: "666666" } }
+    			    }
+    			  };
+
+    			  // Style headers
+    			  selectedHeaders.forEach((header, index) => {
+    			    const cellAddress = XLSX.utils.encode_cell({ c: index, r: 3 });
+    			    if (!ws[cellAddress]) return;
+
+    			    ws[cellAddress].v = header.toUpperCase();
+    			    ws[cellAddress].s = {
+    			      fill: { fgColor: { rgb: "5784c4" } },
+    			      font: { bold: true, color: { rgb: "FFFFFF" } },
+    			      alignment: { horizontal: "center", vertical: "center" },
+    			      border: {
+    			        top: { style: "thin", color: { rgb: "000000" } },
+    			        bottom: { style: "thin", color: { rgb: "000000" } },
+    			        left: { style: "thin", color: { rgb: "000000" } },
+    			        right: { style: "thin", color: { rgb: "000000" } }
+    			      }
+    			    };
+
+    			    
+    			    
+    			    const colLetter = XLSX.utils.encode_col(index);
+    			    const colRange = XLSX.utils.decode_range(ws['!ref']);
+    			    for (let r = 4; r <= colRange.e.r; r++) {
+    			      const cellRef = `${colLetter}${r + 1}`;
+    			      if (!ws[cellRef]) continue;
+    			    }
+    			  });
+
+
+    			  // Set column widths
+    			  ws['!cols'] = selectedHeaders.map(header => {
+    			    switch (header) {
+    			      case 'CUSTOMER NAME': return { wch: 35 };
+    			      case 'PO ID': return { wch: 35 };
+    			      
+    			      
+    			      default:
+    			        return { wch: 20 };
+    			    }
+    			  });
+
+    			  // Export workbook
+    			  const wb = XLSX.utils.book_new();
+    			  XLSX.utils.book_append_sheet(wb, ws, 'Sales Summary Report');
+    			  XLSX.writeFile(wb, fileName);
+        	
+        	}else if(reportNames == 'PO Report'){
+        		
+        		const selectedHeaders = [
+    			    
+    			    'CREATED BY',
+    			    'CUSTOMER NAME',
+    			    'PO NO',
+    			    'PO DATE',
+    			    'PO STATUS',
+    			    'ITEM CODE',
+    			    'ITEM NAME',
+    			    'ITEM DESCRIPTION',
+    			    'ITEM QUANTITY',
+    			    'UNIT',
+    			    'UNIT PRICE',
+    			    'GST Rate(%)',
+    			    'LINE TOTAL',
+    			    'TAXABLE AMOUNT',
+    			    'PO AMOUNT',
+    			    'QUOTATION NO',
+    			    'REFERENCE NO',
+    			    'PO ID',
+    			    'PO REF NO',
+    			    'ORDER TYPE',
+    			    'ORDER STATUS',
+    			    'ORDER DATE',
+    			    'SALES ORDER ID',
+    			    'EXPECTED DELIVERY'
+    			    
+    			   
+    			   
+    			  ];
+
+    			/*   const fieldsToSum = [
+    			    'AMOUNT',
+    			  ]; */
+
+    			  // Get fromDate and toDate values
+    			  const fromDate = $("#fromDate").val();
+    			  const toDate = $("#toDate").val();
+
+    			  // Dynamically get company name (orgDiv) from first row of grid
+    			  let companyName = "Akanksha Power and Infrastructure Ltd"; // default fallback
+    			  const firstNode = gridOptionsPO.api.getDisplayedRowAtIndex(0);
+    			  if (firstNode && firstNode.data && firstNode.data.orgDiv) {
+    			    companyName = firstNode.data.orgDiv.toUpperCase();
+    			  }
+
+    			  const currentDate = new Date().toLocaleDateString('en-GB', {
+    			    day: '2-digit',
+    			    month: '2-digit',
+    			    year: 'numeric'
+    			  }).split('/').join('_');
+
+    			  const fileName = 'PO REPORT_' + currentDate + '.xlsx';
+    			  const rowData = [];
+    			  const fieldMap = {};
+
+    			  // Map column headers to fields
+    			  gridOptionsPO.columnApi.getAllColumns().forEach((col) => {
+    			    const colDef = col.getColDef();
+    			    if (colDef.headerName && colDef.field) {
+    			      fieldMap[colDef.headerName.toUpperCase()] = colDef.field;
+    			    }
+    			  });
+
+    			  const totals = {};
+    			  // Collect row data
+    			  gridOptionsPO.api.forEachNodeAfterFilterAndSort((node) => {
+    			    const row = {};
+    			    selectedHeaders.forEach((header) => {
+    			      const field = fieldMap[header.toUpperCase()];
+    			      let value = node.data?.[field] ?? '';
+    			      row[header] = value;
+    			    });
+    			    rowData.push(row);
+    			  });
+
+    			  
+
+    			  // Create top rows
+    			  const headingRow1 = {}, headingRow2 = {}, dividerRow = {}, spacerRow = {};
+    			  selectedHeaders.forEach(header => {
+    			    headingRow1[header] = '';
+    			    headingRow2[header] = '';
+    			    dividerRow[header] = '';
+    			    spacerRow[header] = '';
+    			  });
+
+    			  headingRow1[selectedHeaders[0]] = companyName;
+    			  headingRow2[selectedHeaders[0]] = `PO REPORT From ${fromDate} To ${toDate}`;
+    			  dividerRow[selectedHeaders[0]] = '―'.repeat(80);
+
+    			  rowData.unshift(spacerRow);
+    			  rowData.unshift(dividerRow);
+    			  rowData.unshift(headingRow2);
+    			  rowData.unshift(headingRow1);
+
+    			  // Convert to sheet
+    			  const ws = XLSX.utils.json_to_sheet(rowData, {
+    			    header: selectedHeaders,
+    			    skipHeader: true
+    			  });
+
+    			  // Merge and style heading rows
+    			  ws['!merges'] = [
+    			    { s: { r: 0, c: 0 }, e: { r: 0, c: selectedHeaders.length - 1 } },
+    			    { s: { r: 1, c: 0 }, e: { r: 1, c: selectedHeaders.length - 1 } },
+    			    { s: { r: 2, c: 0 }, e: { r: 2, c: selectedHeaders.length - 1 } }
+    			  ];
+
+    			  ws['A1'] = {
+    			    v: companyName,
+    			    t: 's',
+    			    s: {
+    			      font: { bold: true, sz: 16 },
+    			      alignment: { horizontal: 'center', vertical: 'center' },
+    			      fill: { fgColor: { rgb: 'DCE6F1' } }
+    			    }
+    			  };
+
+    			  ws['A2'] = {
+    			    v: `PO REPORT From ${fromDate} To ${toDate}`,
+    			    t: 's',
+    			    s: {
+    			      font: { bold: true, sz: 14 },
+    			      alignment: { horizontal: 'center', vertical: 'center' },
+    			      fill: { fgColor: { rgb: 'E2EFDA' } }
+    			    }
+    			  };
+
+    			  ws['A3'] = {
+    			    v: '―'.repeat(80),
+    			    t: 's',
+    			    s: {
+    			      alignment: { horizontal: 'center', vertical: 'center' },
+    			      font: { color: { rgb: "666666" } }
+    			    }
+    			  };
+
+    			  // Style headers
+    			  selectedHeaders.forEach((header, index) => {
+    			    const cellAddress = XLSX.utils.encode_cell({ c: index, r: 3 });
+    			    if (!ws[cellAddress]) return;
+
+    			    ws[cellAddress].v = header.toUpperCase();
+    			    ws[cellAddress].s = {
+    			      fill: { fgColor: { rgb: "5784c4" } },
+    			      font: { bold: true, color: { rgb: "FFFFFF" } },
+    			      alignment: { horizontal: "center", vertical: "center" },
+    			      border: {
+    			        top: { style: "thin", color: { rgb: "000000" } },
+    			        bottom: { style: "thin", color: { rgb: "000000" } },
+    			        left: { style: "thin", color: { rgb: "000000" } },
+    			        right: { style: "thin", color: { rgb: "000000" } }
+    			      }
+    			    };
+
+    			    
+    			    
+    			    const colLetter = XLSX.utils.encode_col(index);
+    			    const colRange = XLSX.utils.decode_range(ws['!ref']);
+    			    for (let r = 4; r <= colRange.e.r; r++) {
+    			      const cellRef = `${colLetter}${r + 1}`;
+    			      if (!ws[cellRef]) continue;
+
+    			     /*  if (fieldsToSum.includes(header) || header === 'TDS RATE(%)') {
+    			        ws[cellRef].s = {
+    			          alignment: { horizontal: "right" }
+    			        };
+    			      } */
+    			    }
+    			  });
+
+
+    			  // Set column widths
+    			  ws['!cols'] = selectedHeaders.map(header => {
+    			    switch (header) {
+    			      case 'ITEM NAME': return { wch: 40 };
+    			      case 'ITEM DESCRIPTION': return { wch: 80 };
+    			      case 'CUSTOMER NAME': return { wch: 35 };
+    			      case 'PO DATE': return { wch: 20 };
+    			      case 'ORDER DATE': return { wch: 20 };
+    			      case 'EXPECTED DELIVERY': return { wch: 25 };
+    			      case 'ITEM CODE': return { wch: 20 };
+    			      case 'ITEM QUANTITY': return { wch: 20 };
+    			      case 'UNIT': return { wch: 20 };
+    			      case 'UNIT PRICE': return { wch: 20 };
+    			      case 'GST RATE': return { wch: 20 };
+    			      case 'LINE TOTAL': return { wch: 20 };
+    			      
+    			      default:
+    			        return { wch: 25 };
+    			    }
+    			  });
+
+    			  // Export workbook
+    			  const wb = XLSX.utils.book_new();
+    			  XLSX.utils.book_append_sheet(wb, ws, 'PO Report');
+    			  XLSX.writeFile(wb, fileName);
+        		/* var params = {
+        				fileName: 'PO_Report.csv',
+        			};
+        		gridOptionsPO.api.exportDataAsCsv(params); */
+        	}else if(reportNames == 'SO Report'){
+        		
+        			const selectedHeaders = [
+        				'CREATED BY',
+        			    'SALES ORDER NO',
+        			    'SALES ORDER DATE',
+        			    'SO STATUS',
+        			    'CUSTOMER NAME',
+        			    'PO NO',
+        			    'PO RECEIVE DATE',
+        			    'EXPECTED DELIVERY',
+        			    'ITEM SKU',
+        			    'ITEM NAME',
+        			    'ITEM DESCRIPTION',
+        			    'ORDER QUANTITY',
+        			    'DISPATCH QUANTITY',
+        			    'PENDING QUANTITY',
+        			    'ITEM UNIT',
+        			    'ITEM PRICE',
+        			    'LINE TOTAL',
+        			    'TAXABLE AMOUNT',
+        			    'SO REF',
+        			    'INVOICE NO',
+        			    'INVOICE DATE'
+        			    
+        			   
+        			   
+        			  ];
+
+        			/*   const fieldsToSum = [
+        			    'AMOUNT',
+        			  ]; */
+
+        			  // Get fromDate and toDate values
+        			  const fromDate = $("#fromDate").val();
+        			  const toDate = $("#toDate").val();
+
+        			  // Dynamically get company name (orgDiv) from first row of grid
+        			  let companyName = "Akanksha Power and Infrastructure Ltd"; // default fallback
+        			  const firstNode = gridOptionsSO.api.getDisplayedRowAtIndex(0);
+        			  if (firstNode && firstNode.data && firstNode.data.orgDiv) {
+        			    companyName = firstNode.data.orgDiv.toUpperCase();
+        			  }
+
+        			  const currentDate = new Date().toLocaleDateString('en-GB', {
+        			    day: '2-digit',
+        			    month: '2-digit',
+        			    year: 'numeric'
+        			  }).split('/').join('_');
+
+        			  const fileName = 'SO REPORT_' + currentDate + '.xlsx';
+        			  const rowData = [];
+        			  const fieldMap = {};
+
+        			  // Map column headers to fields
+        			  gridOptionsSO.columnApi.getAllColumns().forEach((col) => {
+        			    const colDef = col.getColDef();
+        			    if (colDef.headerName && colDef.field) {
+        			      fieldMap[colDef.headerName.toUpperCase()] = colDef.field;
+        			    }
+        			  });
+
+        			  const totals = {};
+        			//  fieldsToSum.forEach(header => totals[header] = 0);
+
+        			  // Collect row data
+        			  gridOptionsSO.api.forEachNodeAfterFilterAndSort((node) => {
+        			    const row = {};
+        			    selectedHeaders.forEach((header) => {
+        			      const field = fieldMap[header.toUpperCase()];
+        			      let value = node.data?.[field] ?? '';
+
+        			      // Sum numeric fields
+        			      /* if (fieldsToSum.includes(header)) {
+        			        const num = parseFloat(value.toString().replace(/,/g, ''));
+        			        totals[header] += isNaN(num) ? 0 : num;
+        			        value = amountFormatter(isNaN(num) ? 0 : num.toFixed(2));
+        			      } */
+
+        			      row[header] = value;
+        			    });
+        			    rowData.push(row);
+        			  });
+
+        			  
+
+        			  // Create top rows
+        			  const headingRow1 = {}, headingRow2 = {}, dividerRow = {}, spacerRow = {};
+        			  selectedHeaders.forEach(header => {
+        			    headingRow1[header] = '';
+        			    headingRow2[header] = '';
+        			    dividerRow[header] = '';
+        			    spacerRow[header] = '';
+        			  });
+
+        			  headingRow1[selectedHeaders[0]] = companyName;
+        			  headingRow2[selectedHeaders[0]] = `SO REPORT From ${fromDate} To ${toDate}`;
+        			  dividerRow[selectedHeaders[0]] = '―'.repeat(80);
+
+        			  rowData.unshift(spacerRow);
+        			  rowData.unshift(dividerRow);
+        			  rowData.unshift(headingRow2);
+        			  rowData.unshift(headingRow1);
+
+        			  // Convert to sheet
+        			  const ws = XLSX.utils.json_to_sheet(rowData, {
+        			    header: selectedHeaders,
+        			    skipHeader: true
+        			  });
+
+        			  // Merge and style heading rows
+        			  ws['!merges'] = [
+        			    { s: { r: 0, c: 0 }, e: { r: 0, c: selectedHeaders.length - 1 } },
+        			    { s: { r: 1, c: 0 }, e: { r: 1, c: selectedHeaders.length - 1 } },
+        			    { s: { r: 2, c: 0 }, e: { r: 2, c: selectedHeaders.length - 1 } }
+        			  ];
+
+        			  ws['A1'] = {
+        			    v: companyName,
+        			    t: 's',
+        			    s: {
+        			      font: { bold: true, sz: 16 },
+        			      alignment: { horizontal: 'center', vertical: 'center' },
+        			      fill: { fgColor: { rgb: 'DCE6F1' } }
+        			    }
+        			  };
+
+        			  ws['A2'] = {
+        			    v: `SO REPORT From ${fromDate} To ${toDate}`,
+        			    t: 's',
+        			    s: {
+        			      font: { bold: true, sz: 14 },
+        			      alignment: { horizontal: 'center', vertical: 'center' },
+        			      fill: { fgColor: { rgb: 'E2EFDA' } }
+        			    }
+        			  };
+
+        			  ws['A3'] = {
+        			    v: '―'.repeat(80),
+        			    t: 's',
+        			    s: {
+        			      alignment: { horizontal: 'center', vertical: 'center' },
+        			      font: { color: { rgb: "666666" } }
+        			    }
+        			  };
+
+        			  // Style headers
+        			  selectedHeaders.forEach((header, index) => {
+        			    const cellAddress = XLSX.utils.encode_cell({ c: index, r: 3 });
+        			    if (!ws[cellAddress]) return;
+
+        			    ws[cellAddress].v = header.toUpperCase();
+        			    ws[cellAddress].s = {
+        			      fill: { fgColor: { rgb: "5784c4" } },
+        			      font: { bold: true, color: { rgb: "FFFFFF" } },
+        			      alignment: { horizontal: "center", vertical: "center" },
+        			      border: {
+        			        top: { style: "thin", color: { rgb: "000000" } },
+        			        bottom: { style: "thin", color: { rgb: "000000" } },
+        			        left: { style: "thin", color: { rgb: "000000" } },
+        			        right: { style: "thin", color: { rgb: "000000" } }
+        			      }
+        			    };
+
+        			    
+        			    
+        			    const colLetter = XLSX.utils.encode_col(index);
+        			    const colRange = XLSX.utils.decode_range(ws['!ref']);
+        			    for (let r = 4; r <= colRange.e.r; r++) {
+        			      const cellRef = `${colLetter}${r + 1}`;
+        			      if (!ws[cellRef]) continue;
+
+        			     /*  if (fieldsToSum.includes(header) || header === 'TDS RATE(%)') {
+        			        ws[cellRef].s = {
+        			          alignment: { horizontal: "right" }
+        			        };
+        			      } */
+        			    }
+        			  });
+
+
+        			  // Set column widths
+        			  ws['!cols'] = selectedHeaders.map(header => {
+        			    switch (header) {
+        			      case 'SALES ORDER NO': return { wch: 25 };
+        			      case 'CUSTOMER NAME': return { wch: 35 };
+        			      case 'PO NO': return { wch: 40 };
+        			      case 'RECEIVE DATE':return { wch: 20 };
+        			      case 'EXPECTED DELIVERY': return { wch: 20 };
+        			     
+        			      case 'ITEM NAME': return { wch: 40 };
+        			      case 'ORDER QUANTITY': return { wch: 18 };
+        			      case 'DISPATCH QUANTITY': return { wch: 18 };
+        			      case 'PENDING QUANTITY': return { wch: 18 };
+        			      case 'ITEM SKU': return { wch: 18 };
+        			      case 'ITEM DESCRIPTION': return { wch: 80 };
+        			      case 'ITEM PRICE': return { wch: 18 };
+        			      case 'ITEM UNIT': return { wch: 18 };
+        			      case 'SO REF': return { wch: 18 };
+        			      case 'LINE TOTAL': return { wch: 18 };
+        			      case 'TAXABLE AMOUNT': return { wch: 18 };
+        			      
+        			      default:
+        			        return { wch: 20 };
+        			    }
+        			  });
+
+        			  // Export workbook
+        			  const wb = XLSX.utils.book_new();
+        			  XLSX.utils.book_append_sheet(wb, ws, 'SO Report');
+        			  XLSX.writeFile(wb, fileName);
+        		
+        	}else{
+        	
+        } 
+        }
+       
+
+
+    </script>
+</head>
+
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<!--Tabbination 1 Start-->
+					<div id="tab1" class="tab-pane" role="tabpanel">
+						<div class="d-flex flex-column flex-lg-row">
+							<!--Left Sec Start-->
+							<div class="box-sec flex-25" id="collapseWidthR1">
+								<div class="out-box">
+									<div class="h-100 d-flex flex-column">
+
+										<div class="card p-2 m-2">
+											<div id="myGrid" style="height: 100vh;"
+												class="ag-theme-alpine"></div>
+										</div>
+
+									</div>
+								</div>
+							</div>
+							<div id="snackbar" class="snackbar"></div>
+							<!--Right Sec Start-->
+							<div class="box-sec" id="collapseWidthL1">
+								<div class="out-box" id="rightSideDiv">
+									<div
+										class="d-flex justify-content-between flex-row-reverse align-items-center p-2 border-bottom">
+										<button class="btn btn-primary max-btn" id="collapseButtonL1"
+											type="button" onclick="triggerExpansionL(1)"
+											data-bs-toggle="tooltip" data-bs-placement="top"
+											title="Expand">
+											<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+												class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+										</button>
+										<!--Right Inner Tab Start-->
+										<div class="d-flex gap-2">
+											<ul class="nav nav-pills newtab" role="tablist">
+												<li class="nav-item" role="presentation" id="salesInfLiId"><a
+													class="nav-link active" data-bs-toggle="pill"
+													href="#salesInfo" aria-selected="true" role="tab">
+														Summary</a></li>
+											</ul>
+										</div>
+									</div>
+									<div
+										class="row row-cols-auto g-2 justify-content-between align-items-end p-2 border rounded m-2 mb-0">
+										<!--<div class="project-name"><span class="head-user-name" id="showCustName1"></span></div>-->
+										<div class="col-12 col-md-4">
+											<div class="d-flex search-sec gap-2">
+												<input class="form-control search_input_bar"
+													placeholder="Search.." type="text" name="search"
+													id="quickFilter" autocomplete="off">
+												<button class="btn go-btn" onclick="onQuickFilterChanged()"
+													id="SearchBtn" type="button">Go</button>
+												<button class="btn go-btn" type="button"
+													onclick="resetBtn()">Reset</button>
+											</div>
+										</div>
+										<div class="col-12 col-md-3">
+											<div class="hstack gap-2">
+												<!-- From Date -->
+												<div class="flex-1 form-group calendar_box" id="fromDateDiv">
+													<label>From Date</label>
+													<div class="position-relative">
+														<input type="text" id="fromDate" class="form-control"
+															onchange="validateDatesOnly()"
+															onblur="removeValid(event)"
+															th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+															readonly> <i class="ti-calendar picker_calendar"
+															id="fromDateCalendar" onchange="validateDatesOnly()"
+															onblur="removeValid(event)"></i>
+													</div>
+												</div>
+												<!-- To Date -->
+												<div class="flex-1 form-group calendar_box" id="toDateDiv">
+													<label>To Date</label>
+													<div class="position-relative">
+														<input type="text" id="toDate" class="form-control"
+															onchange="validateDatesOnly()"
+															onblur="removeValid(event)"
+															th:attr="onkeyup=|formatDate('toDate','${session.DATEFORMAT_JS}')|"
+															readonly> <i class="ti-calendar picker_calendar"
+															id="toDateCalendar" onchange="validateDatesOnly()"
+															onblur="removeValid(event)"></i>
+													</div>
+												</div>
+											</div>
+										</div>
+
+										<div class="col-md-3">
+											<div class="position-relative">
+												<label>Executive Name</label>
+												<div class="select">
+													<select id="empId" onblur="removeValid(event)">
+														<option value="All">All</option>
+														<option th:each="c,iter:${empList}" th:value="${c.key}"
+															th:text="${c.name}"></option>
+													</select>
+												</div>
+											</div>
+										</div>
+
+										<button class="btn go-btn" onclick="filter()" id="filterBtn"
+											type="button">Filter</button>
+										<button class="btn icon-btn" id="downloadExcel"
+											onclick="excelDownload()" data-bs-toggle="tooltip"
+											data-bs-placement="top" title="Download Excel">
+											<i class="fa-solid fa-download"></i>
+										</button>
+									</div>
+
+
+
+									<!-- Tab panes -->
+									<div class="tab-content flex-fill">
+										<div id="salesInfo" class="tab-pane fade active h-100 show"
+											role="tabpanel">
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+
+												<div class="card p-2 m-2">
+													<div id="salesReportGrid" style="height: 100vh;"
+														class="ag-theme-alpine"></div>
+													<div id="poReportGrid" style="height: 100vh;"
+														class="ag-theme-alpine d-none"></div>
+													<div id="soReportGrid" style="height: 100vh;"
+														class="ag-theme-alpine d-none"></div>
+												</div>
+											</div>
+										</div>
+
+									</div>
+									<!--Right Inner Tab End-->
+								</div>
+							</div>
+							<!--Right Sec End-->
+						</div>
+					</div>
+					<!--Tabbination 1 End-->
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+
+</html>

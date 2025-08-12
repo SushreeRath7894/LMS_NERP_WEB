@@ -1,0 +1,441 @@
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+.rating {
+	float: left;
+}
+
+.rating:not(:checked)>input {
+	position: absolute;
+	top: -9999px;
+	clip: rect(0, 0, 0, 0);
+}
+
+.rating:not(:checked)>label {
+	float: right;
+	width: 1em;
+	padding: 0 .1em;
+	overflow: hidden;
+	white-space: nowrap;
+	cursor: pointer;
+	font-size: 200%;
+	line-height: 1.2;
+	color: rgba(0, 0, 0, 0.6);
+	/*  text-shadow:1px 1px #bbb, 2px 2px #666, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating:not(:checked)>label:before {
+	content: '★ ';
+}
+
+.rating>input:checked ~ label {
+	color: #ea0;
+	/*  text-shadow:1px 1px #c60, 2px 2px #940, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating:not(:checked)>label:hover, .rating:not(:checked)>label:hover ~
+	label {
+	color: black;
+	/*  text-shadow:1px 1px goldenrod, 2px 2px #B57340, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating>input:checked+label:hover, .rating>input:checked+label:hover ~
+	label, .rating>input:checked ~ label:hover, .rating>input:checked ~
+	label:hover ~ label, .rating>label:hover ~ input:checked ~ label {
+	color: #ea0;
+	/*  text-shadow:1px 1px goldenrod, 2px 2px #B57340, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating>label:active {
+	position: relative;
+	top: 2px;
+	left: 2px;
+}
+</style>
+<script>
+	$(document).ready(function() {
+
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		
+		var rowData = [];
+		gridOptions.api.setRowData(rowData);
+		
+
+	})
+	var columnDefs = [
+
+		{
+			headerName : "Goal",
+			field : "goalId",
+			cellStyle : {
+				textAlign : 'left'
+			},
+			width : 200,
+			hide : true,
+		}, {
+		headerName : "Goal Name",
+		field : "goal",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 200,
+	}, {
+		headerName : "Expected Results",
+		field : "expectedResults",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 200,
+	}, {
+		headerName : "Weightage",
+		field : "weightage",
+		width : 100,
+	}, {
+		headerName : "Self Review",
+		field : "selfReview",
+		width : 150,
+	}, {
+		headerName : "Manager's Review",
+		field : "managersReview",
+		width : 200,
+	}, {
+		headerName : "Summary",
+		field : "summary",
+		width : 200,
+	}, {
+		headerName : "Recommendations",
+		field : "recommendation",
+		width : 200,
+	}, {
+		headerName : "Rating",
+		field : "rating",
+		width : 150,
+	} ];
+
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 410,
+			height : 20
+		},
+		rowSelection : 'single',
+		rowMultiSelectWithClick : true,
+		onSelectionChanged : onSelectionOneToOne
+	};
+	function onSelectionOneToOne() {
+		openNav();
+		var selectedNodes= gridOptions.api.getSelectedNodes();
+		var selectedData= selectedNodes.map(node => node.data);
+
+		$('#goalName').val(selectedData.map(node => node.goalName));
+		$('#expectedResult').val(selectedData.map(node => node.expectedResult));
+		$('#weightage').val(selectedData.map(node => node.weightage));
+	}
+
+	function openNav() {
+
+		$('#goalName').val("");
+		$('#expectedResult').val("");
+		$('#weightage').val("");
+
+		document.getElementById("mySidenav").style.cssText = "width: 250px; position: absolute; right:-30px; overflow: hidden; height:auto; top:100px;";
+
+		document.getElementById("main_content").style.width = "80%";
+	}
+
+	function closeNav() {
+
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main_content").style.width = "100%";
+	}
+	
+	//get designation list on change of name
+	function getDesignation() {
+		var empName = $("#empID").val();
+		if (empName) {
+			
+			$("#designation").empty();
+			$.ajax({
+				type : 'GET',
+				url : 'view-goal-onetoone-ajax?name=' + empName,
+				contentType : false,
+				success : function(response) {
+					if (response.message == "success") {
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#designation").append(option);
+							var emp = $("#empID").val();
+							agGrid.simpleHttpRequest({
+								url : 'view-goal-onetoone-result?name=' + emp
+							}).then(function(data) {
+								gridOptions.api.setRowData(data);
+								
+							});
+						}
+					}
+				},
+				error : function(e) {
+
+				}
+			});
+		} else {
+			$("#designation").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#designation").append(option);
+
+		}		
+	}
+	/* 	final save */
+	 var datas = [];
+	function Save(){
+		if (gridOptions.api.getDisplayedRowCount() > 0) {
+			gridOptions.api.forEachNode(function(rowNode, indrx) {
+				var obj = rowNode.data;
+				/* obj.summary=$("#summary").val();
+				obj.recommandation=$("#recommendation").val();	 */
+				var ratingId = $("input:radio[name=rating]:checked").val();
+				obj.rating = ratingId;
+				//console.log(obj);
+				datas.push(obj);
+			});
+			
+		} else {
+			var obj = {};
+			/* obj.summary=$("#summary").val();
+			obj.recommandation=$("#recommendation").val(); */
+			var ratingId = $("input:radio[name=rating]:checked").val();
+			obj.rating = ratingId;
+			datas.push(obj);
+		}
+		console.log(datas);
+		$.ajax({
+			type : "POST",
+			url : "view-goal-onetoone-add",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(datas),
+			success : function(response) {
+				if (response.message == "Success") {
+					
+					}
+					},
+					error : function(response) {
+					console.log(response);
+				}
+			})
+		
+	}
+	
+</script>
+
+</head>
+
+<body>
+
+	<div layout:fragment="content">
+		<div class="content-wrap">
+			<div class="container-fluid">
+				<div class="maincontent">
+					<div class="row">
+
+						<div class="maincontentsec">
+							<div class="content_padding">
+
+								<div id="main_content">
+
+									<div class="panel-body">
+										<div class="row">
+
+											<div class="col-md-4 btn-hs1">
+												<div class="font-design"></div>
+											</div>
+											<div class="col-md-8 butttonsec">
+												<button class="btn3" id="newBtn" >Cancel</button>
+												<button class="btn1" id="save" onclick="Save()">Save</button>
+											</div>
+										</div>
+
+										<div class="row">
+											<div class="col-md-4">
+												<div class="form-group">
+													<div class="select">
+														<select id="empID" class="form-control"
+															onchange="getDesignation()">
+															<option value="">NAME</option>
+															<option th:each="c,iter:${nameList}" th:value="${c.key}"
+																th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-4">
+												<div class="form-group">
+													<div class="select">
+														<select id="designation" class="form-control">
+															<option value="">DESIGNATION</option>
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-12">
+												<!-- 	<div class="row">
+													<div class="col-md-10">
+														<div class="sml_plus" onclick='openNav()'>
+															<i class="ti-plus"></i>
+														</div>
+
+														<div class="sml_action">
+															<i class="ti-bolt-alt"></i>
+														</div>
+													</div>
+
+													<div class="sml_hide">
+														<i class="ti-download" onclick="goalCSV();"></i>
+													</div>
+
+												</div> -->
+
+												<div class="box_reference" align="center">
+													<div id="myGrid" style="width: 100%; height: 200px;"
+														class="ag-theme-alpine"></div>
+												</div>
+												<div class="row">
+													<div class="col-md-12">
+														<div class="modal-inrheading">Summary</div>
+														<div class="position-text">
+															<textarea rows="4" cols="110" id="summary"
+																onkeyup="textCount(event)" style="background: #fff"></textarea>
+															<div id="charNumSN" class="txtcounter" align="right">
+																<span>0</span> characters
+															</div>
+														</div>
+													</div>
+													<div class="col-md-12">
+														<div class="modal-inrheading">Recommendations</div>
+														<div class="position-text">
+															<textarea rows="4" cols="100" id="recommendation"
+																onkeyup="textCount(event)" style="background: #fff"></textarea>
+															<div id="charNumSN" class="txtcounter" align="right">
+																<span>0</span> characters
+															</div>
+														</div>
+													</div>
+													<div class="col-md-12">
+														<div class="form-group">
+															<div>
+																<label class="modal-inrheading">Rating</label>
+															</div>
+															<fieldset class="rating">
+																<input type="radio" class="rating1" id="star5"
+																	name="rating" value="5" /><label for="star5"
+																	title="High">5 stars</label> <input type="radio"
+																	class="rating1" id="star4" name="rating" value="4" /><label
+																	for="star4" title="High">4 stars</label> <input
+																	type="radio" class="rating1" id="star3" name="rating"
+																	value="3" /><label for="star3" title="High">3
+																	stars</label> <input type="radio" class="rating1" id="star2"
+																	name="rating" value="2" /><label for="star2"
+																	title="Medium">2 stars</label> <input type="radio"
+																	class="rating1" id="star1" name="rating" value="1" /><label
+																	for="star1" title="Low">1 star</label>
+															</fieldset>
+														</div>
+													</div>
+
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+
+							</div>
+						</div>
+
+
+						<div id="mySidenav" class="sidenav">
+							<div class="slidebox">
+								<div class="row">
+									<div class="col-md-9">
+										<div class="edit">1:1s</div>
+									</div>
+									<div class="col-md-3">
+										<div class="arrow">
+											<a href="javascript:void(0)" class="closebtn"
+												onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+										</div>
+									</div>
+
+									<div class="chartbtnsec1">
+										<div align="right">
+											<button class="btn4" onclick="closeNav()">CANCEL</button>
+											<button class="btn1" onclick="saveGoal()">SAVE</button>
+										</div>
+									</div>
+
+
+									<div class="col-md-12">
+										<div class="form-group">
+											<label>Goal Name</label> <input type="text"
+												class="form-control transparenttxtbox" placeholder="Name"
+												id="goalName" readonly>
+										</div>
+									</div>
+									<div class="col-md-12">
+										<div class="form-group">
+											<label>Expected Results</label> <input type="text"
+												class="form-control transparenttxtbox"
+												placeholder="Expected Results.." id="expectedResult"
+												readonly>
+										</div>
+									</div>
+
+									<div class="col-md-12">
+										<div class="form-group">
+											<label>Weightage</label> <input type="text"
+												class="form-control transparenttxtbox"
+												placeholder="Weightage..." id="weightage" readonly>
+										</div>
+									</div>
+									<div class="col-md-12">
+										<div class="form-group">
+											<label>Self Review</label>
+											<textarea class="form-control transparenttxtbox"
+												placeholder="Self Review..." id="selfReview"></textarea>
+										</div>
+									</div>
+									<div class="col-md-12">
+										<div class="form-group">
+											<label>Manager's Review</label>
+											<textarea class="form-control transparenttxtbox"
+												placeholder="Self Review..." id="managerReview"></textarea>
+										</div>
+									</div>
+
+								</div>
+
+							</div>
+						</div>
+
+
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

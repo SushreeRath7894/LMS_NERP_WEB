@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<meta charset="ISO-8859-1">
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+</style>
+
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(function() {
+
+		//	     date format Expense Date
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#expenseDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#date').val($(this).val());
+		})
+
+		$('#date').blur(function() {
+			$("#expenseDateCalendar").val($(this).val());
+		})
+
+		$("#expenseDateCalendar1").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#expenseDate').val($(this).val());
+		})
+
+		$('#expenseDate').blur(function() {
+			$("#expenseDateCalendar1").val($(this).val());
+		})
+
+		$("#add").show();
+		//$("#finance").attr("disabled", true);
+		$("#delete").attr("disabled", true);
+		$("#approve").attr("disabled", true);
+    	$("#reject").attr("disabled", true);
+		$("#fin").hide();
+
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+		$('.collapse').on('hide.bs.collapse', function() {
+			$(this).siblings('.panel-heading').removeClass('active');
+		});
+
+		
+		var userid = $("#sessionId").val();
+		var userrole = $("#sessionRole").val();
+		var roleid = "";
+		for(var i = 6; i <= userrole.length; i=i+6){  
+		    roleid = roleid + '"' +userrole.slice(i-6, i)+ '",';
+		}
+		roleid = roleid.substring(0, roleid.length - 1); 
+		//Clearance
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		//Reimbusement Other View
+		agGrid.simpleHttpRequest({
+			url : "reimbursement-other-view"
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReim').find('span').html(len);
+			gridOptions.api.setRowData(data);
+		});
+
+		$("#demo").hide();
+
+		$('#docTbl').on('click', '.rmv1', function() {
+			openDeleteConfirm();
+			var value = $(this).parent("div").attr("id");
+			$("#dltValue").val(value);
+		});
+
+		$("#statusDiv").hide();
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+		$(function() {
+			$("input[name='advanceReq']").click(function() {
+				if ($("#No").is(":checked")) {
+					$("#amount").hide();
+				} else {
+					$("#amount").show();
+				}
+			});
+
+		});
+
+		$("#form").hide();
+		$("#cancel").hide();
+		$("#save").hide();
+		$('#delete').attr("disabled", true);
+		$("#initiate").attr("disabled", true);
+		$("#payment").attr("disabled", true);
+		$("#myGrid").show();
+	});
+	/* -------------------search bar for mygrid------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	//OtherReimbrusement Management
+	const columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+			{
+				headerName : 'ReimbursementId Id',
+				field : "otherReimbrusementId",
+				cellRenderer : function(params) {
+					return '<a id="otherReimbrusementId" onclick=editReimbruseimentOther("'
+							+ params.data.otherReimbrusementId+','+params.data.approveStatus
+							+ '") href="javascript:void(0)">'
+							+ params.data.otherReimbrusementId + '</a>';
+				}
+			}, {
+				headerName : 'DATE',
+				field : "date",
+			}, {
+				headerName : 'Travelling Purpose',
+				field : "travellingPurpose",
+			}, {
+				headerName : 'Type Reimbrusement',
+				field : "typeReimbrusement",
+			}, {
+				headerName : 'Expense Date',
+				field : "expenseDate"
+			}, {
+				headerName : 'Desc Expense',
+				field : "descExpense"
+			}, {
+				headerName : 'Approve Status',
+				field : "approveStatus",
+				cellRenderer : function(params) {
+					if (params.data.approveStatus == 0) {
+						return 'Pending';
+					} else if (params.data.approveStatus == 1) {
+						return 'Forwarded';
+					} else if (params.data.approveStatus == 3) {
+						return 'Approved';
+					} else {
+						return 'Rejected';
+					}
+				}
+			}, {
+				headerName : 'Expense Amount',
+				field : "expenseAmount"
+			}, {
+				headerName : 'Doc Name',
+				field : "docName"
+			}, {
+				headerName : 'Reference No',
+				field : "referenceNo"
+			}, {
+				headerName : 'Approved By',
+				field : "approvedBy"
+			}, {
+				headerName : 'Rejected By',
+				field : "rejectedBy"
+			}, {
+				headerName : 'Approve Comment',
+				field : "approveComment",
+				width : 240,
+			} ];
+
+	const gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 251,
+			height : 10
+		},
+		rowSelection : 'multiple',
+		onSelectionChanged : rowSelectId,
+		suppressRowClickSelection : true,
+		getRowNodeId : function(data) {
+			return data.otherReimbrusementId;
+		}
+	};
+
+	var deleteId = " ";
+	var rId="";
+	function rowSelectId() {
+		 var selectedNodes = gridOptions.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		 rId= selectedData.map(node => node.otherReimbrusementId);
+		$('#delete').attr("disabled", false);
+		$('#approve').attr('disabled', false);
+		$('#reject').attr('disabled', false);
+
+		var selectedRows = gridOptions.api.getSelectedRows();
+		console.log(selectedRows);
+		deleteId = "";
+		for (var i = 0; i < selectedRows.length; i++) {
+
+			deleteId = deleteId + '"' + selectedRows[i].otherReimbrusementId
+					+ '",';
+		}
+		deleteId = deleteId.substring(0, deleteId.length - 1);
+		
+		
+		
+	}
+
+	
+	
+	
+	function deleteData() {
+		$.ajax({
+			type : "GET",
+			url : "reimbursement-other-delete-details?id=" + deleteId,
+			async : false,
+			success : function(response) {
+				if (response.message == "Success") {
+					agGrid.simpleHttpRequest({
+						url : "reimbursement-other-view"
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+					});
+					$('#delete').attr("disabled", true);
+				}
+			},
+			error : function(data) {
+			}
+
+		});
+	}
+
+	/*
+	 *
+	 *Edit function
+	 *
+	 */
+
+	/*
+	 *Initiate function
+	 */
+	/* var initiateId = " ";
+	var clrStatus = " ";
+	function initiate() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+
+		initiateId = "";
+
+		var rowCount = 0;
+
+		if (selectedRows.length > 0) {
+
+			var financeEmpId = selectedRows[0].empID;
+			$("#financeEmpId").val(financeEmpId);
+
+			var financeEmpName = selectedRows[0].empName;
+			$("#financeEmpName").val(financeEmpName);
+
+			var financeDeptId = selectedRows[0].deptId;
+			$("#financeDeptId").val(financeDeptId);
+
+			var financeDeptName = selectedRows[0].deptName;
+			$("#financeDeptName").val(financeDeptName);
+
+			var financeEmpManager = selectedRows[0].managerName;
+			$("#financeEmpManager").val(financeEmpManager);
+
+			var financeManagerId = selectedRows[0].managerId;
+			$("#financeManagerId").val(financeManagerId);
+
+			var exitIdF = selectedRows[0].employeeExit;
+			$("#exitIdF").html(exitIdF);
+
+			var exitId = selectedRows[0].employeeExit;
+			$("#employeeExit").val(exitId);
+			initiateId = selectedRows[0].empID;
+			clrStatus = selectedRows[0].empClrncStatus;
+			empStatus = selectedRows[0].empStatus;
+
+			selectedRows.forEach(function() {
+				rowCount = rowCount + 1;
+			});
+		}
+		//Button show hide
+		if (rowCount > 0) {
+			
+			$("#delete").attr("disabled", false);
+			$("#add").hide();
+
+			if (rowCount == 1) {
+				$("#initiate").attr("disabled", false);
+				$("#payment").attr("disabled", false);
+			}
+
+			if (rowCount == 1 && clrStatus == 0) {
+				$("#finance").attr("disabled", false);
+			} else {
+				$("#finance").attr("disabled", true);
+			}
+			if (rowCount == 1 && empStatus == 'Inactive') {
+				$("#initiate").attr("disabled", true);
+				$("#payment").attr("disabled", true);
+				$("#delete").attr("disabled", true);
+				$("#add").hide();
+				$("#finance").attr("disabled", true);
+			}
+		} else {
+			$("#add").show();
+			$("#delete").attr("disabled", true)
+			$("#initiate").attr("disabled", true);
+			$("#payment").attr("disabled", true);
+			$("#finance").attr("disabled", true);
+
+		}
+	} */
+	
+	
+
+	 id="";
+	function initiate() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		 var selectedData = selectedNodes.map(node => node.data);
+		 var otherReimbrusementId= selectedData.map(node => node.otherReimbrusementId);
+		 
+		var selectedRows = gridOptions.api.getSelectedRows();
+		id = "";
+		 var rowCount = 0;
+		for (var i = 0; i < selectedRows.length; i++) {
+			id = id + '"' + selectedRows[i].otherReimbrusementId+ '"';
+		     rowCount = rowCount + 1;
+		}
+	 
+		$("#delete").attr("disabled", true);
+		$("#add").hide();
+		$("#approve").attr("disabled", true);
+		
+			 var uid=$("#sessionId").val();
+		   if (rowCount > 0) {
+				$('#add').attr('disabled', true);
+				if(reimbursementReqId!=uid){
+					 if (selectedData.map(node => node.approveStatus) == 3) {
+				        	
+				        	$('#approve').attr('disabled', true);
+							$('#reject').attr('disabled', true);
+							//$('#delete').attr("disabled", true);
+				        } else {
+				           
+				         	$('#approve').attr('disabled', false);
+							$('#reject').attr('disabled', false);
+							$('#delete').attr("disabled", true);
+				        } 
+					
+				}else{
+					 	
+			         	$('#approve').attr('disabled', true);
+						$('#reject').attr('disabled', true);
+						$('#delete').attr('disabled', false);
+				}	
+
+   } else {
+   	$('#delete').attr("disabled", true);
+		$('#approve').attr('disabled', true);
+		$('#reject').attr('disabled', true);
+		
+		
+		$('#add').attr('disabled', false);
+
+   }
+	}
+
+	
+	
+
+	function openDeleteConfirm() {
+		$("#dltValue").val("");
+		$('#deleteAttachment').modal('show');
+	}
+
+	//for closeing modal box for dlt ind product
+	function closeDeleteConfirm() {
+		$("#dltValue").val("");
+		$('#deleteAttachment').modal('hide');
+	}
+
+	function deletAttachmentRow() {
+		var lengthOfTableRow1 = 0;
+		$("#docTbl > #doctbodyData > tr").each(function() {
+			lengthOfTableRow1 = lengthOfTableRow1 + 1;
+		})
+		var id = $("#dltValue").val();
+		$("#" + id).closest('tr').remove();
+		closeDeleteConfirm();
+		if (lengthOfTableRow1 == 1) {
+			var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+					+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+					+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_"></div></td>'
+					+ '<td> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+					+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+					+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div><div id="dltImage_0"  ></div> </td>'
+					+ '</tr>';
+			$("#doctbodyData").append(tbl);
+		}
+	}
+
+	//Open Nav for Exit Management
+	function openNav() {
+
+		document.getElementById("mySidenav").style.cssText = "width: 350px; position: absolute; right:-10px; overflow: hidden; height:auto;";
+		document.getElementById("main_content").style.width = "75%";
+		$("#cancel").show();
+		$("#save").show();
+		$('#delete').hide();
+	}
+
+	function add() {
+
+		$("#empID").val("");
+		$("#empName").val("");
+		$("#designationId").val("");
+		$("#designation").val("");
+		$("#noticePeriod").val("");
+		$("#salary").val("");
+		$("#resignDate").val("");
+		$("#releaseDate").val("");
+		$("#bonus").val("");
+		$("#reason").val("");
+		$("#status").prop("checked", true);
+
+		$("#add").hide();
+		$("#myGrid").hide();
+		$("#cancel").show();
+		$("#save").show();
+		$("#form").show();
+		$("#delete").hide();
+
+	}
+
+	function cancel() {
+		$("#initiate").hide();
+		$("#payment").hide();
+		$("#add").show();
+		$("#myGrid").show();
+		$("#cancel").hide();
+		$("#save").hide();
+		$("#form").hide();
+		$("#delete").show();
+
+		/* agGrid.simpleHttpRequest({
+			url : "exit-view-through-ajax"
+		}).then(function(data) {
+			gridOptions.api.setRowData(data);
+		});
+		 */
+	}
+	function saveFile() {
+
+		var uFile = $('#fileUpload')[0].files[0];
+		var fileName = $('#fileUpload').val();
+		var iURL = URL.createObjectURL(uFile);
+		var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-picture-o'></i></a></div>";
+		$("#uploadedBillDiv_").html(LightImg);
+		var lastIndex = fileName.lastIndexOf("\\");
+		if (lastIndex >= 0) {
+			fileName = fileName.substring(lastIndex + 1);
+		}
+		var iURL = URL.createObjectURL(uFile);
+
+		$('#imgLoc').attr('src', '');
+		$('#imgLoc').attr('src', iURL);
+
+		var fileData = new FormData();
+		fileData.append('file', uFile);
+		fileData.append('path', 'none');
+
+		$.ajax({
+			type : "POST",
+			url : "reimbursement-other-upload-file",
+			enctype : "multipart/form-data",
+			contentType : false,
+			data : fileData,
+			processData : false,
+			cache : false,
+			success : function(response) {
+
+			},
+			error : function(e) {
+
+			}
+		});
+	}
+	function saveData1() {
+		var item = {};
+		item.otherReimbrusementId = $("#otherReimbrusementId").val();
+		item.date = $("#date").val();
+		item.travellingPurpose = $("#travellingPurpose").val();
+		item.typeReimbrusement = $("#typeReimbrusement").val();
+		//data.reimPolicyName = $("#reimPolicyId").val();
+		item.expenseDate = $("#expenseDate").val();
+		item.descExpense = $("#descExpense").val();
+		item.expenseAmount = $("#expenseAmount").val();
+		item.docName = $("#fileUpload").val();
+		item.referenceNo = $("#referenceNo").val();
+		//item.documentName = $("#imgLoc").val();
+
+		console.log(item)
+		var validation = true;
+		/* 	if (item.reimTypeId == null || item.reimTypeId == "") {
+				validation = validationUpdated("Punchin Time Requied",
+						"reimTypeId");
+			}
+			if (item.reimPolicyId == null || item.reimPolicyId == "") {
+				validation = validationUpdated("Punchin Location  Requied",
+						"reimPolicyId");
+			}
+			if (item.expenseDate == null || item.expenseDate == "") {
+				validation = validationUpdated("Punchin Note  Requied",
+						"expenseDate");
+			} */
+
+		if (validation) {
+			$.ajax({
+				type : "POST",
+				url : "reimbursement-other-add",
+				contentType : "application/json",
+				data : JSON.stringify(item),
+
+				success : function(response) {
+					console.log(response);
+
+					if (response.message == "Success") {
+						$("#messageParagraph").text("Data Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$("#myGrid").show();
+						closeNav();
+					}
+					agGrid.simpleHttpRequest({
+						url : "reimbursement-other-view"
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+					});
+				},
+				error : function(data) {
+
+					console.log(data);
+				}
+			})
+
+		}
+
+	}
+	function closeNav() {
+
+		$("#otherReimbrusementId").val("");
+		$("#date").val("");
+		$("#travellingPurpose").val("");
+		$("#typeReimbrusement").val("");
+		//data.reimPolicyName = $("#reimPolicyId").val();
+		$("#expenseDate").val("");
+		$("#descExpense").val("");
+		$("#expenseAmount").val("");
+		$("#referenceNo").val("");
+		// $("#imgLoc").val("");
+		$("#fileUpload").val("");
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main_content").style.width = "100%";
+	}
+
+	function editReimbruseimentOther(id) {
+            var data = id.split(",");
+            var Id = data[0];
+		var sts = data[1];
+		var emp = data[2];
+	    var sempid=$("#sessionId").val();
+		$.ajax({
+			type : "GET",
+			url : "reimbursement-other-edit?id=" + Id,
+
+			async : false,
+			success : function(response) {
+				if (response.message == "Success") {
+					
+                      if (sts== "0") {
+						
+						$("#myGrid").show();
+						openNav()
+
+						$("#cancel").show();
+						$("#save").show();
+						$("#add").hide();
+						$("#delete").show();
+					$("#otherReimbrusementId").val(
+							response.body.otherReimbrusementId);
+					$("#date").val(response.body.date);
+					$("#travellingPurpose")
+							.val(response.body.travellingPurpose);
+					$("#typeReimbrusement")
+							.val(response.body.typeReimbrusement);
+					$("#expenseDate").val(response.body.expenseDate);
+					$("#descExpense").val(response.body.descExpense);
+					$("#expenseAmount").val(response.body.expenseAmount);
+					$("#referenceNo").val(response.body.referenceNo);
+					$("#fileUpload").val(response.body.docName);
+
+				}
+                      
+                      
+                      else {
+                    	  $("#myGrid").show();
+  						openNav()
+
+  						$("#cancel").show();
+  						$('#save').attr('disabled', true);
+  						$("#add").hide();
+  						$("#delete").show();
+  						$("#demo1").show(); 
+  					
+  						$("#otherReimbrusementId").val(
+  								response.body.otherReimbrusementId);
+  						$("#date").val(response.body.date);
+  						$("#travellingPurpose")
+  								.val(response.body.travellingPurpose);
+  						$("#typeReimbrusement")
+  								.val(response.body.typeReimbrusement);
+  						$("#expenseDate").val(response.body.expenseDate);
+  						$("#descExpense").val(response.body.descExpense);
+  						$("#expenseAmount").val(response.body.expenseAmount);
+  						$("#referenceNo").val(response.body.referenceNo);
+  						$("#fileUpload").val(response.body.docName);
+
+                      
+                      }
+                      }
+			}
+		});
+	}
+
+	function rejectAdvanceModal() {
+		alert("HII")
+		$('#commentModal').modal('toggle');
+		$("#approveAdvanceSubmitBtn").hide();
+		$("#rejectAdvanceSubmitBtn").show();
+	}
+	function approveAdvanceModal() {
+		alert("HII")
+		$('#commentModal').modal('toggle');
+		$("#approveAdvanceSubmitBtn").show();
+		$("#rejectAdvanceSubmitBtn").hide();
+
+	}
+
+	/* -------------------function for approve button----------------- */
+
+	var empid = "";
+	var empname = "";
+	function approveAdvance() {
+		var userrole = $("#sessionRole").val();
+		var roleid = "";
+		for (var i = 6; i <= userrole.length; i = i + 6) {
+			roleid = roleid + '"' + userrole.slice(i - 6, i) + '",';
+		}
+		roleid = roleid.substring(0, roleid.length - 1);
+		empid = $("#sessionId").val();
+		empname = $("#sessionName").val();
+		comment = $("#comment").val();
+		alert(rId)
+		$.ajax({
+			type : "GET",
+			url : "reimbursement-other-approve?approveId=" + rId + "&name="
+					+ empid + "&comment=" + comment + "&roleid=" + roleid,
+			async : false,
+			success : function(response) {
+
+				if (response.message == "Success") {
+					closeNav();
+					$('#delete').attr("disabled", true);
+					$('#approve').attr('disabled', true);
+					$('#reject').attr('disabled', true);
+					//$("#payment").attr("disabled", true);
+				}
+
+			},
+			error : function(data) {
+			}
+		});
+	}
+
+	/*-----------------------function for reject button------------------- */
+	var rejempid = "";
+	var rejempname = "";
+	function rejectAdvance() {
+		rejempid = $("#sessionId").val();
+		rejempname = $("#sessionName").val();
+		comment = $("#comment").val();
+		alert(rId)
+		$.ajax({
+			type : "GET",
+			url : "reimbursement-other-reject?rejectId=" + rId + "&name="
+					+ rejempid + "&comment=" + comment,
+			async : false,
+			success : function(response) {
+
+				if (response.message == "Success") {
+					closeNav();
+
+					$('#delete').attr("disabled", true);
+					$('#approve').attr('disabled', true);
+					$('#reject').attr('disabled', true);
+					//$("#payment").attr("disabled", true);
+				}
+
+			},
+			error : function(data) {
+			}
+		});
+	}
+
+	function downloadDetails() {
+		var dataset = [];
+		gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+		gridOptions.api.exportDataAsCsv(dataset);
+	}
+</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div id="main_content">
+							<div class="d-flex justify-content-between">
+								<div class="btn-hs">
+									<div class="font-design" id="totalReim">
+										REIMBURSEMENT OTHER (<span></span>)
+									</div>
+									<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+										type="hidden" id="sessionName" th:value="${userName}" /> <input
+										type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+										type="hidden" id="sessionRole" th:value="${userRole}" />
+
+								</div>
+								<div id="searchRowDiv">
+									<div class="input-style">
+										<input type="text" placeholder="Search.." name="search"
+											class="searchboxinput" onkeyup="cancelBar()"
+											oninput="onQuickFilterChanged()" id="quickFilter"
+											autocomplete="off">
+										<div class="searchicon">
+											<a href="javascript:void(0)"><span
+												style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+												id="closeKey"
+												onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+												class="close_i"><i class="ti-close srchicon"></i></span></a><a
+												href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+										</div>
+									</div>
+								</div>
+								<div class="buttonsec btn-hs">
+									<button class="btn4" onclick="downloadDetails()">Download</button>
+									<button class="btn1" id="add" onclick="openNav()">New</button>
+									<button class="btn3" id="delete" onclick="deleteData()">Delete</button>
+									<button id="approve" class="btn2"
+										onclick="approveAdvanceModal()">APPROVE</button>
+									<button class="btn2" id="reject" onclick="rejectAdvanceModal()">Reject</button>
+								</div>
+							</div>
+
+
+							<div id="mySidenav" class="sidenav">
+								<div class="slidebox">
+									<div class="row">
+										<div class="col-md-10 edit">Details</div>
+										<div class="col-md-2">
+											<div class="arrow">
+												<a href="javascript:void(0)" class="closebtn"
+													onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+											</div>
+										</div>
+									</div>
+									<div class="row">
+										<div class="col-md-12 buttonsec btn-hs">
+											<button class="btn3" id="cancelClr" onclick="closeNav()">Cancel</button>
+											<button class="btn1" type="submit" id="saveClrnc" value="add"
+												onclick="saveData1()">Save</button>
+
+											<!-- saveClrncDetails() -->
+										</div>
+									</div>
+									<!-- -------------------------------Travels--------------------------------------------------------- -->
+									<input type="hidden" id="otherReimbrusementId">
+
+
+									<div class="row">
+										<div class="col-md-6">
+											<div class="form-group calendar_box">
+												<label>Date</label> <input type="text" id="date"
+													class="form-control" onblur="removeValid(event)"
+													th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+													readonly> <i class="ti-calendar picker_calendar"
+													id="expenseDateCalendar"></i>
+											</div>
+										</div>
+
+										<div class="col-md-6">
+											<div class="form-group">
+												<label>Travelling Purpose</label> <input type="text"
+													class="form-control" id="travellingPurpose">
+											</div>
+										</div>
+									</div>
+
+									<div class="row">
+										<div class="col-md-6">
+											<div class="form-group">
+												<label> Type</label>
+												<div class="select">
+													<select id="typeReimbrusement">
+														<option value="">--Select--</option>
+														<option th:each="c,iter:${reimbTypeLists}"
+															th:value="${c.key}" th:text="${c.name}"></option>
+													</select>
+												</div>
+											</div>
+										</div>
+
+										<div class="col-md-6">
+											<div class="form-group calendar_box">
+												<label> Date Of Expense</label> <input type="text"
+													id="expenseDate" class="form-control"
+													onblur="removeValid(event)"
+													th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|">
+												<i class="ti-calendar picker_calendar"
+													id="expenseDateCalendar1"></i>
+											</div>
+										</div>
+									</div>
+									<div class="row">
+										<div class="col-md-6">
+											<div class="form-group">
+												<label>Expense Description</label>
+												<textarea class="form-control" id="descExpense"></textarea>
+											</div>
+										</div>
+
+										<div class="col-md-6">
+											<div class="form-group">
+												<label>Expense Amount</label> <input type="text"
+													class="form-control" id="expenseAmount">
+											</div>
+										</div>
+									</div>
+
+									<div class="row">
+										<div class="col-md-6">
+											<table id="docTbl">
+												<thead>
+													<tr class="tr_clone">
+
+														<th width="380" class="green_type">Upload Receipt</th>
+
+													</tr>
+												</thead>
+												<tbody id="doctbodyData">
+
+													<!-- 
+																<td><div class="form-group">
+																		<input type="text" value=""
+																			class="form-control docNoclss" id="imgLoc">
+																	</div></td> -->
+
+													<td>
+														<div class="control-group position-r">
+															<label class="custom-file-upload" for="fileUpload"
+																id="uploadFor_0"> <i id="imgLoc" class="ti-plus"></i>
+																<div id="uploadedBillDiv_" align="center"
+																	class="uploadedBillCls">
+																	<div class="uploadicon position-l"></div>
+																</div>
+															</label>
+															<div class="controls">
+
+																<input type="file" id="fileUpload" name="userImage"
+																	accept="image/*" onchange="saveFile()" />
+
+
+															</div>
+														</div> <input type="hidden" id="uploadHidden_0"
+														class="uploadHidCls">
+														<div id="uploadedBillDiv_0" align="center"
+															class="uploadedBillCls"></div>
+														<div id="imageName_0" class="imageName"></div>
+
+													</td>
+
+
+
+
+												</tbody>
+											</table>
+										</div>
+										<div class="col-md-6">
+											<div class="form-group">
+												<label>Reference Number</label> <input type="text"
+													class="form-control" id="referenceNo">
+											</div>
+										</div>
+
+									</div>
+								</div>
+							</div>
+							<div id="myGrid" style="width: 100%; height: 500px;"
+								class="ag-theme-alpine"></div>
+						</div>
+
+						<!-- alert modal start -->
+						<div id="alert" class="modal fade show" aria-modal="true">
+							<div class="modal-dialog modal-confirm">
+								<div class="modal-content">
+									<div class="modal-header flex-column">
+										<button type="button" class="close" data-bs-dismiss="modal"
+											aria-hidden="true" onclick="cancelModalBtn()">
+											<i class="ti-close modal-close"></i>
+										</button>
+									</div>
+									<div class="modal-body">
+										<p id="textId"></p>
+									</div>
+									<div class="modal-footer justify-content-center"
+										style="margin-top: -30px;">
+
+										<button type="button" class="btn4" data-bs-dismiss="modal"
+											onclick="cancelModalBtn();">Close</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+					</div>
+					<!-- ------------------------------------------------Modal-------------------------------------------------------------------------- -->
+
+					<!-- Modal End-->
+
+					<div id="commentModal" class="modal fade">
+						<div class="modal-dialog">
+							<!-- Modal content-->
+							<div class="modal-content">
+								<div class="modal-header">
+									<h4 class="modal-title">Comments</h4>
+									<button type="button" class="close" data-bs-dismiss="modal"
+										aria-label="Close">
+										<i class="ti-close"></i>
+									</button>
+
+								</div>
+								<div class="modal-body">
+									<!-- text input -->
+									<div class="row">
+										<div class="col-md-12">
+											<div class="form-group">
+												<label>Comment</label> <input class="form-control"
+													type="text" id="comment">
+											</div>
+										</div>
+
+									</div>
+								</div>
+								<div class="modal-footer justify-content-left">
+									<button type="button" class="btn1" data-bs-dismiss="modal"
+										aria-hidden="true" id="approveAdvanceSubmitBtn"
+										onclick="approveAdvance()">Submit</button>
+									<button type="button" class="btn1" data-bs-dismiss="modal"
+										aria-hidden="true" id="rejectAdvanceSubmitBtn"
+										onclick="rejectAdvance()">Submit</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+
+
+
+
+
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

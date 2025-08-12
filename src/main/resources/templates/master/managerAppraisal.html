@@ -1,0 +1,884 @@
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+.pendingStatus {
+	color: #413e3e;
+	font-weight: 600;
+	font-size: 13px;
+	font-family: math;
+}
+
+.approveStatus {
+	color: #0727fa;
+	font-weight: 600;
+	font-size: 13px;
+	font-family: math;
+}
+
+textarea {
+	background-color: rgba(255, 255, 255, 0.8);
+	color: #333;
+	font-size: 16px;
+	font-weight: 400;
+	width: 100%;
+	height: 150px;
+	padding: 10px;
+	border: 1px solid rgba(0, 0, 0, 0.2);
+	border-radius: 8px;
+	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+	transition: border-color 0.3s, box-shadow 0.3s;
+	resize: vertical;
+	outline: none;
+	font-family: 'themify';
+}
+
+textarea:focus {
+	border-color: #007bff;
+	box-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
+	background-color: rgba(255, 255, 255, 1);
+	font-family: 'themify';
+}
+
+.modal-inrheading {
+	font-size: 17px;
+	color: #3467af;
+	margin-bottom: 8px;
+	font-weight: 500;
+	letter-spacing: 1.3px;
+	margin-top: 10px;
+}
+</style>
+
+
+<script>
+	$(document).ready(function() {
+		$("#download").attr("disabled", true);
+		var userid = sessionStorage.getItem("userId");
+
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		var gridDiv2 = document.querySelector('#categoryGrid');
+		new agGrid.Grid(gridDiv2, gridOptions2);
+		
+		
+		var rowData = [];
+		
+		
+		$("#assignId").attr("disabled", true);
+		$("#approveBtn").attr("disabled",true);
+		 $("#employeeListModal").modal('hide');
+
+		var responseData = [];
+		fetchData(userid);
+		
+	})
+	
+	function downloadEmpDetails() { 
+	  var dataset = [];
+	  gridOptions1.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+	        dataset.push(rowNode.data);
+	        
+	    });
+	  gridOptions1.api.exportDataAsCsv(dataset);
+	}
+	
+	
+	function fetchData(id) {
+
+	    const promise1 = agGrid.simpleHttpRequest({
+	        url: 'manager-appraisal-keyfactor-view?userid=' + id
+	    }).then(function (data) {
+	        const responseData = JSON.parse(data.body);
+	        console.log("data-->", responseData);
+	        var length = responseData.managerAppraisalData.length
+	        $("#totalReq").find('span').html(length);
+	        gridOptions.api.setRowData(responseData.managerAppraisalData);
+	    });
+
+	    /* const promise2 = agGrid.simpleHttpRequest({
+	        url: 'appraisal-keyfactor-assignView'
+	    }).then(function (data) {
+	        const responseData = JSON.parse(data.body);
+	        console.log("data-->", responseData);
+	        var length = responseData.appraisalData.length
+	        $("#totalReq2").find('span').html(length);
+	        gridOptions1.api.setRowData(responseData.appraisalData);
+	    }); */
+
+	    Promise.all([promise1])
+	        .then(function () {
+	        	 $(".loader").hide();
+	        })
+	        .catch(function (error) {
+	            $(".loader").hide();
+	        });
+	}
+	
+	var data1={};
+	var columnDefs = [
+		{
+			headerCheckboxSelection : true,
+			headerCheckboxSelectionFilteredOnly : true,
+			checkboxSelection : true,
+			width : 10,
+			hide:true,
+			sortable : false,
+			filter : false,
+			resizable : true
+		},
+	{
+		headerName : "Assign Id",
+		field : "assignid",
+		width : 150,
+		cellRenderer : function(params) {
+
+				return '<a onclick="editAppraisal(\'' + params.data.empid + '\', \'' + params.data.assignid + '\', \'' + params.data.categoryId + '\')" href="javascript:void(0)">'
+						+ params.data.assignid + '</a>';
+		}
+
+	},
+	{
+		headerName : "Employee  Name",
+		field : "empName",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 200,
+	},{
+		headerName : "Employee Designation",
+		field : "designation",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 200,
+	},
+	{
+		headerName : "Employee Category",
+		field : "categoryName",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 180,
+	},
+	{
+		headerName : "Joining Date",
+		field : "joiningDate",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 180,
+	},
+	{
+		headerName : "Financial Year",
+		field : "financialYear",
+		width : 180,
+	},{
+		headerName : "From Date",
+		field : "fromDate",
+		width : 180,
+	},
+	{
+		headerName : "To Date",
+		field : "toDate",
+		width : 180,
+	}];
+
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 410,
+			height : 20
+		},
+		rowSelection : 'single',
+		onSelectionChanged : onSelectExpoler
+	};
+	
+	var gridApi;
+	var columnDefs2 = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : false,
+			width : 10,
+			hide:true,
+			sortable : false,
+			filter : false,
+			resizable : true
+		},
+	{
+		headerName : "Sl No",
+		field : "slno",
+		width : 180,
+	/* 	cellRenderer : function(params) {
+			if (params.data.goalAssignid) {
+
+				return '<a href="javascript:void(0)">'
+						+ params.data.goalAssignid + '</a>';
+			} else {
+				return '<a  href="javascript:void(0)">'
+						+ params.data.goalAssignid + '</a>';
+			}
+		} */
+
+	}, {
+		headerName : "Factors",
+		field : "factors",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 700,
+	}, {
+		headerName : "Max Mark",
+		field : "maxmark",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 200,
+	},
+	{
+		headerName : "Self Assessment Mark",
+		field : "selfAssesment",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 200,
+		valueParser: function(params) {
+		    const newValue = params.newValue;
+
+		    const isAlpha = /[a-zA-Z]/.test(newValue);
+		    const isPercentage = newValue.includes('%');
+		    if (isAlpha && !isPercentage) {
+		        return params.oldValue;
+		    } else {
+		        const numericValue = parseFloat(newValue);
+		        if (!isNaN(numericValue)) {
+		            return newValue; 
+		        } else {
+		            return params.oldValue;
+		        }
+		    }
+		}
+	},
+	{
+		headerName : "Self Remarks",
+		field : "selfRemark",
+		cellStyle : {
+			textAlign : 'center'
+		},
+		width : 250
+	},
+	{
+		headerName : "Reporting Officer Assessment Mark",
+		field : "assementMark",
+		editable:true,
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 200,
+		  valueParser: function(params) {
+		        const numericValue = parseFloat(params.newValue);
+		        if (!isNaN(numericValue)) {
+		            return numericValue;
+		        } else {
+		            return params.oldValue; 
+		        }
+		    }
+	},
+	{
+		headerName : "Reporting Officer  Remarks",
+		field : "managerAssessmentRemark",
+		editable:true,
+		cellStyle : {
+			textAlign : 'center'
+		},
+		width : 250
+	},];
+
+
+	var gridOptions2 = {
+		columnDefs : columnDefs2,
+		suppressRowClickSelection : true,
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 210,
+			height : 10,
+			singleClickEdit : true,
+			stopEditingWhenCellsLoseFocus : true
+		},
+		rowSelection : 'multiple',
+		onGridReady: function(params) {
+	        updateTotalRow(params.api);
+	        gridApi = params.api;
+	    },
+	    onCellValueChanged: function(event) {
+	        var rowData = event.data;
+	        if (!event.node.rowPinned) {
+	        if(parseInt(rowData.assementMark) > parseInt(rowData.maxmark) || parseInt(rowData.selfAssesment) > parseInt(rowData.maxmark)){
+	        	
+	        	 rowData[event.colDef.field] = event.oldValue;
+
+		         event.api.applyTransaction({ update: [rowData] });
+	        	
+		         Swal.fire({
+		        	  icon: "error",
+		        	  title: "Oops...",
+		        	  text: "Assessment Mark Cannot Be Greater Than Max Mark!"
+		        	});
+	        }
+	        else{
+	        	
+	        	if(parseInt(rowData.assementMark) > 0 || parseInt(rowData.selfAssesment) > 0) {
+	        		  updateTotalRow(event.api);
+	        	}
+	        }
+	       }
+	     
+	    },
+	};
+	
+	
+	function calculateTotal(field, gridApi) {
+	    let total = 0;
+	    gridApi.forEachNode(function(node) {
+	        total += parseFloat(node.data[field]) || 0; 
+	    });
+	    return total;
+	}
+	
+	function updateTotalRow(gridApi) {
+	    const assementMark = calculateTotal('assementMark', gridApi);
+	    const selfAssessmentMark = calculateTotal('selfAssesment', gridApi);
+
+	    gridApi.setPinnedBottomRowData([{
+	    	factors: 'Total',
+	    	maxmark:"100",
+	    	selfAssesment:selfAssessmentMark > 0 ? selfAssessmentMark : "",
+	        assementMark: assementMark > 0 ? assementMark : "",
+	        editable: false 
+	    }]);
+	}
+	
+	function onSelectExpoler() {
+		var selectedRows= gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			
+			rowCount = rowCount + 1;
+			
+		});
+		
+		var approveStatus = "" ;
+		if(rowCount > 0 ){
+			approveStatus = selectedRows[0].approvalStatus;
+		}
+		
+		if (rowCount > 0 && approveStatus == "1") {
+			//$("#assignId").attr("disabled", false);
+			$("#newBtn").attr("disabled",true);
+			$("#approveBtn").attr("disabled",true);
+		}
+		else if(rowCount >0){
+			$("#newBtn").attr("disabled",true);
+			$("#approveBtn").attr("disabled",false);
+		}
+		else {
+			$("#assignId").attr("disabled", true);
+			$("#newBtn").attr("disabled",false);
+		}
+	}
+	
+	
+	
+
+	
+	
+	function newBtn(){
+		$("#demo").show();
+		$(".panel-body").hide();
+		
+		$.ajax({
+            type: "GET",
+            url: "appraisal-keyfactor-data",
+            async: false,
+            success: function(response) {
+            	
+            	var responsedata = JSON.parse(response.body);
+            	console.log("response data -->" , responsedata);
+            	
+            	gridOptions2.api.setRowData(responsedata.grid1);
+            }
+		});
+		
+		gridApi.setPinnedBottomRowData([{
+	    	factors: 'Total',
+	    	maxmark:"100",
+	    	assementMark:"",
+	    	selfAssesment:"",
+	    	editable: false 
+	    }]);
+	}
+	
+	
+	function cancel(){
+		$("#demo").hide();
+		$(".panel-body").show();
+		$("#factorCategory").val('');
+		$("#fromDate").val('');
+		$("#toDate").val('');
+		gridOptions2.api.setRowData([]);
+		 $("#categoryId").val('')
+		 gridOptions.api.deselectAll();
+	}
+	
+	
+	
+	function fetchAppraisalData(callback) {
+	    agGrid.simpleHttpRequest({
+	    	   url: 'self-appraisal-keyfactor-view'
+	    }).then(function(data) {
+	        var responseData = JSON.parse(data.body);
+	        callback(responseData);
+	    }).catch(function(error) {
+	        console.error("Error fetching appraisal data:", error);
+	    });
+	}
+	
+	
+	function appraisalSaveData(){
+		gridOptions2.api.stopEditing(); // stop editing when the save button is click
+		var obj = {};
+		var allValid = true;
+		var datas = [];
+		var remarksLength = $("#txtAreaSumN").val().length;
+		var reportingRemarks = $("#reportingRemarks").val().length;
+		
+		obj.factorCategory = $("#factorCategory").val();
+		obj.fromDate = $("#fromDate").val();
+		obj.toDate = $("#toDate").val();
+		obj.categoryId =  $("#categoryId").val();
+		obj.remarks = $("#txtAreaSumN").val().replace(/'/g, '=#').replace(/"/g, '=$');
+		obj.managerRemarks = $("#reportingRemarks").val().replace(/'/g, '=#').replace(/"/g, '=$');
+		obj.empid = $("#empid").val();
+		obj.assignid = $("#userAssignId").val();
+		
+	
+		
+		if(remarksLength > 2000){
+			
+			 $("#main").show();
+				$("#messageParagraph").text('Please write the Self Assessment Remarks in up to 2000 Characters.'); 
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+			 allValid = false;
+		}
+		if(reportingRemarks > 2000){
+			
+			 $("#main").show();
+				$("#messageParagraph").text('Please write the Reporting Officer Assessment Remarks in up to 2000 Characters.'); 
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+			 allValid = false;
+		}
+		
+		
+		 var dataOfGrid1 = [];
+		 
+		 gridOptions2.api.forEachNode(function(rowNode, index) {
+			 dataOfGrid1.push(rowNode.data);
+			 console.log("rowNode.data-->",rowNode.data);
+			  });
+		
+		 
+		 dataOfGrid1.forEach(item => {
+			    item.factors = item.factors.replace(/'/g, '=#').replace(/"/g, '=$');
+			    if( item.selfRemark){
+			    	
+				    item.selfRemark = item.selfRemark.replace(/'/g, '=#').replace(/"/g, '=$');
+				    }
+			    if(item.managerAssessmentRemark){
+			    	item.managerAssessmentRemark = item.managerAssessmentRemark.replace(/'/g, '=#').replace(/"/g, '=$');
+			    }
+			});
+		 
+		 obj.grid1List = dataOfGrid1;
+		 
+		 console.log("obj-->" , obj);
+		 
+		 if(allValid){
+			 datas.push(obj);
+			 $('.loader').show();
+			 
+			 $.ajax({
+					type : "POST",
+					url : "manager-appraisal-keyfactor-add",
+					async: false,
+					dataType : "json",
+					contentType : "application/json",
+					data : JSON.stringify(datas),
+					success : function(response) {
+						
+						fetchAppraisalData(function(responseData) {
+				            console.log("data-->", responseData);
+				            gridOptions.api.setRowData(responseData.appraisalData);
+				            $('.loader').hide();
+				            cancel();
+				        });
+					},
+					error : function(data) {
+						$('.loader').hide();
+					}
+				})
+		 }
+	}
+	
+	
+	 function handelDropDown(element){
+		 
+		 var elementValue = $(element).val();
+		 
+		 if(elementValue != ""){
+			    $(element).siblings(".formValidation").hide(); 
+		 }
+		 else {
+			    $(element).siblings(".formValidation").show(); 
+
+		 }
+	 }
+	 
+	 function handelDates(event){
+		 var elementValue = $(event).val();
+		    if(elementValue != ""){	    	
+		    $(event).siblings(".formValidation").hide(); 
+		    }
+		    else{
+		    	 $(event).siblings(".formValidation").show(); 
+		    }
+	 }
+
+	 
+	 function editAppraisal(empid, assignid,categoryid){
+		 $("#categoryId").val(categoryid);
+		 $("#userAssignId").val(assignid);
+		 $("#empid").val(empid);
+		 
+		 console.log("edit data");
+		 $('.loader').show();
+		 
+			$.ajax({
+	            type: "GET",
+	            url: "manager-appraisal-keyfactor-edit?id=" + empid + "&assignid=" + assignid,
+	            async: true,
+	            success: function(response) {
+	            	$("#demo").show();
+	        		$(".panel-body").hide();
+	            	
+	            	var responsedata = JSON.parse(response.body);
+	            	var appraisalReponseData = responsedata.managerAppraisalEdit;
+	            	console.log("response data -->" , responsedata);
+	            	 $("#factorCategory").val(appraisalReponseData[0].categoryName);
+			            $("#fromDate").val(appraisalReponseData[0].fromDate);
+			            $("#toDate").val(appraisalReponseData[0].toDate);
+			            $("#empName").val(appraisalReponseData[0].empName);
+			            $("#attndyear").val(appraisalReponseData[0].financialYear);
+			            $("#assignId").text(appraisalReponseData[0].assignid);
+			            $("#empDesg").val(appraisalReponseData[0].designation);
+			            $("#empjoinDate").val(appraisalReponseData[0].joiningDate);
+			            $("#categoryidPara").show();
+	            	
+	            	if(appraisalReponseData[0].remarks != null && appraisalReponseData[0].remarks != "null"){
+	        			
+	            	$("#txtAreaSumN").val(appraisalReponseData[0].remarks.replace(/=#/g, "'").replace(/=\$/g, '"'));
+	            	$("#charNumSN").find('span').html(appraisalReponseData[0].remarks.replace(/=#/g, "'").replace(/=\$/g, '"').length);
+	        			}
+	            	if(appraisalReponseData[0].managerRemarks != null && appraisalReponseData[0].managerRemarks != "null"){
+	            	
+	            	$("#reportingRemarks").val(appraisalReponseData[0].managerRemarks.replace(/=#/g, "'").replace(/=\$/g, '"'));
+	            	$("#charSumForRemarks").find('span').html(appraisalReponseData[0].managerRemarks.replace(/=#/g, "'").replace(/=\$/g, '"').length);
+	            	}
+	            	
+	            	
+	            	var gridData = appraisalReponseData;
+	            	let assesementMark = 0;
+	            	let selfAssessmentMark = 0;
+	            	gridData.forEach((item)=>{
+	            		if( item.selfRemark){
+	    				    item.selfRemark = item.selfRemark.replace(/=#/g, "'").replace(/=\$/g, '"');
+	    				    }
+	    			    if(item.managerAssessmentRemark){
+	    			    	item.managerAssessmentRemark = item.managerAssessmentRemark.replace(/=#/g, "'").replace(/=\$/g, '"');
+	    			    }
+	            		item.factors = item.factor.replace(/=#/g, "'").replace(/=\$/g, '"');
+	            		assesementMark += parseInt(item.assementMark || 0, 10);
+	            		selfAssessmentMark += parseInt(item.selfAssesment || 0, 10);
+	            		
+
+	            	})
+	            	gridOptions2.api.setRowData(gridData);
+	            	gridApi.setPinnedBottomRowData([{
+	        	    	factors: 'Total',
+	        	    	maxmark:"100",
+	        	    	selfAssesment:selfAssessmentMark,
+	        	    	assementMark:assesementMark > 0 ? assesementMark : "",
+	        	    	editable: false 
+	        	    }]);
+	            	$('.loader').hide();
+	            }
+			
+			});
+	 }
+	 
+	 
+	 
+	 
+	 
+	  var txtLen = 0;
+	  function textCount(event){
+		  
+		  var id = event.target.id;
+		  var pId = $('#'+id).next().attr("id");
+		  $('#'+pId+' span').empty();
+		  txtLen = $('#'+id).val().length;
+		  $('#'+pId+' span').append(txtLen);
+	  }
+	  
+	  function onQuickFilterChanged() {
+    	  gridOptions.api.setQuickFilter(document.getElementById('quickFilter').value);
+    	  
+    	  var rowlength2 = gridOptions.api.getDisplayedRowCount();
+		    $("#totalReq").find('span').html(rowlength2);
+    	}
+	  
+	  
+</script>
+
+
+</head>
+
+<body>
+
+	<div layout:fragment="content">
+		<div class="content-wrap">
+			<div class="container-fluid">
+				<div class="maincontent">
+					<div class="row">
+
+						<div class="maincontentsec">
+							<div class="content_padding">
+
+								<div id="main_content">
+
+									<div class="panel-body">
+
+										<div class="row mt-4">
+											<div class="col-md-12">
+												<div
+													class="d-flex justify-content-center align-items-center">
+													<div class="col-md-4" id="totalReq">
+														APPRAISAL LIST (<span></span>)
+													</div>
+													<input type="hidden" id="selectAssign">
+													<div class="col-md-4">
+														<div id="searchRowDiv">
+															<div class="input-style">
+																<input type="text" placeholder="Search.." name="search"
+																	class="searchboxinput" onkeyup="cancelBar()"
+																	oninput="onQuickFilterChanged()" id="quickFilter"
+																	autocomplete="off">
+																<div class="searchicon">
+																	<a href="javascript:void(0)"><span
+																		style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+																		id="closeKey"
+																		onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+																		class="close_i"><i class="ti-close srchicon"></i></span></a><a
+																		href="javascript:void(0)"><i
+																		class="ti-search srchicon"></i></a>
+																</div>
+															</div>
+														</div>
+
+													</div>
+													<div class="col-md-4 butttonsec">
+														<!-- 	<button class="btn2" id="assignId"
+															onclick="requestForAssign()">Assign</button> -->
+														<!-- <button class="btn2" id="newBtn" onclick="newBtn()">New</button> -->
+														<!-- <button class="btn2" id="approveBtn" onclick="approveBtn()">Approve</button> -->
+													</div>
+												</div>
+
+												<div class="box_reference">
+													<div id="myGrid" style="width: 100%; height: 300px;"
+														class="ag-theme-alpine"></div>
+												</div>
+
+											</div>
+										</div>
+									</div>
+
+									<div class="collapse" id="demo">
+										<div class="innercontent">
+											<div class="innerstickybg">
+												<div class="row">
+
+													<div class="col-md-6">
+														<!-- Plan ID: <span id="policybox"></span> -->
+													</div>
+
+													<div class="col-md-6" align="right">
+														<button class="cancel-btn" id="cancelBtn"
+															onclick="cancel()">Cancel</button>
+														<button class="approve-btn" id="save"
+															onclick="appraisalSaveData()">Save</button>
+													</div>
+												</div>
+
+											</div>
+											<div class="row innersticky_contentgap">
+												<input type="hidden" id="planid">
+
+											</div>
+
+											<div class="row">
+												<div class="col-md-4" style="display: none">
+
+													<label>Factor Category</label> <select id="factorCategory"
+														onchange="handelDropDown(this)" disabled>
+														<option value="">Select Category</option>
+														<option value="STF0001">STAFF</option>
+														<option value="STF0002">WORKMEN</option>
+													</select> <input type="hidden" id="categoryId">
+
+												</div>
+												<div class="col-md-4">
+													<div class="form-group">
+														<label>Employee Name</label> <input type="text"
+															class="form-control" id="empName" autocomplete=off
+															disabled> <input type="hidden" id="empid">
+														<input type="hidden" id="userAssignId">
+													</div>
+												</div>
+												<div class="col-md-4">
+													<div class="form-group">
+														<label>Employee Designation</label> <input type="text"
+															class="form-control" id="empDesg" autocomplete=off
+															disabled>
+													</div>
+												</div>
+
+												<div class="col-md-4">
+													<div class="form-group">
+														<label>Employee Joining Date</label> <input type="text"
+															class="form-control" id="empjoinDate" autocomplete=off
+															disabled>
+													</div>
+
+
+												</div>
+												<div class="col-md-4">
+													<div class="form-group" id="finYearData">
+														<label>Financial Year</label> <input type="text"
+															class="form-control" id="attndyear"
+															th:attr="onkeyup=|formatDate('applyStartDate','${session.DATEFORMAT_JS}')|"
+															onchange="handelDates(this)" readonly>
+													</div>
+												</div>
+
+												<div class="col-md-4">
+													<div class="form-group calendar_box">
+														<label>From Date</label><input type="text"
+															class="form-control" id="fromDate"
+															th:attr="onkeyup=|formatDate('applyStartDate','${session.DATEFORMAT_JS}')|"
+															onchange="handelDates(this)" readonly>
+													</div>
+
+												</div>
+
+												<div class="col-md-4">
+													<div class="form-group calendar_box">
+														<label>To Date</label><input type="text"
+															class="form-control" id="toDate"
+															th:attr="onkeyup=|formatDate('applyStartDate','${session.DATEFORMAT_JS}')|"
+															onchange="handelDates(this)" readonly>
+													</div>
+
+												</div>
+											</div>
+
+
+											<div class="col-md-12">
+												<div id="categoryGrid"
+													style="width: 100%; height: 249px; margin-top: 40px;"
+													class="ag-theme-alpine"></div>
+
+											</div>
+
+											<div class="row mt-4">
+
+												<div class="col-md-6">
+
+													<div class="modal-inrheading">Self Assessment Remarks</div>
+													<div class="position-text">
+														<textarea rows="4" cols="100" id="txtAreaSumN"
+															onkeyup="textCount(event)" readonly></textarea>
+														<div id="charNumSN" class="txtcounter" align="right"
+															autocomplete=off>
+															<span>0</span> characters
+														</div>
+													</div>
+
+												</div>
+												<div class="col-md-6">
+
+													<div class="modal-inrheading">Reporting Officer
+														Assessment Remarks</div>
+													<div class="position-text">
+														<textarea rows="4" cols="100" id="reportingRemarks"
+															onkeyup="textCount(event)"></textarea>
+														<div id="charSumForRemarks" class="txtcounter"
+															align="right" autocomplete=off>
+															<span>0</span> characters
+														</div>
+													</div>
+
+												</div>
+											</div>
+
+										</div>
+
+									</div>
+
+
+								</div>
+
+							</div>
+
+
+
+						</div>
+
+					</div>
+				</div>
+
+			</div>
+		</div>
+	</div>
+	</div>
+	</div>
+</body>
+</html>

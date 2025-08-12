@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<script type="text/javascript">
+	$(document).ready(function() {
+
+		var today = new Date();
+		var dd = String(today.getDate()).padStart(2, '0');
+		var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+		var yyyy = today.getFullYear();
+
+		today1 = "01" + '-' + mm + '-' + yyyy;
+
+		today = dd + '-' + mm + '-' + yyyy;
+
+		$('#fromDate').val(today1);
+		$('#toDate').val(today);
+
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#fromDate').val($(this).val());
+		})
+
+		$('#fromDate').blur(function() {
+			$("#fromDateCalendar").val($(this).val());
+		})
+
+		//     date format TO date
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#toDate').val($(this).val());
+		})
+
+		$('#toDate').blur(function() {
+
+			$("#toDateCalendar").val($(this).val());
+		})
+
+		search();
+
+	});
+
+	function search() {
+
+		var fromDate = $("#fromDate").val();
+		var toDate = $("#toDate").val();
+		var fromDate = fromDate.split('-');
+		var fromDate = fromDate[2] + '-' + fromDate[1] + '-' + fromDate[0];
+		var toDate = toDate.split('-');
+		var toDate = toDate[2] + '-' + toDate[1] + '-' + toDate[0];
+
+		var userid = $("#sessionId").val();
+
+		agGrid.simpleHttpRequest(
+				{
+					url : "rent-os-view?userid=" + userid + "&fromDate="
+							+ fromDate + "&toDate=" + toDate,
+				}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+			if (len > 0) {
+				gridOptions.api.setRowData(data);
+			} else {
+				gridOptions.api.setRowData();
+			}
+		});
+
+	}
+
+	var columnDefs = [ {
+		headerCheckboxSelection : true,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		width : 30
+	}, {
+		headerName : "Rent LedgerId",
+		field : "rentId",
+		width : 270
+
+	}, {
+		headerName : " Property No ",
+		field : "propertyno",
+		width : 270
+	}, {
+		headerName : "Tenant",
+		field : "tenant",
+		width : 270
+
+	}, {
+		headerName : "Month",
+		field : "month",
+		width : 270
+	}, {
+		headerName : "Price",
+		field : "price",
+		width : 270
+
+	} ];
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowSelection : 'multiple',
+		onSelectionChanged : deleteDetails,
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 370
+		}
+	};
+
+	var deleteId = "";
+	function deleteDetails() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+
+		deleteId = "";
+		for (var i = 0; i < selectedRows.length; i++) {
+			deleteId = deleteId + '"' + selectedRows[i].reminderId + '",';
+
+		}
+		deleteId = deleteId.substring(0, deleteId.length - 1);
+
+		var rowCount = 0;
+		selectedRows.forEach(function() {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#download').attr("disabled", false);
+			/* $('#add').hide(); */
+			/* 	if (rowCount == 1) {
+					$('#add').hide();
+				} */
+		} else {
+			$('#download').attr("disabled", true);
+			//$('#add').show();
+
+		}
+
+	}
+	function add() {
+
+		$("#demo").show();
+		$("#reqTable").hide();
+		$("#myGrid").hide();
+
+		$('#delete').attr("disabled", true);
+
+	}
+	function cancelBtn() {
+		$("#demo").hide();
+		$("#myGrid").show();
+		$("#reqTable").show();
+	}
+
+	function dateChange() {
+
+		var fromDate = $('#fromDate').val();
+		var toDate = $('#toDate').val();
+		var fd = fromDate.split("-");
+		var td = toDate.split("-");
+
+		if (fromDate != '' && toDate != '') {
+			if (fd[2] <= td[2]) {
+				if (fd[1] == td[1]) {
+					if (fd[0] <= td[0]) {
+
+					} else {
+						setFromToDate();
+					}
+				} else if (fd[1] < td[1]) {
+
+				} else {
+					setFromToDate();
+				}
+
+			} else {
+				setFromToDate();
+			}
+		} else {
+
+		}
+	}
+
+	function setFromToDate() {
+		$("#messageParagraph").text(
+				"Please choose to date greater than or equal to from date ");
+		$("#msgOkModal").removeClass("btn3");
+		$("#msgOkModal").addClass("btn1");
+		$("#msgModal").modal('show');
+		$("#fromDate").val("");
+		$("#toDate").val("");
+	}
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#searchBar').val() == null || $('#searchBar').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+</script>
+<style>
+.form-check-input::before {
+	display: none !important;
+}
+</style>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="d-flex justify-content-between">
+						<div class="btn-hs">
+							<div class="font-design" id="totalReq">
+								<b>Manage Rent Outstanding Report()</b>
+							</div>
+						</div>
+
+						<div id="searchRowDiv">
+							<div class="input-style">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter"
+									autocomplete="off">
+								<div class="searchicon">
+									<a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+						</div>
+
+						<div class="col-md-1">
+							<div class="form-group calendar_box">
+								<label><b>From Date</b></label> <input type="text" id="fromDate"
+									value="" class="form-control" onblur="removeValid(event)"
+									th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+									readonly> <i class="ti-calendar picker_calendar"
+									id="fromDateCalendar" onchange="dateChange(); validate();"></i>
+							</div>
+						</div>
+
+						<div class="col-md-1">
+							<div class="form-group calendar_box">
+								<label><b>To Date</b></label> <input type="text" id="toDate"
+									value="" class="form-control" onblur="removeValid(event)"
+									th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+									readonly> <i class="ti-calendar picker_calendar"
+									id="toDateCalendar" onchange="dateChange(); validate();"></i>
+							</div>
+						</div>
+
+						<div class="row" id="reqTable">
+
+							<div class="col-md-12" align="right">
+								<button class="btn2" onclick="search()">Search</button>
+							</div>
+
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div id="myGrid" style="width: 100%; height: 470px;"
+				class="ag-theme-alpine"></div>
+
+			<div class="collapse" id="demo">
+				<div class="">
+					<div class="row">
+						<input type="hidden" class="form-control" id="sid"
+							autocomplete="off">
+						<div class="col-md-6">
+							ADD BANK <span id="stdhead"></span>
+						</div>
+						<div class="col-md-6" align="right">
+							<button type="button" class="btn4" onclick="cancelBtn()">Cancel</button>
+							<button class="btn1" onclick="save()">Save</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

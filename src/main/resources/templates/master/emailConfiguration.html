@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<script>
+$(document).ready(function(){
+	
+	getTotalMailList();
+	
+	$("#sendMail").click(function(){
+		var obj = {};
+		
+    	obj.emailId = $("#emailIdToTest").val();
+    	obj.emailPassword = window.atob($("#passwordToTest").val());
+    	obj.hostUrl = $("#urlToTest").val();
+    	obj.hostPort = $("#portToTest").val();
+    	obj.subject = $("#testSubject").val();
+    	obj.mailBody = $("#testmailBody").val();
+    	obj.toUsers = $("#testToUsers").val();
+		
+		$(".formValidation").remove();
+		mailTestValid = true;
+		if( $("#testSubject").val() == null || $("#testSubject").val() == ""){
+			mailTestValid = false;
+			validationAll("Subject Required","testSubject");
+		} 
+		if( $("#testToUsers").val() == null || $("#testToUsers").val() == ""){
+			mailTestValid = false;
+			validationAll("To Users Required","testToUsers");
+		} 
+		if( $("#testmailBody").val() == null || $("#testmailBody").val() == ""){
+			mailTestValid = false;
+			validationAll("Mail Body Required","testmailBody");
+		} 
+		
+		if(mailTestValid) {
+			$('.loader').show();
+    		$("body").addClass("overlay");
+			sendMailToUsers(obj);
+		}
+	})
+	
+	$("#submitMailDtls").click(function(){
+		var data = {};
+		
+		data.emailType = $('input[name="mailType"]:checked').val();
+		data.emailId = $("#senderEmailId").val();
+		data.emailPassword = $("#senderEmailPassword").val();
+		data.hostUrl = $("#hostUrl").val();
+		data.hostPort = $("#hostPort").val();
+		data.connectionId = $("#connectionId").val();
+		data.usageName = $("#usageName").val();
+		
+		$(".formValidation").remove();
+		allPValid = true;
+		if( $("#usageName").val() == null || $("#usageName").val() == ""){
+			allPValid = false;
+			validationAll("Usage Name Required","usageName");
+		} 
+		if( $("#senderEmailId").val() == null || $("#senderEmailId").val() == ""){
+			allPValid = false;
+			validationAll("Sender Email Id Required","senderEmailId");
+		} 
+		if( $("#senderEmailPassword").val() == null || $("#senderEmailPassword").val() == ""){
+			allPValid = false;
+			validationAll("Sender Email Password Required","senderEmailPassword");
+		} 
+		if( $("#hostUrl").val() == null || $("#hostUrl").val() == ""){
+			allPValid = false;
+			validationAll("Host Url Required","hostUrl");
+		} 
+		if( $("#hostPort").val() == null || $("#hostPort").val() == ""){
+			allPValid = false;
+			validationAll("Host Port Required","hostPort");
+		} 
+		
+		if(allPValid) {
+			$('.loader').show();
+	    	$("body").addClass("overlay");
+			submitMailDetails(data);
+		}
+	})
+	
+	$("#deleteModalBtn").click(function(){
+		$("#deleteModalBtn").attr("disabled",true);
+		$('.loader').show();
+		$("body").addClass("overlay");
+		var id = $("#connectionId").val();
+		$.ajax({
+	        type: "POST",
+	        url: "email-configuration-delete",
+	        dataType: "json",
+	        contentType: "application/json",
+	        data: id,
+	        success: function(response) {
+	            if (response.message == "success") {
+	            	cancelModalBtn();
+	            	getTotalMailList();
+	            	$('.loader').hide();
+	            	$("body").removeClass("overlay");
+	            	$("#messageParagraph").text("Mail Connection Deleted Successfully");
+		        	$("#msgOkModal").removeClass("btn3");
+		        	$("#msgOkModal").addClass("btn1");
+		        	$("#msgModal").modal('show');
+	            }
+	        }, error: function(data) {
+	        	console.log(data)
+	        	$('.loader').hide();
+	        	$("body").removeClass("overlay");
+	        }
+		});
+	})
+})
+
+function submitMailDetails(dataset) {
+	$.ajax({
+        type: "POST",
+        url: "email-configuration-save",
+        dataType: "json",
+        contentType: "application/json",
+        data: JSON.stringify(dataset),
+        success: function(response) {
+            if (response.message == "success") {
+            	$('.loader').hide();
+            	$("body").removeClass("overlay");
+            	closeNav();
+            	getTotalMailList();
+            }
+        }, error: function(data) {
+        	console.log(data)
+        	$('.loader').hide();
+        	$("body").removeClass("overlay");
+        }
+	});
+}
+
+function sendMailToUsers(dataset) {
+	$.ajax({
+        type: "POST",
+        url: "email-configuration-test-mail",
+        dataType: "json",
+        contentType: "application/json",
+        data: JSON.stringify(dataset),
+        success: function(response) {
+            if (response.message == "success") {
+            	$('.loader').hide();
+            	$("body").removeClass("overlay");
+            	closeConnection();
+            	$("#messageParagraph").text("Mail Sent Successfully");
+	        	$("#msgOkModal").removeClass("btn3");
+	        	$("#msgOkModal").addClass("btn1");
+	        	$("#msgModal").modal('show');
+            } else {
+            	$('.loader').hide();
+            	$("body").removeClass("overlay");
+            	closeConnection();
+            	$("#messageParagraph").text("Failed");
+            	$("#msgOkModal").removeClass("btn1");
+	        	$("#msgOkModal").addClass("btn3");
+	        	$("#msgModal").modal('show');
+            }
+        }, error: function(data) {
+        	console.log(data)
+        	$('.loader').hide();
+        	$("body").removeClass("overlay");
+        	$("#messageParagraph").text("Failed");
+        	$("#msgOkModal").removeClass("btn1");
+        	$("#msgOkModal").addClass("btn3");
+        	$("#msgModal").modal('show');
+        }
+	});
+}
+
+function openNav() {
+	
+	closeConnection();
+	
+	$("#gmail").prop("checked",true);
+	
+	$("#senderEmailId").val("");
+	$("#senderEmailPassword").val("");
+	$("#hostUrl").val("");
+	$("#hostPort").val("");
+	$("#connectionId").val("");
+	$("#usageName").val("");
+	
+	$("#dltBtn").hide();
+	
+	document.getElementById("mySidenav").style.cssText = "width:260px; position: absolute; right:-40px; overflow: hidden; height:auto;";
+	document.getElementById("main").style.width = "82%";
+}
+
+function closeNav() {
+	
+	document.getElementById("mySidenav").style.width = "0";
+	document.getElementById("main").style.width = "100%";
+}
+
+function openConnection() {
+	
+	closeNav();
+	
+	$("#testToUsers").val("");
+	$("#testSubject").val("");
+	$("#testmailBody").val("");
+	$("#emailIdToTest").val("");
+	$("#passwordToTest").val("");
+	$("#urlToTest").val("");
+	$("#portToTest").val("");
+	
+	document.getElementById("myTestSidenav").style.cssText = "width:260px; position: absolute; right:-40px; overflow: hidden; height:auto;";
+	document.getElementById("main").style.width = "82%";
+}
+
+function closeConnection() {
+	
+	$("#testToUsers").val("");
+	$("#testSubject").val("");
+	$("#testmailBody").val("");
+	$("#emailIdToTest").val("");
+	$("#passwordToTest").val("");
+	$("#urlToTest").val("");
+	$("#portToTest").val("");
+	
+	document.getElementById("myTestSidenav").style.width = "0";
+	document.getElementById("main").style.width = "100%";
+}
+
+function testConnection(id) {
+	openConnection();
+	if(id) {
+		$.ajax({
+	        type: "POST",
+	        url: "email-configuration-edit",
+	        dataType: "json",
+	        contentType: "application/json",
+	        data: id,
+	        success: function(response) {
+	            if (response.message == "success") {
+	            	
+					$("#emailIdToTest").val("");
+					$("#passwordToTest").val("");
+					$("#urlToTest").val("");
+					$("#portToTest").val("");
+	            	
+	            	$("#testFromUser").val(response.body.emailId);
+	            	$("#emailIdToTest").val(response.body.emailId);
+	        		$("#passwordToTest").val(window.btoa(response.body.emailPassword));
+	        		$("#urlToTest").val(response.body.hostUrl);
+	        		$("#portToTest").val(response.body.hostPort);
+	            }
+	        }, error: function(data) {
+	        	console.log(data)
+	        	$("#testToUsers").val("");
+	        	$("#testSubject").val("");
+	        	$("#testmailBody").val("");
+	        	$("#emailIdToTest").val("");
+	        	$("#passwordToTest").val("");
+	        	$("#urlToTest").val("");
+	        	$("#portToTest").val("");
+	        }
+		});
+	}
+}
+
+function editEmailConfig(id) {
+	openNav();
+	$("#dltBtn").show();
+	if(id) {
+		$.ajax({
+	        type: "POST",
+	        url: "email-configuration-edit",
+	        dataType: "json",
+	        contentType: "application/json",
+	        data: id,
+	        success: function(response) {
+	            if (response.message == "success") {
+	            	
+	            	if(response.body.emailType == "0") {
+	            		$("#gmail").prop("checked",true);
+	            	} else if(response.body.emailType == "2") {
+	            		$("#others").prop("checked",true);
+	            	} else {
+	            		$("#outlook").prop("checked",true);
+	            	}
+	            	
+	            	$("#senderEmailId").val(response.body.emailId);
+	        		$("#senderEmailPassword").val(response.body.emailPassword);
+	        		$("#hostUrl").val(response.body.hostUrl);
+	        		$("#hostPort").val(response.body.hostPort);
+	        		$("#connectionId").val(response.body.connectionId);
+	        		$("#usageName").val(response.body.usageName);
+	            }
+	        }, error: function(data) {
+	        	console.log(data)
+	        	$("#senderEmailId").val("");
+	    		$("#senderEmailPassword").val("");
+	    		$("#hostUrl").val("");
+	    		$("#hostPort").val("");
+	    		$("#usageName").val("");
+	        }
+		});
+	}
+}
+
+function cancelModalBtn() {
+	$("#delete").modal("hide");
+	$("#deleteModalBtn").removeAttr("disabled");
+}
+
+function deleteConnection() {
+	$("#delete").modal("show");
+}
+
+function getTotalMailList() {
+	$("#mailApndDiv").empty();
+	$('.loader').show();
+	$("body").addClass("overlay");
+	$.ajax({
+        type: "POST",
+        url: "email-configuration-get-total",
+        dataType: "json",
+        contentType: "application/json",
+        success: function(response) {
+            if (response.message == "success") {
+            	for(var i = 0; i < response.body.length; i++) {
+            		var div = '<div class="databasebox_mail" style="text-align: left !important;" href="javascript:void(0)">'+
+							'<div class="tile_more"><i class="ti-more" title="Test Connection" onclick=testConnection("'+response.body[i].connectionId+'")></i></div>'+
+							'<a href="javascript:void(0)" onclick=editEmailConfig("'+response.body[i].connectionId+'") ><div>'+response.body[i].usageName+'</div>'+
+							'<span style="font-size: 10px;"><i class="ti-email"></i> </span><span id="mailIdText" style="font-size: 10px;position: relative;top: -3px;left: 5px;" >'+response.body[i].emailId+'</span></a>'+
+						'</div>';
+            		$("#mailApndDiv").append(div);
+            	}
+            	$('.loader').hide();
+            	$("body").removeClass("overlay");
+            }
+        }, error: function(data) {
+        	console.log(data)
+        	$('.loader').hide();
+        	$("body").removeClass("overlay");
+        }
+	});
+}
+</script>
+</head>
+<body>
+	<div layout:fragment="content">
+		<div class="content-wrap">
+			<div class="container-fluid">
+				<div class="maincontent">
+					<div class="row">
+						<div class="maincontentsec">
+							<div class="content_padding">
+								<div id="main">
+									<div id="mySidenav" class="sidenav">
+										<div class="slidebox">
+											<div class="row">
+												<div class="col-md-10">
+													<div class="edit">Mail Connection</div>
+												</div>
+												<div class="col-md-2">
+													<div class="arrow">
+														<a href="javascript:void(0)" class="closebtn"
+															onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+													</div>
+												</div>
+											</div>
+											<div class="clearfix"></div>
+											<div class="chartbtnsec1">
+												<div align="right">
+													<button class="btn4" onclick="closeNav()">CANCEL</button>
+													<button id="dltBtn" class="btn3" onclick="deleteConnection()">DELETE</button>
+													<button class="btn1" id="submitMailDtls">SAVE</button>
+												</div>
+											</div>
+											<div class="clearfix"></div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Usage Name</label>
+													<input type="text" class="form-control" id="usageName">
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Select Mail Type</label>
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="row">
+													<div class="col-md-1  padding_5">
+														<input type="radio" name="mailType" value="0"
+															checked="checked" class="mrt_20" id="gmail">
+													</div>
+													<div class="col-md-3 padding_5">
+														<img src="../assets/css/extend/Gmail-logo.png"
+															class="img-fluid img-thumbnail" title="Gmail">
+													</div>
+
+													<div class="col-md-1  padding_5">
+														<input type="radio" name="mailType" value="1"
+															class="mrt_20" id="outlook">
+													</div>
+													<div class="col-md-3 padding_5">
+														<img src="../assets/css/extend/outlook-logo.png"
+															class="img-fluid img-thumbnail" title="Outlook">
+													</div>
+
+													<div class="col-md-1  padding_5">
+														<input type="radio" name="mailType" value="2"
+															class="mrt_20" id="others">
+													</div>
+													<div class="col-md-3 padding_5">
+														<img src="../assets/css/extend/email.png"
+															class="img-fluid img-thumbnail" title="Others">
+													</div>
+												</div>
+
+												<div class="row">
+													<div class="col-md-1"></div>
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Sender Email Id:</label> <input type="text"
+														class="form-control no-border"
+														onblur="removeValid(event);" placeholder=""
+														id="senderEmailId" autocomplete="off">
+														<input type="hidden" id="connectionId">
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Password:</label> <input type="password"
+														class="form-control" onblur="removeValid(event);"
+														id="senderEmailPassword" autocomplete="off">
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Smtp Host Url:</label> <input type="text"
+														class="form-control" id="hostUrl"
+														onblur="removeValid(event);">
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label> Smtp Port:</label> <input type="text"
+														class="form-control" id="hostPort"
+														onblur="removeValid(event);">
+												</div>
+											</div>
+										</div>
+									</div>
+									<div id="myTestSidenav" class="sidenav">
+										<div class="slidebox">
+											<div class="row">
+												<div class="col-md-10">
+													<div class="edit">Test Connection</div>
+												</div>
+												<div class="col-md-2">
+													<div class="arrow">
+														<a href="javascript:void(0)" class="closebtn"
+															onclick="closeConnection()"><i class="ti-arrow-right"></i></a>
+													</div>
+												</div>
+											</div>
+											<div class="clearfix"></div>
+											<div class="chartbtnsec1">
+												<div align="right">
+													<button class="btn4" onclick="closeConnection()">CANCEL</button>
+													<button class="btn1" id="sendMail">SEND MAIL</button>
+												</div>
+											</div>
+											<div class="clearfix"></div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>From:</label> <input type="text"
+														class="form-control no-border" style="border-bottom: none;"
+														onblur="removeValid(event);" placeholder=""
+														id="testFromUser" autocomplete="off" disabled="disabled">
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>To:</label> <input type="text"
+														class="form-control no-border"
+														onblur="removeValid(event);" placeholder="Mail Id With Comma Separated"
+														id="testToUsers" autocomplete="off">
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Subject:</label> <input type="text"
+														class="form-control no-border"
+														onblur="removeValid(event);" placeholder=""
+														id="testSubject" autocomplete="off">
+														<input type="hidden" id="emailIdToTest">
+														<input type="hidden" id="passwordToTest">
+														<input type="hidden" id="urlToTest">
+														<input type="hidden" id="portToTest">
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Mail Body:</label> <input type="text"
+														class="form-control" onblur="removeValid(event);"
+														id="testmailBody" autocomplete="off">
+												</div>
+											</div>
+										</div>
+									</div>
+
+									<div >
+										<div class="row">
+											<div class="leftsec_title padding_5">
+												<a class="databasebox" href="javascript:void(0)"
+													onclick="openNav()">
+													<div class="plus_iconsec">
+														<i class="ti-plus plus_icon"></i>
+													</div>
+													<div>New Mail</div>
+												</a>
+											</div>
+
+											<div class="rightsec_title padding_5" id="mailApndDiv">
+												<!-- <div class="databasebox_mail" th:each="c,iter:${mailDtls}"
+													style="text-align: left !important;" 
+													href="javascript:void(0)">
+													<div class="tile_more"><i class="ti-more" title="Test Connection" th:attr="onclick=|testConnection('${c.connectionId}')|"></i></div>
+													<a href="javascript:void(0)" th:attr="onclick=|editEmailConfig('${c.connectionId}')|" ><div>MAIL EXCHANGE</div> 
+													<span style="font-size: 10px;"><i class="ti-email"></i> </span><span id="mailIdText" style="font-size: 10px;position: relative;top: -3px;left: 5px;" th:text="${c.emailId}"></span></a>
+												</div>  -->
+
+											</div>
+										</div>
+
+
+
+
+										<div class="row">
+											<div class="leftsec_title padding_5">
+												<a class="databasebox" href="javascript:void(0)"
+													onclick="openNav()">
+													<div class="plus_iconsec">
+														<i class="ti-plus plus_icon"></i>
+													</div>
+													<div>Bank Details</div>
+												</a>
+											</div>
+
+											<div class="rightsec_title padding_5">
+												<a class="databasebox_mail"
+													style="text-align: left !important;" onclick="openNav()"
+													href="javascript:void(0)">
+													<div>Bank Name</div> <span style="font-size: 10px;">Small
+														Description Goes Here...</span>
+												</a>
+
+											</div>
+										</div>
+
+										<div class="row">
+											<div class="leftsec_title padding_5">
+												<a class="databasebox" href="javascript:void(0)"
+													onclick="openNav()">
+													<div class="plus_iconsec">
+														<i class="ti-plus plus_icon"></i>
+													</div>
+													<div>Job Sites</div>
+												</a>
+											</div>
+
+											<div class="rightsec_title padding_5">
+												<a class="databasebox_mail"
+													style="text-align: left !important;" onclick="openNav()"
+													href="javascript:void(0)">
+													<div>Description</div> <span style="font-size: 10px;">Small
+														Description Goes Here...</span>
+												</a>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div id="delete" class="modal fade show" aria-modal="true">
+				<div class="modal-dialog modal-confirm">
+					<div class="modal-content">
+						<div class="modal-header flex-column">
+							<button type="button" class="close" data-dismiss="modal"
+								aria-hidden="true" onclick="cancelModalBtn()">
+								<i class="ti-close modal-close"></i>
+							</button>
+						</div>
+						<div class="modal-body">
+							<p>Do you really want to delete these records? This process
+								cannot be undone.</p>
+						</div>
+						<div class="modal-footer justify-content-center">
+							<button type="button" class="btn1" data-dismiss="modal"
+								onclick="cancelModalBtn();">Cancel</button>
+							<button type="button" class="btn3" id="deleteModalBtn">Delete</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

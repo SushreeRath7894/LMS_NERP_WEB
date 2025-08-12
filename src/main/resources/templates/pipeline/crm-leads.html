@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+
+<head>
+<title>Welcome To NERP</title>
+<meta charset="utf-8"></meta>
+<meta name="viewport" content="width=device-width, initial-scale=1"></meta>
+<link href="/css/ncrm/crm-lead.css" rel="stylesheet"></link>
+<script src="/javaScript/crm/leads/leads.js"></script>
+<script src="../javaScript/crm/contact/contact-details.js"></script>
+<script src="../javaScript/crm/common.js"></script>
+<script>
+$(document).ready(function() {
+    setLeadTabAsDefault()
+    $('#annualRevenue').on('input', function() {
+        let value = $(this).val().replace(/[^0-9]/g, '');
+        
+        if (value) {
+            value = parseInt(value, 10).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+        }
+        
+        $(this).val(value);
+    });
+
+    $('#annualRevenue').on('keypress', function(e) {
+        const charCode = e.which ? e.which : e.keyCode;
+        if (charCode < 48 || charCode > 57) {
+            e.preventDefault();
+        }
+    });
+
+    $("#tabMenu .nav-link").click(function(event) {
+        const $clickedTab = $(this);
+
+        const $activeTab = $("#tabMenu .nav-link.active");
+
+        $clickedTab.tab("show");
+       // updateButtonsVisibility();
+    });
+    $('#project').select2({
+        placeholder: "Select",
+        allowClear: true
+    });
+    $('#country').select2({
+        placeholder: "Select",
+        allowClear: true
+    });
+    $('#states').select2({
+        placeholder: "Select",
+        allowClear: true
+    });
+    $('#leadSource').select2({
+        placeholder: "Select",
+        allowClear: true
+    });
+    $('#ratings').select2({
+        placeholder: "Select",
+        allowClear: true
+    });
+    $("#quickFilter").on("keydown", function(event) {
+        if (event.key === "Enter" || event.which === 13) {
+            event.preventDefault();
+            onQuickFilterChanged();
+        }
+    });
+});
+
+function validateCurrentTab(tabId) {
+    let isValid = true;
+
+    switch (tabId) {
+        case "#leadInformation":
+            if ($("#leadOwner").val() === "") {
+                toastr.error('Executive Required');
+                isValid = false;
+                return false;
+            }
+            if ($("#company").val() === "") {
+                toastr.error('Company Name Required');
+                isValid = false;
+                return false;
+            }
+            if ($("#firstName").val() === "") {
+                toastr.error('First Name Required');
+                isValid = false;
+                return false;
+            }
+            if ($("#lastName").val() === "") {
+                toastr.error('Last Name Required');
+                isValid = false;
+                return false;
+            }
+            if ($("#email").val() === "") {
+                toastr.error('Email Required');
+                isValid = false;
+                return false;
+            }
+            /* if ($("#project").val() === "") {
+                toastr.error('Project/Site Required');
+                isValid = false;
+                return false;
+            } */
+            if ($("#mobile").val() === "") {
+                toastr.error('Mobile Number Required');
+                isValid = false;
+                return false;
+            }
+            var leadSourceValue = $("#leadSource").val();
+            if (!leadSourceValue || leadSourceValue.trim() === "") {
+                toastr.error('Lead Source is Required');
+                isValid = false;
+                return false;
+            }
+            var industry = $("#industry").val();
+            if (!industry || industry.trim() === "") {
+                toastr.error('Lead Industry is Required');
+                isValid = false;
+                return false;
+            }
+            console.log(isValid);
+            break;
+
+        case "#leadAddress":
+        	 if ($("#country").val() === "") {
+                 toastr.error('Country Required');
+                 isValid = false;
+                 return false;
+             }
+            if ($("#states").val() === "") {
+                toastr.error('State Required');
+                isValid = false;
+                return false;
+            }
+            if ($("#city").val() === "") {
+                toastr.error('City Required');
+                isValid = false;
+                return false;
+            }
+            if ($("#addressStreet").val() === "") {
+                toastr.error('Address Street Required');
+                isValid = false;
+                return false;
+            }
+            if ($("#zip").val() === "") {
+                toastr.error('Zip Code Required');
+                isValid = false;
+                return false;
+            }
+            break;
+
+        case "#leadStatusTab":
+            if ($("#leadStatus").val() === "") {
+                toastr.error('Lead Status is Required');
+                isValid = false;
+                return false;
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    return isValid;
+}
+
+function toggleSection() {
+    $('#closeSection').removeClass('d-none');
+    $('#saveDecession').removeClass('d-none');
+    $('#openSection').addClass('d-none');
+    $('#myGridDecesionMakers').hide();
+    $('#decisionMakerFields').show();
+    $('.formValidation').remove();
+    $('#dmId').val('');
+    $('#dmName').val('');
+    $('#dmDesignation').val('');
+    $('#dmEmail').val('');
+    $('#dmPhone').val('');
+    $('#dmDate').val('');
+    var currentDate = new Date();
+    getCurrentDate = formatDate(currentDate);
+    $('#dmDate').val(getCurrentDate);
+    $('#editDecesion').addClass('d-none');
+    $('#deleteDecesion').addClass('d-none');
+}
+
+function closeSection() {
+    $('#myGridDecesionMakers').show();
+    $('#decisionMakerFields').hide();
+    $('#closeSection').addClass('d-none');
+    $('#saveDecession').addClass('d-none');
+    $('#openSection').removeClass('d-none');
+    $('#editDecesion').removeClass('d-none');
+    $('#deleteDecesion').removeClass('d-none');
+}
+var filelist = new Array();
+
+function setLeadTabAsDefault() {
+    $('.nav-link').removeClass('active').attr('aria-selected', 'false');
+
+    let $leadTab = $('#leadInformation-tab a.nav-link');
+    if ($leadTab.length) {
+        $leadTab.addClass('active').attr('aria-selected', 'true');
+    } else {
+        console.error('Lead tab element not found.');
+        return;
+    }
+
+    $('.tab-pane').removeClass('show active');
+
+    let $leadNoteTab = $('#leadInformation');
+    if ($leadNoteTab.length) {
+        $leadNoteTab.addClass('show active');
+    } else {
+        console.error('Lead Note tab content pane not found.');
+    }
+
+}
+
+function nextTab(id) {
+    const tabElement = document.querySelector('#' + id + ' a');
+    const tab = new bootstrap.Tab(tabElement);
+    tab.show();
+}
+
+function onQuickFilterChanged() {
+    gridOptionsLead.api.setQuickFilter(document.getElementById('quickFilter').value);
+    var displayedRowCount = gridOptionsLead.api.getDisplayedRowCount();
+
+    var len = displayedRowCount;
+    $('#totalReq').find('span').html(len);
+}
+
+function resetBtn() {
+    $("#quickFilter").val('');
+    gridOptionsLead.api.setQuickFilter('');
+    gridOptionsLead.api.refreshCells({
+        force: true
+    });
+    setTimeout(() => {
+        if (gridOptionsLead.api) {
+            gridOptionsLead.api.getDisplayedRowAtIndex(0)?.setSelected(true);
+        }
+    }, 300);
+}
+function excelDownload() {
+	var params = {
+		fileName: 'Lead_list.csv', // Specify your custom filename here
+	};
+	gridOptionsLead.api.exportDataAsCsv(params);
+}
+</script>
+</head>
+
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<input type="hidden" id="userId" th:value="${userId}" />
+					<div id="tab1" class="tab-pane" role="tabpanel">
+						<div class="d-flex flex-column flex-lg-row">
+							<!--Left Sec Start-->
+							<div class="box-sec" id="collapseWidthR1">
+								<div class="out-box">
+									<div class="d-flex justify-content-between p-2 gap-3 bdr-line">
+										<div class="col-md-8 col-12">
+											<div class="d-flex search-sec">
+												<input class="form-control me-2 search_input_bar"
+													placeholder="Search.." type="text" name="search"
+													id="quickFilter" autocomplete="off">
+												<button class="btn btn-primary go-btn"
+													onclick="onQuickFilterChanged()" id="SearchBtn"
+													type="button">Go</button>
+												<button class="btn go-btn w-auto mx-2" type="button"
+													onclick="resetBtn()">Reset</button>
+											</div>
+										</div>
+										<div class="col-md-2 text-end">
+											<button class="btn btn-primary max-btn" id="downloadExcel"
+												onclick="excelDownload()" data-bs-toggle="tooltip"
+												data-bs-placement="top" title="Download Excel">
+												<i class="fa-solid fa-download"></i>
+											</button>
+											<button class="btn btn-primary max-btn" id="collapseButtonR1"
+												onclick="triggerExpansionR(1)" data-bs-toggle="tooltip"
+												data-bs-placement="top" title="Expand">
+												<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+													class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+											</button>
+										</div>
+									</div>
+									<!-- Date Filter Section Starts -->
+									<div class="rounded border m-2 mb-0 p-2">
+									  <div class="row row-cols-1 row-cols-xl-3 g-3">
+									    
+									    <!-- From Date -->
+									    <div class="col">
+									      <div class="row g-3 align-items-center">
+									        <div class="col-auto">
+									          <label for="fromDateLead" class="form-label">From Date:</label>
+									        </div>
+									        <div class="col">
+									          <div class="position-relative">
+									            <input type="text" id="fromDateLead" class="form-control position-relative"
+									              autocomplete="off" readonly
+									              onblur="removeValid(event)"
+									              th:attr="onkeyup=|formatDate('fromDateLead','${session.DATEFORMAT_JS}')|">
+									            <i class="ti-calendar picker_calendar" id="fromDateLeadCalendar"></i>
+									          </div>
+									        </div>
+									      </div>
+									    </div>
+									
+									    <!-- To Date -->
+									    <div class="col">
+									      <div class="row g-3 align-items-center">
+									        <div class="col-auto">
+									          <label for="toDateLead" class="form-label">To Date:</label>
+									        </div>
+									        <div class="col">
+									          <div class="position-relative">
+									            <input type="text" id="toDateLead" class="form-control position-relative"
+									              autocomplete="off" readonly
+									              onblur="removeValid(event)"
+									              th:attr="onkeyup=|formatDate('toDateLead','${session.DATEFORMAT_JS}')|">
+									            <i class="ti-calendar picker_calendar" id="toDateLeadCalendar"></i>
+									          </div>
+									        </div>
+									      </div>
+									    </div>
+									
+									    <!-- Search Button -->
+									    <div class="col text-end d-flex align-items-center justify-content-end gap-2">
+									      <button class="btn go-btn" type="button" id="dtSearch" onclick="filterLeadView()">Search</button>
+									      <button class="btn go-btn" type="button" id="resetView" onclick="resetLeadView()">Reset</button>
+									    </div>
+									    
+									  </div>
+									</div>
+									<!--Date Filter Section Ends  -->
+									<div class="card p-2 m-2">
+										<input type="hidden" id="totalPageno"> <input
+											type="hidden" id="currentPageno">
+										<div id="myLeadGrid" style="width: 100%; height: 100vh;"
+											class="ag-theme-alpine"></div>
+										<!--<div id="pagination" style="cursor: pointer;"></div>-->
+									</div>
+
+
+								</div>
+							</div>
+							<!--Left Sec end-->
+							<div id="snackbar" class="snackbar"></div>
+							<!-- Right sec starts here -->
+							<div class="box-sec" id="collapseWidthL1">
+								<div class="out-box">
+									<div
+										class="d-flex justify-content-between align-items-center p-2 bdr-line">
+										<div class="d-flex gap-2">
+											<ul class="nav nav-pills newtab" role="tablist" id="tabMenu">
+												<li class="nav-item" role="presentation"
+													id="leadInformation-tab"><a class="nav-link"
+													data-bs-toggle="pill" href="#leadInformation"
+													aria-selected="false">Lead Information</a></li>
+												<li class="nav-item " role="presentation"
+													id="leadAddress-tab"><a class="nav-link"
+													data-bs-toggle="pill" href="#leadAddress"
+													aria-selected="false">Lead Address</a></li>
+												<li class="nav-item " role="presentation"
+													id="leadDecision-tab"><a class="nav-link"
+													data-bs-toggle="pill" href="#leadDecision"
+													aria-selected="false">Decision Maker</a></li>
+												<!-- <li class="nav-item " role="presentation" id="leadNote-tab"><a
+													class="nav-link" data-bs-toggle="pill" href="#leadNote"
+													aria-selected="false">Note</a></li> -->
+												<li class="nav-item " role="presentation"
+													id="leadStatusTab-tab"><a class="nav-link"
+													data-bs-toggle="pill" href="#leadStatusTab"
+													aria-selected="false">Status</a></li>
+											</ul>
+										</div>
+										<button class="btn btn-primary max-btn" id="collapseButtonL1"
+											type="button" onclick="triggerExpansionL(1)"
+											data-bs-toggle="tooltip" data-bs-placement="top" title=""
+											data-bs-original-title="Expand">
+											<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+												class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+										</button>
+									</div>
+									<div class="tab-content flex-fill" id="tabContent">
+										<div class="tab-pane fade h-100 p-2" id="leadInformation"
+											role="tabpanel">
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+												<div class="d-flex w-100 flex-column flex-xl-row justify-content-between align-items-start align-items-xl-center gap-2 p-2 border rounded">
+													
+																<div class="project-name flex-1"><span class="head-user-name ml-5"
+																	id="employeeNameTop"></span></div>
+
+																	<div class="d-flex justify-content-end w-100 gap-2 flex-1">
+																		<span th:text="${action_list}"></span>
+
+																		<button class="btn m-0 edit-btn" type="button"
+																			id="addNewLeadBtn" onclick="addNewLead()">Add</button>
+																		<button class="btn m-0 edit-btn d-none" type="button"
+																			id="editBtn" onclick="editLeadOnclick()">Edit</button>
+																		<button class="btn m-0 edit-btn d-none" type="button"
+																			id="cancelLeadBtn" onclick="cancelNewLead()">Cancel</button>
+																		<button class="btn m-0 edit-btn d-none" type="button"
+																			id="ApproveBtn" onclick="approveSoOnclick()">Approve</button>
+																		<button class="btn m-0 edit-btn" type="button"
+																			onclick="nextTab('leadAddress-tab')">Next</button>
+
+																		<!--<div class="mr-2">
+                                      <button class="btn m-0 edit-btn" type="button" onclick="addNewLead()">Add</button>
+																		</div>
+																		&lt;!&ndash; <div class="mr-2">
+																			th:if="${session.action_name_list.contains('Edit')}"
+																			<button class="btn btn-primary edit-btn "
+																				type="button" id="edit" onclick="enableFields()">Edit</button>
+																		</div> &ndash;&gt;
+																		<div class="mr-2">
+                                      <button class="btn m-0 edit-btn d-none" type="button" id="ApproveBtn" onclick="approveSoOnclick()">Approve</button>
+																		</div>
+																		&lt;!&ndash; <div class="mr-2">
+																			<button class="btn btn-primary edit-btn "
+																				type="button" id="delete"
+																				onclick="deleteSoOnclick()">Delete</button> &ndash;&gt;
+                                    <div class="mr-2">
+                                      <button class="btn m-0 edit-btn" type="button" onclick="nextTab('leadAddress-tab')">Next</button>
+                                    </div>-->
+																	</div>
+												</div>
+												<div class="card p-2">
+													<div class="row">
+
+														<div class="col-12 col-md-4">
+															<div class="hvrbox upload-image">
+																<img src="../assets/images/noimage.jpg" id="imgLoc"
+																	alt="Location" class="hvrbox-layer_bottom img-fluid"
+																	style="aspect-ratio: 1.2; object-fit: cover; object-position: center;">
+																<div class="hvrbox-layer_top">
+																	<div class="hvrbox-text">
+																		<input type="file" id="fileUpload" accept="image/*"
+																			onchange="saveFileLeadImage();" hidden /> <span><label
+																			for="fileUpload"><i class="ti-files"
+																				style="cursor: pointer;"></i> </label></span> <span><i
+																			class="fa fa-trash red"
+																			onclick="deleteFileLeadImage();"></i></span>
+																	</div>
+																</div>
+															</div>
+														</div>
+														<div class="col-12 col-md-8">
+															<div class="row">
+																<div class="col-md-6">
+																	<div class="form-group">
+																		<input type="hidden" id="stageStatus" /> <input
+																			type="hidden" id="pipelineId" /> <input
+																			type="hidden" id="leadId" /> <label
+																			for="leadExecutive">Lead Executive<span
+																			style="color: red; margin-left: 4px; font-weight: 900;"
+																			aria-hidden="true">*</span><span class="sr-only">(required)</span>
+																		</label>
+																		<div class="select">
+																			<select id="leadExecutive" name="userId"
+																				th:disabled="${#lists.size(ownerList) == 1}">
+																				<!-- <option value="">Select Executive</option> -->
+																				<option th:each="c:${ownerList}" th:value="${c.key}"
+																					th:text="${c.name}"></option>
+																			</select>
+																		</div>
+																	</div>
+																</div>
+																<div class="col-md-6">
+																	<div class="form-group">
+																		<label for="leadCompany">Company<span
+																			style="color: red; margin-left: 4px; font-weight: 900;"
+																			aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+																		<input type="text" class="form-control" id="company"
+																			placeholder="Company Name">
+																	</div>
+																</div>
+																<div class="col-md-6">
+																	<div class="form-group">
+																		<label for="leadFirstName">First Name<span
+																			style="color: red; margin-left: 4px; font-weight: 900;"
+																			aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+																		<input type="text" class="form-control" id="firstName"
+																			placeholder="First Name">
+																	</div>
+																</div>
+
+
+																<div class="col-md-6">
+																	<div class="form-group">
+																		<label for="leadLastName">Last Name<span
+																			style="color: red; margin-left: 4px; font-weight: 900;"
+																			aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+																		<input type="text" class="form-control" id="lastName"
+																			placeholder="Last Name">
+																	</div>
+																</div>
+																<div class="col-md-6">
+																	<div class="form-group">
+																		<label for="designation">Designation </label> <input
+																			type="text" class="form-control" id="title"
+																			placeholder="Designation">
+																	</div>
+																</div>
+
+																<div class="col-md-6">
+																	<div class="form-group"
+																		oninput="validateEmail(); validateEmail1();">
+																		<label for="email">Email<span
+																			style="color: red; margin-left: 4px; font-weight: 900;"
+																			aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+																		<input type="text" class="form-control" id="email"
+																			placeholder="Email">
+																	</div>
+																</div>
+
+																<div class="col-md-6">
+																	<div class="form-group">
+																		<label for="phone">Phone </label> <input type="text"
+																			class="form-control numberonly" id="phone"
+																			placeholder="Phone" maxlength="10">
+																	</div>
+																</div>
+
+																<div class="col-md-6">
+																	<label class="form-group">Project/Site</label> <input
+																		type="hidden" id="projectId"> <input
+																		type="hidden" id="projectName"> <select
+																		id="project" class="searchable-select">
+																		<option value="">Select</option>
+																		<option th:each="c,iter:${projectList}"
+																			th:value="${c.key}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+
+
+														</div>
+													</div>
+													<div class="row">
+														<!--<div class="col-md-4">
+															<div class="form-group">
+																<label for="phone">Phone<span
+																	style="color: red; margin-left: 4px; font-weight: 900;"
+																	aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+																<input type="text" class="form-control numberonly"
+																	id="phone" placeholder="Phone" maxlength="10">
+															</div>
+														</div>-->
+
+
+														<!--<div class="col-md-4">
+															<label class="form-group">Project</label><span
+																class="mandatory">*</span> <input type="hidden"
+																id="projectId"> <input type="hidden"
+																id="projectName"> <select id="project"
+																class="searchable-select">
+																<option value="">Select</option>
+																<option th:each="c,iter:${projectList}"
+																	th:value="${c.key}" th:text="${c.name}"></option>
+															</select>
+
+														</div>-->
+
+
+														<div class="col-md-4">
+															<div class="form-group">
+																<label for="mobile">Mobile<span
+																	style="color: red; margin-left: 4px; font-weight: 900;"
+																	aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+																<input type="text" class="form-control numberonly"
+																	id="mobile" placeholder="Mobile" maxlength="10">
+															</div>
+														</div>
+
+														<div class="col-md-4">
+															<div class="form-group">
+																<label for="website">Website</label> <input type="text"
+																	class="form-control" id="website" placeholder="Website">
+															</div>
+														</div>
+
+														<!-- <div class="col-md-4">
+															<div class="form-group">
+																<label>Reference Contact Name</label> <input type="text"
+																	class="form-control" id="referenceContact"
+																	placeholder="Reference Contact Name">
+															</div>
+														</div> -->
+
+
+														<div class="col-md-4">
+															<div class="form-group">
+																<label for="leadSource">Lead Source<span
+																	style="color: red; margin-left: 4px; font-weight: 900;"
+																	aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+																<div class="select">
+																	<select id="leadSource">
+																		<option value="" disabled>Select Lead Source</option>
+																		<option th:each="c,iter:${leadList}"
+																			th:value="${c.key}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+														</div>
+
+														<!-- <div class="col-md-4">
+                              <div class="form-group">
+                                <label for="leadStatus">Lead Status<span
+                                  style="color: red; margin-left: 4px; font-weight: 900;"
+                                  aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+                                <div class="select">
+                                  <select id="leadStatus">
+                                    <option value="">Select Status</option>
+                                    <option th:each="c,iter:${statusList}"
+                                      th:value="${c.key}" th:text="${c.name}"></option>
+
+                                  </select>
+                                </div>
+                              </div>
+                            </div> -->
+
+														<div class="col-md-4">
+															<div class="form-group">
+																<label for="industry">Industry<span
+																	style="color: red; margin-left: 4px; font-weight: 900;"
+																	aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+																<div class="select">
+																	<select id="industry">
+																		<option value="" disabled>Select Industry</option>
+																		<option th:each="c,iter:${industryList}"
+																			th:value="${c.key}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+														</div>
+
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>No Of Employee</label> <input type="text"
+																	class="form-control numberonly" id="noOfEmp"
+																	placeholder="No Of Employee">
+															</div>
+														</div>
+
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Annual Revenue</label> <input type="text"
+																	class="form-control numberonly" id="annualRevenue"
+																	placeholder="Annual Revenue">
+															</div>
+														</div>
+
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Ratings</label>
+																<div class="select">
+																	<select id="ratings">
+																		<option value="">Select Ratings</option>
+																		<option th:each="c,iter:${ratingList}"
+																			th:value="${c.key}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+														</div>
+
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Skype Id</label> <input type="text"
+																	class="form-control" id="skypeId"
+																	placeholder="Skype Id">
+															</div>
+														</div>
+
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Secondary Email</label> <input type="text"
+																	class="form-control" id="secondaryEmail"
+																	placeholder="Secondary Email">
+															</div>
+														</div>
+
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Twitter</label> <input type="text"
+																	class="form-control" id="twitter" placeholder="Twitter">
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<!--Lead Information Tab End  -->
+										<div class="tab-pane fade h-100 p-2" id="leadAddress"
+											role="tabpanel">
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+												<div class="d-flex w-100 flex-column flex-xl-row justify-content-between align-items-start align-items-xl-center gap-2 p-2 border rounded">
+													
+																<div class="project-name flex-1"><span class="head-user-name ml-5"
+																	id="employeeNameTop1"></span></div>
+																
+																	<div class="d-flex justify-content-end w-100 gap-2 flex-1">
+																		<span th:text="${action_list}"></span>
+
+																		
+																			<button class="btn btn-primary edit-btn"
+																				type="button"
+																				onclick="nextTab('leadInformation-tab')">Prev</button>
+																			<button class="btn btn-primary edit-btn"
+																				type="button" onclick="nextTab('leadDecision-tab')">Next</button>
+																		
+																	</div>
+												</div>
+												<div class="card p-2">
+													<h6 class="m-0">Address Details:</h6>
+													<div class="mt-1">
+														<div class="row">
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label for="country">Country<span
+																		style="color: red; margin-left: 4px; font-weight: 900;"
+																		aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+																	<div class="select">
+																		<select id="country" class="form-control"
+																			onchange="getStateDetails()">
+																			<option th:value="NULL">Select Country</option>
+																			<option th:each="c,iter:${countryList}"
+																				th:value="${c.key}" th:text="${c.name}"></option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label for="state">State<span
+																		style="color: red; margin-left: 4px; font-weight: 900;"
+																		aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+																	<div class="select">
+																		<select id="states" class="form-control">
+																			<option th:value="NULL">Select State</option>
+																			<option th:each="c,iter:${statesList}"
+																				th:value="${c.key}" th:text="${c.name}"></option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label for="city">City<span
+																		style="color: red; margin-left: 4px; font-weight: 900;"
+																		aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+																	<input type="text" class="form-control" id="city"
+																		placeholder="City name">
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label for="street">Street<span
+																		style="color: red; margin-left: 4px; font-weight: 900;"
+																		aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+																	<input type="text" class="form-control"
+																		id="addressStreet" placeholder="Street">
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label for="zipCode">ZIP Code<span
+																		style="color: red; margin-left: 4px; font-weight: 900;"
+																		aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+																	<input type="text" class="form-control numberonly"
+																		id="zip" placeholder="ZIP code" maxlength="6">
+																</div>
+															</div>
+														</div>
+													</div>
+													<div class="row my-3">
+														<div class="col-md-12">
+															<h6 class="modal-inrheading m-0">Description</h6>
+															<div class="position-text">
+																<textarea rows="4" cols="100" id="description"
+																	onkeyup="textCount(event)" style="color: black;"></textarea>
+																<div id="charNumSN" class="txtcounter" align="right">
+																	<span>0</span> characters
+																</div>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<!--Address Tab End  -->
+										<div class="tab-pane fade h-100 p-2" id="leadDecision"
+											role="tabpanel">
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+												<div class="d-flex w-100 flex-column flex-xl-row justify-content-between align-items-start align-items-xl-center gap-2 p-2 border rounded">
+													
+																<div class="project-name flex-1"><span class="head-user-name ml-5"
+																	id="employeeNameTop2"></span></div>
+																
+																	<div class="d-flex justify-content-end w-100 gap-2 flex-1">
+																		<span th:text="${action_list}"></span>
+
+																		
+																			<button class="btn btn-primary edit-btn"
+																				type="button" onclick="nextTab('leadAddress-tab')">Prev</button>
+																			<button class="btn btn-primary edit-btn"
+																				type="button" onclick="nextTab('leadStatusTab-tab')">Next</button>
+																		
+																	</div>
+												</div>
+												<div class="card p-2">
+													<div
+														class="d-flex w-100 justify-content-end align-items-center my-2">
+														<div class="d-flex gap-1 task-btn-sec">
+															<button
+																class="border-0 btn-transition btn btn-outline-primary"
+																title="Add" data-bs-toggle="tooltip" id="openSection" onclick="toggleSection()">
+																<i class="fa fa-plus-square" aria-hidden="true"></i>
+															</button>
+															<!-- <button
+                                    class="border-0 btn-transition btn btn-outline-primary"
+                                    title="Edit" onclick="toggleSection()">
+                                    <i class="fa fa-pencil-square" aria-hidden="true"></i>
+                                  </button> -->
+															<!-- <button
+                                    class="border-0 btn-transition btn btn-outline-danger"
+                                    title="Delete">
+                                    <i class="fa fa-trash"></i>
+                                  </button> -->
+															<button
+																class="border-0 btn-transition btn btn-outline-primary d-none"
+																title="Save" data-bs-toggle="tooltip" id="saveDecession"
+																onclick="saveDecesionMakersData()">
+																<i class="fa-solid fa-floppy-disk"></i>
+															</button>
+															<button
+																class="border-0 btn-transition btn btn-outline-primary br-dis br-m-btn"
+																title="Edit" data-bs-toggle="tooltip" id="editDecesion"
+																onclick="editDecesionMakersData()" disabled>
+																<i class="fa-solid fa-square-pen" aria-hidden="true"></i>
+															</button>
+															<button
+																class="border-0 btn-transition btn btn-outline-primary br-dis br-m-btn"
+																title="Delete" data-bs-toggle="tooltip" id="deleteDecesion" disabled
+																onclick="deleteDecesionMakersData()">
+																<i class="fa-solid fa-trash"></i>
+															</button>
+															<button
+																class="border-0 btn-transition btn btn-outline-primary d-none"
+																id="closeSection" data-bs-toggle="tooltip" onclick='closeSection()' title="Reset">
+																<i class="bi bi-x"></i>
+															</button>
+
+														</div>
+													</div>
+													<div id="decisionMakerFields" class="mt-3"
+														style="display: none;">
+														<div class="row">
+															<div class="col-md-3">
+																<input type="hidden" id="dmId">
+																<div class="form-group">
+																	<label for="dmFullName">Full Name<span
+																		style="color: red; margin-left: 4px; font-weight: 900;"
+																		aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+																	<input type="text"
+																		class="form-control transparenttxtbox"
+																		placeholder="Full Name" id="dmName">
+																</div>
+															</div>
+															<div class="col-md-3">
+																<div class="form-group">
+																	<label for="dmDesignation">Designation<span
+																		style="color: red; margin-left: 4px; font-weight: 900;"
+																		aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+																	<input type="text"
+																		class="form-control transparenttxtbox"
+																		placeholder="Designation" id="dmDesignation">
+																</div>
+															</div>
+															<div class="col-md-3">
+																<div class="form-group">
+																	<label>Email</label> <input type="email"
+																		class="form-control transparenttxtbox"
+																		placeholder="Email" id="dmEmail">
+																</div>
+															</div>
+															<div class="col-md-3">
+																<div class="form-group">
+																	<label>Phone No.</label> <input type="text"
+																		class="form-control transparenttxtbox numberonly"
+																		placeholder="Phone No" id="dmPhone" maxlength="10">
+																</div>
+															</div>
+															<!-- <div class="col-md-3">
+																<div class="form-group">
+																	<label>Created Date</label> <input type="date"
+																		class="form-control transparenttxtbox" id="dmDate"
+																		disabled>
+																</div>
+															</div> -->
+														</div>
+													</div>
+													<div class="ag-theme-alpine" id="myGridDecesionMakers"
+														style="width: 100%; height: 400px;"></div>
+												</div>
+											</div>
+										</div>
+										<!-- <div class="tab-pane fade h-100 p-2" id="leadNote"
+											role="tabpanel">
+											<div class="d-flex flex-column h-100 gap-2">
+												<div class="">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<td width="50%"><span class="head-user-name ml-5"
+																	id="employeeNameTop3"></span></td>
+																<td>
+																	<div class="d-flex justify-content-end flxwrap">
+																		<span th:text="${action_list}"></span>
+
+																		<div class="mr-2">
+																			<button class="btn btn-primary edit-btn"
+																				type="button" onclick="nextTab('leadDecision-tab')">Prev</button>
+																		</div>
+																		<div class="mr-2">
+																			<button class="btn btn-primary edit-btn"
+																				type="button" onclick="nextTab('leadStatusTab-tab')">Next</button>
+																		</div>
+																	</div>
+
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+												<div class="card p-2">
+													<div class="">
+														<div class="row">
+															<div class="col-12">
+																<div class="mb-3">
+
+																	<div class="mb-3">
+																		<input type="hidden" id="leadNoteId"> <input
+																			type="hidden" id="pipelineId"> <input
+																			type="hidden" id="firstName"> <input
+																			type="hidden" id="lastName"> <input
+																			type="hidden" id="docListlen"> <input
+																			type="hidden" id="accountId"> <input
+																			type="text" class="form-control mb-2" id="titleId"
+																			placeholder="Add a Title">
+																		<textarea class="form-control mb-3"
+																			style="height: 80px;" id="noteId"
+																			placeholder="Add a note"></textarea>
+																		<div class="d-flex justify-content-between">
+																			<div class="w-100">
+																				<table id="docTbl" class="table table-borderless">
+																					<thead>
+																						<tr>
+																							<th width="320" class="border-0">
+																								<div class="fs--13 d-flex fw-normal text-dark">Attachment</div>
+																							</th>
+																							<th width="80" class="border-0"></th>
+																						</tr>
+																					</thead>
+																					<tbody id="doctbodyData">
+																						<tr>
+																							<td class="border-0">
+																								<div class="control-group position-r">
+																									<label class="custom-file-upload"
+																										for="fileUploader"> <i class="ti-plus"></i>
+																									</label>
+																									<div class="controls">
+																										<input type="file" class="document"
+																											id="fileUploader" name="userImage"
+																											multiple="" onchange="updateList()">
+																									</div>
+																								</div>
+																								<div id="divFiles"
+																									class="d-inline-flex align-items-center">
+																									<input type="hidden" id="uploadHidden_"
+																										class="uploadHidCls">
+																									<table id="fileTable">
+																										<tbody>
+																											Uploaded files will be added here
+																										</tbody>
+																									</table>
+																								</div>
+																							</td>
+																						</tr>
+																					</tbody>
+
+																				</table>
+																			</div>
+																		</div>
+																	</div>
+
+																</div>
+															</div>
+														</div>
+														<div class="row" id="noteListWithDoc"></div>
+														<input type="hidden" id="totalNotePageno"> <input
+															type="hidden" id="currentPageno">
+														<div id="notePagination" class="mt-3"
+															style="cursor: pointer;"></div>
+													</div>
+												</div>
+											</div>
+										</div> -->
+
+										<!-- Lead Status Start -->
+										<div class="tab-pane fade h-100 p-2" id="leadStatusTab"
+											role="tabpanel">
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+												<div class="d-flex w-100 flex-column flex-xl-row justify-content-between align-items-start align-items-xl-center gap-2 p-2 border rounded">
+													
+																<div class="project-name flex-1">
+																	<span class="head-user-name ml-5"
+																	id="employeeNameTop4"></span>
+																</div>
+																	<div class="d-flex justify-content-end w-100 gap-2 flex-1">
+																		<span th:text="${action_list}"></span>
+
+																		
+																			<button class="btn btn-primary edit-btn"
+																				type="button" onclick="nextTab('leadDecision-tab')">Prev</button>
+																			<button class="btn btn-primary edit-btn"
+																				type="button" id="saveLeadInfoBtn"
+																				onclick="saveLeadInfo()">Save</button>
+																	</div>
+												</div>
+												<div class="card p-2">
+													<div class="row">
+														<div class="col-md-4">
+															<div class="form-group">
+																<label for="leadStatus">Lead Status<span
+																	style="color: red; margin-left: 4px; font-weight: 900;"
+																	aria-hidden="true">*</span><span class="sr-only">(required)</span></label>
+																<div class="select">
+																	<select id="leadStatus" class="form-control"
+																		onchange="onLeadStatusChange(this.value)">
+																		<option value="" disabled selected>Select Status</option>
+																		<option th:each="c,iter:${statusList}"
+																			th:value="${c.key}" th:text="${c.name}"></option>
+
+																	</select>
+																</div>
+															</div>
+														</div>
+														<div class="col-md-8 d-none" id="reasonField">
+															<div class="form-group">
+																<label for="reason">Reason</label><span
+																	class="text-danger">*</span>
+																<textarea id="reason" class="form-control"
+																	placeholder="Enter reason"></textarea>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<!-- Lead Status End -->
+									</div>
+								</div>
+							</div>
+							<!-- Right sec ends here -->
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+
+</html>

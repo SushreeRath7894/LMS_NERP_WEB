@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:th="http://www.thymeleaf.org"
+    xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/master}">
+<head>
+    <style type="text/css">
+        .ag-theme-alpine {
+            height: calc(100vh - 100px);
+        }
+        .subject-card {
+            background-color: #bf05ff;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            color: white;
+        }
+        .subject-card p{
+            margin-top: 0;
+            margin-bottom: 0;
+            font-size: 12px;
+            font-weight: 400;
+            color: #ffffff9e;
+        }
+        .subject-card h5 {
+            margin: 0 0 5px;
+            color: white;
+        }
+        .nav-pills {
+            gap: 3px;
+        }
+        .step-line {
+            background: #e0e0e0;
+            height: 2px;
+            width: 35vw;
+            position: absolute;
+            top: 30px;
+            z-index: 1;
+        }
+        .nav-pills.custom li {
+            background: transparent;
+            margin: 0 30px;
+            z-index: 2;
+        }
+        .nav-link.active.custom {
+            background-color: #bf05ff;
+            color: white;
+        }
+        .nav-link.custom {
+            color: inherit;
+            border: 1px solid #bf05ff;
+            width: 93px;
+        }
+        .coupon .kanan {
+            border-left: 1px dashed #ddd;
+            width: 40% !important;
+            position:relative;
+        }
+        .coupon .kanan .info::after, .coupon .kanan .info::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #dedede;
+            border-radius: 100%;
+        }
+        .coupon .kanan .info::before {
+            top: -10px;
+            left: -10px;
+        }
+        .coupon .kanan .info::after {
+            bottom: -10px;
+            left: -10px;
+        }
+        .coupon .time {
+            font-size: 1.6rem;
+        }
+        /* Added for proper tab display */
+        .tab-content > .tab-pane {
+            display: none;
+        }
+        .tab-content > .active {
+            display: block;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function() {
+            // Initialize grids and other elements
+            var gridDiv = document.querySelector('#myGrid');
+            new agGrid.Grid(gridDiv, gridOptions);
+            viewCoupon();
+            
+            var activityGrid = document.querySelector('#activity');
+            new agGrid.Grid(activityGrid, activityOptions);
+            
+           /*  var courseGrid = document.querySelector('#myGrid1');
+            new agGrid.Grid(courseGrid, gridOptionsCourse); */
+            
+            // Initialize form elements
+            $("#couponForm").hide();
+            $("#cancelBtn").hide();
+            $("#courseDiv").hide();
+            $('#deleteChild').attr("disabled", true);
+           /*  $("#courseAllocation").hide(); */
+            
+            // Initialize datetime pickers
+            var dateFormat = 'd-m-Y H:i:s';
+            localStorage.setItem("dateFormat", dateFormat);
+            
+            $("#validFromCalendarDate").datetimepicker({
+                format: dateFormat,
+                closeOnDateSelect: true,
+                timepicker: true,
+            }).on("change", function() {
+                $('#validFrom').val($(this).val());
+            });
+
+            $("#validToCalendarDate").datetimepicker({
+                format: dateFormat,
+                closeOnDateSelect: true,
+                timepicker: true,
+            }).on("change", function() {
+                $('#validTo').val($(this).val());
+            });
+
+            // Tab click handlers
+            $('a[data-bs-toggle="pill"]').on('shown.bs.tab', function(e) {
+                var target = $(e.target).attr("href");
+                handleTabClick(target);
+            });
+            
+            // Show first tab by default
+            $('#courseDetails a').tab('show');
+            
+            getCourseDetails();
+        });
+
+        // Simplified tab handling
+        function handleTabClick(target) {
+            if (target === "#course-overview") {
+                $("#course-overview").show();
+                $("#course-allocation").hide();
+                $("#nextTabBtn").show();
+                $("#prevTabBtn").hide();
+            } else if (target === "#course-allocation") {
+                $("#course-overview").hide();
+                $("#course-allocation").show();
+                $("#nextTabBtn").hide();
+                $("#prevTabBtn").show();
+            }
+        }
+
+        function nextTab(tabId) {
+            $('a[href="#' + tabId + '"]').tab('show');
+        }
+
+        // Grid and other functions remain the same
+        var columnDefs = [{
+            headerCheckboxSelection: false,
+            headerCheckboxSelectionFilteredOnly: true,
+            checkboxSelection: true,
+            width: 10,
+            sortable: false,
+            filter: false,
+            resizable: true,
+            pinned: 'left'
+        }, {
+            headerName: "Coupon Id",
+            field: "couponId",
+            pinned: 'left',
+            width: 140,
+        }, {
+            headerName: 'Coupon Code',
+            field: "couponNo",
+            width: 135,
+        }, {
+            headerName: 'Status',
+            field: "status",
+            width: 150,
+            cellStyle: { textAlign: 'center' },
+            cellRenderer: function(params) {
+                const status = params.value ? params.value.toLowerCase() : '';
+                const badgeColor = status === 'active' ? 'green' : 'red';
+                const badgeText = status === 'active' ? 'Active' : 'Inactive';
+
+                return `<span>${badgeText}</span>`;
+            }
+        }
+,{
+            headerName: 'Minimum Price',
+            field: "price",
+            width: 200,
+        }, {
+            headerName: 'Coupon Offer(%)',
+            field: "discount",
+            width: 200,
+        }, {
+            headerName: 'Valid From Date',
+            field: "validFrom",
+            width: 200,
+        }, {
+            headerName: 'Valid To Date',
+            field: "validTo",
+            width: 160,
+        }];
+
+        var gridOptions = {
+            columnDefs: columnDefs,
+            rowSelection: 'single',
+            groupSelectsChildren: true,
+            suppressRowClickSelection: true,
+            suppressAggFuncInHeader: true,
+            pagination: true,
+            paginationPageSize: 15,
+            defaultColDef: {
+                sortable: true,
+                filter: true,
+                resizable: true,
+                width: 251,
+                height: 10
+            },
+            onSelectionChanged: rowSelect,
+        };
+        
+
+     // for activity table
+     var activityDefs = [
+     		{
+     			headerCheckboxSelection : true,
+     			headerCheckboxSelectionFilteredOnly : true,
+     			checkboxSelection : true,
+     			sortable : false,
+     			filter : false,
+     			resizable : true,
+     			width : 30,
+     			pinned : 'left'
+     		},
+     		{
+     			headerName : "Course ID",
+     			field : "courseId",
+     			pinned : 'left',
+     			hide:true
+     		}, {
+     			headerName : "Course Name",
+     			field : "courseTittle",
+     			pinned : 'left',
+     		},{
+                headerName: "Duration",
+                field: "duration"
+            }, {
+                headerName: "Start Date",
+                field: "startDate",
+                width: 110,
+            }, {
+                headerName: "End Date",
+                field: "endDate"
+            }, {
+                headerName: "Status",
+                field: "patientStatus"
+            }];
+
+
+     // let the grid know which columns and what data to use product table
+     var activityOptions = {
+     	columnDefs : activityDefs,
+     	rowSelection : 'single',
+     	groupSelectsChildren : true,
+     	suppressRowClickSelection : true,
+     	suppressAggFuncInHeader : true,
+     	defaultColDef : {
+     		sortable : true,
+     		filter : true,
+     		resizable : true,
+     		width : 200
+     	},
+     	onSelectionChanged : onSelectionChangeChild,
+
+     };
+     
+   //var childid = "";
+     function onSelectionChangeChild() {
+     	 var selectedNodes = activityOptions.api.getSelectedNodes();
+     	 var selectedData = selectedNodes.map(node => node.data);
+     	// childid= selectedData.map(node => node.slnoId);
+     	var selectedRows = activityOptions.api.getSelectedRows();
+     	var rowCount = 0;
+     	selectedRows.forEach(function(i) {
+     		rowCount = rowCount + 1;
+     	});
+     	if (rowCount > 0) {
+     		$('#newchild').attr("disabled", true);
+     		$('#deleteChild').attr("disabled", false);
+     		
+     	}else{
+     		$('#newchild').attr("disabled", false);
+     		$('#deleteChild').attr("disabled", true);
+     	}
+     }
+
+        function rowSelect() {
+            var selectedRows = gridOptions.api.getSelectedRows();
+            if (selectedRows.length > 0) {
+                $('#dltBtn').show();
+                $("#couponDiv").show();
+                $("#couponForm").hide();
+                $("#cancelBtn").hide();
+                $("#addBtn").show();
+                
+                var rowData = selectedRows[0];
+                let couponleft = rowData.daysValid + " Days";
+                $("#daysleft").text(couponleft);
+                $("#ststusBadge").text(rowData.status);
+                // Update QR code and other details
+                var qrData = JSON.stringify({
+                    CouponNo: rowData.couponNo,
+                    Minimum_Price: rowData.price,
+                    Discount: rowData.discount,
+                    ValidFrom: rowData.validFrom,
+                    ValidTo: rowData.validTo
+                });
+
+                var tempContainer = document.createElement("div");
+                new QRCode(tempContainer, {
+                    text: qrData,
+                    width: 150,
+                    height: 150,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+
+                setTimeout(function() {
+                    var generatedImg = tempContainer.querySelector('img');
+                    if(generatedImg){
+                        document.getElementById("qrImage").src = generatedImg.src;
+                    }
+                    /* $("#daysleft").text(); */
+                }, 100);
+            } else {
+                $('#dltBtn').hide();
+                add();
+            }
+        }
+
+        function add() {
+            $('.formValidation').remove();
+            enableFields();
+            $("#couponDiv").hide();
+            $("#couponForm").show();
+            $("#saveBtn").show();
+            $("#cancelBtn").show();
+            $("#addBtn").hide();
+            $("#dltBtn").hide();
+            $("#couponId").val('');
+            $("#couponNo").val('');
+            $("#discount").val('');
+            $("#price").val('');
+            $("#validFrom").val('');
+            $("#validTo").val('');
+            $("#status").val('');
+        }
+
+        function cancelCoupon() {
+            $("#couponDiv").show();
+            $("#couponForm").hide();
+            $("#saveBtn").hide();
+            $("#cancelBtn").hide();
+            $("#addBtn").show();
+            $("#dltBtn").show();
+            viewCoupon();
+        }
+
+        function enableFields() {
+            let fieldIds = ["validTo", "validFrom", "discount", "couponNo", "price","status"];
+            fieldIds.forEach(id => {
+                $("#" + id).prop("disabled", false);
+            });
+        }
+
+        function viewCoupon() {
+            $('.loader').show();
+            agGrid.simpleHttpRequest({
+                url: 'promotion-marketing-view'
+            }).then(function(data) {
+                $("#course-overview").show();
+                var jsonData = JSON.parse(data.body);
+                var allData = jsonData.coupon;
+                gridOptions.api.setRowData(allData);
+                var firstRow = gridOptions.api.getDisplayedRowAtIndex(0);
+                if (firstRow) {
+                    gridOptions.api.selectNode(firstRow, true);
+                }
+            });
+            $('.loader').hide();
+        }
+        
+        function addCoupon() {
+        	gridOptions.api.deselectAll();
+        }
+
+        function add(){
+        	$('.formValidation').remove();
+        	
+        	enableFields();
+        	$("#couponDiv").hide();
+        	$("#couponForm").show();
+        	$("#saveBtn").show();
+        	$("#cancelBtn").show();
+        	$("#courseAllocation").show();
+        	$("#nextTabBtn").show();
+        	$("#prevTabBtn").show();
+        	$("#addBtn").hide();
+        	$("#dltBtn").hide();
+        	$("#couponId").val('');
+        	$("#couponNo").val('');
+        	$("#discount").val('');
+        	$("#price").val('');
+        	$("#validFrom").val('');
+        	$("#validTo").val('');
+        	$("#status").val('');
+        	//
+        	
+        }
+        
+        function editCoupon() {
+        	
+        	var selectedRows = gridOptions.api.getSelectedRows();
+        	var selectedNodes = gridOptions.api.getSelectedNodes();
+
+        	var selectedData = selectedNodes.map(node => node.data);
+        	var couponId = selectedData[0].couponId;
+        	
+        		
+        	    $.ajax({
+        	        url: 'promotion-marketing-edit?couponId=' + couponId,
+        	        method: 'GET',
+        	        success: function(response) {
+        	            if (response.code === "success") {
+        	            	$("#couponDiv").hide();
+        	            	$("#couponForm").show();
+        	            	$("#saveBtn").show();
+        	            	$("#cancelBtn").show();
+        	            	$("#addBtn").hide();
+        	            	$("#dltBtn").hide();
+        	            	
+        	            	$("#courseAllocation").show();
+        	            	
+        	            	$("#nextTabBtn").show();
+        	            	$("#prevTabBtn").show();
+        	                var parsedBody = JSON.parse(response.body);
+        	                var courseData = parsedBody[0].courseData; 
+        	                
+        	                $("#couponId").val(parsedBody[0].couponId);
+        	                $("#couponNo").val(parsedBody[0].couponNo);
+        	                $("#discount").val(parsedBody[0].discount);
+        	                $("#price").val(parsedBody[0].price);
+        	                $("#validFrom").val(parsedBody[0].validFrom);
+        	                $("#validTo").val(parsedBody[0].validTo);
+        	                $("#status").val(parsedBody[0].status);
+        	                /* activityOptions.api.setRowData(courseData); */
+        	               
+        	            }
+        	        },
+        	        error: function(xhr, status, error) {
+        	            console.error('AJAX Error:', status, error);
+        	        }
+        	    });
+        	}
+        //
+        function deleteCoupon() {
+        		
+        	    var selectedRows = gridOptions.api.getSelectedRows();
+        	    var selectedNodes = gridOptions.api.getSelectedNodes();
+        	    var selectedData = selectedNodes.map(node => node.data);
+
+        	    var couponId = selectedData[0].couponId;
+        	    
+
+        	    $.ajax({
+        	        type: "GET",
+        	        url: "promotion-marketing-delete?couponId=" + couponId,
+        	        async: false,
+        	        success: function(response) {
+        	            if (response.code === "success") {
+        	            	toastr.success(response.message);
+        	                
+        	                viewCoupon();
+        	            	setTimeout(() => {
+        						if (gridOptions.api) {
+        							gridOptions.api.getDisplayedRowAtIndex(0)?.setSelected(true);
+        						}
+        					}, 300);
+        	            }
+        	        },
+        	        error: function(data) {
+        	            console.error('Delete AJAX error:', data);
+        	        }
+        	    });
+        	}
+        
+        var shouldHideNextTabBtn = false;
+        function saveCoupon() {
+        	let allRowData = [];
+        	var validation = true;
+
+        	var couponId = $("#couponId").val();
+        	var couponNo = $("#couponNo").val();
+        	var discount = $("#discount").val();
+        	var price = $("#price").val();
+        	var validFrom = $("#validFrom").val();
+        	var validTo = $("#validTo").val();
+        	var status = $("#status").val();
+        	
+        	activityOptions.api.forEachNode(function(node) {
+        	    let rowData = {};
+
+        	    activityDefs.forEach(function(column) {  // use 'activityDefs' directly
+        	        const field = column.field;
+        	        if(field) { // some columns (like checkbox column) have no 'field'
+        	            rowData[field] = node.data[field] || "";
+        	        }
+        	    });
+
+        	    allRowData.push(rowData);
+        	});
+         
+
+
+        	  if (couponNo === "") {
+        	        toastr.error("Coupon Code is required");
+        	        return;
+        	    }
+        	    if (discount === "") {
+        	        toastr.error("Discount is required");
+        	        return;
+        	    }
+        	    if (isNaN(discount) || Number(discount) <= 0) {
+        	        toastr.error("Please enter a valid Discount (%) greater than 0");
+        	        return;
+        	    }
+        	    if (price === "") {
+        	        toastr.error("Minimum Purchase Price is required");
+        	        return;
+        	    }
+        	    if (isNaN(price) || Number(price) < 0) {
+        	        toastr.error("Please enter a valid Minimum Purchase Price (>= 0)");
+        	        return;
+        	    }
+        	    if (validFrom === "") {
+        	        toastr.error("Valid From date is required");
+        	        return;
+        	    }
+        	    if (validTo === "") {
+        	        toastr.error("Valid To date is required");
+        	        return;
+        	    }
+        	    if (status === "") {
+        	        toastr.error("Status must be selected");
+        	        return;
+        	    } 
+        	let recordJsonData = {
+        			couponId: couponId,
+        			couponNo: couponNo,
+        			discount: discount,
+        			price: price,
+        			validFrom: validFrom,
+        			validTo: validTo,
+        			status: status,
+        			rows: allRowData
+        		
+        	};
+
+        	let jsonData = JSON.stringify(recordJsonData);
+        	console.log("Record Ag Grid Data======>", jsonData);
+        	
+        	
+        	
+
+        	// AJAX call to save the data
+        	$.ajax({
+        		url: 'promotion-marketing-save-data',
+        		type: 'POST',
+        		contentType: 'application/json',
+        		data: jsonData,
+        		success: function(response) {
+        			if (response.code == "success") {
+        				toastr.success(response.message);
+        				cancelCoupon();
+        				shouldHideNextTabBtn = true; // tell the tab function not to show it
+        				const tabElement = document.querySelector('#' + "courseDetails" + ' a');
+        				tabElement.click();
+        			}
+        		},
+        		error: function(xhr, status, error) {
+        			console.log("Error saving data:", error);
+        		}
+        	});
+
+        }
+        
+        function getCourseDetails() {
+            agGrid.simpleHttpRequest({
+                url: "academic-course-view"
+            }).then(function (response) {
+                if (response.message === "Success") {
+                    const responseBody = JSON.parse(response.body);
+                    const courseData = responseBody.courseData;
+                    activityOptions.api.setRowData(courseData);
+                    /* window.gridApi.setRowData(courseData); */
+                    /* if (courseData && courseData.length > 0) {
+                        window.gridApi.forEachNode(function (node) {
+                            if (node.rowIndex === 0) {
+                                node.setSelected(true);
+                            }
+                        });
+                    } */
+                } else {
+                    console.error("Failed to fetch data");
+                }
+            });
+        }
+
+        // Other functions remain the same...
+    </script>
+</head>
+
+<body>
+    <div layout:fragment="content" class="maincontent">
+        <div class="container-fluid">
+            <div class="d-flex">
+                <div class="maincontentsec">
+                    <div class="d-flex flex-column flex-lg-row">
+                        <!--Left Sec Start-->
+                        <div class="box-sec" id="collapseWidthR1">
+                            <div class="out-box">
+                                <div class="d-flex justify-content-between bdr-line p-2">
+                                    <div class="col-md-8 col-12">
+                                        <div class="d-flex search-sec">
+                                            <input class="form-control me-2" type="text"
+                                                placeholder="Search" id="quickFilter" autocomplete="off">
+                                            <button class="btn go-btn" type="button" id="goBtn">Go</button>
+                                            &nbsp;
+                                            <button class="btn go-btn w-auto" type="button"
+                                                id="resetBtn">Reset</button>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-primary max-btn" id="collapseButtonR1"
+                                        onclick="triggerExpansionR(1)" data-bs-toggle="tooltip"
+                                        data-bs-placement="top" title="Expand">
+                                        <i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+												class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+                                    </button>
+                                </div>
+                                <div class="card m-2 p-2">
+                                    <div id="myGrid" class="ag-theme-alpine"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!--Right Sec Start-->
+                        <div class="box-sec" id="collapseWidthL1">
+                            <div class="out-box">
+                                <div class="d-flex justify-content-between flex-row-reverse align-items-center p-2 bdr-line">
+                                    <button class="btn btn-primary max-btn" id="collapseButtonL1"
+                                        type="button" onclick="triggerExpansionL(1)"
+                                        data-bs-toggle="tooltip" data-bs-placement="top"
+                                        title="Expand">
+                                        <i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+												class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+                                    </button>
+
+                                    <!--Right Inner Tab Start-->
+                                    <div class="d-flex gap-2">
+                                        <ul class="nav nav-pills newtab" role="tablist">
+                                            <li class="nav-item" role="presentation" id="courseDetails">
+                                                <a class="nav-link active" data-bs-toggle="pill"
+                                                href="#course-overview" aria-selected="true" role="tab">Coupon Overview</a>
+                                            </li>
+                                            <li class="nav-item" role="presentation" id="courseAllocation">
+                                                <a class="nav-link" data-bs-toggle="pill" href="#course-allocation"
+                                                aria-selected="false" role="tab">Coupon Allocation</a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <!-- Tab panes -->
+                                <div class="tab-content flex-fill">
+                                    <!-- Coupon Overview Tab -->
+                                    <div id="course-overview" class="tab-pane active show p-2 h-100" role="tabpanel">
+                                        <div class="requisition-tbl d-flex flex-column h-100">
+                                            <div class="mb-2">
+                                                <table class="table table-bordered mb-0" width="100%">
+                                                    <tbody>
+                                                        <tr valign="middle">
+                                                            <td width="80%"><strong id="programNameDisplay"></strong></td>
+                                                            <td>
+                                                                <div class="d-flex justify-content-end">
+                                                                    <div class="ml-3">
+                                                                        <button class="btn btn-primary edit-btn" id="addBtn"
+                                                                            type="button" onclick="addCoupon()">ADD</button>
+                                                                    </div>
+                                                                    <div class="mr-2">
+                                                                        <button class="btn btn-primary edit-btn" id="dltBtn"
+                                                                            type="button" onclick="deleteCoupon()">Delete</button>
+                                                                    </div>
+                                                                    <div class="mr-2">
+                                                                        <button class="btn btn-primary edit-btn" id="nextTabBtn"
+                                                                            type="button" onclick="nextTab('course-allocation')">Next</button>
+                                                                    </div>
+                                                                    <div class="mr-2">
+                                                                        <button class="btn btn-primary edit-btn"
+                                                                            id="cancelBtn" type="button"
+                                                                            onclick="cancelCoupon()">Cancel</button>
+                                                                    </div>
+                                                                    
+                                                                    <div class="mr-2">
+                                                                        <button class="btn btn-primary edit-btn" id="saveBtn"
+                                                                            type="button" onclick="saveCoupon()">Save</button>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            
+                                            <div class="card p-2" id="couponDiv">
+                                                <!-- Coupon display content -->
+                                                <div class="row">
+                                                    <div class="col-sm-12">
+                                                        <div class="coupon bg-white rounded mb-3 d-flex justify-content-between">
+                                                            <div class="kiri p-3">
+                                                                <div class="icon-container">
+                                                                    <div class="icon-container_box">
+                                                                        <img id="qrImage" th:src="@{/images/default.png}"
+                                                                            width="150" alt="QR Code" />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="tengah py-3 d-flex w-100 justify-content-start">
+                                                                <div>
+                                                                    <span class="badge badge-success">Valid</span>
+                                                                    <h3 class="lead">Coupon Detail goes here</h3>
+                                                                    <p class="text-muted mb-0">Short info about voucher</p>
+                                                                    <span class="badge bg-close" style="width: 70px; display: inline-block; text-align: center;" id="ststusBadge"></span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="kanan">
+                                                                <div class="info m-3 d-flex align-items-center">
+                                                                    <div class="w-100">
+                                                                        <div class="block">
+                                                                            <span class="time font-weight-light">
+                                                                                <span id="daysleft">0 days</span>
+                                                                            </span>
+                                                                        </div>
+                                                                        <button class="btn btn-primary edit-btn"
+                                                                            type="button" onclick="editCoupon()"
+                                                                            style="background: linear-gradient(45deg, #8e2de2 0%, #4a00e0 100%); color: white; border: none; transition: 0.3s;">
+                                                                            View</button> 
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="card p-2" id="couponForm">
+                                                <!-- Coupon form content -->
+                                                <div class="card-header d-flex align-items-center justify-content-between">
+                                                    <h5>Coupon Details</h5>
+                                                </div>
+                                                <div class="card-body p-0 mt-2">
+                                                    <input type="hidden" id="couponId">
+                                                    <div class="row">
+
+																<div class="col-md-6">
+																	<div class="form-group">
+																		<label for="instiname">Coupon Code<span
+																			class="mandatory">*</span></label> <input type="text"
+																			id="couponNo" class="form-control"
+																			onblur="removeValid(event);">
+																	</div>
+																</div>
+																<div class="col-md-6">
+																	<div class="form-group">
+																		<label for="instiname">Coupon Offer(%)<span
+																			class="mandatory">*</span></label> <input type="text"
+																			id="discount" class="form-control"
+																			onblur="removeValid(event);">
+																	</div>
+																</div>
+																<div class="col-md-6">
+																	<div class="form-group">
+																		<label for="instiname">Minimum Purchase Price<span
+																			class="mandatory">*</span></label> <input type="text"
+																			id="price" class="form-control"
+																			onblur="removeValid(event);">
+																	</div>
+																</div>
+																<div class="col-md-6">
+																	<div class="form-group calendar_box">
+																		<label>Valid From </label> <input type="text"
+																			id="validFrom" class="form-control"
+																			th:attr="onkeyup=|formatDate('validFrom','${session.DATEFORMAT_JS}')|"
+																			readonly> <i
+																			class="ti-calendar picker_calendar"
+																			id="validFromCalendarDate"></i>
+																	</div>
+																</div>
+																<div class="col-md-6">
+																	<div class="form-group calendar_box">
+																		<label>Valid To </label> <input type="text"
+																			id="validTo" class="form-control"
+																			th:attr="onkeyup=|formatDate('validTo','${session.DATEFORMAT_JS}')|"
+																			readonly> <i
+																			class="ti-calendar picker_calendar"
+																			id="validToCalendarDate"></i>
+																	</div>
+																</div>
+																<div class="col-md-6">
+																	<label for="mode" class="form-label">Status<span
+																		class="mandatory">*</span></label> <select class="form-select"
+																		id="status" name="status">
+																		<option value="">Select</option>
+																		<option value="active">Active</option>
+																		<option value="In-active">In-active</option>
+																	</select>
+																</div>
+															</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Coupon Allocation Tab -->
+                                    <div id="course-allocation" class="tab-pane fade p-2 h-100" role="tabpanel">
+                                        <div class="requisition-tbl d-flex flex-column h-100">
+                                            <div class="mb-2">
+                                                <table class="table table-bordered mb-0" width="100%">
+                                                    <tbody>
+                                                        <tr valign="middle">
+                                                            <td width="50%"><span class="head-user-name ml-5" id="employeeNameTop2"></span></td>
+                                                            <td>
+                                                                <div class="d-flex justify-content-end flxwrap">
+                                                                    <div class="mr-2">
+                                                                        <button class="btn btn-primary edit-btn" id="prevTabBtn"
+                                                                            type="button" onclick="nextTab('course-overview')">Prev</button>
+                                                                    </div>
+                                                                    
+                                                                    
+                                                                    <div class="ml-3">
+			                                                            <button class="btn btn-primary edit-btn" id="deleteChild" type="button" onclick="deleteDetails()">Delete</button>
+			                                                        </div>
+			                                                        <div class="mr-2">
+			                                                            <button class="btn btn-primary edit-btn" id="newchild" type="button" onclick="openBrowseCourse()">Allocate</button>
+			                                                        </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <div class="card p-2" id="courseAllocate">
+                                                <div class="innercontent">
+                                                    <h5 class="mb-2">Course Details</h5>
+                                                    
+                                                    <div id="activity" style="width: 100%; height: 500px;" class="ag-theme-alpine"></div>
+
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

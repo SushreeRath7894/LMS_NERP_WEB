@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<script type="text/javascript">
+$(document).ready(function() {
+	$('.collapse').on('show.bs.collapse', function() {
+		$(this).siblings('.panel-heading').addClass('active');
+	});
+	$('.collapse').on('hide.bs.collapse', function() {
+		$(this).siblings('.panel-heading').removeClass('active');
+	});
+	
+	$("#saveReportTemplates").click(function() {
+		var uploadList = [];
+		$('.loader').show();
+		$("body").addClass("overlay");
+		$("#doctbodyData > tr").each(function() {
+			
+			var uFile = $(this).find(".document")[0].files[0];
+			var fileName = $(this).find(".document").val();
+			var data = [];
+			var x = [];
+			if (fileName != '' && fileName != 'undefined' && fileName != null) {
+				var lastIndex = fileName.lastIndexOf("\\");
+				if (lastIndex >= 0) {
+					fileName = fileName.substring(lastIndex + 1);
+				}
+				var reader = new FileReader();
+				reader.readAsDataURL(uFile);
+
+				reader.onload = function() {
+					console.log(reader.result)
+					data = reader.result.split(",");
+					x.push(data[1]);
+				};
+			} else {
+				/* if ($("#vendorRfqId").val()) {
+					fileName = $(this).find(".uploadHidCls").val();
+ 				} else { */
+ 					 x = [];
+ 				/* } */
+					
+			}
+			uploadData = {};
+			uploadData['documnentName'] = $(this).find(".docNoclss").val();
+			uploadData['documentFile'] = x;
+			uploadData['fileName'] = fileName;
+			uploadData['imageNameEdit'] = $(this).find(".uploadHidCls").val();
+			uploadList.push(uploadData);
+		});
+		setTimeout(function() {
+			saveReportTemplates(uploadList);
+		}, 1000)
+	})
+});
+function saveReportTemplates(dataset) {
+	$.ajax({
+		type : "POST",
+		url : "view-templates-save-th-ajax",
+		dataType : "json",
+		contentType : "application/json",
+		data : JSON.stringify(dataset),
+		success : function(response) {
+			if (response.message == "Success") {
+				$('.loader').hide();
+				$("body").removeClass("overlay");
+				console.log(response.body)
+			} else {
+
+				$('.loader').hide();
+				$("body").removeClass("overlay");
+			}
+		},
+		error : function(data) {
+			console.log(data);
+			$('.loader').hide();
+			$("body").removeClass("overlay");
+		}
+	})
+}
+</script>
+<script>
+function saveMultiFile(event) {
+	var AssignItemQty = event.currentTarget.value;
+	var currentFldId = event.currentTarget.getAttribute('id');
+	var l = currentFldId.split("_");
+	var counter = l[1];
+	var currentFldId = "#" + currentFldId;
+
+	var uFile = $(currentFldId)[0].files[0];
+	var fileName = event.currentTarget.value;
+	var lastIndex = fileName.lastIndexOf("\\");
+	if (lastIndex >= 0) {
+		fileName = fileName.substring(lastIndex + 1);
+	}
+	var extension = fileName.split(".");
+
+	var iURL = URL.createObjectURL(uFile);
+	$("#uploadedBillDiv_" + counter).html("");
+	if (extension[1] == "htm" || extension[1] == "html") {
+		var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file'></i></a></div>";
+	}
+	$("#uploadedBillDiv_" + counter).html(LightImg);
+	//$("#imageName_" + counter).html(fileName); 
+	
+	var data = [];
+	var x = [];
+	if (fileName != '' && fileName != 'undefined' && fileName != null) {
+		var lastIndex = fileName.lastIndexOf("\\");
+		if (lastIndex >= 0) {
+			fileName = fileName.substring(lastIndex + 1);
+		}
+		var reader = new FileReader();
+		reader.readAsDataURL(uFile);
+
+		reader.onload = function() {
+			console.log(reader.result)
+			data = reader.result.split(",");
+			x.push(data[1]);
+		};
+	} else {
+		x = [];
+	}
+	
+	uploadData = {};
+	uploadData['tempId'] = $("#tempId_"+counter).text();
+	uploadData['htmlFile'] = x;
+	uploadData['fileName'] = fileName;
+	
+	setTimeout(function() {
+		saveReportTemplates(uploadData);
+	}, 1000)
+}	
+
+function addMore1() {
+
+	var lengthOfTableRow = $("#doctbodyData").children('tr').length;
+	var cloneHtml = $("#docTbl tbody tr:first").clone();
+
+	$("#docTbl tbody").append($("#docTbl tbody tr:first").clone());
+
+	$("#docTbl tbody tr:last").find(".documentclss").val("");
+	$("#docTbl tbody tr:last").find(".docNoclss").val("");
+	$("#docTbl tbody tr:last").find(".documentclssup").val("");
+	$("#docTbl tbody tr:last").find(".uploadedBillCls").empty();
+	$("#docTbl tbody tr:last").find(".uploadHidCls").empty();
+	$("#docTbl tbody tr:last").find(".uploadHidCls").val('');
+	$("#docTbl tbody tr:last").find(".imageName").empty();
+
+	$("#docTbl > #doctbodyData > tr").each(function(i) {
+
+		var selectInput = $(this).find('select');
+		var textInput = $(this).find('input');
+		var fileInput = $(this).find('file');
+		var divInput = $(this).find('div');
+		var label = $(this).find('label');
+		textInput.eq(0).attr('id', "docno_" + i);
+		textInput.eq(1).attr('id', "uploadDoc_" + i);
+		label.eq(0).attr('for', "uploadDoc_" + i);
+		label.eq(0).attr('id', "uploadFor_" + i);
+		textInput.eq(2).attr('id', "uploadHidden_" + i);
+		divInput.eq(3).attr('id', "uploadedBillDiv_" + i);
+		divInput.eq(4).attr('id', "imageName_" + i);
+
+	})
+}
+	
+function checkEmpty(){
+	var infofileName =true;
+	var mulDocInfo =true;
+	$('.document').each(function(){
+		if ($(this).val()){
+		} else {
+	    	mulDocInfo = false; 
+	    	$("#messageParagraph").text("Please Chose a File ");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			return false;
+	    }
+	});
+	if(infofileName && mulDocInfo){
+		addMore1()
+	}
+} 
+</script>
+<style>
+.temp-td {
+    color: #929292;
+    font-size: 14px;
+    font-weight: 100;
+}
+</style>
+</head>
+<body>
+	<div layout:fragment="content">
+		<div class="content-wrap">
+			<div class="container-fluid">
+				<div class="maincontent">
+					<div class="row">
+
+						<div class="maincontentsec">
+							<div class="content_padding">
+
+								<div class="wrapper center-block">
+								
+								<div class="accordion" id="accordionExample">
+										  <div class="accordion-item">
+										    <h2 class="accordion-header" id="headingOne">
+										      <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+									Templates
+										      </button>
+										    </h2>
+											 <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#accordionExample">
+										      <div class="accordion-body">
+												<div class="panel-body">
+													<div class="row" id="main_content">
+														<div class="col-md-5 btn-hs1">
+															<div class="font-design"></div>
+														</div>
+
+														<!-- <div class="col-md-12 btn-hs1 padding-7" align="right">
+															<button class="btn4">Upload</button>
+															<button class="btn4">Download</button>
+															<button class="btn1" onclick="checkEmpty();">New</button>
+															<button class="btn2" id="saveReportTemplates">Save</button>
+														</div> -->
+														<div class="col-md-12">
+															<table id="docTbl" cellspacing="7" cellpadding="7">
+																<thead>
+																	<tr class="tr_clone">
+																		<th width="100">Template ID</th>
+																		<th width="320">Template Name</th>
+																		<th width="380">Attachment</th>
+
+																	</tr>
+																</thead>
+																<tbody id="doctbodyData">
+																	<tr th:each="c,iter:${tempList}">
+																		<td th:text="${c.tempId}" class="temp-td" th:id="${'tempId_'+iter.index}"></td>
+																		<td class="temp-td" th:text="${c.tempName+' ('+c.module+' > '+c.function+' > '+c.activity+')'}"></td>
+																		<td>
+																			<div class="control-group position-r">
+																				<label class="custom-file-upload" th:for="${'uploadDoc_'+iter.index}"
+																					th:d="${'uploadFor_'+iter.index}"> <i class="ti-plus"></i>
+																				</label>
+																				<div class="controls">
+																						<!-- accept=".htm,.html" -->
+																					<input type="file" class="document" accept=".htm,.html"
+																						th:id="${'uploadDoc_'+iter.index}" name="userImage" 
+																						onchange="saveMultiFile(event)" />
+
+																				</div>
+																			</div> <input type="hidden" th:id="${'uploadHidden_'+iter.index}"
+																			class="uploadHidCls">
+																			<div th:id="${'uploadedBillDiv_'+iter.index}" align="center"
+																				class="uploadedBillCls" th:if="${c.action != null && c.action != '' && c.action != 'N/A' && c.fileName != null && c.fileName != '' && c.fileName != 'null'}">
+																					<div class="uploadicon position-l"><a th:href="${'/document/module/'+c.fileName}" target="_blank"><i class="fa fa-file" th:title="${c.fileName}"></i></a></div>
+																				</div>
+																			<div th:id="${'uploadedBillDiv_'+iter.index}" align="center"
+																				class="uploadedBillCls" th:unless="${c.action != null && c.action != '' && c.action != 'N/A' && c.fileName != null && c.fileName != '' && c.fileName != 'null'}">
+																				
+																				</div>
+																			<div id="imageName_0" class="imageName"></div> 
+																		</td>
+																	</tr>
+																</tbody>
+															</table>
+														</div>
+													</div>
+													<div class="clearfix"></div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+								</div>
+								
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div id="delete" class="modal fade show" aria-modal="true">
+				<div class="modal-dialog modal-confirm">
+					<div class="modal-content">
+						<div class="modal-header flex-column">
+							<button type="button" class="close" data-dismiss="modal"
+								aria-hidden="true" onclick="cancelModalBtn()">
+								<i class="ti-close modal-close"></i>
+							</button>
+						</div>
+						<div class="modal-body">
+							<p>Do you really want to delete these records? This process
+								cannot be undone.</p>
+						</div>
+						<div class="modal-footer justify-content-center">
+							<button type="button" class="btn4" data-dismiss="modal"
+								onclick="cancelModalBtn();">Cancel</button>
+							<button type="button" class="btn3" id="deleteModalBtn">Delete</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

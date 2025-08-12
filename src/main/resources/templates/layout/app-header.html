@@ -1,0 +1,489 @@
+
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:fragment="header">
+<head>
+<title>NERP</title>
+<script type="text/javascript">
+$(document).ready(function() {
+    $("ul.tabs li:first").addClass("active").show(); //Activate first tab
+    $(".tab_content:first").show(); //Show first tab content
+ //   $("#moduleName").text(sessionStorage.getItem("moduleName"));
+
+    var roleList = $("#rolesList").val().replace("[", "").replace(
+        "]", "").split(',');
+    var dataset = [];
+    for (var i = 0; i < roleList.length; i++) {
+        obj = {};
+        obj.key = sessionStorage.getItem('activity');
+        obj.name = roleList[i];
+
+        dataset.push(obj)
+    }
+    if (dataset.length > 0) {
+        $.ajax({
+            type: "POST",
+            url: "/index-get-avl-function-list",
+            dataType: "json",
+            contentType: "application/json",
+            data: JSON.stringify(dataset),
+            success: function(response) {
+                if (response.message == "Success") {
+                    for (var i = 0; i < response.body.length; i++) {
+                        if (response.body[i].avlFuncValue == "0") {
+                            $("#" + response.body[i].avlFuncAttr).remove();
+                            $("." + response.body[i].avlFuncAttr).remove();
+                        }
+                    }
+                }
+            },
+            error: function(data) {
+                console.log(data)
+            }
+        });
+    }
+
+    var dateFormat = $("#dateFormat").val();
+    localStorage.setItem("dateFormat", dateFormat);
+
+});
+
+function modOnclick(funId) {
+	
+    var moduleId = $("#moduleId").val();
+    var activityUrl = $("#" + funId).attr("value");
+    var activityId = $("#Act_" + funId).val();
+    document.getElementById("side_bar_menu").innerHTML = "";
+    sessionStorage.setItem('module', moduleId);
+    sessionStorage.setItem('function', funId);
+    sessionStorage.setItem('activity', activityId);
+    localStorage.setItem('moduleName', moduleId);
+    sessionStorage.setItem('moduleName', moduleId);
+    var funText = $("#" + funId).find('.actlist').text();
+    sessionStorage.setItem('funText', funText);
+    sessionStorage.setItem('funId', funId);
+    
+    
+    window.location.href = activityUrl;
+}
+
+$(window).click(function() {
+    $("#" + sessionStorage.getItem('function')).addClass("active");
+});
+
+$(document).ready(function() {
+	
+	if($(document).width() < 1038) {
+		$(".side-navbar").removeClass("active-nav");
+	}
+	
+	localStorage.setItem("dateFormat", 'd-m-Y');
+	
+    var module = sessionStorage.getItem('module');
+    var fun = sessionStorage.getItem('function');
+    var activity = sessionStorage.getItem('activity');
+    
+    if (module && fun && activity) {
+    	$.ajax({
+            type: "GET",
+            url: "/index-get-breadcrumb-data?moduleId=" +
+                module+"&fun="+fun+"&activity="+activity,
+            dataType: 'json',
+            contentType: 'application/json',
+            async: false,
+            success: function(response) {
+            	
+            	console.log(response.body)
+            	
+            	var modId = "";
+       		 	var modName = "";
+       		 	var funId = "";
+       		 	var funName = "";
+       		 	var actId = "";
+       		 	var actName = "";
+            	
+            	 if (response.body != null) {
+            		 modId = response.body.modId;
+            		 modName = response.body.modName;
+            		 funId = response.body.funId;
+            		 funName = response.body.funName;
+            		 actId = response.body.actId;
+            		 actName = response.body.actName;
+            	 } else {
+            		 modId = "--";
+            		 modName = "--";
+            		 funId = "--";
+            		 funName = "--";
+            		 actId = "--";
+            		 actName = "--";
+            	 }
+            	 
+            	 sessionStorage.setItem("modId",modId);
+            	 sessionStorage.setItem("modName",modName);
+            	 sessionStorage.setItem("funId",funId);
+            	 sessionStorage.setItem("funName",funName);
+            	 sessionStorage.setItem("actId",actId);
+            	 sessionStorage.setItem("actName",actName);
+            	 
+            }, error: function(response) {
+            	console.log("ERROR");
+            	console.log(response);
+            	sessionStorage.setItem("modId","--");
+           	 	sessionStorage.setItem("modName","--");
+           	 	sessionStorage.setItem("funId","--");
+           	 	sessionStorage.setItem("funName","--");
+           	 	sessionStorage.setItem("actId","--");
+           	 	sessionStorage.setItem("actName","--");
+            }
+    	});
+    }
+    
+    
+    var defaultFun = "";
+    if (module && fun && activity) {
+        $.ajax({
+            type: "GET",
+            url: "/index-get-function-list-resp?moduleId=" +
+                module,
+            dataType: 'json',
+            contentType: 'application/json',
+            success: function(response) {
+                if (response.body.length > 0) {
+                    var lidiv = "";
+                    for (var i = 0; i < response.body.length; i++) {
+                        defaultFun = response.body[0].functionId;
+                        if (response.body[i].functionId == fun) {
+                            lidiv = lidiv +
+                                '<li class="acTivity active" id="' +
+                                response.body[i].functionId +
+                                '" value="' +
+                                response.body[i].defaultUrl +
+                                '" onclick="modOnclick(this.id)"><input type="hidden" id="Act_' + response.body[i].functionId + '" value="' + response.body[i].defaultUrlId + '"><span class="actlist">' +
+                                response.body[i].name +
+                                '</span>';
+                        } else {
+                            lidiv = lidiv +
+                                '<li class="acTivity" id="' +
+                                response.body[i].functionId +
+                                '" value="' +
+                                response.body[i].defaultUrl +
+                                '" onclick="modOnclick(this.id)"><input type="hidden" id="Act_' + response.body[i].functionId + '" value="' + response.body[i].defaultUrlId + '"><span class="actlist">' +
+                                response.body[i].name +
+                                '</span>';
+                        }
+                    }
+                    $("#configuration_sidebar_content")
+                        .html(lidiv);
+                }
+
+            },
+            error: function(data) {
+                console.log(data)
+
+            }
+        });
+    }
+
+
+    if (fun) {
+        fun = fun;
+    } else {
+        fun = defaultFun;
+    }
+    if (module && fun && activity) {
+        $.ajax({
+            type: "GET",
+            url: "/index-get-activity-list?funId=" +
+                fun + "&moduleId=" + module,
+            dataType: 'json',
+            contentType: 'application/json',
+            success: function(response) {
+                if (response.body.length > 0) {
+                    var act = "";
+                    for (var i = 0; i < response.body.length; i++) {
+                        var funval = "callActivity('" +
+                            response.body[i].activityId +
+                            "','" +
+                            response.body[i].activity +
+                            "')";
+                        if (activity == response.body[i].activityId) {
+                            act = act +
+                                '<a href="javascript:void(0)" class="active" id="' +
+                                response.body[i].activityId +
+                                '" value="' +
+                                response.body[i].activity +
+                                '" onclick="' +
+                                funval +
+                                '">' +
+                                response.body[i].name +
+                                '</a>';
+                        } else {
+                            act = act +
+                                '<a href="javascript:void(0)" id="' +
+                                response.body[i].activityId +
+                                '" value="' +
+                                response.body[i].activity +
+                                '" onclick="' +
+                                funval +
+                                '">' +
+                                response.body[i].name +
+                                '</a>';
+                        }
+
+                    }
+                    
+                    $("#side_bar_menu").html(act);
+                }
+
+            },
+            error: function(data) {
+                console.log(data)
+
+            }
+        });
+    }
+
+
+});
+
+function callActivity(id, url) {
+	var textValue = $("#"+id).text();
+    sessionStorage.setItem('activity', id);
+    sessionStorage.setItem('textValue', textValue);
+    window.location.href = url;
+}
+
+function setModule(moduleId) {
+    sessionStorage.setItem('module', moduleId);
+    sessionStorage.setItem('function', $("#fun_" + moduleId).val());
+    sessionStorage.setItem('activity', $("#act_" + moduleId).val());
+    sessionStorage.setItem('moduleName', $("#" + moduleId).text());
+
+    window.location.href = "/index-get-function-list/" + moduleId;
+
+}
+
+function goToHome() {
+	 window.location.href = "/index";
+}
+</script>
+
+</head>
+
+<div class="header">
+	<div class="container-fluid">
+		<div class="d-flex">
+			<!-- <div class="col-lg-1"> -->
+			<div class="logo">
+				<a th:href="${'/'+session.DASHBOARD}"> <img
+					src="../assets/images/login_img/logo.png" alt="" class="img-fluid" />
+				</a>
+			</div>
+			<nav class="navbar top-navbar navbar-light px-3">
+				<a class="btn border-0" id="menu-btn"><i class="ti ti-menu"></i></a>
+			</nav>
+
+
+
+
+			<div class="headermid">
+				<nav class="navbar navbar-expand-lg navbar-light">
+
+
+					<button class="navbar-toggler" type="button"
+						data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+						aria-controls="navbarSupportedContent" aria-expanded="false"
+						aria-label="Toggle navigation">
+						<i class="ti ti-more moreicon"></i>
+					</button>
+					<div class="collapse navbar-collapse" id="navbarSupportedContent">
+
+
+						<input type="hidden" id="dateFormat"
+							th:value="${session.DATEFORMAT_JS}" /> <input type="hidden"
+							id="moduleId" th:value="${session.moduleId}" />
+
+
+						<ul class="navbar-nav me-auto mb-2 mb-lg-0"
+							id="configuration_sidebar_content">
+						</ul>
+
+
+					</div>
+
+				</nav>
+
+				<!-- <nav class="nav-menu d-none d-lg-block align-items-stretch">
+						<input type="hidden" id="dateFormat"
+							th:value="${session.DATEFORMAT_JS}" /> <input type="hidden"
+							id="moduleId" th:value="${session.moduleId}" />
+						<ul class="tabs" id="configuration_sidebar_content">
+						</ul>
+					</nav> -->
+			</div>
+
+			<div class="headerright">
+				<div id="moduleName" class="module_name"></div>
+				<div class="logo-org">
+					<a th:href="${'/'+session.DASHBOARD}"> <img
+						th:src="${session.ORGANIZATION_LOGO}" alt="" class="img-fluid" />
+					</a>
+				</div>
+				<div class="dropdown">
+					<button type="button" class="btn dropdown-toggle" data-bs-toggle="dropdown" id="dropdownMenuLink" role="button" aria-expanded="false" data-bs-offset="50,0">
+					<!--<button type="button" class="btn dropdown-toggle" data-bs-toggle="dropdown" id="dropdownMenuLink">-->
+						<i class="ti-settings"></i>
+					</button>
+					<ul class="dropdown-menu" aria-labelledby="dropdownMenuLink" style="overflow-x: hidden; overflow-y: auto; max-height: 90vh;">
+					<!--<ul class="dropdown-menu" aria-labelledby="dropdownMenuLink">-->
+						<li><a class="dropdown-item"
+							th:each="module,abm : ${session.MENU}" href="javascript:void(0)"
+							onClick="setModule(this.id)" th:id="${module.moduleId}"><i
+								th:class="${module.moduleLogoName}"></i> <span
+								th:text="${module.name}"></span> <input type="hidden"
+								th:id="'act_'+${module.moduleId}"
+								th:value="${module.activityId}"> <input type="hidden"
+								th:id="'fun_'+${module.moduleId}"
+								th:value="${module.functionId}"> </a></li>
+
+					</ul>
+				</div>
+				<!-- <div class="dropdown">						
+						<div class="headicon sidebar-toggle" id="dropdownMenuLink"
+							data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+							<i class="ti-settings"></i>
+						</div>
+						<div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+							<a class="dropdown-item" th:each="module,abm : ${session.MENU}"
+								href="javascript:void(0)" onClick="setModule(this.id)"
+								th:id="${module.moduleId}"><i
+								th:class="${module.moduleLogoName}"></i> <span
+								th:text="${module.name}"></span> <input type="hidden"
+								th:id="'act_'+${module.moduleId}"
+								th:value="${module.activityId}"> <input type="hidden"
+								th:id="'fun_'+${module.moduleId}"
+								th:value="${module.functionId}"> </a>
+
+						</div>
+				</div> -->
+
+				<!-- <div class="dropdown">						
+						<div class="headicon sidebar-toggle" id="dropdownMenuLink3"
+							data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+							<i class="ti-user"></i>
+							<div style="position: absolute; z-index: 3; background: #e5e5e5; color: #090; padding: 0px 5px; border-radius: 15px; top:0px; right:0px; font-size: 10px;">3</div>
+						</div>
+						<div class="dropdown-menu" aria-labelledby="dropdownMenuLink3">
+							    <a class="dropdown-item" href="#"><i class="ti-lock"></i>Lock Screen</a> 
+								<a class="dropdown-item" href="#"><i class="ti-email"></i> Profile</a> 
+								<a class="dropdown-item" href="/notification"><i class="ti-power-off"></i>Notification</a> 
+								<a class="dropdown-item" href="/logout"><i class="ti-power-off"></i> Log Out</a>
+						</div>
+				   </div> -->
+				<div class="dropdown my-auto1 mt-1">
+					<button type="button" class="btn img-btn" data-bs-toggle="dropdown"
+						th:attr="title=${session.USER_NAME}">
+						<i class="ti-user"
+							th:classappend="${session.PROFILE_IMAGE}?(${session.PROFILE_IMAGE} == '' ? blank:d-none): is-null"></i>
+						<img th:attr="'src'=${session.PROFILE_IMAGE}" alt="User Image"
+							th:classappend="${session.PROFILE_IMAGE}?(${session.PROFILE_IMAGE} == '' ? d-none:not-blank):d-none">
+					</button>
+
+					<ul class="dropdown-menu custom-user-menu">
+						<!-- 					    <li><a class="dropdown-item" href="#"><i class="ti-lock"></i>Lock Screen</a> </li>
+					    <li><a class="dropdown-item" href="#"><i class="ti-email"></i> Profile</a></li>
+					    <li><a class="dropdown-item" href="/notification"><i class="ti-power-off"></i>Notification</a> </li> -->
+
+						<!-- Author: Sandeep Saurav Das | 25.06.2024 -->
+						<!-- SO new profile menu -->
+						<li>
+							<div class="row g-3 row cols-1">
+								<div class="col">
+									<div class="card m-0 bg-transparent">
+										<div class="card-header m-0 bg-origroup">
+
+											<svg class="d-none" version="1.1"
+												xmlns="http://www.w3.org/2000/svg"
+												xmlns:xlink="http://www.w3.org/1999/xlink">
+                          <symbol id="ti--user" viewBox="0 0 17 17">
+                            <g>
+												<path
+													d="M17 16.488c-0.063-2.687-2.778-4.999-6.521-5.609v-1.374c0.492-0.473 0.842-1.207 1.071-1.833 0.332-0.166 0.624-0.536 0.794-1.033 0.238-0.688 0.146-1.323-0.206-1.629 0.028-0.238 0.046-0.481 0.015-0.723-0.079-0.663 0.065-1.038 0.194-1.368 0.106-0.277 0.229-0.591 0.106-0.945-0.442-1.273-1.727-1.974-3.618-1.974l-0.264 0.005c-1.313 0.047-1.707 0.6-1.971 1.115-0.033 0.062-0.077 0.146-0.077 0.151-1.712 0.153-1.697 1.569-1.684 2.707l0.003 0.369c0 0.205 0.009 0.419 0.026 0.639-0.425 0.3-0.504 1.005-0.179 1.737 0.185 0.415 0.452 0.729 0.749 0.892 0.243 0.674 0.625 1.47 1.179 1.965v1.283c-3.798 0.589-6.554 2.907-6.617 5.625l-0.012 0.512h17.023l-0.011-0.512zM1.054 16c0.392-2.094 2.859-3.821 6.122-4.204l0.441-0.052v-2.666l-0.216-0.15c-0.393-0.272-0.791-0.947-1.090-1.851l-0.083-0.281-0.294-0.051c-0.053-0.019-0.208-0.153-0.33-0.428-0.075-0.168-0.104-0.312-0.112-0.415l0.51 0.143-0.096-0.749c-0.042-0.33-0.064-0.651-0.064-0.95l-0.003-0.38c-0.015-1.341 0.051-1.634 0.773-1.699 0.545-0.048 0.752-0.449 0.876-0.689 0.15-0.292 0.28-0.543 1.12-0.574l0.227-0.004c0.829 0 2.279 0.169 2.669 1.282 0 0.043-0.052 0.177-0.090 0.275-0.145 0.374-0.364 0.939-0.254 1.853 0.024 0.188-0.007 0.424-0.040 0.675l-0.089 0.805 0.441-0.048c0.008 0.104-0.004 0.269-0.075 0.472-0.097 0.289-0.242 0.438-0.237 0.454h-0.36l-0.114 0.342c-0.283 0.853-0.65 1.497-1.009 1.768l-0.198 0.15v2.726l0.438 0.055c3.211 0.401 5.641 2.123 6.030 4.192h-14.893z"
+													fill="#000000"></path></g>
+                          </symbol>
+                        </svg>
+
+											<svg class="bd-placeholder-img card-img-top" width="100%"
+												height="100%" xmlns="http://www.w3.org/2000/svg" role="img"
+												preserveAspectRatio="xMidYMid slice">
+                          <defs>
+                            <pattern id="imagePlaceholder" x="0%" y="0%"
+													height="100%" width="100%" viewBox="0 0 100 100">
+                              <image
+													th:attr="x=${thumbx},'xlink:href'=${session.PROFILE_IMAGE}"
+													width="100" height="100"
+													th:classappend="${session.PROFILE_IMAGE}?(${session.PROFILE_IMAGE} == '' ? d-none:not-blank):d-none" />
+                              <use href="#ti--user" x="0" y="15"
+													width="100" height="65"
+													th:classappend="${session.PROFILE_IMAGE}?(${session.PROFILE_IMAGE} == '' ? blank:d-none): is-null"></use>
+                            </pattern>
+                          </defs>
+                          <circle r="45" cx="50%" cy="50%"
+													fill="#aeaeae" />
+                          <circle r="45" cx="50%" cy="50%"
+													fill="url(#imagePlaceholder)" />
+                          <title th:text="${session.USER_NAME}">User Name</title>
+                        </svg>
+
+										</div>
+										<div class="card-body mt-5 mb-3">
+											<div class="row g-0 row-cols-1 text-center">
+												<div class="col">
+													<h6 class="m-0" th:text="${session.USER_NAME}">User
+														Name</h6>
+												</div>
+												<div class="col">
+													<div class="row g-1 row-cols-auto justify-content-center">
+														<div class="col">
+															<i class="ti-briefcase"></i>
+														</div>
+														<div class="col">
+															<p class="m-0">
+																<small th:text="${session.USER_ID}">User ID</small>
+															</p>
+														</div>
+													</div>
+													<div class="row g-1 row-cols-auto justify-content-center">
+														<div class="col">
+															<i class="ti-home"></i>
+														</div>
+														<div class="col">
+															<p class="m-0">
+																<small onclick="goToHome()">Home</small>
+															</p>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<div class="card-footer bg-transparent p-0">
+											<a class="dropdown-item" href="/logout"> <span
+												class="row g-1 row-cols-auto justify-content-center">
+													<span class="col"><i
+														class="ti-power-off p-0 text-dark"></i></span> <span class="col"><span
+														class="m-0"><small>Log Out</small></span></span>
+											</span>
+											</a>
+										</div>
+									</div>
+								</div>
+							</div>
+						</li>
+						<!-- EO new profile menu -->
+
+						<!--<li><a class="dropdown-item" href="/logout"><i class="ti-power-off"></i> Log Out</a> </li>-->
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+</html>

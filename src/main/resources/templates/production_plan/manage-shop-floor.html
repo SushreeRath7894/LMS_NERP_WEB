@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+
+
+<head>
+<link rel="stylesheet" href="../assets/css/extend/slimselect.min.css">
+<!-- ck editor slim selector CDN -->
+<script
+	src="https://cdnjs.cloudflare.com/ajax/libs/slim-select/1.27.0/slimselect.min.js"></script>
+<!-- <script
+	src="https://cdnjs.cloudflare.com/ajax/libs/slim-select/1.27.0/slimselect.css"></script> -->
+<script
+	src="https://cdnjs.cloudflare.com/ajax/libs/slim-select/1.27.0/slimselect.js"></script>
+<!-- <script
+	src="https://cdnjs.cloudflare.com/ajax/libs/slim-select/1.27.0/slimselect.min.css"></script> -->
+<script
+	src="https://cdnjs.cloudflare.com/ajax/libs/slim-select/1.27.0/slimselect.min.mjs"></script>
+<script
+	src="https://cdn.jsdelivr.net/npm/slim-select/dist/slimselect.min.css"></script>
+
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+/* .form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+} */
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+
+
+
+.sugg-cls ul {
+	height: 150px;
+	overflow-x: scroll;
+	position: relative;
+}
+.custom-numeric-cell {
+	border: none;
+	border-bottom: 1px solid #ddd;
+	border-radius: 2px;
+	border-color: #cdcdcd !important;
+	background-color: #f5f5f5;
+	padding: 10px;
+	font-size: 12px;
+	color: #333;
+	transition: border-color 0.3s ease-in-out; 
+	width: 100%;
+	height: 100%;
+}
+.custom-color-column {
+	background-color: #f5f5f5;
+	color: #333;
+	border-color: #cdcdcd !important;
+}
+</style>
+
+<script type="text/javascript">
+var autocomplete;
+	$(document).ready(function() {
+		
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		var rowData = [];
+		gridOptions.api.setRowData(rowData);
+		view();
+		
+			
+		var gridDiv = document.querySelector('#activity');
+		new agGrid.Grid(gridDiv, activityOptions);
+		 activityOptions.api.setRowData();
+		 var viewloggridDiv = document.querySelector('#viewloggrid');
+			new agGrid.Grid(viewloggridDiv, viewloggridOptions);
+			viewloggridOptions.api.setRowData();
+		$('#reqDltBtn').attr('disabled', true);
+		$('#assignBtn').attr('disabled', true);
+		$('#deleteChild').attr('disabled', true);
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+		$('.collapse').on('hide.bs.collapse', function() {
+			$(this).siblings('.panel-heading').removeClass('active');
+		});
+		$("#newBtn").click(function() {
+
+		})
+	
+		
+		
+
+
+var dateFormat = localStorage.getItem("dateFormat");
+		
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#DateCalendar3").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+			datepicker : true,
+			scrollMonth : false,
+		}).on("change", function() {
+			$('#pdate').val($(this).val());
+			getShiftWiseMcDtls();
+		})
+
+		$('#pdate').blur(function() {
+			$("#DateCalendar3").val($(this).val());
+		})
+		
+		
+		
+		$("#fromDateCalender").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+			datepicker : true,
+			scrollMonth : false,
+		}).on("change", function() {
+			$('#filterFromDate').val($(this).val());
+			calculateDuration();
+		})
+
+		$('#filterFromDate').blur(function() {
+			$("#fromDateCalender").val($(this).val());
+			
+		})
+		
+		
+		
+		$("#toDateCalender").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+			datepicker : true,
+			scrollMonth : false,
+		}).on("change", function() {
+			$('#filterToDate').val($(this).val());
+			calculateDuration();
+		})
+
+		$('#filterToDate').blur(function() {
+			$("#toDateCalender").val($(this).val());
+			
+		})
+		
+		$("#fromDateCalendarTime").datetimepicker({
+		 format: 'H:i',
+		    closeOnDateSelect: false,
+		    timepicker: true,
+		    datepicker: false,
+		    step: 1,
+		    formatTime: 'H:i'
+	}).on("change", function() {
+		$('#fromTime').val($(this).val());
+		calculateDuration();
+	})
+
+	$('#fromTime').blur(function() {
+		$("#fromDateCalendarTime").val($(this).val());
+		
+	})
+	
+	$("#toDateCalendarTime").datetimepicker({
+		 format: 'H:i',
+		    closeOnDateSelect: false,
+		    timepicker: true,
+		    datepicker: false,
+		    step: 1,
+		    formatTime: 'H:i'
+	}).on("change", function() {
+		$('#toTime').val($(this).val());
+		calculateDuration();
+	})
+
+	$('#toTime').blur(function() {
+		$("#toDateCalendarTime").val($(this).val());
+	})
+		
+
+
+
+	});
+	
+	
+	function view(){
+		$(".loader").show();
+		agGrid.simpleHttpRequest({
+			url : "manage-shop-floor-view"
+		}).then(function(data) {
+			$(".loader").hide();
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.viewShopFloor;
+			var len = allData.length;
+			gridOptions.api.setRowData(allData);
+
+			var totalRowCount = gridOptions.api.getDisplayedRowCount();
+			$('#totalReq').find('span').html(totalRowCount);
+			
+		}); 
+	}
+	
+	/* -------------------search bar for mygrid------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+
+		var totalRowCount = gridOptions.api.getDisplayedRowCount();
+		console.log("totalRowCount>>",totalRowCount);
+		$('#totalReq').find('span').html(totalRowCount);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+		var totalRowCount = gridOptions.api.getDisplayedRowCount();
+		console.log("totalRowCount>>",totalRowCount);
+		$('#totalReq').find('span').html(totalRowCount);
+	}
+	var columnDefs = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true
+
+		},
+		{
+			headerName : 'Shop Floor Id',
+			width : 150,
+			field : "floorId",
+				cellRenderer : function(params) {
+				return '<a id="registerId" onclick=editData("'
+				+params.data.floorId + '","' + params.data.approvestatus
+				+ '") href="javascript:void(0)"><i class="bi bi-pencil-square"></i> '
+				+ params.data.floorId + '</a>';
+
+			}
+
+		}, {
+			headerName : 'Date',
+			field : "date",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		}, {
+			headerName : 'Shift',
+			field : "shift",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		}, {
+			headerName : 'Remark',
+			field : "remark",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		},  {
+			headerName : 'Created By',
+			field : "createdBy",
+			cellStyle : {
+				textAlign : 'center'
+			},
+		}, {
+		
+			headerName : 'Approve Status',
+			field : "approvestatus",
+			cellStyle : {
+				textAlign : 'center'
+			},cellRenderer : function(params) {
+				if (params.data.approvestatus =="Approved") { 
+					return '<div style="color:#0642f5">'+params.data.approvestatus+'</div>';
+				}else {
+					return '<div style="color:#a9a9a9">'+params.data.approvestatus+'</div>';
+				}
+				
+
+			}
+		},  {
+			headerName : 'Approved By',
+			field : "approveBy",
+			cellStyle : {
+				textAlign : 'center'
+			},
+		}];
+
+// let the grid know which columns and what data to use
+var gridOptions = {
+	columnDefs : columnDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 190
+	},
+	onSelectionChanged : onSelectionChanged,
+};
+//function for row select parents
+var id = "";
+var approvestatus="";
+function onSelectionChanged() {
+	
+	var selectedNodes = gridOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	 id= selectedData.map(node => node.pcroId);
+	 approvestatus=selectedData.map(node => node.approvestatus);
+	
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+	if (rowCount > 0) {
+		if(approvestatus=='Approved'){
+			$('#reqDltBtn').attr("disabled", true);
+			$('#assignBtn').attr("disabled", true);
+			$('#newBtn').attr('disabled', false);
+		}else{
+		$('#newBtn').attr('disabled', true);
+		$('#reqDltBtn').attr("disabled", false);
+		$('#assignBtn').attr("disabled", false);
+		}
+	}else {
+		$('#reqDltBtn').attr("disabled", true);
+		$('#assignBtn').attr("disabled", true);
+		$('#newBtn').attr('disabled', false);
+	}
+}
+// for activity table
+
+var activityDefs = [
+	{
+		headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		width : 20
+	},
+	{
+		headerName : "SlNo",
+		field : "slNo",
+		width : 80,
+		
+	},
+	{
+		headerName : "M/C Id",
+		field : "mcId",
+		hide : true,
+		
+	},{
+		headerName : "M/C No",
+		field : "mcName",
+		
+		
+	},{
+		headerName : "Item Code",
+		field : "sku",
+	
+		
+	},{
+		headerName : "Item Name",
+		field : "itemName",
+		width : 200,
+		
+	},{
+		headerName : "Pouch Reading",
+		field : "pouchReading",
+		editable:true,
+		cellClass: 'custom-color-column',
+		width : 180,
+		cellEditor: NumericCellEditor ,
+	},{
+		headerName : "Trail",
+		field : "trail",
+		editable:true,
+		cellClass: 'custom-color-column',
+		width : 180,
+		cellEditor: NumericCellEditor ,
+	},{
+		headerName : "Leaker As Per KG/p",
+		field : "leaker",
+		editable:true,
+		cellClass: 'custom-color-column',
+		width : 180,
+		cellEditor: NumericCellEditor ,
+	},{
+		headerName : "Damage",
+		field : "damage",
+		editable:true,
+		cellClass: 'custom-color-column',
+		width : 180,
+		cellEditor: NumericCellEditor ,
+	},{
+		headerName : "Break Down Log",
+		field : "viewLog",
+		cellStyle : {
+			textAlign : 'center'
+		},
+		cellRenderer : function(params) {
+			if(params.data.bdDuration == "" || params.data.bdDuration == null){
+				return 'No Log';
+			}else{
+				return '<a  onclick=viewLog("'
+				+ encodeURIComponent(JSON.stringify(params.value))
+				+ '") href="javascript:void(0)"><i class="bi bi-view-stacked"> View Log</i></a>';
+			}
+		} 
+	},{
+		headerName : "Break Down Duration (HH:mm)",
+		field : "bdDuration",
+		width : 290,
+		cellStyle : {
+			textAlign : 'center'
+		},
+		
+	},{
+		headerName : 'PDF',
+		field : "downloaddoc",
+		cellStyle : {
+			textAlign : 'center'
+		},
+		cellRenderer : function(params) {
+			if(params.data.bdDuration == "" || params.data.bdDuration == null){
+				return 'No Log';
+			}else{
+				return '<a  onclick=reportDownload("'
+				+params.data.mcId+'","'+params.data.sku
+				+ '") href="javascript:void(0)"><i class="bi bi-cloud-download">Download</i></a>';
+			}
+		}
+	},];
+
+
+//let the grid know which columns and what data to use product table
+var activityOptions = {
+	columnDefs : activityDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		singleClickEdit: true,
+		width : 120,
+		stopEditingWhenCellsLoseFocus: true,
+	},
+	getRowNodeId : function(data) {
+		return data.slNo;
+	},
+	onSelectionChanged : onSelectionChangedItem,
+};
+
+
+function reportDownload(mcNo,sku) {
+	var id=$("#floorbox").text();
+	var logo=$("#logoSession").val();
+	console.log(logo)
+	window.open("/production/manage-shop-floor-pdf-downloads?id="+window.btoa(id)+"&mcNo="+window.btoa(mcNo)+"&sku="
+			+window.btoa(sku)+"&logo="+window.btoa(logo), '_blank');  
+}
+//number cell editor
+function NumericCellEditor() {}
+NumericCellEditor.prototype.init = function(params) {
+    this.eInput = document.createElement('input');
+    this.eInput.type = 'number';
+    this.eInput.value = params.value || '';
+    this.eInput.classList.add('custom-numeric-cell'); // Optional: To match ag-grid styling
+    
+    this.eInput.addEventListener('input', function() {
+        if (this.value < 0) {
+            this.value = '0'; // Clear the input if a negative number is entered
+        }
+    });
+};
+NumericCellEditor.prototype.getGui = function() {
+    return this.eInput;
+};
+NumericCellEditor.prototype.afterGuiAttached = function() {
+    this.eInput.focus();
+    this.eInput.select();
+};
+NumericCellEditor.prototype.getValue = function() {
+    return this.eInput.value;
+};
+NumericCellEditor.prototype.destroy = function() {
+};
+NumericCellEditor.prototype.isPopup = function() {
+    return false;
+};
+
+function onSelectionChangedItem() {
+	var selectedRows = activityOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(selectedRow, index) {
+		rowCount = rowCount + 1;
+	});
+	var selectedNodes = activityOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	 var approvestatus= selectedData.map(node => node.approvestatus);
+	if (rowCount > 0) {
+		if(aproveSts == 'Approved'){
+			$('#breakDownBtn').attr('disabled', true);
+			$("#messageParagraph").text("After Approval Modification Not Possible!");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+		}else{
+			$('#breakDownBtn').show();
+			$('#breakDownBtn').attr('disabled', false);
+		}
+		
+		
+	} else {
+		$('#breakDownBtn').show();
+		$('#breakDownBtn').attr('disabled', true);
+	}
+
+}
+
+function viewLog(value){
+	$('#breakDownViewLog').modal('show');
+	
+	const data = JSON.parse(decodeURIComponent(value));
+	
+	viewloggridOptions.api.setRowData(data); 
+}
+
+
+var viweLogDefs = [
+	/* {
+		headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		width : 20
+	}, */
+	
+	{
+		headerName : "M/C No",
+		field : "mcName",
+		
+		
+	},{
+		headerName : "Sku",
+		field : "sku",
+	
+		
+	},{
+		headerName : "From Date",
+		field : "fromDt",
+		cellStyle : {
+			textAlign : 'center'
+		},
+		
+		width: 150
+		
+	},{
+		headerName : "From Time (HH:mm)",
+		field : "fromTime",
+		cellStyle : {
+			textAlign : 'center'
+		},
+		width: 180
+		
+	},{
+		headerName : "To Date",
+		field : "toDt",
+		cellStyle : {
+			textAlign : 'center'
+		},
+		width: 150
+		
+	},{
+		headerName : "To Time (HH:mm)",
+		field : "toTime",
+		cellStyle : {
+			textAlign : 'center'
+		},
+		
+		width: 180
+		
+	},{
+		headerName : "Duration (HH:mm)",
+		field : "duration",
+		cellStyle : {
+			textAlign : 'center'
+		},
+		width: 180
+		
+		
+	},{
+		headerName : "Remarks",
+		field : "mcRemark",
+		cellStyle : {
+			textAlign : 'center'
+		},
+		width: 180
+		
+		
+	},];
+
+
+//let the grid know which columns and what data to use product table
+var viewloggridOptions = {
+	columnDefs : viweLogDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		singleClickEdit: true,
+		stopEditingWhenCellsLoseFocus: true,
+		width: 100
+	},
+	
+};
+
+function changeDateFormat(inputDate){  // expects Y-m-d
+    var splitDate = inputDate.split('-');
+    if(splitDate.count == 0){
+        return null;
+    }
+    var year = splitDate[0];
+    var month = splitDate[1];
+    var day = splitDate[2]; 
+    return day + '-' + month + '-' + year;
+}
+//parents new plan
+function newPlan() {
+	var date = (new Date()).toISOString().split('T')[0];
+	var newDate = changeDateFormat(date);
+	$("#pdate").val(newDate);
+	$("#myGrid").hide();
+	$("#reqTable").hide();
+	$(".btn-hs").show();
+	$("#btndiv").hide();
+	$("#listdiv").hide();
+	$("#totalReq").hide();
+	$("#searchRowDiv").hide();
+	$("#ttbtn").hide();
+	$("#demo").show();
+	$("#deleteChild").attr('disabled', true);
+	$("#newchild").attr('disabled', false);
+	$('#dltProduct').attr('disabled', true);
+	$("#shift").attr('disabled',false);
+	$('#breakDownBtn').hide();
+	$('#breakDownBtn').attr('disabled', true);
+	
+
+}
+//function for cancel
+function cancel() {
+
+	 $(".formValidation").remove();
+		$("#totalReq").show();
+		$("#searchRowDiv").show();
+		$(".btn-hs").show();
+		$("#myGrid").show();
+		$("#demo").hide();
+		$("#reqDltBtn").attr('disabled', true);
+		$("#assignBtn").attr('disabled', true);
+		$("#newBtn").attr('disabled', false);
+		view();
+		$("#pdate").val("");
+		$("#shift").val("");
+		$("#desc").val('');
+		$("#floorbox").text('');
+		$("#floorId").val('');
+		
+		activityOptions.api.setRowData();
+	}
+/* function validFormData() {
+	var allValid = true;
+	if (!validationUpdated("Date can't be Left Blank", 'pdate'))
+		allValid = false;
+	if (!validationUpdated("Shift can't be Left Blank",
+			'shift'))
+		allValid = false;
+	return allValid;
+} */
+
+ 
+function masterSaveData() {
+    $(".formValidation").remove();
+    activityOptions.api.stopEditing();
+
+    var valid= true;
+	var datas = [];
+	var item={};
+	
+	item.floorId = $("#floorbox").text();
+    item.date = $("#pdate").val();
+    item.shift = $("#shift").val();
+    item.remark = $("#desc").val();
+    
+    if (item.shift == null || item.shift == "") {
+    	valid = validationUpdated("Select Shift", "shift");
+	}
+
+		var data = [];
+		activityOptions.api.forEachNode(function(rowNode, indrx) {
+				var obj1 = rowNode.data;
+				data.push(obj1);
+		});
+		item.itemDtls = data;
+	
+		//valid= true;
+		 if(valid){
+	        	datas.push(item);
+	        	console.log("datas>>>>",datas);
+	         }
+
+	if (valid) {
+		savePlanDetails(item);
+		}
+
+}
+
+
+function savePlanDetails(item) {
+	$(".loader").show();
+	
+		$.ajax({
+			type : "POST",
+			url : "manage-shop-floor-add",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(item),
+			success : function(response) {
+				$(".loader").hide();
+				 $("#totalReq").show();
+				 $("#searchRowDiv").show();
+				 $("#ttbtn").show();
+				 console.log("response===",response)
+				 if (response.code == "success") {
+					$("#messageParagraph").text("Data Saved Successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					cancel();
+				} else {
+					$("#messageParagraph").text("Something Went Wrong");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+				}
+			},
+			error : function(data) {
+				$('.loader').hide();
+			}
+		});
+	}
+	
+var aproveSts = "";
+	//editing the  master parent table
+	function editData(id,aprSts) {
+		//cancel();
+		$("#searchRowDiv").hide();
+		$("#myGrid").hide();
+		$("#reqTable").hide();
+		$("#shift").attr('disabled',true);
+		$(".btn-hs").hide();
+		$('#breakDownBtn').show();
+		$('#breakDownBtn').attr('disabled', true);
+		aproveSts = aprSts
+		if(aprSts == 'Approved'){
+			$("#save").hide();
+		}else{
+			$("#save").show();
+		}
+		
+		$(".loader").show();
+		agGrid.simpleHttpRequest(
+				{
+					url : 'manage-shop-floor-edit?id='+ id 
+				}).then(function(data) {
+					$(".loader").hide();
+					console.log("view----",data.body);
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.view;
+					
+					
+					$("#myGrid").hide();
+					$("#demo").show();
+					
+					//var rowCount = activityOptions.api.getDisplayedRowCount();
+					
+					$("#floorbox").html(allData[0].floorId);
+					$("#floorId").val(allData[0].floorId);
+					$("#pdate").val(allData[0].date);
+					$("#shift").val(allData[0].shift);
+					$("#desc").val(allData[0].remark);
+					$("#tdiv").hide();
+					$("#searchRowDiv").hide();
+					$("#totalReq").hide();
+					$("#ttbtn").hide(); 
+					
+					
+					activityOptions.api.setRowData(allData);
+					
+				});
+		
+	
+	}
+	
+	
+// function for delete qc  
+function deleteOnclick() {
+	var selectedRows = gridOptions.api.getSelectedRows();
+					 var id=selectedRows[0].floorId;
+					$.ajax({
+						type : "GET",
+						url : "manage-shop-floor-delete?id=" + id,
+						async : false,
+						success : function(response) {
+
+							if (response.code == "success") {
+								
+								$("#messageParagraph").text("Deleted Successfully");
+								$("#msgOkModal").removeClass("btn3");
+								$("#msgOkModal").addClass("btn1");
+								$("#msgModal").modal('show');
+								$('#delete').modal('hide');
+								view();
+								 $("#assignBtn").attr('disabled' , true);
+								 $("#reqDltBtn").attr('disabled' , true);
+								
+							}
+
+						},
+					});
+	
+
+}
+
+
+
+	function deleteFun() {
+		$('#delete').modal('show');
+	}
+
+	function deleteDetails() {
+		$('#deleteDetails').modal('show');
+	}
+
+	function cancelModalBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+	}
+//function for download
+function downloadDetails() { 
+	var dataset = [];
+	gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		dataset.push(rowNode.data);
+	});
+    gridOptions.api.exportDataAsCsv(dataset);
+}
+
+
+
+ 
+      
+	function approveFun(){
+		$('#approveModal').modal('show');
+	}
+	function approveResultbtn(){
+		$('#approveModal').modal('hide');
+	}
+	
+	function approveResult(){
+      var selectedRows = gridOptions.api.getSelectedRows();
+			 var id=selectedRows[0].floorId;
+			$.ajax({
+				type : "GET",
+				url : "manage-shop-floor-approve?id=" + id,
+				async : false,
+				success : function(response) {
+
+					if (response.code == "success") {
+						view();
+						$("#messageParagraph").text("Approved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						 $('#approveModal').modal('hide');
+						 
+						 $("#assignBtn").attr('disabled' , true);
+						 $("#reqDltBtn").attr('disabled' , true);
+						 $("#newBtn").attr('disabled' , false);
+						
+					}
+
+				},
+			});
+		
+	}
+	
+
+
+	
+	function getShiftWiseMcDtls(){
+		
+		var shift = $("#shift").val();
+		var date = $("#pdate").val();
+		var datas = [];
+		$('#breakDownBtn').attr('disabled', true);
+		if(shift == "" || shift == null || shift == 'null'){
+			$('#breakDownBtn').hide();
+			activityOptions.api.setRowData(datas);
+		}
+		
+		/* var datas = [];
+		  var item = {}; */
+		  if(shift){
+			  agGrid.simpleHttpRequest({
+					url : 'manage-shop-floor-dtls?date=' + date + '&shift=' + shift
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData
+					console.log("allData>>>>>>",allData);
+					if(allData == "" || allData == null){
+						$('#breakDownBtn').hide();
+						$("#messageParagraph").text("No Data Avalable!");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+					}else{
+						if(allData[0].isExistFlag == "" || allData[0].isExistFlag == null){
+							$('#breakDownBtn').show();
+							activityOptions.api.setRowData(allData);
+						}else{
+							$('#breakDownBtn').hide();
+							activityOptions.api.setRowData("");
+							$("#messageParagraph").html("<span>Log Already Exist. <b>(ID: "+allData[0].isExistFlag+")</b></span>");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+						}
+						
+					}
+					
+					
+				});  
+		  }
+		  
+		
+		
+	} 
+
+	function breakDown(){
+		
+		
+		var selectedRows = activityOptions.api.getSelectedRows();
+
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#breakDownDtlsPopup').modal('show');
+			for (var i = 0; i < selectedRows.length; i++) {
+		        var row = selectedRows[i];
+		        $('#mcNoModal').val(selectedRows[i].mcId);
+				$('#mcNameModal').val(selectedRows[i].mcName);
+				$('#skuModal').val(selectedRows[i].sku);
+				$("#filterFromDate").val('');
+			    $("#fromTime").val('');
+			    $("#filterToDate").val('');
+			   	$("#toTime").val('');
+			    $("#durationModal").val('');;
+			    $("#mcRemark").val('');
+		        
+		    }
+			
+		}else{
+			 $("#messageParagraph").text("Please Select One Row");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+		}
+	}
+	
+	function calculateDuration(){
+		
+		let date1 = $("#filterFromDate").val();
+		let time1 = $("#fromTime").val();
+		let date2 = $("#filterToDate").val();
+		let time2 = $("#toTime").val();
+		
+		if(date1!='' && time1!='' && date2!='' && time2!=''){
+			/* // Combine date and time into a single string
+			let datetime_str1 = `${date1} ${time1}`;
+			let datetime_str2 = `${date2} ${time2}`;
+			
+			// Define the format and parse the datetime strings
+			let datetime_format = 'DD-MM-YYYY HH.mm'; // Using a custom format for parsing */
+			
+			let datetime1 = parseDateTime(date1, time1);
+	        let datetime2 = parseDateTime(date2, time2);
+	        console.log("datetime1>>>>",datetime1);
+	        console.log("datetime2>>>>",datetime2);
+	        
+			
+	        // Calculate the duration in milliseconds
+	        let durationMs = datetime2 - datetime1;
+
+	        // Convert the duration to minutes
+	        let totalMinutes = durationMs / (1000 * 60);
+	        // Calculate hours and minutes
+	        let hours = Math.floor(totalMinutes / 60);
+	        let minutes = Math.floor(totalMinutes % 60);
+
+	        // Display the results
+	        var datetime_str1 = String(hours).padStart(2, '0') + ":" + String(minutes).padStart(2, '0');
+	       $("#durationModal").val(datetime_str1);
+		}
+		
+
+		
+	}
+	 function parseDateTime(date, time) {
+         let [day, month, year] = date.split('-').map(Number);
+         let [hours, minutes] = time.split(':').map(Number);
+         return new Date(year, month - 1, day, hours, minutes);
+     }
+	 
+	 
+	 function addBreakDownData() {
+		    
+		    var valid= true;
+			var datas = [];
+			var item={};
+			var floorIdX = $("#floorbox").text()
+			item.floorId = floorIdX;
+		    item.date = $("#pdate").val();
+		    item.shift = $("#shift").val();
+		    item.remark = $("#desc").val();
+		    item.bdMcId = $("#mcNoModal").val();
+		    item.bdSku = $("#skuModal").val();
+		    item.bdFromDt = $("#filterFromDate").val();
+		    item.bdFromTime = $("#fromTime").val();
+		    item.bdToDt = $("#filterToDate").val();
+		    item.bdToTime = $("#toTime").val();
+		    item.bdDuration = $("#durationModal").val();
+		    item.mcRemark = $("#mcRemark").val();
+		    
+		    if(floorIdX==""){
+		    	var data = [];
+				activityOptions.api.forEachNode(function(rowNode, indrx) {
+						var obj1 = rowNode.data;
+						data.push(obj1);
+				});
+				item.itemDtls = data;
+				datas.push(item);
+		    }
+		
+		
+			if (valid) {
+				
+				console.log("item>>>>>",item);
+				
+				saveDetailsBD(item);
+				
+				}
+			 else {
+				$("#messageParagraph").text(
+				"Please Fill Up The Input Fields First!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+			}
+
+
+		}
+
+
+		function saveDetailsBD(item) {
+			$(".loader").show();
+			
+				$.ajax({
+					type : "POST",
+					url : "manage-shop-floor-add-breakdown",
+					dataType : "json",
+					contentType : "application/json",
+					data : JSON.stringify(item),
+					success : function(response) {
+						$(".loader").hide();
+						
+						 $("#messageParagraph").text(response.message);
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							
+							var jsonData = JSON.parse(response.body);
+							var allData=jsonData.view;
+							var allData1=jsonData.viewLog;
+							
+							$("#myGrid").hide();
+							$("#demo").show();
+							
+							//var rowCount = activityOptions.api.getDisplayedRowCount();
+							
+							$("#floorbox").html(allData[0].floorId);
+							$("#floorId").val(allData[0].floorId);
+							$("#pdate").val(allData[0].date);
+							$("#shift").val(allData[0].shift);
+							$("#desc").val(allData[0].remark);
+							$("#tdiv").hide();
+							$("#searchRowDiv").hide();
+							$("#totalReq").hide();
+							$("#ttbtn").hide(); 
+							
+							
+							activityOptions.api.setRowData(allData);
+							
+							
+							$("#breakDownBtn").attr('disabled' , true);
+							$('#breakDownDtlsPopup').modal('hide');
+						 
+						
+					},
+					error : function(data) {
+						$('.loader').hide();
+					}
+				});
+			}
+	 
+	 
+
+    </script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="d-flex flex-wrap justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalReq">
+									 List(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';cancelBar();"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+								<button class="download-btn" id="download"
+									onclick="downloadDetails()">Download</button>
+								<button class="delete-btn" id="reqDltBtn" onclick="deleteFun()">DELETE</button>
+								<button class="new-btn" id="assignBtn" onclick="approveFun()">APPROVE</button>
+								<button class="new-btn" id="newBtn" onclick="newPlan()">NEW</button>
+							</div>
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" /><input
+							type="hidden" id="logoSession" th:value="${sessionLogo}" />
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innercontent">
+								<div class="innerstickybg">
+									<div class="row">
+
+										<div class="col-md-6">
+											Register: <span id="floorbox"></span>
+										</div>
+
+										<div class="col-md-6" align="right">
+											<button class="cancel-btn" id="cancelBtn" onclick="cancel()">Cancel</button>
+											<button class="approve-btn" id="save"
+												onclick="masterSaveData()">Save</button>
+										</div>
+									</div>
+
+								</div>
+								<div class="row">
+									<input type="hidden" id="floorId">
+
+									<div class="col-lg-3">
+										<div class="form-group calendar_box">
+											<label>Production Date</label> <input type="text" id="pdate"
+												class="form-control" onblur="removeValid(event)" 
+												th:attr="onkeyup=|formatDate('date','${session.DATEFORMAT_JS}')|"
+												readonly> <i class="ti-calendar picker_calendar"
+												id="DateCalendar3"></i>
+										</div>
+									</div>
+
+									<div class="col-md-3">
+										<div class="form-group">
+											<label> Shift </label>
+											<div class="select">
+												<select id="shift" onchange="getShiftWiseMcDtls()">
+													<option value="">Select</option>
+													<option th:each="c:${shiftLists}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select> <span class="focus"></span>
+											</div>
+										</div>
+									</div>
+
+									<!-- <div class="col-md-3">
+										<div class="form-group">
+											<label>Total Manpower</label>
+											<input type="number"
+												id="manpowerNo" class="form-control" autocomplete="off"
+												 onblur="removeValid(event)">
+
+										</div>
+									</div> -->
+
+									<div class="col-md-3">
+										<div class="form-group">
+											<label>Remarks</label>
+											<textarea class="form-control" id="desc"
+												style="line-height: 13px !important;"></textarea>
+
+										</div>
+									</div>
+
+								</div>
+								<div id="main" class="mt-4">
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingOne">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseOne"
+												aria-expanded="false" aria-controls="collapseOne">
+												Details</button>
+										</h2>
+
+										<div id="collapseOne" class="accordion-collapse collapse show"
+											aria-labelledby="headingOne"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+												<div class="row">
+													<div class="row">
+
+														<div class="col-md-4 btn-hs1">
+															<div class="font-design"></div>
+														</div>
+														<div class="col-md-8 butttonsec">
+															<!-- <button class="btn3" id="dltCategory"
+																onclick="deleteCategory()">Delete Category</button>  -->
+															<button class="btn1" id="breakDownBtn"
+																onclick="breakDown()">Break-Down</button>
+
+														</div>
+													</div>
+
+													<div id="activity" style="width: 100%; height: 300px;"
+														class="ag-theme-alpine"></div>
+
+
+												</div>
+											</div>
+										</div>
+
+										
+									</div>
+								</div>
+
+
+							</div>
+						</div>
+
+					</div>
+				</div>
+			</div>
+
+			<div class="modal fade" id="categoryModal">
+				<div class="modal-dialog modal-lg"
+					style="margin-top: 130px; height: 900px; max-width: 600px">
+					<div class="modal-content">
+
+						<!-- 	Modal Header -->
+						<div class="modal-header"></div>
+						<!-- Modal body -->
+						<div class="modal-body">
+
+							<div class="col-md-12" id="shippingInfo">
+								<div class="card-title">
+									<h4>Add New Categories</h4>
+								</div>
+								<div class="row">
+
+									<div class="col-md-6">
+										<div class="form-group">
+											<label>Name</label> <input type="text"
+												class="form-control transparenttxtbox" placeholder=""
+												id="categories" onblur="removeValid(event);">
+										</div>
+									</div>
+									<div class="col-md-6">
+										<div class="form-group">
+											<label>Type</label>
+											<!-- <textarea class="form-control" id="parameterDesc"
+													onblur="removeValid(event);"></textarea> -->
+											<select id="type" onchange="getCategory()">
+												<option value="">--Select--</option>
+												<option value="text">Text</option>
+												<option value="search">Search</option>
+
+											</select> <span class="focus"></span>
+										</div>
+									</div>
+
+								</div>
+
+								<div class="row mt-4">
+									<div class="form-group">
+
+										<button class="delete-btn" id="cancel" onclick="cancelBtn2()">CANCEL</button>
+										<button class="btn1" id="save" onclick="addNewCategories()">SAVE</button>
+
+									</div>
+								</div>
+							</div>
+
+
+
+						</div>
+					</div>
+				</div>
+			</div>
+
+
+			<!-- delete modal start -->
+			<div id="delete" class="modal fade show" aria-modal="true">
+				<div class="modal-dialog modal-confirm">
+					<div class="modal-content">
+						<div class="modal-header flex-column"></div>
+						<div class="modal-body">
+							<p>Do you really want to delete these records? This process
+								cannot be undone.</p>
+						</div>
+						<div class="modal-footer justify-content-center"
+							style="margin-top: 0px;">
+
+							<button type="button" class="cancel-btn" data-bs-dismiss="modal"
+								onclick="cancelModalBtn();">Cancel</button>
+							<button type="button" class="delete-btn"
+								onclick="deleteOnclick()">Delete</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- delete product modal start -->
+			<div id="deleteDetails" class="modal fade show" aria-modal="true">
+				<div class="modal-dialog modal-confirm">
+					<div class="modal-content">
+						<div class="modal-header flex-column"></div>
+						<div class="modal-body">
+							<p>Do you really want to delete these records? This process
+								cannot be undone.</p>
+						</div>
+						<div class="modal-footer justify-content-center"
+							style="margin-top: -30px;">
+
+							<button type="button" class="cancel-btn" data-bs-dismiss="modal"
+								onclick="cancelModalBtn();">Cancel</button>
+							<button type="button" class="delete-btn"
+								onclick="deleteDetailsOnclick()">Delete</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div id="approveModal" class="modal fade show" aria-modal="true">
+				<div class="modal-dialog modal-confirm">
+					<div class="modal-content">
+						<div class="modal-header flex-column"></div>
+						<div class="modal-body">
+							<p>Do you want to approve this data? Once done, you will not be able to make further changes.</p>
+						</div>
+						<div class="modal-footer justify-content-center"
+							>
+							<button type="button" class="cancel-btn"
+								onclick="approveResultbtn()">Cancel</button>
+							<button type="button" class="approve-btn"
+								onclick="approveResult()">Approve</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- alert modal start -->
+			<div id="alert" class="modal fade show" aria-modal="true">
+				<div class="modal-dialog modal-confirm">
+					<div class="modal-content">
+						<div class="modal-header flex-column">
+							<button type="button" class="close" data-bs-dismiss="modal"
+								aria-hidden="true" onclick="cancelModalBtn()">
+								<i class="ti-close modal-close"></i>
+							</button>
+						</div>
+						<div class="modal-body">
+							<p id="textId"></p>
+						</div>
+						<div class="modal-footer justify-content-center"
+							style="margin-top: 0px;">
+
+							<button type="button" class="btn1" data-bs-dismiss="modal">SELECT</button>
+							<button type="button" class="btn3" onclick="deleteOnclick()">Delete</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="modal fade" id="breakDownDtlsPopup">
+				<div class="modal-dialog modal-lg"
+					style="margin-top: 130px; height: 900px; max-width: 500px">
+					<div id="formulaDiv">
+						<div class="modal-content">
+
+							<!-- 	Modal Header -->
+							<div class="modal-header">
+
+								<h6 class="modal-title" style="font-size: 16px" id="empIdModal">
+									<b>Add Break-Down Details: </b><span></span>
+								</h6>
+								<button id="close" type="button" class="btn btn-danger"
+									data-bs-dismiss="modal">X</button>
+
+							</div>
+							<!-- Modal body -->
+							<div class="modal-body">
+
+								<div class="row">
+									<input type="hidden" class="form-control" id="mcNoModal">
+									<div class="form-group col-lg-6">
+										<label>M/C No.</label> <input type="text" class="form-control"
+											id="mcNameModal" readonly>
+									</div>
+
+
+
+									<div class="form-group col-lg-6">
+										<label>Sku</label> <input type="text" class="form-control"
+											id="skuModal" readonly>
+									</div>
+
+
+
+								</div>
+
+
+
+								<div class="row">
+
+									<div class="col-lg-6">
+
+										<label>From Date</label>
+										<div class="form-group calendar_box" id='fdate'>
+											<input type="text" id="filterFromDate" value=""
+												class="form-control"
+												th:attr="onkeyup=|formatDate('filterFromDate','${session.DATEFORMAT_JS}')|"
+												readonly> <i class="ti-calendar picker_calendar"
+												id="fromDateCalender" style="top: 15px; right: 10px;"></i>
+										</div>
+
+									</div>
+									<div class="col-md-6">
+										<div class="form-group calendar_box">
+											<label>From Time</label> <input type="text" id="fromTime"
+												class="form-control" onblur="removeValid(event)"
+												th:attr="onkeyup=|formatDate('fromTime','${session.DATEFORMAT_JS}')|"
+												readonly> <i class="ti-time picker_calendar"
+												id="fromDateCalendarTime"></i>
+										</div>
+									</div>
+								</div>
+								<div class="row">
+
+									<div class="col-lg-6">
+
+										<label>To Date</label>
+										<div class="form-group calendar_box" id='fdate'>
+											<input type="text" id="filterToDate" value=""
+												class="form-control"
+												th:attr="onkeyup=|formatDate('filterToDate','${session.DATEFORMAT_JS}')|"
+												readonly> <i class="ti-calendar picker_calendar"
+												id="toDateCalender" style="top: 15px; right: 10px;"></i>
+										</div>
+
+									</div>
+									<div class="col-md-6">
+										<div class="form-group calendar_box">
+											<label>To Time</label> <input type="text" id="toTime"
+												class="form-control" onblur="removeValid(event)"
+												th:attr="onkeyup=|formatDate('toTime','${session.DATEFORMAT_JS}')|"
+												readonly> <i class="ti-time picker_calendar"
+												id="toDateCalendarTime"></i>
+										</div>
+									</div>
+								</div>
+								<div class="row">
+
+									<div class="form-group col-lg-12">
+										<label>Duration (HH:mm)</label> <input type="text"
+											class="form-control" id="durationModal" readonly>
+									</div>
+									<div class="form-group col-lg-12">
+											<label>Remarks</label>
+											<textarea class="form-control" id="mcRemark"
+												style="line-height: 13px !important;"></textarea>
+									</div>
+								</div>
+
+							</div>
+
+							<div class="modal-footer">
+								<button class="btn3" id="cancel" data-bs-dismiss="modal">CANCEL</button>
+								<button class="btn1" id="save" onclick="addBreakDownData()">SAVE</button>
+							</div>
+						</div>
+					</div>
+
+				</div>
+			</div>
+
+			<div class="modal fade" id="breakDownViewLog">
+				<div class="modal-dialog modal-lg"
+					style="margin-top: 180px; height: 800px; max-width: 1100px">
+					<div id="formulaDiv">
+						<div class="modal-content">
+
+							<!-- 	Modal Header -->
+							<div class="modal-header">
+
+								<h6 class="modal-title" style="font-size: 16px" id="empIdModal">
+									<b>Break-Down Details: </b><span></span>
+								</h6>
+								<button id="close" type="button" class="btn btn-danger"
+									data-bs-dismiss="modal">X</button>
+
+							</div>
+							<!-- Modal body -->
+							<div class="modal-body">
+								<div id="viewloggrid" style="width: 100%; height: 180px;"
+									class="ag-theme-alpine"></div>
+
+
+							</div>
+
+						</div>
+					</div>
+
+				</div>
+			</div>
+
+
+			<!-- delete product modal start -->
+			<div id="deleteCatModel" class="modal fade show" aria-modal="true">
+				<div class="modal-dialog modal-confirm">
+					<div class="modal-content">
+						<div class="modal-header flex-column"></div>
+						<div class="modal-body">
+							<p>Do you really want to delete these category? This process
+								cannot be undone.</p>
+						</div>
+						<div class="modal-footer justify-content-center">
+
+							<button type="button" class="btn1" data-dismiss="modal"
+								onclick="cancelCatModel();">Cancel</button>
+							<button type="button" class="btn3" onclick="deleteCatOnclick()">Delete</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	</div>
+
+</body>
+</html>

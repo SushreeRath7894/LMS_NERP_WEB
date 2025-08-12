@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+
+<style>
+.tr-node-one {
+	padding-top: 12px !important;
+}
+
+.firstnode {
+	color: #676666;
+	border-top: 1px solid transparent !important;
+	border-left: 1px solid transparent !important;
+	border-bottom: 1px solid transparent !important;
+	width: 320px;
+	font-size: 14px;
+	font-weight: 100;
+}
+
+.simple-tree-table-closed .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'FontAwesome';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+	transform: rotate(90deg);
+}
+
+.simple-tree-table-opened .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'FontAwesome';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+}
+
+.simple-tree-table-icon {
+	display: inline-block;
+	width: 1.5em;
+	line-height: 1.5em;
+	margin: 0.1em;
+	background-color: transparent;
+	text-align: center;
+	cursor: pointer;
+}
+</style>
+
+<script type="text/javascript">
+	$(document)
+			.ready(
+					function() {
+
+						$("#assetSave").click(
+								function() {
+									data = {};
+
+									data.assetId = $("#assetId").val();
+									data.assetName = $("#assetName").val();
+									data.assetDesc = $("#assetDesc").val();
+									data.assetStatus = $(
+											"input[name='isActive']:checked")
+											.val();
+
+									$(".formValidation").remove();
+									allValid = true;
+									if (data.assetName == null
+											|| data.assetName == "") {
+										allValid = false;
+										validationModal("Asset Name Required",
+												"assetName");
+									}
+									if (data.assetDesc == null
+											|| data.assetDesc == "") {
+										allValid = false;
+										validationModal(
+												"Asset Description Required",
+												"assetDesc");
+									}
+
+									if (allValid) {
+										$('.loader').show();
+										$("body").removeClass("overlay");
+										submitDemo(data);
+									}
+
+								})
+
+						$("#subAssetSave")
+								.click(
+										function() {
+											data = {};
+
+											data.assetId = $("#subAssetId")
+													.val();
+											data.assetName = $("#subAssetName")
+													.val();
+											data.assetDesc = $("#subAssetDesc")
+													.val();
+											data.assetStatus = $(
+													"input[name='isSubAssetActive']:checked")
+													.val();
+											data.parentId = $("#parentAsset")
+													.val();
+
+											var slno = $("#slnoval").val();
+
+											console.log(data)
+
+											$(".formValidation").remove();
+											allValid1 = true;
+											if (data.assetName == null
+													|| data.assetName == "") {
+												allValid1 = false;
+												validationModal(
+														"Sub-Asset Name Required",
+														"subAssetName");
+											}
+											if (data.assetDesc == null
+													|| data.assetDesc == "") {
+												allValid1 = false;
+												validationModal(
+														"Sub-Asset Description Required",
+														"subAssetDesc");
+											}
+
+											if (allValid1) {
+												$('.loader').show();
+												$("body")
+														.removeClass("overlay");
+												subAssetAdd(data, slno);
+											}
+
+										})
+
+						getAssetList();
+						$("#deleteModalBtnAsset")
+								.click(
+										function() {
+											var data = $("#deleteModalBtnAsset")
+													.attr("value");
+											//var slno = $("#deleteModalBtn").attr("slno");
+											$("#deleteModalBtnAsset").attr("disabled", "disabled");
+if (data) {
+
+$.ajax({
+															type : "POST",
+															url : "asset-classification-delete",
+															dataType : 'json',
+															contentType : 'application/json',
+															data : data,
+															success : function(
+																	response) {
+																if (response.message == "Success") {
+
+																	$(
+																			"#deleteModalBtnAsset")
+																			.removeAttr(
+																					"disabled");
+																	$(
+																			"#"
+																					+ data)
+																			.remove();
+																	cancelModalBtnAsset();
+																	closeAsset();
+																}
+															},
+															error : function(
+																	data) {
+																console
+																		.log(data)
+															}
+														});
+
+											}
+										})
+					})
+	function closeAsset() {
+
+		$("#assetId").val("");
+		$("#assetName").val("");
+		$("#assetDesc").val("");
+		$('#assetStatus').prop('checked', true);
+
+		$("#deleteSlideCat").attr("onclick", "");
+
+		document.getElementById("mySidenavAsset").style.width = "0";
+		document.getElementById("main").style.width = "480px";
+	}
+
+	function openAsset() {
+
+		closeNavAsset();
+		$("#assetId").val("");
+		$("#assetName").val("");
+		$("#assetDesc").val("");
+		$('#assetStatus').prop('checked', true);
+
+		$("#deleteSlideCat").attr("onclick", "");
+
+		document.getElementById("mySidenavAsset").style.cssText = "width: 270px; position: absolute; right:-25px; overflow: hidden;";
+		document.getElementById("main").style.width = "420px";
+	}
+
+	function submitDemo(dataset) {
+		$.ajax({
+			type : "POST",
+			url : "asset-classification-add",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(dataset),
+			success : function(response) {
+				if (response.message == "Success") {
+					console.log(response.body)
+					closeAsset();
+					getAssetList();
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+					$("#messageParagraph").text("Data Saved Successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+				} else {
+					getDemoList();
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+					$("#messageParagraph").text("Something Went Wrong");
+					$("#msgOkModal").removeClass("btn1");
+					$("#msgOkModal").addClass("btn3");
+					$("#msgModal").modal('show');
+				}
+			},
+			error : function(response) {
+				console.log(response);
+				getDemoList();
+				$('.loader').hide();
+				$("body").removeClass("overlay");
+				$("#messageParagraph").text("Something Went Wrong");
+				$("#msgOkModal").removeClass("btn1");
+				$("#msgOkModal").addClass("btn3");
+				$("#msgModal").modal('show');
+			}
+		})
+	}
+
+	function subAssetAdd(dataset, slno) {
+
+		$.ajax({
+			type : "POST",
+			url : "asset-classification-subcat",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(dataset),
+			success : function(response) {
+				if (response.message == "Success") {
+					console.log(response.body)
+					closeNavAsset();
+					closeAsset();
+					getAssetList();
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+					$("#messageParagraph").text("Data Saved Successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+				} else {
+					getAssetList();
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+					$("#messageParagraph").text("Something Went Wrong");
+					$("#msgOkModal").removeClass("btn1");
+					$("#msgOkModal").addClass("btn3");
+					$("#msgModal").modal('show');
+				}
+			},
+			error : function(response) {
+				console.log(response);
+				getAssetList();
+				$('.loader').hide();
+				$("body").removeClass("overlay");
+				$("#messageParagraph").text("Something Went Wrong");
+				$("#msgOkModal").removeClass("btn1");
+				$("#msgOkModal").addClass("btn3");
+				$("#msgModal").modal('show');
+			}
+		})
+	}
+
+	function openNavAsset(assetId, sl) {
+		closeAsset();
+		var pName = $("#lbl_" + assetId).text();
+		$("#subAssetSpan").text(" " + pName);
+		$("#parentAsset").val(assetId);
+
+		$("#subAssetId").val("");
+		$("#assetName").val("");
+		$("#subAssetDesc").val("");
+		$('#subAssetStatus').prop('checked', true);
+
+		$("#slnoval").val(sl);
+
+		$("#dltSlideSubCat").attr("onclick", "");
+
+		document.getElementById("mySidenavSubAsset").style.cssText = "width: 270px; position: absolute; right:-45px; overflow: hidden;";
+		document.getElementById("main").style.width = "420px";
+	}
+
+	function closeNavAsset() {
+
+		$("#subAssetSpan").text(" ");
+		$("#parentAsset").val("");
+
+		$("#subAssetId").val("");
+		$("#assetName").val("");
+		$("#subAssetDesc").val("");
+		$('#subAssetStatus').prop('checked', true);
+
+		$("#slnoval").val("");
+
+		$("#dltSlideSubCat").attr("onclick", "");
+
+		document.getElementById("mySidenavSubAsset").style.width = "0";
+		document.getElementById("main").style.width = "480px";
+	}
+	function getAssetList() {
+$('.loader').show();
+$("body").addClass("overlay");
+$("#costCeneterCBDiv").empty();
+$.ajax({
+								type : "POST",
+					url : "asset-classification-view",
+					dataType : "json",
+					contentType : "application/json",
+					success : function(response) {
+						if (response.message == "Success") {
+							console.log(response.body)
+							if (response.body.length > 0) {
+								for (var i = 0; i < response.body.length; i++) {
+									var row = "";
+									if (response.body[i].assetId == response.body[i].parentId) {
+										row = '<tr data-node-id="' + response.body[i].assetId + '" class="abc" id="' + response.body[i].assetId + '">'
+												+ '<td class="firstnode tr-node-one" id=lbl_' + response.body[i].assetId + '>'
+												+ response.body[i].assetName
+												+ '<label for="check1">&nbsp;&nbsp;<a href="javascript:void(0)"><i title="Add Child" class="ti-plus cbicon" onclick=openNavAsset("'
+												+ response.body[i].assetId
+												+ '","1");></i></a>&nbsp;<a href="javascript:void(0)"><i title="Edit Category" class="ti-pencil" onclick=editAsset("'
+												+ response.body[i].assetId
+												+ '")></i></a>&nbsp;<a href="javascript:void(0)"><i title="Delete Category" class="ti-close" onclick=deleteAsset("'
+												+ response.body[i].assetId
+												+ '")></i></a></label>'
+												+ '</td></tr>';
+									} else {
+										row = '<tr data-node-id="' + response.body[i].assetId + '" data-node-pid="' + response.body[i].parentId + '" class="abc" id="' + response.body[i].assetId + '">'
+												+ '<td class="firstnode" id=lbl_' + response.body[i].assetId + '>'
+												+ response.body[i].assetName
+												+ '<label for="check1">&nbsp;&nbsp;<a href="javascript:void(0)"><i title="Add Child" class="ti-plus cbicon" onclick=openNavAsset("'
+												+ response.body[i].assetId
+												+ '","2");></i></a>&nbsp;<a href="javascript:void(0)"><i title="Edit Category" class="ti-pencil" onclick=editSubAsset("'
+												+ response.body[i].assetId
+												+ '","'
+												+ response.body[i].parentId
+												+ '")></i></a>&nbsp;<a href="javascript:void(0)"><i title="Delete Category" class="ti-close" onclick=deleteAsset("'
+												+ response.body[i].assetId
+												+ '")></i></a></label>'
+												+ '</td></tr>';
+									}
+									$("#costCeneterCBDiv").append(row);
+								}
+
+								$('.loader').hide();
+								$("body").removeClass("overlay");
+
+								$('#basic').simpleTreeTable({
+									expander : $('#expander'),
+									collapser : $('#collapser'),
+									store : 'session',
+									storeKey : 'simple-tree-table-basic'
+								});
+
+							}
+						} else {
+							$('.loader').hide();
+							$("body").removeClass("overlay");
+						}
+					},
+					error : function(response) {
+						console.log(response);
+						$('.loader').hide();
+						$("body").removeClass("overlay");
+					}
+				})
+	}
+
+	function editAsset(id) {
+		openAsset();
+		$("#assetId").val(id);
+		if (id) {
+			$.ajax({
+				type : "POST",
+				url : "asset-classification-edit-by-id",
+				dataType : "json",
+				contentType : "application/json",
+				data : id,
+				success : function(response) {
+					if (response.message == "Success") {
+						if (response.body != null && response.body != "") {
+							$("#assetName").val(response.body.assetName);
+							$("#assetDesc").val(response.body.assetDesc);
+							if (response.body.assetStatus == "1") {
+								$('#assetStatus').prop('checked', true);
+							} else {
+								$('#assetStatus').prop('checked', false);
+							}
+
+						}
+					}
+				},
+				error : function(data) {
+					console.log(data)
+					$("#assetId").val("");
+					$("#assetName").val("");
+					$("#assetDesc").val("");
+					$('#assetStatus').prop('checked', true);
+					$("#deleteSlideCat").attr("onclick", "");
+				}
+			});
+		} else {
+			$("#assetId").val("");
+			$("#assetName").val("");
+			$("#assetDesc").val("");
+			$('#assetStatus').prop('checked', true);
+			$("#deleteSlideCat").attr("onclick", "");
+		}
+	}
+
+	function editSubAsset(id, pId) {
+		openNavAsset(pId, "2");
+		$("#subAssetId").val(id);
+		if (id) {
+			$.ajax({
+				type : "POST",
+				url : "asset-classification-edit-by-id",
+				dataType : "json",
+				contentType : "application/json",
+				data : id,
+				success : function(response) {
+					if (response.message == "Success") {
+						if (response.body != null && response.body != "") {
+							$("#subAssetName").val(response.body.assetName);
+							$("#subAssetDesc").val(response.body.assetDesc);
+							if (response.body.assetStatus == "1") {
+								$('#subAssetStatus').prop('checked', true);
+							} else {
+								$('#subAssetStatus').prop('checked', false);
+							}
+							/* var onAttr = "deleteSubCategory('"
+							 + response.body.demoId + "')";
+							 $("#dltSlideSubCat").attr("onclick", onAttr); */
+						}
+					}
+				},
+				error : function(data) {
+					console.log(data)
+					$("#subAssetId").val("");
+					$("#subAssetName").val("");
+					$("#subAssetDesc").val("");
+					$('#subAssetStatus').prop('checked', true);
+					$("#dltSlideSubCat").attr("onclick", "");
+				}
+			});
+		} else {
+			$("#subAssetId").val("");
+			$("#subAssetName").val("");
+			$("#subAssetDesc").val("");
+			$('#subAssetStatus').prop('checked', true);
+			$("#dltSlideSubCat").attr("onclick", "");
+		}
+	}
+
+	function cancelModalBtnAsset() {
+		$("#delete").modal('hide');
+		$("#deleteModalBtnAsset").attr("value", "");
+		//$("#deleteModalBtnAsset").attr("slno","");
+		$("#deleteModalBtnAsset").removeAttr("disabled");
+	}
+
+	function deleteAsset(id) {
+		if (id) {
+			$("#delete").modal('show');
+			$("#deleteModalBtnAsset").attr("value", id);
+			//$("#deleteModalBtnAsset").attr("slno","1");
+		} else {
+			$("#delete").modal('hide');
+			$("#deleteModalBtnAsset").attr("value", "");
+			$("#deleteModalBtnAsset").removeAttr("disabled");
+			//$("#deleteModalBtnAsset").attr("slno","");
+		}
+	}
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="row margin_topbot" id="searchRowDiv"></div>
+						<div class="row">
+
+							<div class="col-md-10 btn-hs" style="margin-bottom: 15px;">
+								<div class="font-design ft-lt" id="totalReq">ASSET
+									CLASSIFICATION</div>
+								<div class="roomdetails2">
+									<div class="cat_plusbtn cp" title="Add Assets"
+										onclick="openAsset()">+</div>
+								</div>
+							</div>
+
+
+						</div>
+
+						<div class="row">
+
+							<div class="col-md-8">
+								<div class="flowsection"
+									style="border-right: 0px solid #ccc !important">
+									<table id="basic">
+										<tbody id="costCeneterCBDiv"></tbody>
+									</table>
+									<!-- code start for second tree -->
+									<!-- code end for second tree -->
+								</div>
+							</div>
+
+							<div class="col-md-4">
+								<div class="roomdetails roomListDiv" id="main"></div>
+								<div class="slidearrow" onclick="openNavAsset()">
+									<i class="ti-arrow-left"></i>
+								</div>
+
+
+								<!------------------------------------------ Add Section -------------------------------------------------->
+								<div id="mySidenavAsset" class="sidenav">
+									<div class="slidebox">
+										<div class="row">
+											<div class="col-md-10">
+												<div class="edit" id="sectionNavText">Asset
+													Classification</div>
+											</div>
+											<div class="col-md-2">
+												<div class="arrow">
+													<a href="javascript:void(0)" class="closebtn"
+														onclick="closeAsset()"><i class="ti-arrow-right"></i></a>
+												</div>
+											</div>
+											<div class="chartbtnsec">
+												<div class="" align="right">
+													<button class="btn4" onclick="closeAsset()">CANCEL</button>
+													<!-- <button class="btn3" id="deleteSlideCat">DELETE</button> -->
+													<button class="btn1" id="assetSave">SAVE</button>
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Name</label> <input type="hidden" id="assetId">
+													<input type="text" class="form-control transparenttxtbox"
+														placeholder="" id="assetName">
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Description</label>
+													<textarea class="form-control" id="assetDesc"></textarea>
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<input type="checkbox" class="loc-chb" name="isActive"
+														id="assetStatus" value="1" checked> <label
+														style="margin-top: 8px;">Active</label>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+
+							</div>
+
+							<!----------------------------------------------------- Add Sub ------------------------------------------------------------>
+
+							<div id="mySidenavSubAsset" class="sidenav">
+								<div class="slidebox">
+									<div class="row">
+										<div class="col-md-10">
+											<div class="edit" id="floorNavText">Sub-Category</div>
+										</div>
+										<div class="col-md-2">
+											<div class="arrow">
+												<a href="javascript:void(0)" class="closebtn"
+													onclick="closeNavAsset()"><i class="ti-arrow-right"></i></a>
+											</div>
+										</div>
+										<div class="chartbtnsec">
+											<div class="" align="right">
+												<button class="btn4" onclick="closeNavAsset()">CANCEL</button>
+
+												<button class="btn1" id="subAssetSave">SAVE</button>
+											</div>
+										</div>
+										<div class="col-md-12">
+											<div class="form-group">
+												<span class="slide-span">Parent:</span><span
+													id="subAssetSpan" class="slide-span-text"></span>
+											</div>
+										</div>
+										<div class="col-md-12">
+											<div class="form-group">
+												<label>Name</label> <input type="hidden" id="subAssetId">
+												<input type="text" class="form-control transparenttxtbox"
+													placeholder="" id="subAssetName"
+													onblur="removeValid(event);"> <input type="hidden"
+													id="parentAsset"> <input type="hidden" id="slnoval">
+											</div>
+										</div>
+										<div class="col-md-12">
+											<div class="form-group">
+												<label>Description</label>
+												<textarea class="form-control" id="subAssetDesc"
+													onblur="removeValid(event);"></textarea>
+											</div>
+										</div>
+										<div class="col-md-12">
+											<div class="form-group">
+												<input type="checkbox" class="loc-chb" name="isSubCatActive"
+													id="subAssetStatus" value="1" checked> <label
+													style="margin-top: 8px;">Active</label>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+
+
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+
+		<div id="delete" class="modal fade show" aria-modal="true">
+			<div class="modal-dialog modal-confirm">
+				<div class="modal-content">
+					<div class="modal-header flex-column">
+						<button type="button" class="close" data-dismiss="modal"
+							aria-hidden="true" onclick="cancelModalBtnAsset()">
+							<i class="ti-close modal-close"></i>
+						</button>
+					</div>
+					<div class="modal-body">
+						<p>Do you really want to delete these records? This process
+							cannot be undone.</p>
+					</div>
+					<div class="modal-footer justify-content-center">
+						<button type="button" class="btn1" data-dismiss="modal"
+							onclick="cancelModalBtnAsset();">Cancel</button>
+						<button type="button" class="btn3" id="deleteModalBtnAsset">Delete</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id="deleteFile" class="modal fade show" aria-modal="true">
+			<div class="modal-dialog modal-confirm">
+				<div class="modal-content">
+					<div class="modal-header flex-column">
+						<!-- <div class="icon-box">
+<i class="ti-close"></i>
+</div> -->
+						<!-- <h4 class="modal-title w-100">Are you sure?</h4> -->
+						<button type="button" class="close" data-dismiss="modal"
+							aria-hidden="true" onclick="cancelModalBtnAsset()">
+							<i class="ti-close modal-close"></i>
+						</button>
+					</div>
+					<div class="modal-body">
+						<p>Do you really want to delete this image? This process
+							cannot be undone.</p>
+					</div>
+					<div class="modal-footer justify-content-center"
+						style="margin-top: -30px;">
+						<button type="button" class="btn1" data-dismiss="modal"
+							onclick="cancelModalBtnAsset();">Cancel</button>
+						<button type="button" class="btn3" onclick="deleteModalBtnAsset()">Delete</button>
+						<!-- <img src="../assets/gif/loader.gif"> -->
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

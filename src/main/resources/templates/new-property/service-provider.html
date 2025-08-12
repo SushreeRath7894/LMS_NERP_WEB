@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<script type="text/javascript">
+	$(document).ready(function() {
+		
+		
+		
+		var today = new Date();
+		var dd = String(today.getDate()).padStart(2, '0');
+		var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+		var yyyy = today.getFullYear();
+
+		today1 = "01" + '-' + mm + '-' + yyyy;
+
+		today = dd + '-' + mm + '-' + yyyy;
+
+		$('#fromDate').val(today1);
+		$('#toDate').val(today);
+
+		$('#reqDltBtn').attr('disabled', true);
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#fromDate').val($(this).val());
+		})
+
+		$('#fromDate').blur(function() {
+			$("#fromDateCalendar").val($(this).val());
+		})
+
+		//     date format TO date
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#toDate').val($(this).val());
+		})
+
+		$('#toDate').blur(function() {
+			$("#toDateCalendar").val($(this).val());
+		})
+
+		search();
+	})
+
+	function search() {
+		var fromDate = $("#fromDate").val();
+		var toDate = $("#toDate").val();
+		var fromDate = fromDate.split('-');
+		var fromDate = fromDate[2] + '-' + fromDate[1] + '-' + fromDate[0];
+		var toDate = toDate.split('-');
+		var toDate = toDate[2] + '-' + toDate[1] + '-' + toDate[0];
+
+		var userid = $("#sessionId").val();
+
+		agGrid.simpleHttpRequest(
+				{
+					url : "service-provider-view?userid=" + userid
+							+ "&fromDate=" + fromDate + "&toDate=" + toDate,
+				}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+			if (len > 0) {
+				gridOptions.api.setRowData(data);
+			} else {
+				gridOptions.api.setRowData();
+			}
+		});
+
+	}
+
+	var columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				sortable : false,
+				filter : false,
+				resizable : true,
+				width : 30
+			},
+			{
+				headerName : "Vendor ID ",
+				field : "vndrid",
+
+				cellRenderer : function(params) {
+					return '<a onclick=edit("' + params.data.vndrid
+							+ '") href="javascript:void(0)">'
+							+ params.data.vndrid + '</a>';
+				}
+			}, {
+				headerName : "Vendor Name ",
+				field : "vndrname"
+			}, {
+				headerName : "Property NO",
+				field : "propid"
+			}, {
+				headerName : "Service Category Elevator",
+				field : "servicecategory"
+
+			}, {
+				headerName : "GSTN",
+				field : "gstin"
+
+			}, {
+				headerName : "Address",
+				field : "address"
+
+			}, {
+				headerName : "Email",
+				field : "email"
+
+			}, {
+				headerName : "Contact Person",
+				field : "contperson"
+
+			}, {
+				headerName : "Mobile No",
+				field : "mobileno"
+
+			}, {
+				headerName : "Remarks",
+				field : "remarks"
+
+			} ];
+
+	$("#vndrid").click(function() {
+		$("#a").css("display", "block");
+		$("#b").css("display", "block");
+	});
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+
+		rowSelection : 'multiple',
+		onSelectionChanged : deleteDetails,
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 400
+		}
+	};
+
+	var deleteId = "";
+	function deleteDetails() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+
+		deleteId = "";
+		for (var i = 0; i < selectedRows.length; i++) {
+			deleteId = deleteId + '"' + selectedRows[i].reminderId + '",';
+
+		}
+		deleteId = deleteId.substring(0, deleteId.length - 1);
+
+		var rowCount = 0;
+		selectedRows.forEach(function() {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#delete').attr("disabled", false);
+			$('#add').hide();
+			if (rowCount == 1) {
+				$('#add').hide();
+			}
+		} else {
+			$('#delete').attr("disabled", true);
+			$('#add').show();
+
+		}
+
+	}
+	function add() {
+
+		$("#demo").show();
+		$("#myGrid").hide();
+		$(".date1").hide();
+		$(".date2").hide();
+		$(".btn-hs").hide();
+		$("#searchRowDiv").hide();
+		$("#reqTable").hide();
+
+		$('#delete').attr("disabled", true);
+
+	}
+	function cancelBtn() {
+
+		window.location.reload();
+
+		$("#demo").hide();
+		$("#myGrid").show();
+		$("#reqTable").show();
+		$(".date1").show();
+		$(".date2").show();
+		$(".btn-hs").show();
+		$("#searchRowDiv").show();
+		$("#reqTable").show();
+	}
+
+	function edit(id) {
+
+		$
+				.ajax({
+
+					type : "GET",
+					url : "service-provider-edit?id=" + id,
+
+					success : function(response) {
+
+						if (response.message == "Success") {
+							console.log(response);
+
+							$("#propId").val(response.body[0].propid);
+							$("#vndrid").val(response.body[0].vndrid);
+							$("#vndrname").val(response.body[0].vndrname);
+							$("#servicecategory").val(
+									response.body[0].servicecategory);
+							$("#gstin").val(response.body[0].gstin);
+							$("#address").val(response.body[0].address);
+							$("#email").val(response.body[0].email);
+							$("#contperson").val(response.body[0].contperson);
+							$("#mobileno").val(response.body[0].mobileno);
+							$("#remarks").val(response.body[0].remarks);
+							$("#sessionId").val(response.body[0].createdby);
+							
+							$("#demo").show();
+							$("#myGrid").hide();
+							$("#reqTable").hide();
+							$(".btn-hs").hide();
+							$(".date1").hide();
+							$(".date2").hide();
+							$("#searchRowDiv").hide();
+							$("#btn-hs1").show();
+
+						}
+					}
+				});
+
+	}
+
+	function save() {
+
+		var org = {};
+
+		org.vndrid = $("#vndrid").val();
+		org.vndrname = $("#vndrname").val();
+		org.servicecategory = $("#servicecategory").val();
+		org.gstin = $("#gstin").val();
+		org.address = $("#address").val();
+		org.email = $("#email").val();
+		org.contperson = $("#contperson").val();
+		org.mobileno = $("#mobileno").val();
+		org.remarks = $("#remarks").val();
+		org.propid = $("#propId").val();
+
+		var today = new Date();
+		var dd = String(today.getDate()).padStart(2, '0');
+		var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+		var yyyy = today.getFullYear();
+
+		today = yyyy + '-' + mm + '-' + dd;
+		org.createdOn = today;
+
+		console.log(org);
+
+		var validation = true;
+
+		if (org.propId == null || org.propId == "") {
+			validation = validationUpdated("Property No Required", "propId");
+		}
+
+		if (org.vndrname == null || org.vndrname == "") {
+			validation = validationUpdated("Vendor Name Required", "vndrname");
+		}
+
+		if (org.servicecategory == null || org.servicecategory == "") {
+			validation = validationUpdated("Service Category Elevator",
+					"servicecategory");
+		}
+
+		if (org.gstin == null || org.gstin == "") {
+			validation = validationUpdated("GST IN Required", "gstin");
+		}
+
+		if (org.address == null || org.address == "") {
+			validation = validationUpdated("Address Required", "address");
+		}
+
+		if (org.email == null || org.email == "") {
+			validation = validationUpdated("Email Required", "email");
+		}
+
+		if (org.contperson == null || org.contperson == "") {
+			validation = validationUpdated("Contact Person Required",
+					"contperson");
+		}
+
+		if (org.mobileno == null || org.mobileno == "") {
+			validation = validationUpdated("Mobile No Required", "mobileno");
+		}
+
+		if (org.remarks == null || org.remarks == "") {
+			validation = validationUpdated("Remarks Required", "remarks");
+		}
+
+		if (validation) {
+
+			$.ajax({
+				type : "POST",
+				url : "service-provider-add",
+				contentType : "application/json",
+				data : JSON.stringify(org),
+				success : function(response) {
+					if (response.message == "Success") {
+
+						search();
+						cancelBtn();
+					}
+				},
+				error : function(response) {
+					console.log(response);
+				}
+
+			});
+
+		}
+	}
+
+	function getpropertyTypeList() {
+		var id = $("#propId").val();
+		if (id == "") {
+			$("#suggesstion-box1_").hide();
+		}
+
+		if (id) {
+			$
+					.ajax({
+						type : "POST",
+						url : "service-provider-autosearch-property",
+						dataType : 'json',
+						contentType : 'application/json',
+						data : id,
+						success : function(response) {
+							if (response.message == "success") {
+								if (response.body.length != 0) {
+									console.log(JSON.stringify(response));
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1" style="margin-left:-40px; font-weight:100; font-size:14px; color:#ccc;">';
+									for (var i = 0; i < response.body.length; i++) {
+										content += '<li class="autocompletedata cp" onClick="selectAutocompleteValue1(\''
+												+ response.body[i].key
+												+ '\',\''
+												+ response.body[i].name
+												+ '\',\''
+												+ response.body[i].key
+												+ '\')">'
+												+ response.body[i].key
+												+ '</li>';
+									}
+									content += '</ul>';
+									$("#suggesstion-box1_").show();
+									$("#suggesstion-box1_").html(content);
+
+								} else {
+									$("#search").css("background", "#FFF");
+									var content = '<div id="autocomplete-list1">';
+									content += '<div onClick="selectAutocompleteValue()">'
+											+ "No Data Found" + '</div>';
+									content += '</div>';
+									$("#suggesstion-box1_").show();
+									$("#suggesstion-box1_").html(content);
+								}
+							}
+						},
+						error : function(data) {
+							console.log(data);
+						}
+					})
+		}
+
+	}
+
+	function selectAutocompleteValue1(key, name) {
+
+		if (key) {
+
+			$("#propId").val(key);
+			$("#search").val(key);
+			$("#search").attr('data-procat', key);
+			$("#suggesstion-box1_").hide();
+
+		} else {
+			$("#propId").val("");
+
+			$("#search").val("");
+			$("#search").attr('data-procat', "");
+			$("#suggesstion-box1_").hide();
+
+		}
+	}
+
+	function selectAutocompleteValue() {
+
+		$("#propno").val("");
+		$("#search").val("");
+		$("#search").attr('data-procat', "");
+		$("#suggesstion-box1_").hide();
+
+	}
+
+	function dateChange() {
+
+		var fromDate = $('#fromDate').val();
+		var toDate = $('#toDate').val();
+		var fd = fromDate.split("-");
+		var td = toDate.split("-");
+
+		if (fromDate != '' && toDate != '') {
+			if (fd[2] <= td[2]) {
+				if (fd[1] == td[1]) {
+					if (fd[0] <= td[0]) {
+
+					} else {
+						setFromToDate();
+					}
+				} else if (fd[1] < td[1]) {
+
+				} else {
+					setFromToDate();
+				}
+
+			} else {
+				setFromToDate();
+			}
+		} else {
+
+		}
+	}
+
+	function setFromToDate() {
+		$("#messageParagraph").text(
+				"Please choose to date greater than or equal to from date ");
+		$("#msgOkModal").removeClass("btn3");
+		$("#msgOkModal").addClass("btn1");
+		$("#msgModal").modal('show');
+		$("#fromDate").val("");
+		$("#toDate").val("");
+	}
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#searchBar').val() == null || $('#searchBar').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	
+	//Email validation
+	var wmailValid;
+
+	function wmailVal() {
+		var email = $('#email').val();
+		var mid2 = /^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$/;
+
+		if (email != "") {
+			if (mid2.test(email)) {
+				$("#error5").hide();
+				wmailValid = true;
+				return true;
+			} else {
+				$("#error5").show();
+				$("#error5").html("Please enter a valid email id.");
+				wmailValid = false;
+				return false;
+			}
+
+		} else {
+			$("#error5").hide();
+			wmailValid = true;
+			return true;
+		}
+
+	}
+	
+	//Mobile Number validation
+	var mobValid1;
+
+	function mobVal1() {
+	    var mob = $('#mobileno').val();
+	    var phoneno = /^\d{10}$/;
+	    if (mob != '') {
+	        if (phoneno.test(mob)) {
+	        	
+	            $("#error9").hide();
+	           
+	            mobValid1 = true;
+	            return true;
+	        } else {
+	        	
+	            $("#error9").html(
+	                "please enter  10 digit mobile number  ex:7089451278");
+	        	 $("#error9").show();
+	            mobValid1 = false;
+	            return false;
+	        }
+	    } else {
+	        $("#error9").html(" Mobile No is Required");
+	        
+	        mobValid1 = false;
+	        return false;
+	    }
+	}
+	
+	
+function checkAlphabet(fieldId) {
+		
+	    var tempVal = $("#" + fieldId).val().replace(/[^a-zA-Z. ]/g,'');
+	    tempVal=tempVal.replace(/^\w/, c => c.toUpperCase());
+	    
+	    const input = document.getElementById(fieldId);
+	    const position = input.selectionStart;	
+	    if(position == 1 && tempVal.charAt(0) == ' '){
+	    	$("#" + fieldId).empty();
+	    	tempVal = '';
+	   } 
+	   $("#" + fieldId).val(tempVal);
+	} 
+	
+function checkNumeric(fieldId) {
+	
+	 var tempVal = $("#" + fieldId).val().replace(/[^0-9 ]/g, '');
+	    
+	    const input = document.getElementById(fieldId);
+	    const position = input.selectionStart;	
+	    if(tempVal.slice(-1) == ' '){
+	     	$("#" + fieldId).empty();
+	     	tempVal = '';
+	     } 
+	   $("#" + fieldId).val(tempVal);
+	} 
+function cancelBar() {
+	var id = document.getElementById("closeKey");
+	id.style.display = "block";
+	if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+		id.style.display = "none";
+	}
+}
+</script>
+<style>
+.form-check-input::before {
+	display: none !important;
+}
+
+.formValidation1 {
+	font-size: 10px;
+	font-weight: 100;
+	color: #ff9e99;
+	background-color: transparent;
+	position: relative;
+	top: -1px;
+	padding: 3px 0;
+}
+</style>
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="d-flex justify-content-between">
+						<div class="btn-hs">
+							<div class="font-design" id="totalReq">Manage Service
+								Provider()</div>
+						</div>
+
+						<div id="searchRowDiv">
+							<div class="input-style">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter"
+									autocomplete="off">
+								<div class="searchicon">
+									<a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+						</div>
+
+						<div class="col-md-1 date1">
+							<div class="form-group calendar_box">
+								<label><b>From Date</b></label> <input type="text" id="fromDate"
+									value="" class="form-control" onblur="removeValid(event)"
+									th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+									readonly> <i class="ti-calendar picker_calendar"
+									id="fromDateCalendar" onchange="dateChange()"></i>
+							</div>
+							<input type="hidden" id="sessionId" th:value="${userId}" />
+
+						</div>
+						<div class="col-md-1 date2">
+							<div class="form-group calendar_box">
+								<label><b>To Date</b></label> <input type="text" id="toDate"
+									value="" class="form-control" onblur="removeValid(event)"
+									th:attr="onkeyup=|formatDate('toDate','${session.DATEFORMAT_JS}')|"
+									readonly> <i class="ti-calendar picker_calendar"
+									id="toDateCalendar" onchange="dateChange()"></i>
+							</div>
+						</div>
+
+						<div class="row" id="reqTable">
+							<div class="col-md-12" align="right">
+								<button class="new-btn" id="add" onclick="add()">NEW</button>
+								<button class="delete-btn" id="delete"
+									onclick=" deleteDemocategory()" disabled="disabled">DELETE</button>
+								<button class="btn2" onclick="search()">Search</button>
+
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div id="myGrid" style="width: 100%; height: 370px;"
+					class="ag-theme-alpine"></div>
+				<div class="collapse" id="demo">
+					<div class=""></div>
+
+					<div class="content_padding">
+
+						<div class="col-md-12" align="right">
+							<button type="button" class="cancel-btn" onclick="cancelBtn()">Cancel</button>
+							<button class="approve-btn" onclick="save()">Save</button>
+
+
+						</div>
+
+						<div class="row">
+							<input type="hidden" class="form-control" id="sid"
+								autocomplete="off">
+							<div class="col-md-6">
+								<b>ADD / MODIFY VENDOR</b> <span id="stdhead"></span>
+							</div>
+
+							<div class="row">
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Property No</label> <input type="text"
+											class="form-control" id="propId"
+											onkeyup='getpropertyTypeList()'>
+										<div id="suggesstion-box1_" class="sugg-cls"></div>
+									</div>
+								</div>
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Vendor Name</label> <input type="text" onkeyup="checkAlphabet('vndrname');"
+											class="form-control" id="vndrname" onblur="removeValid(event)">
+											 <span id="error1" class="formValidation1"></span>
+									</div>
+								</div>
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Service Category Elevator</label> <input type="text" 
+										onkeyup="checkAlphabet('servicecategory');"
+										class="form-control" id="servicecategory">
+									</div>
+								</div>
+
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Goods and Services Tax Network(GSTN)</label> <input
+											type="text" class="form-control" id="gstin" onkeyup="checkNumeric('gstin');">
+									</div>
+								</div>
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Address</label> <input type="text" class="form-control" 
+										onkeyup="checkAlphabet('address');"
+										id="address" maxlength="255">
+									</div>
+								</div>
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Email</label> <input type="text" class="form-control"
+											id="email" onkeyup="wmailVal();" onblur="removeValid(event)">
+											 <span id="error5" class="formValidation1"></span>
+									</div>
+								</div>
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Contact Person</label> <input type="text"
+											class="form-control" id="contperson" onkeyup="checkAlphabet('contperson');"
+											maxlength="40" onblur="removeValid(event)">
+									</div>
+								</div>
+
+								<div class="col-md-4">
+								<div class="form-group">
+									<label>Mobile Number</label> <input type="text"
+										class="form-control" id="mobileno"
+										onkeyup="mobVal1();checkNumeric('mobileno');"
+										onblur="removeValid(event)"> <span id="error9"
+										class="formValidation1"></span>
+								</div>
+							</div>
+
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Remarks</label> <input type="text" class="form-control"
+											id="remarks">
+									</div>
+								</div>
+
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<input class="form-check-input" type="hidden" id="created_by">
+
+									</div>
+								</div>
+
+							</div>
+							<div class="col-md-4">
+								<div class="form-group">
+									<input class="form-check-input" type="hidden" id="modified_by">
+
+								</div>
+							</div>
+							<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+								type="hidden" id="vndrid" />
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+
+
+</html>

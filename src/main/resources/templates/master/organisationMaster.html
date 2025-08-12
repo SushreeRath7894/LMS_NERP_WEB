@@ -1,0 +1,2130 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+.btn-primarynew {
+	color: #fff !important;
+	background-color: #0d6efd;
+	border-color: #0d6efd;
+}
+</style>
+<script type="text/javascript">
+	$(document).ready(function() {
+		$('#deleteAddressDtls').attr("disabled", true);
+		$("#main").hide();
+		$("#main1").hide();
+		$("#billingDiv").hide();
+		$("#shippingDiv").hide();
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		var gridDiv1 = document.querySelector('#myGridWorkingDay');
+		new agGrid.Grid(gridDiv1, gridOptions1);
+		
+		var gridDiv2 = document.querySelector('#myGridDeclare');
+		new agGrid.Grid(gridDiv2, gridOptions2);
+		var gridDiv = document.querySelector('#mySAGrid');
+		new agGrid.Grid(gridDiv, gridSAOptions);
+		agGrid.simpleHttpRequest({
+			url : 'organisationl-master-view'
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+
+			gridOptions.api.setRowData(data);
+		});
+
+		$('#reqDltBtn').attr('disabled', true);
+		
+		
+		var dateFormat = localStorage.getItem("dateFormat");
+
+		//Date fromatter for TO DATE 
+
+		$("#toDateCalendar").datetimepicker({
+		format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+			minDate : 0,
+			scrollMonth : false
+		}).on("change", function() {
+			$('#toDate').val($(this).val());
+		})
+
+		$('#toDate').blur(function() {
+			$("#toDateCalendar").val($(this).val());
+		})
+		//Date fromatter for FROM DATE
+
+		$("#fromDateCalendar").datetimepicker({
+		format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+			minDate : 0,
+			scrollMonth : false
+		}).on("change", function() {
+			$('#fromDate').val($(this).val());
+		})
+
+		$('#fromDate').blur(function() {
+			$("#fromDateCalendar").val($(this).val());
+		})
+		
+		
+		$("#saveSaddressData").click(function(){
+			var organisationalId = $("#organisationalId").val();
+		   
+ 	    	obj = {};
+ 	    	
+ 	    	obj.shippingId = $("#shippingAddressId").val();
+ 	    	obj.organisationalId = $("#organisationalId").val();
+ 	    	obj.country1 = $('#country1').val();
+ 			obj.states1 = $('#states1').val();
+ 			obj.city1 = $('#city1').val();
+ 			obj.street11 = $('#street11').val();
+ 			obj.street21 = $('#street21').val();
+ 			obj.zipCode1 = $('#zipCode1').val();
+ 			obj.phone1 = $('#phone1').val();
+ 			obj.fax1 = $('#fax1').val()
+ 			obj.defaultStatus= $("input[name='isDefault']:checked").val();
+ 	    	$(".formValidation").remove();
+ 			allValid = true;
+ 		
+ 			if( obj.country1 == null || obj.country1 == ""){
+ 				allValid = false;
+ 				validationModal("Select County","country1");
+ 			} 
+ 	
+ 	    	
+ 			if(allValid) {
+ 				
+ 			submitAddressDetails(obj);
+ 			//console.log(obj)
+ 			}
+ 	    	
+ 	    })
+	});
+
+	var columnDefs = [
+			{
+				headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+			{
+				headerName : "OrgID",
+				field : "organisation Id",
+				cellRenderer : function(params) {
+					return '<a id="organisationId" onclick=editId("'
+							+ params.data.organisationId
+							+ '") href="javascript:void(0)">'
+							+ params.data.organisationId + '</a>';
+				}
+			}, {
+				headerName : "organisation Name",
+				field : "organisationName"
+			}, {
+				headerName : "organisation Division",
+				field : "organisationNamediv"
+			}, {
+				headerName : "org RegNo",
+				field : "organisationRegNo"
+			}, {
+				headerName : "GST NO.",
+				field : "gstno"
+			}, {
+				headerName : "Org Address",
+				field : "organisationAddress"
+			}, {
+				headerName : "Org Type",
+				field : "organisationType"
+			}, {
+				headerName : "Location",
+				field : "location"
+			}, {
+				headerName : "Start Day For Attendance",
+				field : "startDateForAttendance"
+			} ];
+
+	// let the grid know which columns and what data to use
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 153
+		},
+		onSelectionChanged : onSelectionChanged,
+	};
+
+	const columnDefsa = [
+		{
+		    headerCheckboxSelection: true,
+		    headerCheckboxSelectionFilteredOnly: true,
+		    checkboxSelection: true,
+		    width: 10,
+		    sortable: false,
+		    filter: false,
+		    resizable: true
+
+		},
+		{
+			  headerName: "Address Id",
+			    field: "addressId",
+			    cellRenderer: function(params) {
+			    return '<a onclick=openDetails("' + params.data.addressId
+				+ ',' + '0' + '") href="javascript:void(0)">'
+				+ params.data.addressId + '</a>'; 
+			    }
+			    /* cellRenderer: function(params) {
+			        return '<a onclick=("' + params.data.addressId + '","'+params.data.customerId+'") href="javascript:void(0)">' + params.data.addressId + '</a>';
+			    } */
+		},
+
+		{
+			headerName: "Country",
+		    field: "country",
+		    width: 200,
+		    hide:true,
+		}, {
+			headerName: "Country",
+		    field: "countryName",
+		    width: 200,
+		}, {
+			headerName: "State",
+		    field: "state",
+		    width: 200,
+		    hide:true,
+		    
+		}, {
+			headerName: "State",
+		    field: "stateName",
+		    width: 200,
+		}, {
+			headerName: "City",
+		    field: "city",
+		    width: 200,
+		    hide:true,
+		}, {
+			headerName: "City",
+		    field: "cityName",
+		    width: 200,
+		}, {
+			headerName: "Street",
+		    field: "street1",
+		    width: 200,
+		}, {
+			headerName: "Street",
+		    field: "street2",
+		    width: 200,
+		}, {
+			headerName: "Zip Code",
+		    field: "zipCode",
+		    width: 200,
+		}, {
+			headerName: "Phone",
+		    field: "phone",
+		    width: 200,
+		}, {
+			headerName : "Fax",
+			field : "fax",
+			cellStyle : {
+				textAlign : 'left'
+			}
+		}, {
+			headerName: "Default Address",
+		    field: "defaultStatus",
+		    width: 200,
+		    cellStyle : {
+				textAlign : 'center'
+			},
+			cellRenderer : function(params) {
+				if (params.data.defaultStatus =="Yes") { 
+					return '<div style="color:#0642f5">'+params.data.defaultStatus+'</div>';
+				}else{
+					return '<div style="color:#a9a9a9">'+params.data.defaultStatus+'</div>';
+				}
+			}
+		} ];
+
+const gridSAOptions = {
+	columnDefs : columnDefsa,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 187,
+		height : 10
+	},
+	rowSelection : 'multiple',
+	suppressRowClickSelection : true,
+	onSelectionChanged : rowSelectAddress,
+	/* getRowNodeId : function(data) {
+		return data.organisationId;
+	} */
+};
+
+function rowSelectAddress(){
+	var selectedRows =gridSAOptions.api.getSelectedRows();
+
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+	if (rowCount > 0) {
+	        $('#deleteAddressDtls').attr("disabled", false);
+	        $('#newBtnShipping').attr("disabled", true);
+			
+	}else{
+		    $('#deleteAddressDtls').attr("disabled", true);
+		    $('#newBtnShipping').attr("disabled", false);
+		
+	}
+}
+
+
+function openNavShipping() {
+	/* var customerId = $("#customerId").text();
+    $("#shippingId").text(customerId); */
+	$("#shippingId").val("");
+	$("#country1").val("");
+	$("#states1").val("");
+	$("#city1").val("");
+	$("#street11").val("");
+	$("#street21").val("");
+	$("#zipCode1").val("");
+	$("#phone1").val("");
+	$("#fax1").val("");
+	 $("#addStatus").prop("checked",false);
+	
+	document.getElementById("mySidenavShipping").style.cssText = "width: 30%; position: absolute; right:-10px; overflow: hidden; height:auto;bottom:-210px;";
+
+	document.getElementById("shippingDiv").style.width = "70%";
+}
+
+
+function closeNavShipping() {
+	document.getElementById("mySidenavShipping").style.width = "0";
+	document.getElementById("shippingDiv").style.width = "100%";
+}
+
+
+function copyAsBillingAdd() {
+	document.getElementById("mySidenavShipping").style.cssText = "width: 30%; position: absolute; right:-10px; overflow: hidden; height:auto;bottom:-210px;";
+
+	document.getElementById("shippingDiv").style.width = "70%";
+	
+	var country = $('#country').val();
+	var states = $('#states').val();
+	var city = $('#location').val();
+	var street1 = $('#orgaddress').val();
+	var street2 = $('#street2').val();
+	var zipCode = $('#pinCode').val();
+	var phone = $('#phoneNo').val();
+	var fax = $('#fax').val();
+
+	$('#country1').val(country);
+	
+	getStateDataOnEdit1(states);
+	$('#city1').val(city);
+	$('#street11').val(street1);
+	$('#street21').val(street2);
+	$('#zipCode1').val(zipCode);
+	$('#phone1').val(phone);
+	$('#fax1').val(fax);
+}
+
+
+	/* Function for Cancel */
+	function cancelBtn() {
+		$("#demo").hide();
+		$("#main").hide();
+		$("#main1").hide();
+		$("#collapseOne").hide();
+		$("#reqTable").show();
+		$("#delete").show();
+		$("#myGrid").show();
+		$("#save").hide();
+		$("#cancelBtn").hide();
+		$("#billingDiv").hide();
+		$("#shippingDiv").hide();
+		$('#reqDltBtn').attr('disabled', true);
+	}
+	function add() {
+		$("#organisationalId").val("");
+		$("#organisationalName").val("");
+		$("#organisationalRegNo").val("");
+		$("#orgaddress").val("");
+		$("#organisationType").val("");
+		$("#location").val("");
+		$("#phoneNo").val("");
+		$("#startDateForAttendance").val("");
+		$("#pinCode").val("");
+		$("#email").val("");
+		$("#country").val("");
+		$("#fax").val("");
+		$("#states").val("");
+		$("#street2").val("");
+		
+		$("#gstNo").val('');
+		$("#organisationDiv").val('');
+		$("#orgAbout").val('');
+		$("#uploadDoc_0").val('');
+		$("#uploadedBillDiv_0").html("");
+		$("#imageName_0").html("");
+		
+		
+		$("#reqTable").hide();
+		$("#myGrid").hide();
+		$("#cancel").show();
+		$("#save").show();
+		$("#form").show();
+		$("#demo").show();
+		$("#main").hide();
+		$("#main1").hide();
+		$("#cancel").show();
+		$("#delete").hide();
+		$("#billingDiv").show();
+		$("#shippingDiv").hide();
+	}
+	function saveAdd() {
+		var org = {};
+		org.organisationId = $("#organisationalId").val();
+		org.organisationName = $("#organisationalName").val();
+		org.organisationNamediv = $("#organisationDiv").val();
+		org.about = $("#orgAbout").val();
+		org.gstno = $("#gstNo").val();
+		org.organisationRegNo = $("#organisationalRegNo").val();
+		org.organisationAddress = $("#orgaddress").val();
+		org.organisationType = $("#organisationType").val();
+		org.location = $("#location").val();
+		org.phoneNo = $("#phoneNo").val();
+		org.startDateForAttendance = $("#startDateForAttendance").val();
+		org.pinCode = $("#pinCode").val();
+		org.email = $("#email").val();
+		org.states = $("#states").val();
+		org.country = $("#country").val();
+		org.street2 = $("#street2").val();
+		org.fax = $("#fax").val();
+		
+		
+
+		console.log(org);
+
+		var validation = true;
+
+		/* 		if (org.mainorganisationName == null || org.mainorganisationName == "") {
+		 validation = validationUpdated("Main-Organisationa Required",
+		 "mOrganisationalName");
+		 } */
+
+		if (org.organisationalName == null || org.organisationalName == "") {
+			validation = validationUpdated("Organisational Name Required",
+					"organisationalName");
+		}
+
+		if (org.organisationNamediv == null || org.organisationNamediv == "") {
+			validation = validationUpdated("Organisationa division Required",
+					"organisationDiv");
+		}
+		if (org.about == null || org.about == "") {
+			validation = validationUpdated("About Required", "orgAbout");
+		}
+
+		if (org.gstno == null || org.gstno == "") {
+			validation = validationUpdated("GST no Required", "gstNo");
+		}
+
+		if (org.organisationalRegNo == null || org.organisationalRegNo == "") {
+			validation = validationUpdated("Organisational RegNo Required",
+					"organisationalRegNo");
+		}
+		if (org.orgaddress == null || org.orgaddress == "") {
+			validation = validationUpdated("Org address Required", "orgaddress");
+		}
+
+		if (org.location == null || org.location == "") {
+			validation = validationUpdated("location Required", "location");
+		}
+		if (org.startDateForAttendance == null
+				|| org.startDateForAttendance == "") {
+			validation = validationUpdated("Start Day For Attendance Required",
+					"startDateForAttendance");
+		}
+		if (org.pinCode == null || org.pinCode == "") {
+			validation = validationUpdated("Organisation Pin Code Required",
+					"pinCode");
+		}
+		if (org.email == null || org.email == "") {
+			validation = validationUpdated("Organisational Email Required",
+					"email");
+		}
+		if (validation) {
+
+			$.ajax({
+				type : "POST",
+				url : "organisationl-master-add",
+				dataType : 'json',
+				contentType : 'application/json',
+				data : JSON.stringify(org),
+				success : function(response) {
+					if (response.message == "Success") {
+
+						agGrid.simpleHttpRequest({
+							url : 'organisationl-master-view'
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+						
+						 $("#messageParagraph").text("Data Saved Successfully");
+						 $("#msgOkModal").removeClass("btn3");
+						 $("#msgOkModal").addClass("btn1");
+						 $("#msgModal").modal('show');
+						 cancelBtn();
+					}
+				},
+				error : function(data) {
+					console.log(data)
+				}
+			});
+
+		}
+
+	}
+	function editId(id) {
+		$('#deleteAddressDtls').attr("disabled", true);
+		$.ajax({
+					type : "POST",
+					url : "organisationl-master-edit?Id=" + id,
+					dataType : 'json',
+					contentType : 'application/json',
+					data : id,
+					success : function(response) {
+						if (response.message == "success") {
+							add();
+							$("#main").show();
+							$("#main1").show();
+							$("#myGridWorkingDay").show();
+							$("#myGridDeclare").show();
+						
+							$("#shippingDiv").show();
+							console.log("edit", response.body)
+
+							$("#organisationalId").val(
+									response.body[0].organisationId);
+							$("#organisationalName").val(
+									response.body[0].organisationName);
+							$("#organisationDiv").val(
+									response.body[0].organisationNamediv);
+							$("#orgAbout").val(response.body[0].about);
+							$("#gstNo").val(response.body[0].gstno);
+
+							$("#organisationalRegNo").val(
+									response.body[0].organisationRegNo);
+							$("#orgaddress").val(
+									response.body[0].organisationAddress);
+							$("#organisationType").val(
+									response.body[0].organisationType);
+							$("#location").val(response.body[0].location);
+							$("#phoneNo").val(response.body[0].phoneNo);
+
+							$("#startDateForAttendance").val(
+									response.body[0].startDateForAttendance);
+							
+							$("#pinCode").val(
+									response.body[0].pinCode);
+							
+							$("#email").val(
+									response.body[0].email);
+							$("#fax").val(response.body[0].fax);
+							$("#states").val(response.body[0].states);
+							$("#street2").val(response.body[0].street2);
+							$("#country").val(response.body[0].country);
+							getStateDataOnEdit(response.body[0].states);
+							var doc = response.body[0].logo;
+							var doc1 = response.body[0].signature;
+							var doc2 = response.body[0].stamp;
+
+							if (doc != null && doc!= 'null') {
+								$("#imageName_0").html(doc);
+								var LightImg = '<div class ="uploadicon position-l"><a class="example-image-link" target="_balnk"><i class="fa fa-picture-o" onclick=viewImage("'
+										+ doc + '")></i></a> </div>';
+								$("#uploadedBillDiv_0").html(LightImg);
+							}
+
+							if (doc1!= null && doc1!= 'null') {
+								$("#imageName_1").html(doc1);
+								var LightImg1 = '<div class ="uploadicon position-l"><a class="example-image-link" target="_balnk"><i class="fa fa-picture-o" onclick=viewImage("'
+										+ doc1 + '")></i></a> </div>';
+								$("#uploadedBillDiv_1").html(LightImg1);
+							}
+
+							if (doc2 != null && doc2!= 'null') {
+								$("#imageName_2").html(doc2);
+								var LightImg2 = '<div class ="uploadicon position-l"><a class="example-image-link" target="_balnk"><i class="fa fa-picture-o" onclick=viewImage("'
+										+ doc2 + '")></i></a> </div>';
+								$("#uploadedBillDiv_2").html(LightImg2);
+							}
+							gridOptions1.api.setRowData();
+							agGrid.simpleHttpRequest({
+								url : 'organisationl-master-view-workingDay-details?orgName='+response.body[0].organisationName+"&orgDiv="+response.body[0].organisationNamediv
+							}).then(function(data) {
+								gridOptions1.api.setRowData(data);
+							});
+							
+							gridOptions2.api.setRowData();
+							agGrid.simpleHttpRequest({
+								url : 'organisationl-master-view-taxDeclarationModifyDeclare?orgName='+response.body[0].organisationName+"&orgDiv="+response.body[0].organisationNamediv
+							}).then(function(data) {
+								gridOptions2.api.setRowData(data);
+							});
+							var organisationalIdd = $("#organisationalId").val();
+							
+							 agGrid.simpleHttpRequest({
+				       			 url : "organisationl-master-shippingdetails?organisationalIdd=" + organisationalIdd,
+				       			}).then(function(data) {
+				       				var jsonData = JSON.parse(data.body);
+				       				var allData=jsonData.Data;
+				       				//var len = allData.length;
+				       				//$('#totaldispatch').find('span').html(len);
+				       				gridSAOptions.api.setRowData(allData);
+				       			});
+							
+						}
+					},
+					error : function(data) {
+						console.log(data)
+						$("#organisationalId").val("");
+						$("#organisationalName").val("");
+						$("#organisationalRegNo").val("");
+						$("#orgaddress").val("");
+						$("#orgType").val("");
+						$("#location").val("");
+						$("#startDateForAttendance").val("");
+						$("#logo").val("");
+						$("#signature").val("");
+						$("#stamp").val("");
+
+					}
+				});
+	}
+
+	function onSelectionChanged() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			$('#reqDltBtn').attr('disabled', false);
+		} else {
+			$('#reqDltBtn').attr('disabled', true);
+		}
+
+	}
+
+	function deleteFun() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var selectid = selectedRows[0].organisationId;
+		alert(selectid);
+		$.ajax({
+			type : "POST",
+			url : "organisationl-master-delete?id=" + selectid,
+			success : function(response) {
+				if (response.message == "Success") {
+					agGrid.simpleHttpRequest({
+						url : "organisationl-master-view"
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+					});
+					cancelBtn();
+				}
+			},
+			error : function(data) {
+				console.log(data);
+			}
+		})
+	}
+
+	function saveMultiFile(event) {
+
+		var uFile = $(uploadDoc_0)[0].files[0];
+		var fileName = event.currentTarget.value;
+		var lastIndex = fileName.lastIndexOf("\\");
+		if (lastIndex >= 0) {
+			fileName = fileName.substring(lastIndex + 1);
+		}
+		var extension = fileName.split(".");
+		var iURL = URL.createObjectURL(uFile);
+		$("#uploadedBillDiv_0").html("");
+
+		if (extension[1] == "jpg" || extension[1] == "png"
+				|| extension[1] == "jpeg") {
+			var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-picture-o'></i></a></div>";
+		} else {
+			var LightImg = "<div class='uploadicon position-l'> </div>";
+		}
+		$("#uploadedBillDiv_0").html(LightImg);
+		$("#imageName_0").html(fileName);
+		var fileData = new FormData();
+		fileData.append('file', uFile);
+		fileData.append('path', 'none');
+		$.ajax({
+			type : "POST",
+			url : "organisationl-master-upload-file",
+			enctype : "multipart/form-data",
+			contentType : false,
+			data : fileData,
+			processData : false,
+			cache : false,
+			success : function(response) {
+
+			},
+			error : function(e) {
+
+			}
+		});
+	}
+
+	function saveMultiFileSignature(event) {
+
+		var uFile = $(uploadDoc_1)[0].files[0];
+		var fileName = event.currentTarget.value;
+		var lastIndex = fileName.lastIndexOf("\\");
+		if (lastIndex >= 0) {
+			fileName = fileName.substring(lastIndex + 1);
+		}
+		var extension = fileName.split(".");
+		var iURL = URL.createObjectURL(uFile);
+		$("#uploadedBillDiv_1").html("");
+
+		if (extension[1] == "jpg" || extension[1] == "png"
+				|| extension[1] == "jpeg") {
+			var LightImg = "<div class='uploadicon position-m'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-picture-o'></i></a></div>";
+		} else {
+			var LightImg = "<div class='uploadicon position-m'> </div>";
+		}
+		$("#uploadedBillDiv_1").html(LightImg);
+		$("#imageName_1").html(fileName);
+		var fileData = new FormData();
+		fileData.append('file', uFile);
+		fileData.append('path', 'none');
+		$.ajax({
+			type : "POST",
+			url : "organisationl-master-signature-upload-file",
+			enctype : "multipart/form-data",
+			contentType : false,
+			data : fileData,
+			processData : false,
+			cache : false,
+			success : function(response) {
+
+			},
+			error : function(e) {
+
+			}
+		});
+	}
+
+	function saveMultiFileStampStamp(event) {
+		var uFile = $(uploadDoc_2)[0].files[0];
+		var fileName = event.currentTarget.value;
+		var lastIndex = fileName.lastIndexOf("\\");
+		if (lastIndex >= 0) {
+			fileName = fileName.substring(lastIndex + 1);
+		}
+		var extension = fileName.split(".");
+		var iURL = URL.createObjectURL(uFile);
+		$("#uploadedBillDiv_2").html("");
+
+		if (extension[1] == "jpg" || extension[1] == "png"
+				|| extension[1] == "jpeg") {
+			var LightImg = "<div class='uploadicon position-n'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-picture-o'></i></a></div>";
+		} else {
+			var LightImg = "<div class='uploadicon position-n'> </div>";
+		}
+		$("#uploadedBillDiv_2").html(LightImg);
+		$("#imageName_2").html(fileName);
+		var fileData = new FormData();
+		fileData.append('file', uFile);
+		fileData.append('path', 'none');
+		$.ajax({
+			type : "POST",
+			url : "organisationl-master-stamp-upload-file",
+			enctype : "multipart/form-data",
+			contentType : false,
+			data : fileData,
+			processData : false,
+			cache : false,
+			success : function(response) {
+
+			},
+			error : function(e) {
+
+			}
+		});
+	}
+
+	/* Function autosearch for get organization name */
+	function getOrgnizationNameAutoSearch() {
+		var search = $("#organisationalName").val();
+		if (search == "") {
+			$("#suggesstion-box1").hide();
+		}
+		if (search) {
+			$
+					.ajax({
+						type : "GET",
+						url : "organisationl-master-autosearch-orgName?searchValue="
+								+ search,
+						success : function(response) {
+							if (response.message == "success") {
+								console.log(response);
+								if (response.body.length != 0) {
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list" style="color:#ccc;">';
+									for (var i = 0; i < response.body.length; i++) {
+										
+										content += '<li class="autocompletedata cp" onclick="selectAutocompleteValue1(\''
+												+ response.body[i].name
+												+ '\',\''
+												+ response.body[i].key
+												+ '\')">'
+												+ response.body[i].name
+												+ '</li>';
+									}
+									content += '</ul>';
+									$("#suggesstion-box1").show();
+									$("#suggesstion-box1").html(content);
+
+								} else {
+									$("#search").css("background", "#FFF");
+									var content = '<div id="autocomplete-list">';
+									content += '<div onClick="selectAutocompleteValue1()">'
+											+ "No Data Found" + '</div>';
+									content += '</div>';
+									$("#suggesstion-box1").show();
+									$("#suggesstion-box1").html(content);
+
+								}
+							}
+						},
+						error : function(data) {
+							console.log(data);
+						}
+					})
+		}
+
+	}
+	function selectAutocompleteValue1(name) {
+		if (name) {
+			$("#organisationalName").val(name);
+			$("#search").val(name);
+			$("#search").attr('data-procat', name);
+			$("#suggesstion-box1").hide();
+
+		} else {
+			$("#organisationalName").val("");
+			$("#search").val("");
+			$("#search").attr('data-procat', "");
+			$("#suggesstion-box1").hide();
+
+		}
+	}
+	function openNav1() {
+		$("#newBtn").hide();
+		$("#workingDaySlNo").val('');
+		$("#workingDay").val('');
+		$("#workingDayType").val('');
+		$("#workingHour").val('');
+		document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:445px;";
+		document.getElementById("main").style.width = "75%";
+	}
+
+	function closeNav1() {
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main").style.width = "100%";
+		$("#newBtn").show();
+		$("#workingDaySlNo").val('');
+		$("#workingDay").val('');
+		$("#workingDayType").val('');
+		$("#workingHour").val('');
+	}
+	// for activity table
+
+	var columnDefs1 = [
+			 {
+				headerName : "Working Day",
+				field : "workingDay",
+				cellStyle : {
+					textAlign : 'center'
+				},
+			}, {
+				headerName : "Working Day Type",
+				field : "workingDayType",
+				cellStyle : {
+					textAlign : 'center'
+				},
+				cellRenderer : function(params) {
+					if (params.data.workingDayType == "FullDay") {
+						return '<div style="color:#93efea">'+params.data.workingDayType+'</div>';
+					}else if (params.data.workingDayType == "WeekOff") {
+						return '<div style="color:#ff8242">'+params.data.workingDayType+'</div>';
+					} else if (params.data.workingDayType == "HalfDay") {
+						return '<div style="color:#3dff00">'+params.data.workingDayType+'</div>';
+					}else {
+					}
+				},
+			}, {
+				headerName : "Working Hour",
+				field : "workingHour",
+				cellStyle : {
+					textAlign : 'center'
+				},
+			},{
+				headerName : "Status",
+				field : "workingDayStatus",
+				cellStyle : {
+					textAlign : 'center'
+				},
+				cellRenderer : function(params) {
+					if (params.data.workingDayStatus == 1) {
+						return '<div style="color:#a9a9a9">Active</div>';
+					} else {
+						return '<div style="color:#a9a9a9">Inactive</div>';
+					}
+				},
+			} ];
+	var gridOptions1 = {
+			columnDefs : columnDefs1,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 320
+			},
+			rowSelection: 'single',
+			rowMultiSelectWithClick: true,
+			onSelectionChanged: onSelectionChangedWorkingDay
+		};
+	
+	function onSelectionChangedWorkingDay(){
+		openNav1();
+		var selectedNodes= gridOptions1.api.getSelectedNodes();
+		var selectedData= selectedNodes.map(node => node.data);
+	
+		$('#workingDaySlNo').val(selectedData.map(node => node.workingDaySlNo));
+		$('#workingDay').val(selectedData.map(node => node.workingDay));
+		$('#workingDayType').val(selectedData.map(node => node.workingDayType));
+		$('#workingHour').val(selectedData.map(node => node.workingHour));
+	}
+	
+	function saveWorkingDayData() {
+		
+		var obj = {};
+		obj.workingDaySlNo = $("#workingDaySlNo").val();
+		obj.workingDay = $("#workingDay").val();
+		obj.workingDayType = $("#workingDayType").val();
+		obj.workingHour = $("#workingHour").val();
+		obj.organisationName = $("#organisationalName").val();
+		obj.organisationNamediv = $("#organisationDiv").val();
+		
+		var validation = true;
+		if (obj.workingDay == null || obj.workingDay == "") {
+			validation = validationUpdated("workingDay Required",
+					"workingDay");
+		}
+
+		if (obj.workingDayType == null || obj.workingDayType == "") {
+			validation = validationUpdated("workingDayType Required",
+					"workingDayType");
+		}
+		if (obj.workingHour == null || obj.workingHour == "") {
+			validation = validationUpdated("workingHour Required", "workingHour");
+		}
+		console.log(JSON.stringify(obj));
+		if (validation) {
+			$.ajax({
+				type : "POST",
+				url : "organisationl-master-add-workingDay-details",
+				dataType : 'json',
+				contentType : 'application/json',
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "Success") {
+						var orgName = $("#organisationalName").val();
+						var orgDiv = $("#organisationDiv").val();
+						
+						agGrid.simpleHttpRequest({
+							url : 'organisationl-master-view-workingDay-details?orgName='+orgName+"&orgDiv="+orgDiv
+						}).then(function(data) {
+							gridOptions1.api.setRowData(data);
+						});
+						closeNav1();
+					}else {
+						
+						$("#messageParagraph").text("Already "+$("#workingDay").val()+" Assign");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						closeNav1();
+			}
+				},
+				error : function(data) {
+					console.log(data)
+				}
+			});
+
+		}
+
+	}	
+	function openNav2() {
+		$("#newBtn2").hide();
+		
+		$("#declareSlNo").val('');
+		$("#financialYear").val('');
+		$("#fromDate").val('');
+		$("#toDate").val('');
+		$("#declareStatus").val('');
+		document.getElementById("mySidenav1").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto;";
+		document.getElementById("main1").style.width = "75%";
+	}
+
+	function closeNav2() {
+		document.getElementById("mySidenav1").style.width = "0";
+		document.getElementById("main1").style.width = "100%";
+		$("#newBtn2").show();
+		$("#declareSlNo").val('');
+		$("#financialYear").val('');
+		$("#fromDate").val('');
+		$("#toDate").val('');
+		$("#declareStatus").val('');
+	}
+	// for activity table
+
+	var columnDefs2 = [
+			 {
+				headerName : "Financial Year",
+				field : "financialYear",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : "From Date",
+				field : "fromDate",
+				cellStyle : {
+					textAlign : 'center'
+				} 
+			}, {
+				headerName : "To Date",
+				field : "toDate",
+				cellStyle : {
+					textAlign : 'center'
+				},
+			},{
+				headerName : "Status",
+				field : "declareStatus",
+				cellStyle : {
+					textAlign : 'center'
+				}, 
+			} ];
+	var gridOptions2 = {
+			columnDefs : columnDefs2,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 320
+			},
+			rowSelection: 'single',
+			rowMultiSelectWithClick: true,
+			onSelectionChanged: onSelectionChangedDeclare
+		};
+	function onSelectionChangedDeclare(){
+		closeNav1();
+		openNav2();
+		var selectedNodes= gridOptions2.api.getSelectedNodes();
+		var selectedData= selectedNodes.map(node => node.data);
+	
+		$('#declareSlNo').val(selectedData.map(node => node.declareSlNo));
+		$('#financialYear').val(selectedData.map(node => node.financialYear));
+		$('#fromDate').val(selectedData.map(node => node.fromDate));
+		$('#toDate').val(selectedData.map(node => node.toDate));
+	}
+	function saveDeclareData() {
+		
+		var obj = {};
+		obj.declareSlNo = $("#declareSlNo").val();
+		obj.financialYear = $("#financialYear").val();
+		obj.fromDate = $("#fromDate").val();
+		obj.toDate = $("#toDate").val();
+		obj.organisationName = $("#organisationalName").val();
+		obj.organisationNamediv = $("#organisationDiv").val();
+		
+		var validation = true;
+		if (obj.financialYear == null || obj.financialYear == "") {
+			validation = validationUpdated("Financial Year Required",
+					"financialYear");
+		}
+
+		if (obj.fromDate == null || obj.fromDate == "") {
+			validation = validationUpdated("From Date Required",
+					"fromDate");
+		}
+		if (obj.toDate == null || obj.toDate == "") {
+			validation = validationUpdated("To Date Required", "toDate");
+		}
+		console.log(JSON.stringify(obj));
+		if (validation) {
+			$.ajax({
+				type : "POST",
+				url : "organisationl-master-add-taxDeclarationModifyDeclare",
+				dataType : 'json',
+				contentType : 'application/json',
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "Success") {
+						var orgName = $("#organisationalName").val();
+						var orgDiv = $("#organisationDiv").val();
+						
+						agGrid.simpleHttpRequest({
+							url : 'organisationl-master-view-taxDeclarationModifyDeclare?orgName='+orgName+"&orgDiv="+orgDiv
+						}).then(function(data) {
+							gridOptions2.api.setRowData(data);
+						});
+						closeNav2();
+					}else {
+						
+						$("#messageParagraph").text("Already "+$("#financialYear").val()+" Assign");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						closeNav2();
+			}
+				},
+				error : function(data) {
+					console.log(data)
+				}
+			});
+
+		}
+
+	}
+	function viewImage(id) {
+		window.open("/document/document/" + id, '_blank');
+	}
+	
+	function getStateDetails() {
+
+		var cname = $('#country').val();
+		if (cname) {
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+			$.ajax({
+				type : "GET",
+				url : "organisationl-master-stateList?id=" + cname,
+				success : function(response) {
+					if (response.message == "success") {
+						$("#states").empty();
+						var option = $("<option></option>");
+						$(option).val(null);
+						$(option).html("Select");
+						$("#states").append(option);
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#states").append(option);
+						}
+					}
+				},
+				error : function(e) {
+				}
+			});
+		} else {
+			$("#states").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#states").append(option);
+			$("#states").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+		}
+	}
+	
+
+	function getStateDataOnEdit(stateId) {
+		var country = $("#country").val();
+		if (country) {
+			$.ajax({
+				type : "GET",
+				url : "organisationl-master-stateList?id=" + country,
+				success : function(response) {
+					if (response.message == "success") {
+						$("#states").empty();
+						var option = $("<option></option>");
+						$(option).val(null);
+						$(option).html("Select");
+						$("#states").append(option);
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#states").append(option);
+						}
+						$("#states").val(stateId);
+					}
+				},
+				error : function(e) {
+				}
+			});
+		} else {
+			$("#states").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#states").append(option);
+		}
+	}
+
+	function getStateDataOnEdit1(stateId) {
+		var country = $("#country").val();
+		if (country) {
+			$.ajax({
+				type : "GET",
+				url : "organisationl-master-stateList?id=" + country,
+				success : function(response) {
+					if (response.message == "success") {
+						$("#states1").empty();
+						var option = $("<option></option>");
+						$(option).val(null);
+						$(option).html("Select");
+						$("#states1").append(option);
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#states1").append(option);
+						}
+						$("#states1").val(stateId);
+					}
+				},
+				error : function(e) {
+				}
+			});
+		} else {
+			$("#states1").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#states1").append(option);
+		}
+	}
+	
+	  
+	    function submitAddressDetails(dataset) {
+console.log(dataset)
+$.ajax({
+	 type: "POST",
+     url: "organisationl-master-save-shipping-address",
+     dataType: 'json',
+     contentType: 'application/json',
+     data: JSON.stringify(dataset),
+    success: function(response) {
+        if (response.message == "Success") {
+        	closeNavShipping();
+        	var organisationalIdd = $("#organisationalId").val();
+			
+			 agGrid.simpleHttpRequest({
+       			 url : "organisationl-master-shippingdetails?organisationalIdd=" + organisationalIdd,
+       			}).then(function(data) {
+       				var jsonData = JSON.parse(data.body);
+       				var allData=jsonData.Data;
+       				//var len = allData.length;
+       				//$('#totaldispatch').find('span').html(len);
+       				gridSAOptions.api.setRowData(allData);
+       			});
+        	
+        } else {
+            swal({
+                title: response.code,
+                text: response.message,
+                type: "warning"
+            })
+        }
+    },
+    error: function(response) {
+        console.log(response);
+    }
+})
+}
+
+	    function getStateDetails1() {
+
+	  		var cname = $('#country1').val();
+	  		if (cname) {
+	  			var option = $("<option></option>");
+	  			$(option).val(null);
+	  			$(option).html("Select");
+	  			//$("#dname").append(option);
+	  			$.ajax({
+	  				type : "GET",
+	  				url : "organisationl-master-stateList?id=" + cname,
+	  				success : function(response) {
+	  					if (response.message == "success") {
+	  						$("#states1").empty();
+	  						var option = $("<option></option>");
+	  						$(option).val(null);
+	  						$(option).html("Select");
+	  						$("#states1").append(option);
+	  						for (var i = 0; i < response.body.length; i++) {
+	  							var option = $("<option></option>");
+	  							$(option).val(response.body[i].key);
+	  							$(option).html(response.body[i].name);
+	  							$("#states1").append(option);
+	  						}
+	  					}
+	  				},
+	  				error : function(e) {
+	  				}
+	  			});
+	  		} else {
+	  			$("#states1").empty();
+	  			var option = $("<option></option>");
+	  			$(option).val(null);
+	  			$(option).html("Select");
+	  			$("#states1").append(option);
+	  			$("#states1").empty();
+	  			var option = $("<option></option>");
+	  			$(option).val(null);
+	  			$(option).html("Select");
+	  			//$("#dname").append(option);
+	  		}
+	  	}
+	    
+		function openDetails (addressId) {
+			 var editId = addressId.split(",");
+			var addressId = editId[0];
+			var modal = editId[1];
+			openNavShipping();
+			agGrid.simpleHttpRequest({
+     			 url : 'organisationl-master-edit-address?addressId=' + addressId,
+     			}).then(function(data) {
+						//$("#shipmentheadId").html(data[0].salesShipmentId);
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.Data;
+					console.log("hhgfvh",jsonData);
+				
+					   $("#shippingAddressId").val(allData[0].addressId);
+					   $("#country1").val(allData[0].country);
+						//$("#states1").val(allData[0].state);
+						getStateDataOnEdit1(allData[0].state);
+						$("#city1").val(allData[0].city);
+					    $("#street11").val(allData[0].street1);
+						$("#street21").val(allData[0].street2);
+						$("#zipCode1").val(allData[0].zipCode);
+						$("#fax1").val(allData[0].fax);
+						$("#phone1").val(allData[0].phone);
+						if(allData[0].defaultStatus == "1") {
+							$("#addStatus").prop("checked",true);
+						} else {
+							$("#addStatus").prop("checked",false);
+						}
+						
+						
+					});
+			
+
+		}
+		
+ 		
+ 		function deleteAddressDtls() {
+ 			var selectedRows = gridSAOptions.api.getSelectedRows();
+ 						 var id=selectedRows[0].addressId;
+ 						 console.log("vvv",id);
+ 					
+ 						$.ajax({
+ 							type : "GET",
+ 							url : "organisationl-master-address-delete?id=" + id,
+ 							async : false,
+ 							success : function(response) {
+
+ 								if (true) {
+ 									$("#messageParagraph").text("Deleted Successfully");
+ 									$("#msgOkModal").removeClass("btn3");
+ 									$("#msgOkModal").addClass("btn1");
+ 									$("#msgModal").modal('show');
+
+ 									var organisationalIdd = $("#organisationalId").val();
+ 									
+ 									 agGrid.simpleHttpRequest({
+ 						       			 url : "organisationl-master-shippingdetails?organisationalIdd=" + organisationalIdd,
+ 						       			}).then(function(data) {
+ 						       				var jsonData = JSON.parse(data.body);
+ 						       				var allData=jsonData.Data;
+ 						       				//var len = allData.length;
+ 						       				//$('#totaldispatch').find('span').html(len);
+ 						       				gridSAOptions.api.setRowData(allData);
+ 						       			});
+ 									
+ 									
+ 									$('#deleteAddressDtls').attr("disabled", true);
+ 									
+ 									$('#newBtnShipping').attr("disabled", false);
+ 									
+ 									
+ 								}
+
+ 							},
+ 						});
+ 			}
+</script>
+
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="row" id="reqTable">
+							<div class="col-md-6 btn-hs">
+								<div class="font-design" id="totalReq"></div>
+							</div>
+							<div class="col-md-6 btn-hs">
+
+								<button class="new-btn" id="add" onclick="add()">NEW</button>
+								<button class="delete-btn" id="reqDltBtn" onclick="deleteFun()">DELETE</button>
+
+							</div>
+
+						</div>
+
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="">
+								<div class="row">
+									<div class="col-md-6">
+										Organisation: <span id="orgId"></span>
+									</div>
+									<div class="col-md-6" align="right">
+										<button type="button" class="cancel-btn" onclick="cancelBtn()">Cancel</button>
+										<button class="save-btn" onclick="saveAdd()">Save</button>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<input type="hidden" autocomplete="off" id="organisationalId"
+									class="form-control">
+								<!-- 								<div class="col-md-4">
+									<div class="form-group">
+										<label>Main Organisation Name</label> <input type="text"
+											class="form-control" id="mOrganisationalName"
+											autocomplete="off" onblur="removeValid(event)">
+									</div>
+								</div> -->
+								<div class="col-md-4">
+									<div class="form-group">
+
+										<label>Organisation Name:</label> <input type="text"
+											id="organisationalName" autocomplete="off"
+											class="form-control" onkeyup='getOrgnizationNameAutoSearch()'>
+
+										<div id="suggesstion-box1" class="sugg-cls"></div>
+
+									</div>
+								</div>
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Organisation Division:</label> <input type="text"
+											class="form-control" id="organisationDiv" autocomplete="off"
+											onblur="removeValid(event)">
+									</div>
+								</div>
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Organisation reg no:</label> <input type="text"
+											class="form-control" id="organisationalRegNo"
+											autocomplete="off" onblur="removeValid(event)">
+									</div>
+								</div>
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>G.S.T No.</label> <input type="text"
+											class="form-control" id="gstNo" autocomplete="off"
+											onblur="removeValid(event)">
+									</div>
+								</div>
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>OrganisationType:</label>
+										<div class="select">
+											<select class="" id="organisationType"
+												onblur="removeValid(event)">
+												<option value="">Select</option>
+												<option th:each="c,iter:${organisationTypeList}"
+													th:value="${c.key}" th:text="${c.name}"></option>
+											</select>
+										</div>
+									</div>
+								</div>
+								<!-- <div class="col-md-4">
+									<div class="form-group">
+										<label>Address:</label> <input type="text"
+											class="form-control" id="orgaddress" autocomplete="off"
+											onblur="removeValid(event)">
+									</div>
+								</div> -->
+								<!-- <div class="col-md-4">
+									<div class="form-group">
+										<label>Location:</label>
+										<div class="select">
+											<select class="" id="location" onblur="removeValid(event)">
+												<option value="">Select</option>
+												<option th:each="c,iter:${location}" th:value="${c.key}"
+													th:text="${c.name}"></option>
+											</select>
+										</div>
+									</div>
+								</div> -->
+
+								<!-- <div class="col-md-4">
+									<div class="form-group">
+										<label>PinCode:</label> <input type="text"
+											class="form-control" id="pinCode" autocomplete="off"
+											onblur="removeValid(event)">
+									</div>
+								</div>
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Phone No:</label> <input type="text"
+											class="form-control" id="phoneNo" autocomplete="off"
+											onblur="removeValid(event)">
+									</div>
+								</div> -->
+
+								<div class="col-md-3">
+									<div class="form-group">
+										<label>Email:</label> <input type="text" class="form-control"
+											id="email" autocomplete="off" onblur="removeValid(event)">
+									</div>
+								</div>
+								<div class="col-md-3">
+									<div class="form-group">
+
+										<label>Start Day For payroll</label>
+										<div class="select">
+											<select id="startDateForAttendance"
+												onblur="removeValid(event)">
+												<option value="">--Select Start Day--</option>
+												<option value="1">1</option>
+												<option value="10">10</option>
+												<option value="15">15</option>
+												<option value="20">20</option>
+												<option value="21">21</option>
+												<option value="25">25</option>
+											</select>
+										</div>
+									</div>
+								</div>
+
+
+								<div class="col-md-2">
+									<label style="margin-bottom: 10px;">Logo</label>
+
+									<div class="control-group position-r">
+										<label class="custom-file-upload" for="uploadDoc_0" id="logo">
+											<i class="ti-plus"></i>
+										</label>
+										<div class="controls">
+											<input type="file" class="document" id="uploadDoc_0"
+												name="userImage" accept="image/*"
+												onchange="saveMultiFile(event)" />
+										</div>
+									</div>
+									<input type="hidden" id="uploadHidden_0" class="uploadHidCls">
+									<div id="uploadedBillDiv_0" align="center"
+										class="uploadedBillCls"></div>
+									<div id="imageName_0" class="imageName"></div>
+								</div>
+								<div class="col-md-2">
+									<label style="margin-bottom: 10px;">Signature</label>
+
+									<div class="control-group position-r">
+										<label class="custom-file-upload" for="uploadDoc_1"
+											id="uploadFor_0"> <i class="ti-plus"></i>
+										</label>
+										<div class="controls">
+
+											<input type="file" class="document" id="uploadDoc_1"
+												name="userImage" accept="image/*"
+												onchange="saveMultiFileSignature(event)" />
+
+										</div>
+									</div>
+									<input type="hidden" id="uploadHidden_1" class="uploadHidCls">
+									<div id="uploadedBillDiv_1" align="center"
+										class="uploadedBillCls"></div>
+									<div id="imageName_1" class="imageName"></div>
+								</div>
+
+								<div class="col-md-2">
+
+									<label style="margin-bottom: 10px;">Stamp</label>
+
+									<div class="control-group position-r">
+										<label class="custom-file-upload" for="uploadDoc_2"
+											id="uploadFor_2"> <i class="ti-plus"></i>
+										</label>
+										<div class="controls">
+
+											<input type="file" class="document" id="uploadDoc_2"
+												name="userImage" accept="image/*"
+												onchange="saveMultiFileStampStamp(event)" />
+
+										</div>
+									</div>
+									<input type="hidden" id="uploadHidden_2" class="uploadHidCls">
+									<div id="uploadedBillDiv_2" align="center"
+										class="uploadedBillCls"></div>
+									<div id="imageName_2" class="imageName"></div>
+								</div>
+								<div class="row">
+
+									<div class="col-md-12">
+										<div class="modal-inrheading">About Organisation</div>
+										<div class="position-text">
+											<textarea rows="4" cols="100" id="orgAbout"
+												onkeyup="textCount(event)"></textarea>
+										</div>
+									</div>
+								</div>
+
+
+							</div>
+
+						</div>
+						<div id="billingDiv">
+							<div class="accordion-item">
+								<h2 class="accordion-header" id="headingTwo2">
+									<button class="accordion-button" type="button"
+										data-bs-toggle="collapse" data-bs-target="#collapseTwo2"
+										aria-expanded="true" aria-controls="collapseTwo2">
+										Billing Address Details</button>
+								</h2>
+								<div id="collapseTwo2" class="accordion-collapse collapse show"
+									aria-labelledby="headingTwo2"
+									data-bs-parent="#accordionExample">
+									<div class="accordion-body">
+
+										<div class="row">
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Country</label>
+													<div class="select">
+														<select id="country" onchange="getStateDetails()"
+															onblur="removeValid(event)">
+															<option th:value="NULL">Select Country</option>
+															<option th:each="c,iter:${countryList}"
+																th:value="${c.key}" th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>State</label>
+													<div class="select">
+														<select id="states" onblur="removeValid(event)">
+															<option th:value="NULL">Select State</option>
+															<!-- <option th:each="c,iter:${statesList}"
+													th:value="${c.key}" th:text="${c.name}"></option> -->
+														</select> <span class="focus"></span>
+													</div>
+												</div>
+											</div>
+
+											<!-- <div class="col-md-4">
+											<div class="form-group">
+												<label>City</label> <input type="text" class="form-control"
+													id="city" placeholder="City" onblur="removeValid(event)"
+													onkeyup="checkAlphabet('city')" maxLength="30"> <span
+													id="error7" class="formValidation1"></span>
+											</div>
+										</div> -->
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Location:</label>
+													<div class="select">
+														<select class="" id="location" onblur="removeValid(event)">
+															<option value="">Select</option>
+															<option th:each="c,iter:${location}" th:value="${c.key}"
+																th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Street 1:</label> <input type="text"
+														class="form-control" id="orgaddress" autocomplete="off"
+														onblur="removeValid(event)">
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Street 2:</label> <input type="text"
+														class="form-control" id="street2"
+														onblur="removeValid(event)" maxLength="30">
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>PinCode:</label> <input type="text"
+														class="form-control" id="pinCode" autocomplete="off"
+														onblur="removeValid(event)">
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Phone No:</label> <input type="text"
+														class="form-control" id="phoneNo" autocomplete="off"
+														onblur="removeValid(event)">
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Fax:</label> <input type="text" class="form-control"
+														id="fax"  onblur="removeValid(event)">
+												</div>
+											</div>
+
+										</div>
+
+									</div>
+								</div>
+							</div>
+						</div>
+						<div id="shippingDiv">
+							<div class="accordion-item" id="shippingAddressAcc">
+								<h2 class="accordion-header" id="headingTwo2">
+									<button class="accordion-button" type="button"
+										data-bs-toggle="collapse" data-bs-target="#collapseTwo2"
+										aria-expanded="true" aria-controls="collapseTwo2">
+										Shipping Address Details</button>
+
+									<button class="btn btn-primarynew" onclick="copyAsBillingAdd()">Copy
+										As Billing Address</button>
+							</div>
+							</h2>
+							<div id="collapseTwo2" class="accordion-collapse collapse show"
+								aria-labelledby="headingTwo2" data-bs-parent="#accordionExample">
+								<div class="accordion-body">
+
+									<div id="mySidenavShipping" class="sidenav">
+										<div class="slidebox">
+											<div class="row">
+												<div class="col-md-10">
+													<div class="edit">
+														Address Id: <span id="shippingAddressId"></span>
+													</div>
+												</div>
+												<div class="col-md-2">
+													<div class="arrow">
+														<a href="javascript:void(0)" class="closebtn"
+															onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+													</div>
+												</div>
+											</div>
+											<div class="chartbtnsec">
+												<div align="right">
+													<button class="cancel-btn" onclick="closeNavShipping()">CANCEL</button>
+													<!-- <button class="btn3">DELETE</button> -->
+													<button class="approve-btn" id="saveSaddressData">SAVE</button>
+												</div>
+											</div>
+											<div class="clearfix"></div>
+											<!-- <input type="hidden" id="shippingId"> -->
+
+											<div class="row">
+
+												<div class="col-md-6">
+													<div class="form-group">
+														<label>Country</label>
+														<div class="select">
+															<select id="country1" onchange="getStateDetails1()"
+																onblur="removeValid(event)">
+																<option th:value="NULL">Select Country</option>
+																<option th:each="c,iter:${countryList}"
+																	th:value="${c.key}" th:text="${c.name}"></option>
+															</select>
+														</div>
+													</div>
+												</div>
+
+												<div class="col-md-6">
+													<div class="form-group">
+														<label>State</label>
+														<div class="select">
+															<select id="states1" onblur="removeValid(event)">
+																<option th:value="NULL">Select State</option>
+																<!-- <option th:each="c,iter:${statesList}"
+													th:value="${c.key}" th:text="${c.name}"></option> -->
+															</select> <span class="focus"></span>
+														</div>
+													</div>
+												</div>
+											</div>
+											<div class="row">
+												<!-- <div class="col-md-6">
+													<div class="form-group">
+														<label>City</label> <input type="text"
+															class="form-control" id="city1" placeholder="City"
+															onblur="removeValid(event)"
+															onkeyup="checkAlphabet('city')" maxLength="30">
+													</div>
+												</div> -->
+												
+												
+													<div class="col-md-6">
+												<div class="form-group">
+													<label>Location:</label>
+													<div class="select">
+														<select class="" id="city1" onblur="removeValid(event)">
+															<option value="">Select</option>
+															<option th:each="c,iter:${location}" th:value="${c.key}"
+																th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+
+
+												<div class="col-md-6">
+													<div class="form-group">
+														<label>Street 1</label> <input type="text"
+															class="form-control" id="street11" placeholder="Street 1"
+															onblur="removeValid(event)" maxLength="30">
+													</div>
+												</div>
+											</div>
+											<div class="row">
+												<div class="col-md-6">
+													<div class="form-group">
+														<label>Street 2</label> <input type="text"
+															class="form-control" id="street21" placeholder="Street 2"
+															onblur="removeValid(event)" maxLength="30">
+													</div>
+												</div>
+
+
+
+												<div class="col-md-6">
+													<div class="form-group">
+														<label>Zip Code</label> <input type="text"
+															class="form-control" id="zipCode1" autocomplete="off"
+															placeholder="Zip Code" maxlength="6"
+															onkeyup="zipcodeVal1();checkNumeric('zipCode1');"
+															onblur="removeValid(event)"> <span id="error15"
+															class="formValidation1"></span>
+													</div>
+												</div>
+											</div>
+											<div class="row">
+												<div class="col-md-6">
+													<div class="form-group">
+														<label>Phone</label> <input type="text"
+															class="form-control" id="phone1" placeholder="Phone"
+															maxlength="10"
+															onkeyup="mobVal4();checkNumeric('phone1');"
+															onblur="removeValid(event)"> <span id="error12"
+															class="formValidation1"></span>
+													</div>
+												</div>
+
+
+												<div class="col-md-4">
+													<div class="form-group">
+														<label>Fax</label> <input type="text" class="form-control"
+															id="fax1" placeholder="Fax" onblur="removeValid(event)">
+													</div>
+												</div>
+											</div>
+											<div class="row">
+												<div class="col-md-2">
+													<div class="form-group" style="margin-top: 28px;">
+														<input type="checkbox" name="isDefault"
+															style="margin-top: 8px;" id="addStatus" value="1">
+														<label>Default Address</label>
+													</div>
+												</div>
+											</div>
+
+
+										</div>
+									</div>
+
+									<div class="row">
+										<div class="col-md-4 btn-hs1">
+											<div class="font-design"></div>
+										</div>
+										<div class="col-md-8 butttonsec">
+											<button class="delete-btn" data-toggle="modal"
+												id="deleteAddressDtls" data-target="#delete"
+												onclick="deleteAddressDtls()">DELETE</button>
+											<button class="new-btn" id="newBtnShipping"
+												onclick="openNavShipping()">NEW</button>
+										</div>
+
+									</div>
+
+									<div class="row">
+										<div class="col-md-12">
+											<div id="mySAGrid" style="width: 100%; height: 200px;"
+												class="ag-theme-alpine"></div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div id="main" class="mt-4">
+							<div class="accordion-item">
+								<h2 class="accordion-header" id="headingOne">
+									<button class="accordion-button" type="button"
+										data-bs-toggle="collapse" data-bs-target="#collapseOne"
+										aria-expanded="false" aria-controls="collapseOne">
+										Working Day Details</button>
+								</h2>
+
+								<div id="collapseOne" class="accordion-collapse collapse show"
+									aria-labelledby="headingOne" data-bs-parent="#accordionExample">
+									<div class="accordion-body">
+
+										<div id="main_contentClrnc">
+											<input type="hidden" id="workingDaySlNo" />
+											<div id="mySidenav" class="sidenav">
+												<div class="slidebox">
+													<div class="row">
+														<div class="col-md-10 edit">Working Day Declaration</div>
+														<div class="col-md-2">
+															<div class="arrow">
+																<a href="javascript:void(0)" class="closebtn"
+																	onclick="closeNav1()"><i class="ti-arrow-right"></i></a>
+															</div>
+														</div>
+													</div>
+													<div style="clear: both;"></div>
+													<div class="chartbtnsec">
+														<div align="right">
+															<button class="cancel-btn" onclick="closeNav1()">CANCEL</button>
+															<button class="save-btn" id="save1"
+																onclick="saveWorkingDayData()">SAVE</button>
+														</div>
+
+													</div>
+													<div class="clearfix"></div>
+													<div class="row">
+
+														<div class="col-lg-12">
+															<div class="form-group">
+																<label>Working Day</label>
+																<div class="select">
+																	<select id="workingDay" onblur="removeValid(event)">
+																		<option value="">-select-</option>
+																		<option value="Monday">Monday</option>
+																		<option value="Tuesday">Tuesday</option>
+																		<option value="Wednesday">Wednesday</option>
+																		<option value="Thursday">Thursday</option>
+																		<option value="Friday">Friday</option>
+																		<option value="Saturday">Saturday</option>
+																		<option value="Sunday">Sunday</option>
+																	</select>
+																</div>
+															</div>
+														</div>
+
+														<div class="col-lg-12">
+															<div class="form-group">
+																<label>Working Day Type</label>
+																<div class="select">
+																	<select id="workingDayType" onblur="removeValid(event)">
+																		<option value="">-select-</option>
+																		<option value="FullDay">FULL DAY</option>
+																		<option value="HalfDay">HALF DAY</option>
+																		<option value="WeekOff">WEEK OFF</option>
+																	</select>
+																</div>
+															</div>
+														</div>
+
+														<div class="col-lg-12">
+															<div class="form-group">
+																<label>Working Hours</label>
+																<div class="select">
+																	<select id="workingHour" onblur="removeValid(event)">
+																		<option value="">-select-</option>
+																		<option value="0">0</option>
+																		<option value="3">3</option>
+																		<option value="4">4</option>
+																		<option value="6">6</option>
+																		<option value="8">8</option>
+																		<option value="9">9</option>
+																		<option value="10">10</option>
+																		<option value="11">11</option>
+																		<option value="12">12</option>
+																	</select>
+																</div>
+															</div>
+														</div>
+
+													</div>
+
+												</div>
+											</div>
+											<div class="row">
+												<div class="col-md-12 buttonsec btn-hs">
+													<button class="new-btn" id="newBtn" onclick="openNav1()">NEW</button>
+												</div>
+												<div id="myGridWorkingDay"
+													style="width: 100%; height: 250px;" class="ag-theme-alpine"></div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+						</div>
+						<div id="main1" class="mt-4">
+							<div class="accordion-item">
+								<h2 class="accordion-header" id="headingTwo">
+									<button class="accordion-button" type="button"
+										data-bs-toggle="collapse" data-bs-target="#collapseTwo"
+										aria-expanded="false" aria-controls="collapseTwo">
+										Tax Declaration Modify Declare</button>
+								</h2>
+
+								<div id="collapseTwo" class="accordion-collapse collapse show"
+									aria-labelledby="headingTwo" data-bs-parent="#accordionExample">
+									<div class="accordion-body">
+
+										<div id="main_contentClrnc">
+											<input type="hidden" id="declareSlNo" />
+											<div id="mySidenav1" class="sidenav">
+												<div class="slidebox">
+													<div class="row">
+														<div class="col-md-10 edit">Tax Declaration Modify
+															Declare</div>
+														<div class="col-md-2">
+															<div class="arrow">
+																<a href="javascript:void(0)" class="closebtn"
+																	onclick="closeNav2()"><i class="ti-arrow-right"></i></a>
+															</div>
+														</div>
+													</div>
+													<div style="clear: both;"></div>
+													<div class="chartbtnsec">
+														<div align="right">
+															<button class="cancel-btn" onclick="closeNav2()">CANCEL</button>
+															<button class="save-btn" id="save2"
+																onclick="saveDeclareData()">SAVE</button>
+														</div>
+
+													</div>
+													<div class="clearfix"></div>
+													<div class="row">
+
+														<div class="col-lg-12">
+															<div class="form-group">
+																<label>Financial Year:</label>
+																<div class="select">
+																	<select class="" id="financialYear"
+																		onblur="removeValid(event)">
+																		<option value="">Select</option>
+																		<option th:each="c,iter:${financialYearList}"
+																			th:value="${c.name}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+														</div>
+
+														<div class="col-lg-12">
+															<div class="form-group calendar_box">
+																<label>From Date</label> <input type="text"
+																	id="fromDate" autocomplete="off" class="form-control"
+																	onblur="removeValid(event)"
+																	th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|">
+																<i class="ti-calendar picker_calendar"
+																	id="fromDateCalendar"></i>
+															</div>
+														</div>
+
+														<div class="col-lg-12">
+															<div class="form-group calendar_box">
+																<label>To Date</label> <input type="text" id="toDate"
+																	autocomplete="off" class="form-control"
+																	onblur="removeValid(event)"
+																	th:attr="onkeyup=|toDate('fromDate','${session.DATEFORMAT_JS}')|">
+																<i class="ti-calendar picker_calendar"
+																	id="toDateCalendar"></i>
+															</div>
+														</div>
+
+													</div>
+
+												</div>
+											</div>
+											<div class="row">
+												<div class="col-md-12 buttonsec btn-hs">
+													<button class="new-btn" id="newBtn2" onclick="openNav2()">NEW</button>
+												</div>
+												<div id="myGridDeclare" style="width: 100%; height: 250px;"
+													class="ag-theme-alpine"></div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+						</div>
+					</div>
+				</div>
+			</div>
+
+		</div>
+	</div>
+
+</body>
+</html>

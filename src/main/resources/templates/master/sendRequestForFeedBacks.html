@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+ 
+#myRoleGrid .ag-root-wrapper {
+	border: solid 1px #f6f8f8 !important;
+}
+
+#myEmpGrid .ag-root-wrapper {
+	border: solid 1px #f6f8f8 !important;
+}
+
+#myRoleGrid .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff !important;
+	text-indent: 10px !important;
+}
+
+#myRoleGrid .ag-row-selected::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 3px;
+	right: 4px;
+}
+/* .ag-theme-alpine */
+#myEmpGrid .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff !important;
+	text-indent: 10px !important;
+}
+/* .modal #myEmpGrid .ag-row-selected .ag-cell-focus {
+	background: #0076ba !important;
+	color: #fff !important;
+	text-indent: 10px !important;
+} */
+#myEmpGrid .ag-row-selected::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 3px;
+	right: 4px;
+}
+
+#myEmpGrid .ag-header {
+	display: none;
+}
+
+#myRoleGrid .ag-header {
+	display: none;
+}
+
+#myEmpGrid .ag-center-cols-viewport {
+	background: #ffff !important;
+}
+
+#myRoleGrid .ag-center-cols-viewport {
+	background: #ffff !important;
+}
+/* #myEmpGrid .ag-row {
+	background: #ffff !important;
+}
+
+#myRoleGrid .ag-row {
+	background: #ffff !important;
+} */
+</style>
+<script>
+	$(document).ready(
+			function() {
+
+				$("#selectEmp").click(
+						function() {
+							$(".emptxtsec").empty();
+							var selectedRows = roleOptions.api
+									.getSelectedRows();
+							selectedRows.forEach(function(selectedRow, index) {
+
+								var div = '<div class="empstxt">'
+										+ selectedRow.empName + '</div>';
+
+								$(".emptxtsec").append(div);
+							});
+							closeModal();
+						})
+
+				$("#browseBtn").click(function() {
+					$("#browseModal").modal("show");
+				})
+
+				$("#saveEmpData").click(
+						function() {
+
+							//alert(newtxt)
+							data = {};
+							//data.addId = $("#addId").val();
+							data.addId = $("#addId").val();
+							data.employeeId = $("#empidhid").val();
+							data.messages = $("#messages").val();
+
+							var dataset = [];
+							var selectedRows = roleOptions.api
+									.getSelectedRows();
+							selectedRows.forEach(function(selectedRow, index) {
+								dataset.push(selectedRow.empId);
+							});
+							data.empList = dataset;
+
+							//$(".formValidation").remove();
+							allPValid = true;
+							if (allPValid) {
+
+								$("body").addClass("overlay");
+								submitEmployeeData(data);
+							}
+						})
+
+				agGrid.simpleHttpRequest({
+					url : 'request-feedbacks-view'
+				}).then(function(data) {
+					var len = data.length;
+					$('#totalReq').find('span').html(len);
+					gridOptions.api.setRowData(data);
+				});
+
+			})
+
+	function submitEmployeeData(dataset) {
+		console.log(dataset)
+		 data = {};
+
+		data.messages = $("#messages").val();
+		if (data.messages == null || data.messages == "") {
+			validation = validationUpdated("message Required", "messages");
+			//validation=false;
+		} 
+		if (validation) {
+
+			$.ajax({
+				type : "POST",
+				url : "request-feedbacks-save-data",
+				dataType : "json",
+				contentType : "application/json",
+				data : JSON.stringify(dataset),
+				success : function(response) {
+					if (response.message == "Unsuccess") {
+						closeNav();
+						$("body").removeClass("overlay");
+						/* var id = dataset.employeeId;
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show'); */
+						agGrid.simpleHttpRequest({
+							url : 'request-feedbacks-view'
+						}).then(function(data) {
+							var len = data.length;
+							$('#totalReq').find('span').html(len);
+							gridOptions.api.setRowData(data);
+						});
+					}
+				},
+				error : function(data) {
+					console.log(data)
+
+					//$("body").removeClass("overlay");
+				}
+			});
+		}
+	}
+
+	function cancelModalBtn() {
+		$("#delete").modal("hide");
+		$("#deleteModalBtn").removeAttr("disabled");
+	}
+
+	var columnDefs = [
+/* 			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			}, */
+			{
+				headerName : "Employee Id",
+				field : "employeeId",
+				cellRenderer : function(params) {
+					return '<a onclick=OpenEmpDetails("'
+							+ params.data.employeeId
+							+ '") href="javascript:void(0)">'
+							+ params.data.employeeId + '</a>';
+				}
+			}, {
+				headerName : "Employee Name",
+				field : "firstName",
+
+			}, {
+				headerName : "Gender",
+				field : "gender"
+			}, {
+				headerName : "Dob",
+				field : "dob",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : "MobileNo",
+				field : "mobileNo",
+				type : "rightAligned"
+			}, {
+				headerName : "	PersonalMail",
+				field : "personalMail"
+			}, {
+				headerName : "WorkMail",
+				field : "workMail"
+
+			} ];
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowSelection : 'multiple',
+		suppressRowClickSelection : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 190,
+			height : 10
+		}
+	};
+	$(document).ready(function() {
+		
+		
+		var userid = $("#sessionId").val();
+
+		agGrid.simpleHttpRequest({
+			url : "request-feedbacks-employeelist?userid=" + userid,
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+			gridOptions.api.setRowData(data);
+
+		});
+
+		agGrid.simpleHttpRequest({
+			url : 'request-feedbacks-roles-listing',
+		}).then(function(data) {
+			roleOptions.api.setRowData(data);
+		});
+	})
+
+	function userSelect() {
+		openNav();
+
+		roleOptions.api.deselectAll();
+		empOptions.api.deselectAll();
+
+		agGrid.simpleHttpRequest({
+			url : 'request-feedbacks-roles-listing',
+		}).then(function(data) {
+			roleOptions.api.setRowData(data);
+		});
+
+	}
+
+	function OpenEmpDetails(id) {
+		$("#empNameTxt").text("Review for  " + id);
+		openNav();
+		var empNewId = id;
+
+		// var newtxt = "";
+		$("#empidhid").val(empNewId);
+
+		/* roleOptions.api.deselectAll();
+		var roleData = empList;
+		var datas = []; 
+		 roleOptions.api.forEachNode(function(rowNode, index) {
+			for (var i = 0; i < roleData.length; i++) {
+				if (rowNode.data.empId === roleData[i]) {
+					roleOptions.api.selectNode(rowNode, true);
+				}
+			}
+		});
+		
+		$("#empNameTxt").text(employeeId + "  " + firstName); */
+
+	}
+	function submitRole(dataset) {
+
+		console.log(dataset)
+		var obj = {};
+		var validation = true;
+		obj.messages = $("#messages").val();
+		alert(obj.messages)
+		if (obj.messages == null || obj.messages == "") {
+			validation = validationUpdated("Messages Required", "messages");
+			validation = false;
+		}
+
+		if (validation) {
+			$.ajax({
+				type : "POST",
+				url : "request-feedbacks-save-data",
+				dataType : "json",
+				contentType : "application/json",
+				data : JSON.stringify(dataset),
+				success : function(response) {
+					if (response.message == "Success") {
+						closeNav();
+						agGrid.simpleHttpRequest({
+							url : 'request-feedbacks-roles-listing'
+						}).then(function(data) {
+							var len = data.length;
+							$('#totalReq').find('span').html(len);
+							gridOptions.api.setRowData(data);
+						});
+					}
+				},
+				error : function(data) {
+					console.log(data)
+				}
+			});
+		}
+	}
+
+	function openNav() {
+
+		$(".emptxtsec").empty();
+		$("#addId").val("");
+		$("#employeeId").val("");
+		$("#messages").val("");
+		$("#cont").val("");
+		$("#email").val("");
+		$("#btndiv").hide();
+		$("#searchRowDiv").hide();
+		//$("#empNameTxt").text(employeeId+" - "+firstName);
+		document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:0px;";
+		document.getElementById("myGrid").style.width = "75%";
+	}
+
+	function closeNav() {
+
+		$(".emptxtsec").empty();
+		$("#addId").val("");
+		$("#employeeId").val("");
+		$("#messages").val("");
+		$("#email").val("");
+		//$("#empNameTxt").text("New User");
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("myGrid").style.width = "100%";
+		$("#btndiv").show();
+		$("#searchRowDiv").show();
+	}
+
+	function closeModal() {
+		$("#browseModal").modal("hide");
+	}
+	var roleOptions = {
+		columnDefs : [
+				{
+					headerName : '',
+					field : 'empName',
+					cellClass : function(params) {
+						return (params.data.statusData === '1' ? 'ag-row-selected'
+								: '');
+					}
+				}, ],
+		defaultColDef : {
+			flex : 1,
+			minWidth : 100,
+		},
+		rowSelection : 'multiple',
+		rowMultiSelectWithClick : true
+	};
+
+	$(document).ready(function() {
+		agGrid.simpleHttpRequest({
+			url : 'request-feedbacks-roles-listing',
+		}).then(function(data) {
+			roleOptions.api.setRowData(data);
+		});
+	});
+	document.addEventListener('DOMContentLoaded', function() {
+		var gridDiv = document.querySelector('#myRoleGrid');
+		new agGrid.Grid(gridDiv, roleOptions);
+
+	});
+
+	document.addEventListener('DOMContentLoaded', function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+	});
+	
+	  function downloadDetails() { 
+		  var dataset = [];
+		  gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		        dataset.push(rowNode.data);
+		    });
+		  gridOptions.api.exportDataAsCsv(dataset);
+		}  
+</script>
+
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="d-flex justify-content-between">
+							<div class="btn-hs">
+								<div class="font-design" id="totalReq">
+									EMPLOYEE LIST(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="btndiv">
+								<button class="download-btn" onclick="downloadDetails()">Download</button>
+							</div>
+						</div>
+						<input type="hidden" id="sessionId" th:value="${userId}" />
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div id="mySidenav" class="sidenav">
+							<div class="slidebox">
+								<div class="d-flex justify-content-between">
+									<input type="hidden" id="empidhid">
+										<div class="edit" id="empNameTxt"></div>
+								<!-- <div class="edit">Goal Details</div> -->
+
+								<div class="arrow">
+									<a href="javascript:void(0)" class="closebtn"
+										onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+								</div>
+
+							</div>
+
+							<div class="row">
+								<div class="col-md-12 buttonsec btn-hs">
+									<button class="cancel-btn" onclick="closeNav()">CANCEL</button>
+									<button class="save-btn" id="saveEmpData">SAVE</button>
+								</div>
+							</div>
+ 
+ 
+								<div class="clearfix"></div>
+								<div class="row">
+									<div class="col-md-6">
+										<input type="hidden" id="employeeId">
+
+									</div>
+
+									<input type="hidden" id="addId">
+									<div class="col-lg-9">
+										<div class="form-group">
+											<label>Employee Name</label>
+											<div class="emptxtsec"></div>
+										</div>
+									</div>
+									<div class="col-lg-3 mrt_24">
+										<div class="form-group">
+											<button id="browseBtn" class="btn2">Select</button>
+										</div>
+									</div>
+
+									<div class="col-lg-9">
+										<div class="form-group">
+											<label>Messages</label>
+											<textarea class="form-control transparenttxtbox"
+												placeholder="Messages..." id="messages"></textarea>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+				</div>
+			</div>
+		</div>
+		<div id="browseModal" class="modal fade show" aria-modal="true">
+			<div class="modal-dialog modal-md" style="margin-top: 130px;">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h4 class="modal-title md-color">Select Roles</h4>
+						<button type="button" class="close cp" onclick="closeModal();"
+							data-dismiss="modal">&times;</button>
+					</div>
+					<div class="modal-body" style="height: 300px;">
+						<div id="myRoleGrid" class="ag-theme-alpine" style="height: 90%;"></div>
+					</div>
+					<div class="modal-footer">
+						<button class="btn4" data-dismiss="modal" onclick="closeModal();">Cancel</button>
+						<button class="btn1" id="selectEmp">Select</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

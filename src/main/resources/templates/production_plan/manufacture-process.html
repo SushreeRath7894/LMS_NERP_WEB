@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<meta charset="ISO-8859-1">
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+/* .form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+} */
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+.bg_white {
+	background: #ffffff !important;
+}
+.gridInput-batchSize{
+
+    border: none;
+    width: 133px;
+    padding: 0px; 
+    margin: 0px;
+    
+}
+.gridInput-rpAdd{
+    border: none;
+    width: 233px;
+    padding: 0px;
+    margin: 0px;
+}
+.gridInput-totalBatch{
+    border: none;
+    width: 133px;
+    padding: 0px;
+    margin: 0px;
+}
+ .gridInput-tQtyIncRp{
+    border: none;
+    width: 303px;
+    padding: 0px;
+    margin: 0px;
+} 
+.gridInput-remark{
+    border: none;
+    width: 380px;
+    padding: 0px;
+    margin: 0px;
+}
+.gridInput-remark::placeholder { 
+  opacity: 0.8; 
+  font-style: italic;
+}
+
+.aggridInput {
+ border: 1px solid #ddd; 
+  border-radius: 2px; 
+  background-color: #f5f5f5; 
+  padding: 10px; 
+  font-size: 12px; 
+  color: #333;
+  transition: border-color 0.3s ease-in-out;
+    height: 23px;
+}
+</style>
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(function() {
+		
+		const date = new Date();
+		var day = date.getDate();
+		var month = date.getMonth() + 1;
+		let year = date.getFullYear();
+		
+		if(day <= 9){
+			day = "0"+day;
+		}
+		if(month <= 9){
+			month = "0"+month;
+		}
+		
+		let currentDate = `${day}-${month}-${year}`;
+		$('#date').val(currentDate);
+		
+		var dateFormat = localStorage.getItem("dateFormat");
+		
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+			//minDate : new Date(),
+		}).on("change", function() {
+			$('#date').val($(this).val());
+			getMcDtls();
+		})
+		
+		$('#date').blur(function() {
+				$("#toDateCalendar").val($(this).val());
+		})
+		
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		var gridDiv1 = document.querySelector('#myGrid1');
+		new agGrid.Grid(gridDiv1, activityOptions);
+		var rowData = [];
+		gridOptions.api.setRowData(rowData);
+		$('.loader').show();
+		agGrid.simpleHttpRequest({
+			url : "processing-mfgProcessing-data-view"
+		}).then(function(data) {
+			$('.loader').hide();
+			var jsonData = JSON.parse(data.body);
+			var allData = jsonData.viewMfgProcessingData;
+			var len = allData.length;
+			$('#totalItem').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+		});
+		$('#new').attr('disabled', false);
+		$('#approve').attr('disabled', true);
+		$('#delete').attr('disabled', true);
+		
+		var pId = localStorage.getItem('pId');
+		var selectedItem = localStorage.getItem('selectedItem'); 
+		
+		if(selectedItem == "" || selectedItem == null || selectedItem =="null"){
+			
+		}else{
+			showChild();
+			console.log(pId);
+			console.log(selectedItem);
+			
+		 	$("#planId").val(pId);
+			$("#itemId").val(selectedItem);
+			//alert("hi")
+			localStorage.setItem('pId', null);
+			localStorage.setItem('selectedItem', null);
+		}
+		
+		
+	});
+	var colmnDefs = [
+			{
+				headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+			{
+				headerName : "Processing Id",
+				field : "prossing_id",
+				
+				cellRenderer : function(params) {
+					return '<a onclick=editChild("' + params.data.prossing_id +'","'+ window.btoa(params.data.status) +'") href="javascript:void(0)">'
+							+ params.data.prossing_id + '</a>';
+				}
+			}, {
+				headerName : 'Date',
+				field : "date",
+				
+			},{
+				headerName : 'Shift',
+				field : "shift",
+				
+			}, {
+				headerName : 'Status',
+				field : "status",
+				cellRenderer : function(params) {
+					 if (params.data.status == "Approved") {
+						return '<div style="color:#0642f5">Approved</div>';
+					} else {
+						return '<div style="color:#a9a9a9">Not Approved</div>';
+					}	
+				},
+				cellStyle : {
+					textAlign : 'center'
+				},
+				
+			}, {
+				headerName : 'Approved By',
+				field : "approvedBy",
+				cellStyle : {
+					textAlign : 'center'
+				},
+			}, {
+				headerName : 'Remark',
+				field : "remark",
+				width : 400
+			} ];
+	var gridOptions = {
+		columnDefs : colmnDefs,
+		rowSelection : 'single',
+		onSelectionChanged : onRowSelection,
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 180,
+			height : 10
+		},
+	};
+window.index=0;
+	var activityDefs = [
+			/* {
+				headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : false,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			}, */
+			{
+				headerName : 'MixerId',
+				width : 150,
+				field : "mixerId",
+				hide:true
+			},
+			{
+				headerName : 'Mixer',
+				width : 150,
+				field : "mixerNo",
+ 				
+			}, {
+				headerName : 'Brand',
+				width : 150,
+				field : "brandName",
+				
+			}, {
+				headerName : 'Brand Id',
+				width : 150,
+				field : "brandId",
+				hide:true
+			}, {
+				headerName : 'Batch Size',
+				width : 150,
+				field : "batchSize",
+				  cellRenderer : function(params) {
+					index=index+1;
+						return '<input type="number" class="gridInput-batchSize aggridInput" min=0 value="'+params.data.batchSize+'"  placeholder="Enter Batch Size" oninput="'+"calculateTotalQuant("+window.index+")"+'" id="'+"batchSize"+window.index+'">';
+				} 
+			}, {
+				headerName : 'Reprocessed Qty. Added (TO)',
+				field : "reprocessedQutAdd",
+				width : 250,
+				 cellRenderer : function(params) {
+						return '<input type="number" class="gridInput-rpAdd aggridInput" min=0 value="'+params.data.reprocessedQutAdd+'"   placeholder="Enter Reprocessed Qty. Added" oninput="'+"calculateTotalQuant("+window.index+")"+'" id="'+"rpQtyadd"+window.index+'">';
+				} 
+			},
+			{
+				headerName : 'Total Batch (TO)',
+				field : "totalBatch",
+				width : 150,
+				cellRenderer : function(params) {
+					return '<input type="number" class="gridInput-totalBatch aggridInput" min=0 value="'+params.data.totalBatch+'"   placeholder="Enter Total Batch" oninput="'+"calculateTotalQuant("+window.index+")"+'" id="'+"totalBatch"+window.index+'">';
+			}
+			}, {
+				headerName : 'Total Qty.(mt) Including Reprocess (TO)',
+				field : "totalQutIncReprocess",
+				width : 320,
+				cellRenderer : function(params) {
+					return '<input readonly type="number" class="gridInput-tQtyIncRp" value="'+params.data.totalQutIncReprocess+'" min=0  placeholder="Enter Total Qty.(mt) Including Reprocess"  id="'+"tQtyIncRp"+window.index+'">';
+			}
+			}, {
+				headerName : 'Remarks',
+				field : "pRemark",
+				width : 400,
+				
+				cellRenderer : function(params) {
+					return '<input type="text" class="gridInput-remark aggridInput" value="'+params.data.pRemark+'" placeholder="Add Remark" id="'+"pRemark"+window.index+'">';
+			}
+			},
+			 ];
+	// let the grid know which columns and what data to use product table
+	var activityOptions = {
+		columnDefs : activityDefs,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 185,
+			height : 10
+		}
+	};
+	function onRowSelection() {
+		var selectedNodes = gridOptions.api.getSelectedNodes();
+		var selectedData = selectedNodes.map(node => node.data);
+		 var status = selectedData.map(node => node.status);
+		var rowCount = 0;
+		selectedNodes.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			if(status == "Approved"){
+				$('#new').attr('disabled', true);
+				$('#approve').attr('disabled', true);
+				$('#delete').attr('disabled', true);
+			}else{
+				$('#new').attr('disabled', true);
+				$('#approve').attr('disabled', false);
+				$('#delete').attr('disabled', false);
+			}
+		} else {
+			$('#new').attr('disabled', false);
+			$('#approve').attr('disabled', true);
+			$('#delete').attr('disabled', true);
+		}
+	}
+	function switchPage() {
+		$('#myGrid').hide();
+		//$('#demo').show();
+		$('#totalItem').hide();
+		$('#assign').hide();
+		$('#downloadParent').hide();
+		$('#searchRowDiv').hide()
+		$('#pInputDiv').hide()
+		$('#new').hide()
+		$('#approve').hide()
+		$('#delete').hide()
+		$('#newBtn').hide()
+	}
+	/* function switchPage1() {
+		$('#myGrid').hide();
+		$('#demo').show();
+		$('#totalItem').hide();
+		$('#assign').hide();
+		$('#downloadParent').hide();
+		$('#searchRowDiv').hide()
+		$('#pInputDiv').hide()
+		$('#new').hide()
+		$('#approve').hide()
+		$('#delete').hide()
+		$('#newBtn').hide()
+	} */
+	function addNew() {
+		$('#shiftNo').val('');
+ 		//$('#date').val('');
+ 		$('#remark').val('');
+ 		$("#planId").val('');
+		$("#itemId").val('');
+ 		window.index=0;
+ 		switchPage();
+		$('#demo').show();
+ 		activityOptions.api.setRowData();
+ 		
+	}
+</script>
+<script>
+	function openNav() {
+		document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:70px;";
+		document.getElementById("main").style.width = "75%";
+		
+		$('#cancelBtn').hide();
+		$('#downloadBtn').hide();
+	}
+	function closeNav() {
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main").style.width = "100%";
+		$("#itemId").val('');
+		$("#itemName").val('');
+		$("#sampleAmount").val('');
+		$('#cancelBtn').show();
+		$('#downloadBtn').show();
+		
+	}
+	function cancel() {
+		$('#myGrid').show();
+		$('#totalItem').show();
+		$('#downloadParent').show();
+		$('#searchRowDiv').show()
+		$('#demo').hide();
+		$('#newBtn').show()
+		$('#approve').show()
+		$('#delete').show()
+		$('#approve').attr('disabled', true);
+		$('#delete').attr('disabled', true);
+		$('.loader').show();
+		agGrid.simpleHttpRequest({
+			url : "processing-mfgProcessing-data-view"
+		}).then(function(data) {
+			$('.loader').hide();
+			var jsonData = JSON.parse(data.body);
+			var allData = jsonData.viewMfgProcessingData;
+			var len = allData.length;
+			$('#totalItem').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+			
+		});
+		activityOptions.api.setRowData();
+	};
+	
+	
+	function downloadDetails() { 
+		  var dataset = [];
+		  activityOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		        dataset.push(rowNode.data);
+		    });
+		  activityOptions.api.exportDataAsCsv(dataset);
+		}
+	
+	
+	function downloadDetailsParent() { 
+		  var dataset = [];
+		  gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		        dataset.push(rowNode.data);
+		    });
+		  gridOptions.api.exportDataAsCsv(dataset);
+		}
+	
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	
+	function saveChild(){
+		var datas = [];
+		
+		var valid = true;
+		
+		var shiftNo = $('#shiftNo').val();
+		
+		let i=0;
+	 	activityOptions.api.forEachNode(function(rowNode, index) {
+	 		var obj = {};
+	 		i=i+1;
+	 		
+	 		obj.processing_id =$("#processId").val();
+	 		obj.shift = $('#shiftNo').val();
+	 		obj.date = $('#date').val();
+	 		obj.remark = $('#remark').val();
+	 		obj.planId = $("#planId").val();
+			obj.selectedItemId = $("#itemId").val();
+	 		
+			obj.mixerId = rowNode.data.mixerId;
+	 		obj.mixerNo = rowNode.data.mixerNo;
+	 		obj.brandName = rowNode.data.brandName;
+	 		obj.brandId = rowNode.data.brandId;
+	 		
+	 		
+			obj.batchSize = $('#batchSize'+i).val();
+			obj.rpQtyadd = $('#rpQtyadd'+i).val();
+			obj.totalBatch = $('#totalBatch'+i).val();
+			obj.tQtyIncRp = $('#tQtyIncRp'+i).val();
+			obj.pRemark = $('#pRemark'+i).val();
+			datas.push(obj);
+			
+		});
+	 	
+	 	
+	 	if (shiftNo == null || shiftNo == "") {
+			valid = validationUpdated("Shift is Required", "shiftNo");
+		 }
+	 	
+	 	if(valid){
+	 		console.log(datas);
+		 	saveDetails(datas);
+	 	}
+	 	
+	}
+	
+	
+	function saveDetails(datas) {
+		
+		//console.log(datas);
+		$('.loader').show();
+		//$("body").addClass("overlay");
+		$.ajax({
+			type : "POST",
+			url : "processing-add-details",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(datas),
+			success : function(response) {
+				$('.loader').hide();
+				if (response.code == "success") {
+					$("#messageParagraph").text(response.message);
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					cancel();
+				} else {
+					$('.loader').hide();
+					$("#messageParagraph").text(response.message);
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+				}
+			},
+			error : function(data) {
+				$('.loader').hide();
+			}
+		}) //ajax ends
+	}
+	
+	function approveOnclick() {
+		$('#approveModel').modal('show');
+	}
+	function cancelApprove() {
+	 $('#approveModel').modal('hide');
+	}
+	
+	function approveModelOnclick(){
+		var selectedNodes = gridOptions.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		 var id = selectedData.map(node => node.prossing_id);
+		 
+		  $.ajax({
+				type : "GET",
+				url : "processing-approve-data?id=" + id,
+				dataType : "json",
+				contentType : "application/json",
+				success : function(response) {
+					$('.loader').hide();
+					if (response.code == "success") {
+						
+						$('#approveModel').modal('hide');
+						$("#messageParagraph").text(response.message);
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$('.loader').show();
+						agGrid.simpleHttpRequest({
+							url : "processing-mfgProcessing-data-view"
+						}).then(function(data) {
+							$('.loader').hide();
+							var jsonData = JSON.parse(data.body);
+							var allData = jsonData.viewMfgProcessingData;
+							var len = allData.length;
+							$('#totalItem').find('span').html(len);
+							gridOptions.api.setRowData(allData);
+							
+						});
+						
+						$('#approve').attr('disabled', true);
+						$('#delete').attr('disabled', true);
+						$('#new').attr('disabled', false);
+						
+					} else {
+						$('.loader').hide();
+						$("#messageParagraph").text("Something Went Wrong");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						//$('.loader').hide();
+					}
+				},
+				error : function(data) {
+					$('.loader').hide();
+				}
+			}) 
+	}
+	
+	function deleteDetails() {
+		$('#deleteModal').modal('show');
+	}
+	function cancelModalBtn() {
+		$('#deleteModal').modal('hide');
+	}
+	
+	function deleteOnclick(){
+		var selectedNodes = gridOptions.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		 var id = selectedData.map(node => node.prossing_id);
+		 $('.loader').show();
+		  $.ajax({
+				type : "GET",
+				url : "processing-delete-data?id=" + id,
+				dataType : "json",
+				contentType : "application/json",
+				success : function(response) {
+					$('.loader').hide();
+					if (response.code == "success") {
+						
+						$('#deleteModal').modal('hide');
+						$("#messageParagraph").text(response.message);
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$('.loader').show();
+						agGrid.simpleHttpRequest({
+							url : "processing-mfgProcessing-data-view"
+						}).then(function(data) {
+							$('.loader').hide();
+							var jsonData = JSON.parse(data.body);
+							var allData = jsonData.viewMfgProcessingData;
+							var len = allData.length;
+							$('#totalItem').find('span').html(len);
+							gridOptions.api.setRowData(allData);
+							
+						});
+						
+						$('#approve').attr('disabled', true);
+						$('#delete').attr('disabled', true);
+						$('#new').attr('disabled', false);
+						
+					} else {
+						$('.loader').hide();
+						$("#messageParagraph").text("Something Went Wrong");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						//$('.loader').hide();
+					}
+				},
+				error : function(data) {
+					$('.loader').hide();
+				}
+			}) 
+	}
+	
+	function editChild(id,sts){
+		
+		$("#trReqId").html(id);
+		if(window.atob(sts) == "Approved"){
+			$("#saveBtn").hide();
+		}else{
+			$("#saveBtn").show();
+		}
+		
+		window.index=0;
+		$("#processId").val(id);
+		$('.loader').show();
+		agGrid.simpleHttpRequest({
+			url : 'processing-edit-view?id=' + id,
+		}).then(function(data) {
+			$('.loader').hide();
+			console.log(data);
+			var jsonData = JSON.parse(data.body[0]);
+			var allData=jsonData.procrssingPlanEdit;
+			var len = allData.length;
+			  if (allData.length > 0) {
+				  $("#shiftNo").val(allData[0].shift);
+				  $("#date").val(allData[0].date);
+				  $("#remark").val(allData[0].remark);
+				activityOptions.api.setRowData(allData);
+				switchPage();
+				$('#demo').show();
+				
+			} else {
+				$("#messageParagraph").text("Something went to wrong!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('.loader').hide();
+			}  
+		});
+	}
+	function calculateTotalQuant(i){
+		
+		var batchSize = $('#batchSize'+i).val();
+		var totalBatch = $('#totalBatch'+i).val();
+		var rpQtyadd = $('#rpQtyadd'+i).val();
+		
+		if(batchSize == "" || batchSize == null || batchSize == 'null'){
+			batchSize = 0;
+		}
+		if(totalBatch == "" || totalBatch == null || totalBatch == 'null'){
+			totalBatch = 0;
+		}
+		if(rpQtyadd == "" || rpQtyadd == null || rpQtyadd == 'null'){
+			rpQtyadd = 0;
+		}
+		
+		var total1 = (parseFloat(batchSize) * parseFloat(totalBatch)) + parseFloat(rpQtyadd);
+		
+		$('#tQtyIncRp'+i).val(total1);
+	
+	}
+	function showChild() {
+		$('#shiftNo').val('');
+ 		//$('#date').val('');
+ 		$('#remark').val('');
+ 		window.index=0;
+ 		//activityOptions.api.setRowData();
+	agGrid.simpleHttpRequest({
+			url : 'processing-view'
+		}).then(function(data) {
+			console.log(data);
+			var jsonData = JSON.parse(data.body[0]);
+			var allData=jsonData.procrssingPlan;
+			var len = allData.length;
+			  if (allData.length > 0) {
+				activityOptions.api.setRowData(allData);
+				switchPage();
+				$('#demo').show();
+			} else {
+				$("#messageParagraph").text("Something went to wrong!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+			}  
+		});
+	}
+	
+function getMcDtls(){
+		
+		var shift = $("#shiftNo").val();
+ 		var date = $("#date").val();
+ 		if(shift){
+ 			$('.loader').show();
+ 			agGrid.simpleHttpRequest({
+ 					url : 'processing-view?shift=' + shift + "&date=" + date
+ 				}).then(function(data) {
+ 					console.log(data);
+ 					$('.loader').hide();
+ 					var jsonData = JSON.parse(data.body[0]);
+ 					var allData=jsonData.procrssingPlan;
+ 					if(allData!=null && allData!=''){
+ 							//var len = allData.length;
+ 							activityOptions.api.setRowData(allData);
+ 					}else {
+ 						activityOptions.api.setRowData();
+ 						$("#messageParagraph").text("No Data Found!");
+ 						$("#msgOkModal").removeClass("btn3");
+ 						$("#msgOkModal").addClass("btn1");
+ 						$("#msgModal").modal('show');
+ 						$('.loader').hide();
+ 					}  
+ 					 
+ 				}); 
+ 		}
+ 		 
+	}
+	
+</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div id="main_content">
+										<div class="d-flex justify-content-between" id="tdiv">
+							<div class="btn-hs">
+									<div class="font-design" id="totalItem">
+										Total Request(<span></span>)
+									</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+									<button class="download-btn" id="downloadParent" onclick="downloadDetailsParent()">Download</button>
+									<button class="new-btn" id="newBtn" onclick="addNew()">NEW</button>
+									<button class="delete-btn" id="delete" onclick="deleteDetails()">Delete</button>
+									<button class="approve-btn" id="approve" onclick="approveOnclick()">Approve</button>
+							</div>
+						</div>
+							
+							<div id="myGrid" style="width: 100%; height: 500px;"
+								class="ag-theme-alpine"></div>
+						
+							<div class="collapse" id="demo">
+								<div class="innercontent">
+									<div class="innerstickybg">
+										<div class="row">
+											<div class="col-md-6">
+												Processing Id : <span id="trReqId"></span>
+											</div>
+											<div class="col-md-6" align="right">
+												<button class="cancel-btn" id="cancelBtn" onclick="cancel()">Back</button>
+												<button class="save-btn" id="saveBtn" onclick="saveChild()">Save</button>
+											</div>
+										</div>
+									</div>
+								</div>
+								<div class="row mt-4" >
+									<input type="hidden" id="processId">
+									<div class="col-md-4">
+										<div class="form-group">
+												<label> Shift </label>
+												<div class="select">
+													<select id="shiftNo" onblur="removeValid(event)" onchange="getMcDtls()">
+														<option value="">--Select--</option>
+														<option th:each="c,iter:${shiftLists}" th:value="${c.key}"
+															th:text="${c.name}"></option>
+													</select>
+												</div>
+											</div>
+									</div>
+									<div class="col-md-4">
+										<div class="form-group calendar_box">
+										<label>Date</label> <input type="text" id="date"
+											class="form-control"
+											th:attr="onkeyup=|formatDate('todayDate','${session.DATEFORMAT_JS}')|">
+										<i class="ti-calendar picker_calendar"
+											id="toDateCalendar"></i>
+									</div>
+									</div>
+									<div class="col-md-4">
+										<div class="form-group">
+											<label> Remark </label>
+											<textarea class="form-control" id="remark"
+												onblur="removeValid(event)"></textarea>
+										</div>
+									</div>
+									<div class="col-md-4">
+										<div class="form-group">
+											
+											<input type="hidden" id="planId" class="form-control">
+										</div>
+									</div>
+									<div class="col-md-4">
+										<div class="form-group">
+											
+											<input type="hidden" id="itemId" class="form-control">
+										</div>
+									</div>
+								</div>
+								
+								<div id="main" class="mt-4">
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingOne">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseOne"
+												aria-expanded="false" aria-controls="collapseOne">
+												MANUFACTURING DETAILS:</button>
+										</h2>
+										<div id="collapseOne" class="accordion-collapse collapse show"
+											aria-labelledby="headingOne"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+												
+													<div id="myGrid1" style="width: 100%; height: 500px;"
+													class="ag-theme-alpine"></div>
+												
+											</div>
+										</div>
+									</div>
+								</div>
+								
+							</div>
+						</div>
+					</div>
+				</div>
+				<div id="approveModel" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column"></div>
+							<div class="modal-body">
+								<p>Do you want to Approve this.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: 0px;">
+								<button type="button" class="cancel-btn" data-dismiss="modal"
+									onclick="cancelApprove();">No</button>
+								<button type="button" class="approve-btn"
+									onclick="approveModelOnclick()">Yes</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div id="deleteModal" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column"></div>
+							<div class="modal-body">
+								<p>Do you really want to delete these records? This process
+									cannot be undone.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: 0px;">
+								<button type="button" class="cancel-btn" data-bs-dismiss="modal"
+									onclick="cancelModalBtn();">Cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="deleteOnclick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

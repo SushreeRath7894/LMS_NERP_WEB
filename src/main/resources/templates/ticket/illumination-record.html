@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+/* .form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+} */
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+</style>
+
+<script type="text/javascript">
+
+	$(document).ready(function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		$('.loader').show();
+		gridOptions.api.setRowData("");
+		agGrid.simpleHttpRequest({
+			url : 'illumination-view'
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.illumination;
+			console.log(allData)
+			var len = allData.length;
+			$('#totalAsset').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+		});
+		$('.loader').hide();
+		
+		$('#reqDltBtn').attr('disabled', true);
+		$('#assignBtn').attr('disabled', true);
+		$('#approveBtn').attr('disabled', true);
+		$('#deleteChild').attr('disabled', true);
+		
+		
+		var gridDiv = document.querySelector('#Grid1');
+		new agGrid.Grid(gridDiv, gridOptions1);
+		gridOptions1.api.setRowData("");
+		
+		
+		
+		$("#newBtn").click(function() {
+
+		})
+
+		
+		 var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalendar").datetimepicker({
+			format : dateFormat,
+				closeOnDateSelect : true,
+				timepicker : false,
+				//maxDate:0
+			}).on("change", function() {
+				$('#date').val($(this).val());
+				onChangeDate();
+			})
+
+			$('#date').blur(function() {
+				$("#fromDateCalendar").val($(this).val());
+			}) 
+//
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalendar1").datetimepicker({
+			format : dateFormat,
+				closeOnDateSelect : true,
+				timepicker : false,
+				//maxDate:0
+			}).on("change", function() {
+				$('#ndate').val($(this).val());
+			})
+
+			$('#ndate').blur(function() {
+				$("#fromDateCalendar1").val($(this).val());
+			}) 
+			
+  
+	});
+	
+	
+	
+	/* -------------------search bar for mygrid----------------------- */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+		var totalRowCount = gridOptions.api.getModel().getRowCount();
+		$('#totalAsset').find('span').html(totalRowCount);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	var columnDefs = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			pinned : 'left',
+
+		},
+		{
+			headerName : 'Illumination ID',
+			field : "illuminationId",
+			pinned : 'left',
+				cellRenderer : function(params) {
+				return '<a id="illuminationId" onclick=editData("'
+				+params.data.illuminationId
+				+ '") href="javascript:void(0)"><i class="bi bi-pencil-square"></i> '
+				+ params.data.illuminationId + '</a>';
+
+			}
+
+		},{
+			headerName : 'Date',
+			field : "date",
+			
+		},/* {
+			headerName : 'Year',
+			field : "year",
+			
+		}, {
+			headerName : 'Month',
+			field : "month",
+			
+		}, */ {
+			headerName : 'Next Due Date',
+			field : "ndate",
+			
+		}, 
+		{
+			headerName : 'Upload By',
+			field : "uploadBy",
+			
+		},{
+			headerName : 'Approve Status',
+			field : "approveStatus",
+			cellStyle : {
+				textAlign : 'center'
+			},cellRenderer : function(params) {
+				if(params.data.approveStatus=="Approved"){
+					return '<div style="color:#0642f5">Approved</div>';
+				}else{
+					return '<div style="color:#a9a9a9">Pending</div>';
+				}
+				
+
+			}
+		}];
+
+// let the grid know which columns and what data to use
+var gridOptions = {
+	columnDefs : columnDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 170
+	},
+	onSelectionChanged : onSelectionChanged,
+};
+//function for row select parents
+var id = "";
+var apstatus = "";
+
+function onSelectionChanged() {
+	var selectedNodes = gridOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	 
+	 id= selectedData.map(node => node.illuminationId);
+	 apstatus=selectedData.map(node => node.approveStatus);
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+
+	if (rowCount > 0) {
+			if(apstatus=="Approved"){
+			$('#newBtn').attr('disabled', true);
+			$('#reqDltBtn').attr("disabled", true);
+			$('#approveBtn').attr("disabled", true);
+			
+			
+		}else{
+			$('#approveBtn').attr("disabled", false);
+			$('#reqDltBtn').attr("disabled", false);
+			$('#newBtn').attr('disabled', true);
+		}
+	}else {
+		$('#reqDltBtn').attr("disabled", true);
+		$('#approveBtn').attr("disabled", true);
+		$('#newBtn').attr('disabled', false);
+	}
+}
+
+
+function DateCellEditor() {}
+DateCellEditor.prototype.init = function(params) {
+    this.eInput = document.createElement('input');
+    this.eInput.type = 'date';
+    this.eInput.value = params.value || '';
+   // this.eInput.classList.add('custom-numeric-cell'); // Optional: To match ag-grid styling
+};
+DateCellEditor.prototype.getGui = function() {
+    return this.eInput;
+};
+DateCellEditor.prototype.afterGuiAttached = function() {
+    this.eInput.focus();
+    this.eInput.select();
+};
+DateCellEditor.prototype.getValue = function() {
+    return this.eInput.value;
+};
+DateCellEditor.prototype.destroy = function() {
+};
+DateCellEditor.prototype.isPopup = function() {
+    return false;
+};
+//
+var columnDefs1 = [
+		
+		{
+			headerName : 'Sl. No',
+			field : "slNo1",
+			width : 100,
+			
+		}, {
+			headerName : 'Description',
+			field : "desc1",
+			width : 250,
+			
+		}, {
+			headerName : 'Level In Linux',
+			field : "levelinlux",
+			width : 150,
+			editable: true,
+		},{
+			headerName : 'Correction',
+			field : "correction",
+			width : 150,
+			editable: true,
+		},{
+			headerName : 'Value After Correction',
+			field : "valueaftercorrection",
+			width : 150,
+			editable: true,
+		},{
+		    headerName: 'Date of Correction',
+		    field: "dateofCorrection",
+		    width: 150,
+		    editable: true,
+		    cellEditor: DateCellEditor,
+		},
+		{
+			headerName : 'Sign Of Electrician',
+			field : "electricianSign",
+			width : 150,
+			editable: true,
+		},{
+			headerName : 'Sign Of IC',
+			field : "icSign",
+			width : 150,
+			editable: true,
+			
+		},
+		{
+			headerName : 'Remark',
+			field : "remark1",
+			width : 250,
+			 editable: true,
+			    cellStyle: {
+			        textAlign: 'left'
+			    },
+			
+		}, ];
+
+// let the grid know which columns and what data to use
+var gridOptions1 = {
+	columnDefs : columnDefs1,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 80,
+		singleClickEdit: true,
+		editable:true,
+		stopEditingWhenCellsLoseFocus: true,
+	},
+	singleClickEdit: true,
+	stopEditingWhenCellsLoseFocus: true,
+	
+};
+//
+
+
+
+//parents new plan
+function newPlan() {
+	$('#newModal').modal('show');
+	$('.formValidation').remove();
+	$("#save").show();
+	
+	$("#myGrid").show();
+	
+	$("#reqTable").hide();
+	$(".btn-hs").show();
+	$("#btndiv").hide();
+	$("#listdiv").hide();
+	$("#totalAsset").show();
+	$("#searchRowDiv").show();
+	$("#ttbtn").show();
+	//$("#demo").show();
+	$("#deleteChild").attr('disabled', true);
+	$("#illuminationbox").html('');
+	$("#illuminationId").val('');
+	$("#date").val('');
+	$("#ndate").val('');
+	$("#year").val('');
+	$("#month").val('');
+	$("#assetemployee").val('');
+	/* function changeDateFormat(inputDate) {
+		var splitDate = inputDate.split('-');
+		if (splitDate.count == 0) {
+			return null;
+		}
+		var year = splitDate[0];
+		var month = splitDate[1];
+		var day = splitDate[2];
+
+		return day + '-' + month + '-' + year;
+	}
+	var date1 = (new Date()).toISOString().split('T')[0];
+	var newDate = changeDateFormat(date1);
+	$("#date").val(newDate); */
+//
+	agGrid.simpleHttpRequest({
+		url : 'illumination-child1-view'
+	}).then(function(data) {
+		var jsonData = JSON.parse(data.body);
+		var allData=jsonData.activity1;
+		console.log(allData)
+		var len = allData.length;
+		gridOptions1.api.setRowData(allData);
+	});
+	
+	
+}
+//function for cancel
+function cancel() {
+	$('#newModal').modal('hide');
+	gridOptions.api.setQuickFilter(null);
+	$('#quickFilter').val('');
+	document.getElementById('closeKey').style.display='none';
+	$('#totalAsset').find('span').html(gridOptions.api.getModel().getRowCount());
+	
+	$('.loader').show();
+	 $(".formValidation").remove();
+		$("#totalAsset").show();
+		$("#searchRowDiv").show();
+		$(".btn-hs").show();
+		$("#myGrid").show();
+		$("#demo").hide();
+		$("#reqDltBtn").attr('disabled', true);
+		$("#newBtn").attr('disabled', false);
+		$("#logbookId").val("");
+		agGrid.simpleHttpRequest({
+			url : 'illumination-view'
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.illumination;
+			var len = allData.length;
+			$('#totalAsset').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+			onSelectionChanged()
+		});
+		gridOptions.api.deselectAll();
+		$("#illuminationId").val('');
+		$("#date").val('');
+		$("#ndate").val('');
+		$("#year").val('');
+		$("#month").val('');
+		$("#assetemployee").val('');
+		
+		
+		$('.loader').hide();
+	}
+
+//master save data
+function masterSaveData() {
+	//alert("hiii")
+	gridOptions1.api.stopEditing();
+	
+	$(".formValidation").remove();
+	var valid= true;
+	var datas = [];
+	var item = {};
+	
+	
+	item.illuminationId = $("#illuminationId").val();
+	item.date = $("#date").val();
+	item.ndate = $("#ndate").val();
+	item.year = $("#year").val();
+	item.month = $("#month").val();
+	item.uploadBy = $("#assetemployee").val();
+	
+	
+	
+	
+	
+	if (item.date == null || item.date == "") {
+		valid = validationUpdated("Date is Required", "date");
+	 }
+	if (item.ndate == null || item.ndate == "") {
+		valid = validationUpdated("Next Duedate is Required", "ndate");
+	 }
+	
+	
+	if (item.uploadBy == null || item.uploadBy == "") {
+		valid = validationUpdated("Uploaded By is Required", "assetemployee");
+	 }
+	
+	 var dataOfGrid1 = [];
+	 gridOptions1.api.forEachNode(function(rowNode, index) {
+		 if(rowNode.data.remark1==null || typeof rowNode.data.remark1 === 'undefined' || rowNode.data.remark1=='null'){
+			 rowNode.data.remark1 ='';
+			}
+		 
+		 dataOfGrid1.push(rowNode.data);
+		  });
+	
+	 item.grid1List = dataOfGrid1;
+	
+	if (valid) {
+		datas.push(item);
+		console.log("111111111111",datas);
+		savePlanDetails(datas);
+		}
+}
+
+function savePlanDetails(datas) {
+//	alert("hloo")
+	$('.loader').show();
+	setTimeout(function() {
+	$.ajax({
+		type : "POST",
+		url : "illumination-add",
+		dataType : "json",
+		contentType : "application/json",
+		data : JSON.stringify(datas),
+		success : function(response) {
+			$('.loader').hide();
+			if (response.code == "success") {
+				cancel()
+				$("#messageParagraph").text(response.message);
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('.loader').hide();
+				agGrid.simpleHttpRequest({
+					url : 'illumination-view'
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.illumination;
+					var len = allData.length;
+					$('#totalAsset').find('span').html(len);
+					gridOptions.api.setRowData(allData);
+					onSelectionChanged()
+				});
+				
+			} else {
+				$('.loader').hide();
+				$("#messageParagraph").text("Something Went Wrong");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				
+			}
+		},
+		error : function(data) {
+			$('.loader').hide();
+		}
+	})
+	}, 1000)
+}
+
+
+	//editing the qc master parent table
+	function editData(illuminationId) {
+		$('.loader').show();
+		agGrid.simpleHttpRequest(
+				{
+					url : 'illumination-edit?id='+ illuminationId
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.illuminationData;
+					var allData1=allData[0].activity1;
+					
+					console.log("allData1",allData1);
+					
+					
+					$("#newModal").modal('show');
+					$("#myGrid").show();
+					
+					$("#illuminationId").val(allData[0].illuminationId);
+					$("#date").val(allData[0].date);
+					$("#ndate").val(allData[0].ndate);
+					$("#year").val(allData[0].year);
+					$("#month").val(allData[0].month);
+					
+					$("#illuminationbox").html(allData[0].illuminationId);
+					$("#assetemployee").val(allData[0].uploadBy);
+					
+					gridOptions1.api.setRowData(allData1);
+					
+					console.log("RESPONSE::",allData)
+					 if(allData[0].approveStatus==1){
+							$("#save").hide();
+					}else{
+						$("#save").show();
+					} 
+					
+					
+					$("#tdiv").show();
+					$("#searchRowDiv").show();
+					$("#totalAsset").show();
+					$("#ttbtn").show(); 
+				});
+		$('.loader').hide();
+	}
+
+// function for delete qc  
+function deleteOnclick() {
+	
+		if (id) {
+			$('.loader').show();
+				$.ajax({
+		type : "POST",
+		url : "illumination-delete?id="+ id,
+		success : function(response) {
+		 if (response.code == "success") {
+			 cancel();
+				$("#messageParagraph").text("Data Deleted Successfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('#delete').modal('hide');
+				agGrid.simpleHttpRequest({
+					url : 'illumination-view'
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.illumination;
+					var len = allData.length;
+					$('#totalAsset').find('span').html(len);
+					gridOptions.api.setRowData(allData);
+					onSelectionChanged()
+				});
+				$('.loader').hide();
+			} else {
+				$("#messageParagraph").text("Something went to wrong!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('.loader').hide();
+			}
+		},
+		error : function(data) {
+		}
+	})
+		} else {
+			$('.loader').hide();
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+}
+
+//function for approve asset  
+function approveOnclick() {
+		if (id) {
+			$('.loader').show();
+				$.ajax({
+		type : "POST",
+		url : "illumination-approve?id="+ id,
+		success : function(response) {
+
+		 if (response.code == "success") {
+				$("#messageParagraph").text("Data Approved Successfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('#approveModal').modal('hide');
+				agGrid.simpleHttpRequest({
+					url : 'illumination-view'
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.illumination;
+					var len = allData.length;
+					$('#totalAsset').find('span').html(len);
+					gridOptions.api.setRowData(allData);
+					onSelectionChanged()
+				});
+				$('.loader').hide();
+			} else {
+				$('.loader').hide();
+				$("#messageParagraph").text("Something went to wrong!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+			}
+		},
+		error : function(data) {
+
+		}
+	})
+		} else {
+			$('.loader').hide();
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+}
+
+	// delete selected record from child ag grid
+	function deleteDetailsOnclick() {
+		$('.modal').hide();
+		var selectedRows = activityOptions.api.getSelectedRows();
+		activityOptions.api.applyTransaction({
+			remove : selectedRows
+		});
+		cancelModalProductBtn();
+	}
+	//for closeing modal box for dlt  product
+	function cancelModalProductBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+		$('#deleteDetails').modal('hide');
+	}
+
+	function deleteFun() {
+		$('#delete').modal('show');
+	}
+	function approveFun() {
+		$('#approveModal').modal('show');
+	}
+
+	
+	function cancelModalBtnDlt() {
+		$("#delete").modal("hide");
+		gridOptions.api.deselectAll();
+	}
+	function cancelModalBtnApr() {
+		$("#approveModal").modal("hide");
+		gridOptions.api.deselectAll();
+	}
+//function for download
+	function downloadDetails() {
+		var params = {
+			fileName: 'Initiation_CompletionOf_NonroutineActivity_list.csv', // Specify your custom filename here
+		};
+		gridOptions.api.exportDataAsCsv(params);
+	}
+
+
+	function cancelModalBtn() {
+		$('#myModal').modal('hide');
+
+	}
+
+function checkNumeric(fieldId) {
+	
+	 var tempVal = $("#" + fieldId).val().replace(/[^0-9 ]/g, '');
+	    
+	    const input = document.getElementById(fieldId);
+	    const position = input.selectionStart;	
+	    if(tempVal.slice(-1) == ' '){
+	     	$("#" + fieldId).empty();
+	     	tempVal = '';
+	     } 
+	   $("#" + fieldId).val(tempVal);
+	}
+	
+function onChangeDate() {
+    var checkinDate = $("#date").val();
+    
+    if (checkinDate) {
+        // Parse the checkinDate (assumed format: dd-mm-yyyy)
+        let [day, month, year] = checkinDate.split('-').map(Number);
+        let date = new Date(year, month - 1, day); // Month is 0-indexed in JS
+
+        // Add 6 months to the date
+        let nextMonth = date.getMonth() + 6;
+        let nextYear = date.getFullYear();
+        
+        // Adjust the year if the addition crosses December
+        if (nextMonth > 11) {
+            nextYear += Math.floor(nextMonth / 12);
+            nextMonth = nextMonth % 12;
+        }
+
+        // Calculate the last day of the calculated month
+        let lastDayOfNextMonth = new Date(nextYear, nextMonth + 1, 0).getDate();
+
+        // Check if the original date is at the end of the month or exceeds the last day of the calculated month
+        let isEndOfMonth = (day === new Date(year, month, 0).getDate());
+        if (isEndOfMonth || day > lastDayOfNextMonth) {
+            // Adjust to the last day of the calculated month if necessary
+            date = new Date(nextYear, nextMonth, lastDayOfNextMonth);
+        } else {
+            // Regular case: add 6 months with the same day
+            date = new Date(nextYear, nextMonth, day);
+        }
+
+        // Extract the new values
+        let newYear = date.getFullYear();
+        let newMonth = (date.getMonth() + 1).toString().padStart(2, '0'); // Handle 0-indexed months
+        let newDay = date.getDate().toString().padStart(2, '0');  // Handle day of the month
+
+        // Set the calculated date in dd-mm-yyyy format
+        $("#ndate").val(`${newDay}-${newMonth}-${newYear}`);
+    }
+}
+
+</script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="d-flex justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalAsset">
+									Illumination Record(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalAsset').find('span').html(gridOptions.api.getModel().getRowCount());"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+								<button class="download-btn" id="download"
+									onclick="downloadDetails()">Download</button>
+								<button class="new-btn" id="approveBtn" onclick="approveFun()">APPROVE</button>
+								<button class="delete-btn" id="reqDltBtn" onclick="deleteFun()">DELETE</button>
+								<button class="new-btn" id="newBtn" onclick="newPlan()">NEW</button>
+							</div>
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" />
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innercontent">
+								
+								<div class="row innersticky_contentgap">
+									
+									
+								</div>
+
+							</div>
+						</div>
+					</div>
+
+
+					<!-- delete modal start -->
+					<div id="delete" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column"></div>
+								<div class="modal-body">
+									<p>Do you really want to delete this Data? This process
+										cannot be undone.</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: 0px;">
+
+									<button type="button" class="cancel-btn"
+										data-bs-dismiss="modal" onclick="cancelModalBtnDlt();">Cancel</button>
+									<button type="button" class="delete-btn"
+										onclick="deleteOnclick()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+
+					<!-- approve modal start -->
+					<div id="approveModal" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column"></div>
+								<div class="modal-body">
+									<p>Do you want to approve this Data? Once done you will
+										not be able to make further changes.</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: 0px;">
+
+									<button type="button" class="cancel-btn"
+										data-bs-dismiss="modal" onclick="cancelModalBtnApr();">Cancel</button>
+									<button type="button" class="new-btn"
+										onclick="approveOnclick()">Approve</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- delete product modal start -->
+					 <div class="modal fade" id="newModal" tabindex="-1" role="dialog"
+					aria-labelledby="exampleModalCenterTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+					<div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+						<div class="modal-content">
+							<div class="modal-header">
+								<div class="innerstickybg">
+									<div class="row">
+										<div class="col-md-6">
+											Illumination Id: <span id="illuminationbox"></span>
+										</div>
+									</div>
+								</div>
+
+							</div>
+							<div class="modal-body">
+							
+								<div class="row">
+									<input type="hidden" id="illuminationId">
+									
+								<!-- <div class="col-md-4">
+									<label>Year:</label>
+									<div class="select" >
+										<select id="year" class="form-control"
+											onblur="removeValid(event)">
+											<option value="">Select</option>
+											<option th:each="c,iter:${yearList1}" th:value="${c.name}"
+												th:text="${c.name}"></option>
+										</select> <span class="focus"></span>
+									</div>
+								</div> -->
+								<!-- <div class="col-md-4">
+									<label>Month:</label>
+									<div class="select">
+										<select id="month" class="form-control"
+											onblur="removeValid(event)">
+											Added 'All' option
+											<option value="">Select</option>
+											<option value="January-June">January-June</option>
+											<option value="July-December">July-December</option>
+										</select> <span class="focus"></span>
+									</div>
+								</div> -->
+									<div class="col-md-4">
+										<div class="form-group calendar_box">
+											<label>Date of Testing:</label> <input type="text"
+												id="date" autocomplete="off" class="form-control"
+												onblur="removeValid(event)" onChange="onChangeDate();"
+												th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+												readonly> <i class="ti-calendar picker_calendar"
+												id="fromDateCalendar"></i>
+										</div>
+									</div>
+									<div class="col-md-4">
+										<div class="form-group calendar_box">
+											<label>Next Due Date:</label> <input type="text"
+												id="ndate" autocomplete="off" class="form-control"
+												onblur="removeValid(event)"
+												th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+												readonly> <i class="ti-calendar picker_calendar"
+												id="fromDateCalendar1"></i>
+										</div>
+									</div>
+									<div class="col-md-4" >
+										<div class="form-group" id="emplist">
+											<label> Uploaded By </label>
+											<div class="select">
+												<select id="assetemployee">
+													<option value="">Select</option>
+													<option th:each="c:${empLists}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select> <span class="focus"></span>
+											</div>
+										</div>
+									</div>
+									
+									<div class="row mt-4">
+									<div class="ag-theme-alpine" id="Grid1"
+											style="width: 100%; height: 300px;"></div>
+											</div>
+											
+											
+											
+									
+								</div>
+							</div>
+							
+							<div class="modal-footer">
+								<button class="cancel-btn" id="cancelBtn" onclick="cancel()">Cancel</button>
+											<button class="approve-btn" id="save"
+												onclick="masterSaveData()">Save</button>
+							</div>
+						</div>
+					</div>
+				</div>
+					
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

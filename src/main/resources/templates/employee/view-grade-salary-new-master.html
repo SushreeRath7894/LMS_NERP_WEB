@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+
+<head>
+
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+.form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+}
+
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+
+.blueClsWT {
+	background: #0076ba;
+	color: #fff;
+}
+
+.blueCls {
+	background: #0076ba;
+	color: #fff;
+}
+
+.blueClsWT::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	padding-right: 7px;
+}
+
+.modal-body table td input[type=checkbox] {
+	width: 0px;
+	margin-right: 16px;
+	position: relative;
+	top: 0px;
+	float: none;
+}
+
+.firstnode {
+	color: #929292;
+	border-top: 1px solid transparent !important;
+	border-left: 1px solid transparent !important;
+	border-bottom: 1px solid transparent !important;
+	width: 320px;
+	font-size: 12px;
+	font-weight: 100;
+}
+
+.simple-tree-table-closed .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'FontAwesome';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+	transform: rotate(90deg);
+}
+
+.simple-tree-table-opened .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'FontAwesome';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+}
+
+.simple-tree-table-icon {
+	display: inline-block;
+	width: 1.5em;
+	line-height: 1.5em;
+	margin: 0.1em;
+	background-color: transparent;
+	text-align: center;
+	cursor: pointer;
+}
+
+.tptCls {
+	background: transparnt;
+}
+</style>
+
+<script>
+
+var columnDefs = [
+	{
+		headerCheckboxSelection : true,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true
+
+	},
+	
+	 {
+
+		headerName : 'Grade',
+		field : "grdId",
+		 cellRenderer : function(params) {
+		return '<a onclick=editgrdsales("'
+				+ params.data.grdId
+				+ '") href="javascript:void(0)">'
+				+ params.data.grdId + '</a>';
+	} 
+	},{
+
+		headerName : 'Description',
+		field : "desc"
+	}, {
+		headerName : 'Active',
+		field : "gActive",
+		cellStyle : {
+			textAlign : 'center'
+		}
+	},{
+		headerName : 'Created By',
+		field : "gCreatedBy"
+	}
+	
+	
+	];
+	
+
+var gridOptions = {
+			columnDefs : columnDefs,
+			rowSelection : 'multiple',
+
+			groupSelectsChildren : true,
+			suppressRowClickSelection : true,
+			suppressAggFuncInHeader : true,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 251,
+				height : 10
+			},
+			onSelectionChanged : rowSelect,
+		};
+
+var itemDefs = [
+	{
+		headerCheckboxSelection : true,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true
+
+	},
+	{
+		headerName : "SlNo",
+		field : "slNo",
+		cellRenderer : function(params) {
+			if (params.data.slNo) {
+				return '<a onclick=editProduct("' + params.data.slNo
+						+ '") href="javascript:void(0)">'
+						+ params.data.slNo + '</a>';
+			} else {
+				return '<a onclick=editProduct("' + params.data.slNo
+						+ '") href="javascript:void(0)">'
+						+ params.data.slNo + '</a>';
+			}
+		}
+	}, {
+		headerName : 'Component',
+		field : "component"
+	}, {
+
+		headerName : 'Component Type',
+		field : "componentType"
+	}, {
+		headerName : '	Calculation Type',
+		field : "calculationType"
+		
+		
+	}, {
+		headerName : 'Percentage',
+		field : "percentage",
+		type : 'rightAligned',
+		valueFormatter : currencyFormatter
+	}, ];
+
+var itemOptions = {
+		columnDefs : itemDefs,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 251,
+			height : 10
+		},
+		  getRowNodeId : function(data) {
+			return data.slNo;
+		}  
+	};
+	
+$(document).ready(function() {
+	var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+	
+	var gridDiv = document.querySelector('#item');
+	new agGrid.Grid(gridDiv, itemOptions);
+
+	gridOptions.api.setRowData();
+	itemOptions.api.setRowData();
+	
+	$("#Cancel").hide();
+	$("#addData").hide();
+	$("#save").hide();
+	$('#delete').attr("disabled", true);	
+	
+	$("#Cancel").click(function() {
+		$('.loader').show();
+		$("body").addClass("overlay");
+		$("#reqTable").show();
+		$(".btn-hs").show();
+		$("#myGrid").show();
+		$("#addData").hide();
+		agGrid.simpleHttpRequest({
+			url : "view-grade-salary-through-ajax"
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalCandidate').find('span').html(len);
+			gridOptions.api.setRowData(data);
+		});
+		$("#grdsalaryId").val('');
+	
+		$("#grade").val('');
+		$("#desc").val('');
+	
+		$("#gActive").val('');
+		$("#gCreatedBy").val('');
+		$("#component_0").val('');
+		$("#componentType_0").val('');
+		$("#calculationType").val('');
+		$("#percentage_0").val('');
+		
+		$('.loader').hide();
+		$("body").removeClass("overlay");
+	});
+	agGrid.simpleHttpRequest({
+		url : "view-grade-salary-through-ajax"
+	}).then(function(data) {
+		var len = data.length;
+		$('#totalCandidate').find('span').html(len);
+		gridOptions.api.setRowData(data);
+	});
+	
+	//on change for description
+	
+	$("#grade").on('change',function(){
+		var grade = $(this).val();
+		
+		if (grade) {
+			$.ajax({
+				type : 'POST',
+				url : 'view-grade-salary-getDesc-throughAjax',
+				contentType : false,
+				data : grade,
+				success : function(response) {
+					if (response.message == "success") {
+					
+						
+						
+							$("#desc").val(response.body[0].name);
+					
+					}
+
+				},
+				error : function(e) {
+					console.log("error");
+				}
+			});
+		} else {
+			$("#desc").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#desc").append(option);
+		}
+	})
+	
+});	
+
+
+function add() {
+	$('#hideTbl').hide();
+	$("#add").hide();
+	$("#myGrid").hide();
+	$("#save").show();
+	$("#Cancel").show();
+	$("#addData").show();
+	$("#totalCandidate").hide();
+	$("#dwnld").hide();
+	$("#upld").hide();
+}
+
+function Cancel() {
+	$("#add").show();
+	$("#myGrid").show();
+	$("#save").hide();
+	$("#Cancel").hide();
+	$("#addData").hide();
+	$('#hideTbl').show();
+	$("#totalCandidate").show();
+	$("#dwnld").show();
+	$("#upld").show();
+	itemOptions.api.setRowData();
+	
+	$('#delete').attr("disabled", true);
+	
+
+}
+
+
+function openNav() {
+	$("#component").val("");
+	$("#componentType").val("");
+	$("#calculationType").val("");
+	$("#percentage").val("");
+	$("#editProduct").val("");
+	document.getElementById("mySidenav").style.cssText = "width: 350px; position: absolute; right:-30px; overflow: hidden; height:auto; top:260px;";
+	document.getElementById("main_content").style.width = "72%";
+
+}
+
+function closeNav() {
+	document.getElementById("mySidenav").style.width = "0";
+	document.getElementById("main_content").style.width = "100%";
+	$("#component").val('');
+	$("#componentType").val('');
+	$("#calculationType").val('');
+	$("#percentage").val('');
+	
+	$("#editProduct").val(null);
+
+}
+
+//on change for Component Type
+function componentType(event) {
+
+	var currentId = event.currentTarget.id;
+	
+	var currentValue = event.currentTarget.value;
+	var l = currentId.split("_");
+	
+	var counter = l[1];
+	
+	if (currentValue) {
+		
+		$.ajax({
+			type : 'POST',
+			url : 'view-grade-salary-getComponentType-throughAjax',
+			contentType : false,
+			data : currentValue,
+			success : function(response) {
+				console.log(response);
+				if (response.message == "success") {
+					
+					var status = "";
+					
+					if (response.body[0].componentType==1) {
+						
+						status = "Earning";
+					} else {
+						status = "Deduction";
+					} 
+					$("#componentType_"+counter).val(status);
+					
+				}
+
+			},
+			error : function(e) {
+				console.log("error");
+			}
+		});
+	} else {
+		$("#componentType").empty();
+		var option = $("<option></option>");
+		$(option).val(null);
+		$(option).html("Select");
+		$("#componentType").append(option);
+	}
+}
+
+function checkBasic(event){
+  	var currentId = event.currentTarget.id;
+  	var currentValue = event.currentTarget.value;
+  	var l = currentId.split("_");
+  	var counter = l[1]; 
+  	if(counter === '0'){ 
+  		
+  			//alert(counter)
+  			calculationType="cal003";
+  			$("#calculationType").val(calculationType);
+  			//alert(calculationType)
+  		
+  	}
+}
+
+function checkForDuplicate() {
+	
+  	var currentId = event.currentTarget.id;
+  	var currentValue = event.currentTarget.value;
+  	var l = currentId.split("_"); 
+  	var counter = l[1]; 
+  	
+	 var item=currentValue;
+	 var count=0;
+	 var itemId=event.currentTarget.id;
+	
+	 $(".tSalaryComponentCls").each(function(){
+		 if(item == $(this).val()){
+			 count++;
+		 }
+	 })
+	 if(count>=2){
+		 //swal('item already selected');
+		 swal({
+			title:"Copmonent Are Already Selected",
+			text:"So You Can't Select It Again...!!!",
+			type: "warning",
+			})
+		 $("#"+currentId).val("");					   					    		 
+		 $("#componentType_"+counter).val("");		
+		 $("#calculationType"+counter).val("");	
+		 $("#percentage_"+counter).val("");	
+	 }					    	
+}
+
+/* //grade salary   table add */
+
+function savegrdsalData() {
+	
+	var editProduct = $("#editProduct").val();
+	var item = {};
+	var data = 1;
+	var validation = true;
+
+
+	
+	if (item.percentage_0 == 0.0 ) {
+		
+		validation = validationUpdated("percentage_0 Required", 'percentage');
+	}
+	
+
+	if (validation) {
+		
+		itemOptions.api.forEachNode(function(rowNode, index) {
+			if (!editProduct) {
+				data = data + 1;
+			} 
+		});
+
+		item.component =  $('#component_0').val();
+		item.componentType = $('#componentType_0').val();
+		item.calculationType = $('#calculationType').val();
+		item.percentage = $('#percentage_0').val();
+		
+		
+		
+		item.slNo = data;
+		var quot = [];
+		
+		if (editProduct) {
+			var rowNode = itemOptions.api.getRowNode(editProduct);
+			rowNode.setData(item);
+		} else {
+			itemOptions.api.forEachNode(function(rowNode, index) {
+				quot.push(rowNode.data);
+			}); 
+			quot.push(item)
+			itemOptions.api.setRowData(quot);
+			console.log(item)
+			
+		 } 
+		closeNav();
+		
+		$("#component_0").val('');
+		$("#componentType_0").val('');
+		$("#calculationType").val('');
+		$("#percentage_0").val();
+		
+		$("#editProduct").val(null);
+		
+	}
+
+}
+
+function save() {
+	
+	if (validProductData()&& validFormData()) {
+		
+		var datas = [];
+		if (itemOptions.api.getDisplayedRowCount() > 0) {
+			itemOptions.api.forEachNode(function(rowNode, indrx) {
+
+				var obj = rowNode.data;
+			
+				obj.grdsalaryId = $("#grdsalaryId").html();
+				obj.grade = $("#grade").val();
+				obj.desc = $("#desc").val();
+				obj.gActive = $("#gActive:checkbox:checked").val();
+				if (obj.gActive == undefined) {
+					obj.gActive = "0";
+				} else {
+					obj.gActive = "1";
+				}
+				datas.push(obj);
+				console.log(datas)
+			});
+
+		} else {
+			var obj = {};
+			obj.grdsalaryId = $("#grdsalaryId").val();
+			obj.grade = $("#grade").val();
+			obj.desc = $("#desc").val();
+			obj.gActive = $("#gActive:checkbox:checked").val();
+			if (obj.gActive == undefined) {
+				obj.gActive = "0";
+			} else {
+				obj.gActive = "1";
+			}
+			datas.push(obj);
+
+		}
+
+		console.log(datas);
+		saveAllgrdSalary(datas);
+	}
+}
+
+
+function saveAllgrdSalary(datas) {
+
+	console.log(JSON.stringify(datas))
+	
+		$.ajax({
+			
+			type : "POST",
+			url : "view-grade-salary-add",
+			contentType : "application/json",
+			data : JSON.stringify(datas),
+			success : function(response) {
+				//alert(JSON.stringify(datas))
+				if (response.message == "Success") {
+
+					console.log(JSON.stringify(datas))
+					
+					$("#messageParagraph").text("Data Saved Successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					
+					
+					 //$("#grdsalaryheadId").html(response.body[0].grdsalaryId);
+					// itemOptions.api.setRowData(response.body);
+
+				}
+
+			},
+			error : function(datas) {
+				console.log(datas)
+			}
+		})
+
+	}
+function validFormData() {
+	return true
+	
+}
+
+function validProductData() {
+	return true;
+}
+
+/* 
+Edit Quotation
+ */
+function editProduct(slNo) {
+	//var salesOrder = $("#salesOrderheadId").html();
+	var rowNode = itemOptions.api.getRowNode(slNo);
+
+	console.log(rowNode)
+	openNav();
+	$("#editProduct").val(slNo);
+	$("#component_0").val(rowNode.data.component);
+	$("#componentType_0").val(rowNode.data.componentType);
+	$("#calculationType").val(rowNode.data.calculationType);
+	$("#percentage_0").val(rowNode.data.percentage);
+	
+}
+
+function editgrdsales(grdId) {
+	
+	Cancel();
+	$("#myGrid").hide();
+	$("#reqTable").hide();
+	$(".btn-hs").hide();
+	$("#addData").show();
+	$("#add").hide();
+	$("#save").show();
+	$("#Cancel").show();
+	$("#totalCandidate").hide();
+	$("#dwnld").hide();
+	$("#upld").hide();
+
+	agGrid.simpleHttpRequest({
+		url : 'view-grade-salary-edit-new?id=' + grdId
+	}).then(function(data) {
+		console.log(data);
+		
+		
+		$("#grade").val(data[0].grdId);
+		$("#desc").val(data[0].desc);
+		
+
+		if(data[0].gActive == "0") {
+			$("#gActive").prop("checked",false);
+		} else {
+			$("#gActive").prop("checked",true);
+		}
+		
+
+		itemOptions.api.setRowData(data);
+		
+
+
+	});
+
+}
+
+
+/* 
+Delete quotation
+ */
+function deleteQuotation() {
+
+	$('#deleteQuot').modal('show');
+}
+function deleteItem() {
+
+	$('#deleteProduct').modal('show');
+}
+
+function cancelModalBtn() {
+
+	$("#deleteModalBtn").removeAttr("disabled");
+}
+
+function cancelModalProductBtn() {
+
+	$("#deleteModalBtn").removeAttr("disabled");
+	$('#deleteProduct').modal('hide');
+}
+
+function rowSelect() {
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(selectedRow, index) {
+		rowCount = rowCount + 1;
+	});
+
+	if (rowCount > 0) {
+		$('#delete').attr("disabled", false);
+		
+	} else {
+		$('#delete').attr("disabled", true);
+		
+	}
+
+}
+
+// delete salesOrder
+
+function deleteOnclick() {
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var selectedRowsString = '';
+	selectedRows.forEach(function(selectedRow, index) {
+		if (index > 0) {
+			selectedRowsString += ',';
+		}
+		selectedRowsString += selectedRow.grdId;
+	});
+	if (selectedRowsString) {
+		var item = {};
+		item.grdId = selectedRowsString;
+		$('.loader').show();
+		$("body").addClass("overlay");
+		$.ajax({
+			type : "GET",
+			url : "view-grade-salary-delete+"+ selectedRowsString,
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(item),
+			success : function(response) {
+				$('.loader').hide();
+				$('.modal').hide();
+				if (response.message == "Success") {
+					agGrid.simpleHttpRequest({
+						url : 'view-grade-salary-through-ajax'
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+						console.log(JSON.stringify(data))
+					});
+
+				} else {
+					
+				}
+			},
+			error : function(data) {
+				console.log(data)
+			}
+		})
+	} else {
+		$("#alert").modal('show');
+		document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+	}
+
+}
+function deleteProductOnclick() {
+	var selectedRows = itemOptions.api.getSelectedRows();
+	itemOptions.api.applyTransaction({
+		remove : selectedRows
+
+	});
+	cancelModalProductBtn();
+	
+}
+
+
+
+</script>
+
+</head>
+
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="row margin_topbot" id="hideTbl">
+							<div class="btn-hs">
+								<div class="input-style row">
+									<input type="text" id="searchBar" placeholder="Search.."
+										name="search" class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()">
+									<div class="searchicon">
+										<a href="#"><span style="display: none" id="closeKey"
+											onclick="gridVendorOptions.api.setQuickFilter(null);$('#searchBar').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i">X</span></a> <a href="#"><i
+											class="fa fa-search"></i></a>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="row" id="reqTable">
+
+							<div class="col-md-7 btn-hs">
+								<div class="font-design" id="totalCandidate">
+									Salary List (<span></span>)
+								</div>
+							</div>
+							<div class="col-md-5 buttonsec btn-hs">
+
+								<button class="btn4" id=dwnld>Download</button>
+								<button class="btn4" id=upld>Upload</button>
+								<div class="buttongap"></div>
+
+								<button onclick="add()" class="btn1" id="add">New</button>
+								<button onclick="deleteQuotation()" class="btn3" id="delete">delete</button>
+
+							</div>
+						</div>
+
+						<div id="myGrid" style="height: 500px; width: 1090px;"
+							class="ag-theme-alpine"></div>
+							
+							<div class="collapse" id="addData">
+							<div class="innerstickybg">
+								
+									
+									<div class="col-md-12" align="right">
+										<button class="btn4" id="Cancel" onClick="Cancel()">Cancel</button>
+										<button class="btn1" id="save" onclick="save()">Save</button>
+									</div>
+								
+							</div>
+								
+							<div class="row innersticky_contentgap">
+								<input type="hidden" id="grdsalaryId">
+								<input type="hidden" id="grdId">
+								
+								<div class="col-lg-4">
+									<div class="form-group">
+										<label>Grade</label>
+										<div class="select">
+											<select id="grade">
+												<option value="">Select</option>
+												<option th:each="c,iter:${gradeList}" th:value="${c.key}"
+													th:text="${c.name}"></option>
+											</select>
+										</div>
+									</div>
+
+								</div>
+
+								<div class="col-lg-4">
+									<div class="form-group">
+										<label>Description</label> <input type="text" id="desc"
+											class="form-control">
+
+									</div>
+								</div>
+
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<input type="checkbox" class="loc-chb" name="isActive"
+											id="gActive" value="1" checked> <label
+											style="margin-top: 10px;">Active</label>
+									</div>
+								</div>
+								
+
+							</div>	
+								
+							<div id="main_content">
+							<div class="wrapper center-block">
+									<div class="panel-group" id="accordion" role="tablist"
+										aria-multiselectable="true">
+										<div class="panel panel-default">
+											<div class="panel-heading active" role="tab" id="headingOne">
+												<h4 class="panel-title">
+													<a role="button" data-toggle="collapse"
+														data-parent="#accordion" href="#itemList"
+														aria-expanded="true" aria-controls="itemList">
+														Grade Salary  Details </a>
+												</h4>
+											</div>
+											<div id="itemList" class="panel-collapse collapse show"
+												role="tabpanel" aria-labelledby="headingOne">
+												<div class="row">
+
+													<div class="col-md-4 btn-hs1">
+														<div class="font-design"></div>
+													</div>
+													<div class="col-md-8 butttonsec">
+
+														<button class="btn1" onclick="openNav()">NEW</button>
+														<button class="btn3" id="delete" onclick="deleteItem()">Delete</button>
+													</div>
+												</div>
+												<div id="item" style="width: 100%; height: 200px;"
+													class="ag-theme-alpine"></div>
+
+
+											</div>
+
+										</div>
+									</div>
+
+									<div id="mySidenav" class="sidenav">
+										<div class="slidebox">
+											<div class="row">
+												<div class="chartbtnsec">
+													<div class="col-md-12" align="right">
+														<button class="btn4" onclick="closeNav()">CANCEL</button>
+														<button class="btn1" id="savegrdsalData"
+															onclick="savegrdsalData()">SAVE</button>
+
+													</div>
+												</div>
+
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Component</label>
+														<div class="tSalaryComponentCls">
+															<select id="component_0"
+															onChange="componentType(event); checkBasic(event); checkForDuplicate(event);">
+																<option value="">Select</option>
+																<option th:each="c,iter:${componentList}"
+																	th:value="${c.key}" th:text="${c.name}"></option>
+															</select>
+														</div>
+													</div>
+												</div>
+
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Component Type</label> <input type="text" id="componentType_0"
+															class="form-control tComponentTypeCls">
+															<input type="hidden" id="editProduct">
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Calculation Type</label>
+														<div class="form-control tCalculationTypeCls">
+															<select id="calculationType">
+															<option value="">Select</option>
+																<option th:each="c,iter:${calculationList}"
+																	th:value="${c.key}" th:text="${c.name}"></option>
+																<!-- <option value="">Select</option>
+																<option value="1">Flat Amount</option>
+																<option value="2">% of Basic Pay</option>
+																<option value="3">% of Gross</option -->
+																
+															</select>
+														</div>
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Percentage</label> <input type="text" id="percentage_0"
+															class="form-control">
+													</div>
+												</div>
+												
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>	
+															
+							</div>
+					</div>
+					<!-- delete modal start -->
+					<div id="deleteQuot" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-dismiss="modal"
+										aria-hidden="true" onclick="cancelModalBtn()">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p>Do you really want to delete these records? This process
+										cannot be undone.</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: -30px;">
+
+									<button type="button" class="btn4" data-dismiss="modal"
+										onclick="cancelModalBtn();">Cancel</button>
+									<button type="button" class="btn3" onclick="deleteOnclick()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<!-- delete item start	 -->
+					<div id="deleteProduct" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-dismiss="modal"
+										aria-hidden="true" onclick="cancelModalProductBtn()">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p>Do you really want to delete these records? This process
+										cannot be undone.</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: -30px;">
+
+									<button type="button" class="btn4" data-dismiss="modal"
+										onclick="cancelModalBtn();">Cancel</button>
+									<button type="button" class="btn3"
+										onclick="deleteProductOnclick()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+				</div>
+			</div>
+		</div>
+	</div>
+
+
+</body>
+</html>

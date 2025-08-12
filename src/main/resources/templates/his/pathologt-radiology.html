@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/master}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    .btn-position {
+      position: absolute;
+      right: 20px;
+      bottom: 135px;
+    }
+
+    .ag-theme-alpine .ag-ltr .ag-cell a {
+      color: var(--mainColor) !important;
+      text-decoration: none !important;
+    }
+
+    .ag-btn {
+      color: var(--mainColor);
+      background-color: var(--bs-white);
+      height: max-content;
+      line-height: 1;
+      border: 1px solid var(--mainColor);
+    }
+
+    .ag-btn:hover {
+      color: var(--mainColor);
+      border: 1px solid var(--mainColor);
+      font-weight: 600;
+    }
+
+    .bk-app {
+      /*line-height: 10px !important;*/
+      /*width: 102px !important;*/
+      white-space: nowrap;
+      min-width: 80px;
+      width: auto !important;
+    }
+    .dtl-radiobtn  label > input[type=radio] {
+    vertical-align: middle;
+    margin-top: -2px;
+}
+    .fnt-align{ font-size: calc((12 / 16) * 1rem);}
+@media only screen and (max-width: 1399px){
+	.fnt-align{ font-size: calc((10 / 16) * 1rem);}
+}
+  </style>
+  <script>
+  let type, bookFromType = '';
+  $(document).ready(function() {
+      var gridDiv = document.querySelector('#myGrid');
+      new agGrid.Grid(gridDiv, gridOptions);
+      getAllPatientsDetails();
+
+      $('.pay-tab').hide();
+      type = 'RECEPTION';
+      bookFromType = 'RECEPTION';
+      getTestList(type);
+      
+      $("#quickFilter").on("keydown", function(event) {
+  		if (event.key === "Enter" || event.which === 13) {
+  			event.preventDefault();
+  			onQuickFilterChanged();
+  		}
+  	});
+
+  })
+
+  var columnDefs = [{
+          headerCheckboxSelection: false,
+          headerCheckboxSelectionFilteredOnly: true,
+          checkboxSelection: true,
+          maxWidth: 30,
+          sortable: false,
+          filter: false,
+          resizable: true
+      },
+      {
+          headerName: "Booking Id",
+          field: "book_id",
+          flex: 1,
+          cellRenderer: (params) => {
+              if (params.data.book_id) {
+                  return params.data.book_id;
+              } else {
+                  return params.data.test_id;
+              }
+          }
+      },
+      {
+          headerName: "Patient Id",
+          field: "cust_id",
+      },
+      {
+          headerName: "Name",
+          field: "cust_name",
+
+      },
+      {
+          headerName: "Address",
+          field: "address",
+      },
+      {
+          headerName: "Mobile",
+          field: "cust_mob",
+      },
+      {
+          headerName: "Age",
+          field: "age",
+      },
+      {
+          headerName: "Gender",
+          field: "gender",
+      },
+      {
+          headerName: "Status",
+          field: "pay_status",
+          cellRenderer: function(params) {
+              if (params.data.pay_status == "Fully Paid") {
+                  return '<a style="color:blue;font-weight: bold;">Fully Paid</a>';
+              } else if (params.data.pay_status == "Not Paid") {
+                  return '<a  style="color:red;font-weight: bold;">Not Paid</a>';
+              } else if (params.data.pay_status == "Partial Paid") {
+                  return '<a style="color:black;font-weight: bold;">Partial Paid</a>';
+              }
+          }
+      }
+  ];
+
+  // Define grid options
+  var gridOptions = {
+      columnDefs: columnDefs,
+      rowSelection: 'single',
+      getRowId: params => params.data.test_id,
+      suppressRowClickSelection: true,
+      defaultColDef: {
+          sortable: true,
+          filter: true,
+          resizable: true,
+        flex: 1,
+        minWidth: 100,
+      },
+      pagination: true,
+      paginationPageSize: 15,
+      onSelectionChanged: rowSelect
+  };
+
+  function getAllPatientsDetails(id = '') {
+      agGrid.simpleHttpRequest({
+          url: "pathologt-radiology-view"
+      }).then(function(response) {
+          var jsonData = JSON.parse(response?.body);
+          var allData = jsonData;
+          if (allData && allData.length > 0) {
+              gridOptions.api.setRowData(allData);
+              if (id) {
+                  gridOptions.api.forEachNode(node => {
+                      if (node.data.test_id === id) {
+                          node.setSelected(true);
+                      }
+                  });
+              } else {
+                  var firstRowNode = gridOptions.api.getDisplayedRowAtIndex(0); // Get the first row node
+                  if (firstRowNode) {
+                      firstRowNode.setSelected(true);
+                  }
+              }
+          } else {
+              gridOptions.api.setRowData([]);
+              rowSelect()
+          }
+      });
+  }
+
+  var patientId = '';
+  var pName = '';
+  var customerId = '';
+
+  function rowSelect() {
+      var selectedRows = gridOptions.api.getSelectedRows();
+      var selectedData = selectedRows.map(node => node.data);
+      var rowCount = 0;
+      selectedData.forEach(function(selectedRow, index) {
+          rowCount = rowCount + 1;
+      });
+
+      for (var i = 0; i < selectedRows.length; i++) {
+          patientId = patientId + selectedRows[i].cust_id;
+          pName = pName + selectedRows[i].cust_name;
+      }
+
+      $("#patientId").val('')
+      $("#lab-container").empty();
+      $("#pName").text(pName);
+      $("#proceedPayBtn").hide()
+      if (rowCount > 0) {
+
+          $('.patDiv').hide();
+          disableAllFields()
+          $("#resetAppBtn,#saveNewPatBtn,.tst").hide();
+          getPatientAndTestDetails(selectedRows[0].test_id);
+          if (selectedRows[0].pay_status == 'Fully Paid') {
+              $('.pay-tab,.report-tab').show();
+              nextTab('registrationTabLi')
+              $("#processingTab").show()
+          } else {
+              $('.pay-tab,.report-tab').hide();
+              $("#processingTab").hide()
+              if (selectedRows[0].invoice_id) {
+                  $('.pay-tab').show();
+                  nextTab('paymentDetailLi')
+              } else {
+                  nextTab('registrationTabLi')
+                  $("#proceedPayBtn").show()
+              }
+          }
+
+      } else {
+          $("#pName").text('');
+          nextTab('registrationTabLi')
+          newPatient()
+      }
+
+      patientId = '';
+      pName = '';
+      customerId = '';
+
+  }
+
+  function onQuickFilterChanged() {
+		gridOptions.api.setQuickFilter(document.getElementById('quickFilter').value);
+		var firstRowNode = gridOptions.api.getDisplayedRowAtIndex(0);
+	    if (firstRowNode) {
+	        firstRowNode.setSelected(true);
+	    }
+	}
+
+	function resetList() {
+		let data = $("#quickFilter").val();
+		if(data) {
+			$("#quickFilter").val('');
+			onQuickFilterChanged();
+		}
+	}
+  </script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid ">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<div id="main_content">
+						<div class="tab-content">
+							<div id="ipd" class="tab-pane active">
+								<div class="d-flex flex-column flex-lg-row">
+									<div class="box-sec" id="collapseWidthR1">
+										<div class="out-box">
+											<div class="d-flex justify-content-between bdr-line p-2">
+												<div class="col-md-8 col-12">
+													<div class="d-flex search-sec gap-2">
+														<input class="form-control" type="text"
+															placeholder="Search..." id="quickFilter"
+															autocomplete="off">
+														<button class="btn go-btn" type="button"
+															onclick="onQuickFilterChanged()">Go</button>
+														<button class="btn go-btn" type="reset" onclick="resetList()">Reset</button>
+													</div>
+												</div>
+												<button class="btn btn-primary max-btn"
+													id="collapseButtonR1" onclick="triggerExpansionR(1)"
+													data-bs-toggle="tooltip" data-bs-placement="top"
+													title="Expand">
+													<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+														class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+												</button>
+											</div>
+											<div class="card p-2 m-2">
+												<div id="myGrid" style="width: 100%; height: 100vh;"
+													class="ag-theme-alpine"></div>
+											</div>
+										</div>
+									</div>
+
+									<div class="box-sec" id="collapseWidthL1">
+										<div class="out-box">
+											<div
+												class="d-flex justify-content-between align-items-center p-2 border-bottom">
+												<!--Right Inner Tab Start-->
+												<ul class="nav nav-pills newtab" role="tablist">
+													<li class="nav-item" id="registrationTabLi"><a
+														class="nav-link text-nowrap" data-bs-toggle="pill"
+														href="#registrationTab">Registration</a></li>
+													<li class="nav-item pay-tab" id="paymentDetailLi"><a
+														class="nav-link text-nowrap" data-bs-toggle="pill"
+														href="#paymentDetail">Payment</a></li>
+												</ul>
+												<button class="btn btn-primary max-btn"
+													id="collapseButtonL1" type="button"
+													onclick="triggerExpansionL(1)" data-bs-toggle="tooltip"
+													data-bs-placement="top" title="Expand">
+													<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+														class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+												</button>
+											</div>
+
+											<div class="tab-content flex-fill">
+												<div id="registrationTab"
+													class="tab-pane fade show p-2 h-100">
+													<div th:replace="his/his-inner-patient-regs :: his-inner-patient-regs"></div>
+												</div>
+												<div id="paymentDetail" class="tab-pane fade p-2 h-100">
+													<div th:replace="his/his-billing-2 :: his-billing-2"></div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

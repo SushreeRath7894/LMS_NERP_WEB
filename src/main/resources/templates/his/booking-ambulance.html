@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.calendar_boxs{
+	position:relative
+}
+.calendar_boxs > .form-controls[readonly]{
+	background-color:#FFF;
+	opacity:1
+}
+
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+
+
+
+.formValidation1 {
+	font-size: 10px;
+	font-weight: 100;
+	color: #ff9e99;
+	background-color: transparent;
+	position: relative;
+	top: -1px;
+	padding: 3px 0;
+}
+
+.mandatory {
+	color: red;
+	font-weight: bold;
+}
+
+
+</style>
+
+<script type="text/javascript">
+
+	$(document).ready(function() {
+		
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		var gridDiv = document.querySelector('#activity');
+		new agGrid.Grid(gridDiv, activityOptions);
+		gridOptions.api.setRowData();
+	
+		activityOptions.api.setRowData();
+		
+		
+		agGrid.simpleHttpRequest({
+			url : "booking-ambulance-view-through-ajax"
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.viewBook;
+			console.log(allData)
+			gridOptions.api.setRowData(allData);
+		}); 
+		
+		
+		$('#reqDltBtn').attr('disabled', true);
+		$('#assignBtn').attr('disabled', true);
+		$('#approveBtn').attr('disabled', true);
+		$('#deleteChild').attr('disabled', true);
+		$('#openApprovalBtn').attr('disabled', true);
+		$("#emplist").hide();
+    	$("#loclist").hide();
+    	$("#assigndate").hide();
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+		$('.collapse').on('hide.bs.collapse', function() {
+			$(this).siblings('.panel-heading').removeClass('active');
+		});
+		$("#newBtn").click(function() {
+
+		})
+		
+var dateFormat = localStorage.getItem("dateFormat");
+$("#DateCalendar").datetimepicker({
+	format : dateFormat,
+	closeOnDateSelect : true,
+	timepicker : false,
+}).on("change", function() {
+	$('#isdate').val($(this).val());
+})
+
+$('#isdate').blur(function() {
+	$("#DateCalendar").val($(this).val());
+})
+
+   var todaysDate = getCurrentDate();
+		$("#isdate").val(todaysDate);
+
+		
+	var dateFormat = localStorage.getItem("dateFormat");
+		$("#DateCalendar3").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#occSdate').val($(this).val());
+		})
+
+		$('#occSdate').blur(function() {
+			$("#DateCalendar3").val($(this).val());
+		})
+		
+		 $("#occSdate").datetimepicker({
+        format: 'H:i',
+        closeOnDateSelect: false,
+        timepicker: true,
+        datepicker: false,
+        step: 15
+    	})
+    	var todaysTime = getCurrentTime();
+		$("#occSdate").val(todaysTime);
+
+		//Country state city onchange	
+		$("#countryid_")
+				.change(
+						function() {
+							var country = $(this).val();
+							if (country) {
+								$
+										.ajax({
+											type : "POST",
+											url : "booking-ambulance-state-list",
+											dataType : 'json',
+											contentType : 'application/json',
+											data : country,
+											success : function(
+													response) {
+												if (response.message == "success") {
+													console
+															.log(response);
+													$(
+															"#stateid_")
+															.empty();
+													$(
+															"#stateid_")
+															.append(
+																	"<option value=''>Select</option>");
+													$(
+															"#cityid_")
+															.empty();
+													$(
+															"#cityid_")
+															.append(
+																	"<option value=''>Select</option>");
+
+													for (var i = 0; i < response.body.length; i++) {
+														var option = $("<option></option>");
+														$(
+																option)
+																.val(
+																		response.body[i].key);
+														$(
+																option)
+																.html(
+																		response.body[i].name);
+														$(
+																"#stateid_")
+																.append(
+																		option);
+													}
+												}
+											},
+											error : function(
+													data) {
+												console
+														.log(data);
+												$("#stateid_")
+														.empty();
+												$("#stateid_")
+														.append(
+																"<option value=''>Select</option>");
+												$("#cityid_")
+														.empty();
+												$("#cityid_")
+														.append(
+																"<option value=''>Select</option>");
+											}
+										})
+							} else {
+								$("#stateid_").empty();
+								$("#stateid_")
+										.append(
+												"<option value=''>Select</option>");
+								$("#cityid_").empty();
+								$("#cityid_")
+										.append(
+												"<option value=''>Select</option>");
+							}
+						});
+		/* $("#stateid_")
+		.change(
+				function() {
+					var state = $(this).val();
+					if (state) {
+						$
+								.ajax({
+									type : "POST",
+									url : "booking-ambulance-city-list",
+									dataType : 'json',
+									contentType : 'application/json',
+									data : state,
+									success : function(
+											response) {
+										if (response.message == "success") {
+											console
+													.log(response);
+											$(
+													"#cityid_")
+													.empty();
+											$(
+													"#cityid_")
+													.append(
+															"<option value=''>Select</option>");
+
+											for (var i = 0; i < response.body.length; i++) {
+												var option = $("<option></option>");
+												$(
+														option)
+														.val(
+																response.body[i].key);
+												$(
+														option)
+														.html(
+																response.body[i].name);
+												$(
+														"#cityid_")
+														.append(
+																option);
+											}
+										}
+									},
+									error : function(
+											data) {
+										console
+												.log(data);
+										$("#cityid_")
+												.empty();
+										$("#cityid_")
+												.append(
+														"<option value=''>Select</option>");
+									}
+								})
+					} else {
+						$("#cityid_").empty();
+						$("#cityid_")
+								.append(
+										"<option value=''>Select</option>");
+					}
+				}); */
+				
+		
+    
+	});
+	
+	
+	
+	/* -------------------search bar for mygrid----------------------- */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+		var totalRowCount = gridOptions.api.getModel().getRowCount();
+		$('#totalAsset').find('span').html(totalRowCount);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	var columnDefs = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			pinned : 'left',
+
+		},
+		{
+			headerName : 'Booking ID',
+			field : "bookingId",
+			width : "150",
+			pinned : 'left',
+				cellRenderer : function(params) {
+				return '<a id="bookingId" onclick=editBookingId("'
+				+params.data.bookingId
+				+ '") href="javascript:void(0)"><i class="bi bi-pencil-square"></i> '
+				+ params.data.bookingId + '</a>';
+
+			}
+
+		}, {
+			headerName : 'Patient Name',
+			field : "patientName",
+			width : "190",
+			
+		}, {
+			headerName : 'Mobile Number',
+			field : "mobNo",
+			width : "100",
+			
+		}, {
+			headerName : 'Address',
+			field : "add",
+			width : "190",
+		},{
+			headerName : 'Ambulance Name',
+			field : "ambulanceNo",
+			width : "150",
+		},{
+			headerName : 'Driver Name',
+			field : "driverId",
+			width : "150",
+		}, {
+			headerName: "Status",
+			field: "status",
+			width : "190",
+			cellRenderer : function(params) {
+				if (params.data.status=="1") {
+					return '<a style="color:green;font-weight: bold;">Acceped</a>';
+				} else if (params.data.status=="2") {
+					return '<a  style="color:red;font-weight: bold;">Rejected</a>';
+				}
+			  else if(params.data.status=="0") {
+				return '<a style="color:black;font-weight: bold;">Pending</a>';
+			}
+			}
+		
+		
+		},
+		{
+			headerName : 'Approve Status',
+			field : "approveStatus",
+			width : 190,
+			cellStyle : {
+				textAlign : 'center'
+			},
+			cellRenderer : function(params) {
+				if (params.data.approveStatus =="1") { 
+					return '<div style="color:#0642f5">Approved</div>';
+				} else {
+					return '<div style="color:#a9a9a9">Pending</div>';
+				} 	
+			}
+		}];
+
+// let the grid know which columns and what data to use
+var gridOptions = {
+	columnDefs : columnDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 170
+	},
+	onSelectionChanged : onSelectionChanged,
+};
+//function for row select parents
+var apstatus = "";
+
+function onSelectionChanged() {
+	var selectedNodes = gridOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	 
+	 apstatus=selectedData.map(node => node.status);
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+
+	if (rowCount > 0) {
+			if(apstatus=="1"){
+			$('#newBtn').attr('disabled', true);
+			$('#reqDltBtn').attr("disabled", true);
+			$('#approveBtn').attr("disabled", false);
+			$('#openApprovalBtn').attr("disabled", true);
+			
+			
+		}else{
+			$('#approveBtn').attr("disabled", true);
+			$('#reqDltBtn').attr("disabled", false);
+			$('#newBtn').attr('disabled', true);
+			$('#openApprovalBtn').attr("disabled", false);
+		}
+	}else {
+		$('#reqDltBtn').attr("disabled", true);
+		$('#approveBtn').attr("disabled", true);
+		$('#newBtn').attr('disabled', false);
+		$('#openApprovalBtn').attr("disabled", true);
+		
+	}
+}
+// for activity table
+var activityDefs = [
+		{
+			/* headerCheckboxSelection : true, */
+			headerCheckboxSelectionFilteredOnly : true,
+			checkboxSelection : true,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			width : 30,
+			pinned : 'left'
+		},
+		{
+			headerName : "Ambulance No",
+			field : "amublanceNo",
+			width : "200",
+			pinned : 'left',
+		},{
+			headerName : "Type",
+			field : "type",
+			width : 150,
+			cellStyle : {
+				textAlign : 'center'
+			},
+		}, {
+			headerName : "Driver Id",
+			field : "driverId",
+			width : "150",
+			cellStyle : {
+				textAlign : 'center'
+			},
+		},{
+			headerName : "Driver Name",
+			field : "driverName",
+			width : "200",
+			cellStyle : {
+				textAlign : 'center'
+			},
+	 },{
+			headerName : "Ambulance Name",
+			field : "ambulanceName",
+			width : "200",
+			cellStyle : {
+				textAlign : 'center'
+			},
+	 },{
+			headerName : "Driver Mobile No",
+			field : "driverMob",
+			width : "150",
+			cellStyle : {
+				textAlign : 'center'
+			},
+	 }, {
+			headerName : "Availability",
+			field : "availability",
+			width : 200,
+			cellStyle : {
+				textAlign : 'center'
+			},
+			cellRenderer : function(params) {
+				if (params.data.availability =="0") { 
+					return '<a style="color:green;font-weight: bold;">Available</a>';
+				} else {
+					return '<a style="color:red;font-weight: bold;">Booked</a>';
+				} 	
+			}
+		}];
+
+
+// let the grid know which columns and what data to use product table
+var activityOptions = {
+	columnDefs : activityDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 150
+	},
+
+};
+
+
+//parents new plan
+function newPlan() {
+	$('#uomDiv').hide();
+	$('#minRangeDiv').hide();
+	$('#maxRangeDiv').hide();
+	$("#catid").prop('disabled', false);
+	$("#assetsubcat").prop('disabled', false);
+	$("#frequency").prop('disabled', false);
+	$("#myGrid").hide();
+	$("#reqTable").hide();
+	$(".btn-hs").show();
+	$("#btndiv").hide();
+	$("#listdiv").hide();
+	$("#totalAsset").hide();
+	$("#searchRowDiv").hide();
+	$("#ttbtn").hide();
+	$("#demo").show();
+	$("#deleteChild").attr('disabled', true);
+	$("#newchild").attr('disabled', false);
+	$("#save").attr('disabled', true);
+	$("#next").attr('disabled', true);
+	$("#policyid").val("");
+	$('#occDiv').hide();
+	
+	$("#patientName").val('');
+	$("#bookingid").val('');
+	$("#patientName").val('');
+	$("#age").val('');
+	$("#mobNo").val('');
+	$("#mobNo2").val('');
+	$("#countryid_").val('');
+	$("#stateid_").val('');
+	$("#dist").val('');
+	$("#cityid_").val('');
+	$("#pincode").val('');
+	$("#add").val('');
+	$("#reasonambulance").val('');
+	$("#gender").val('');
+	
+	agGrid.simpleHttpRequest({
+		url : 'booking-ambulance-list-view'
+	}).then(function(data) {
+		var jsonData = JSON.parse(data.body);
+		var allData=jsonData.view;
+		console.log(allData)
+		activityOptions.api.setRowData(allData);
+	});
+	
+	// Attach event listener to input fields to check validation on input or change
+	$('input, select, textarea').on('input change', function() {
+	    validateForm();
+	});
+
+	// Additionally check on page load (in case of pre-filled fields)
+	validateForm();
+	//function for cancel
+	   
+}
+
+
+function validateForm() {
+    let isValid = true;
+
+    // Loop through each mandatory field and check if it is filled
+    $('span.mandatory').each(function() {
+        // Get the corresponding input/select field next to the mandatory asterisk
+        let input = $(this).closest('.form-group').find('input, select, textarea');
+        
+        // Check if the field is empty or invalid
+        if (input.val().trim() === '' || input.val() === 'Select') {
+            isValid = false;
+        }
+    });
+
+    // Enable or disable the Save button based on validation
+    $('#next').prop('disabled', !isValid);
+}
+
+
+
+
+ function cancel() {
+	gridOptions.api.setQuickFilter(null);
+	$('#quickFilter').val('');
+	document.getElementById('closeKey').style.display='none';
+	$('#totalAsset').find('span').html(gridOptions.api.getModel().getRowCount());
+	
+	
+	 	$(".formValidation").remove();
+		$("#totalAsset").show();
+		$("#searchRowDiv").show();
+		$(".btn-hs").show();
+		$("#myGrid").show();
+		$("#demo").hide();
+		$("#reqDltBtn").attr('disabled', true);
+		$("#newBtn").attr('disabled', false);
+		
+		$("#patientName").val('');
+		$("#bookingid").val('');
+		$("#patientName").val('');
+		$("#age").val('');
+		$("#mobNo").val('');
+		$("#mobNo2").val('');
+		$("#countryid_").val('');
+		$("#stateid_").val('');
+		$("#dist").val('');
+		$("#cityid_").val('');
+		$("#pincode").val('');
+		$("#add").val('');
+		$("#reasonambulance").val('');
+		$("#gender").val('');
+		
+	}
+
+	function timeChange() {
+		var occSdate = $("#occSdate").val();
+		var occEdate = $("#occEdate").val();
+		
+		if (occSdate != '' && occEdate != '') {
+			if (occSdate < occEdate) {
+		
+			} else {
+				$("#occSdate").val("");
+				$("#occEdate").val("");
+				$('#dateModal1').modal('show');
+			}
+		}
+	}
+	
+	function getCurrentDate() {
+		var currentDate = new Date();
+
+		var day = currentDate.getDate(); // Get the day (1-31)
+		var month = currentDate.getMonth() + 1; // Get the month (0-11) and adjust it by adding 1
+		var year = currentDate.getFullYear(); // Get the full year (e.g., 2022)
+
+		// Format day, month, and year with leading zeros if necessary
+		var formattedDay = day < 10 ? "0" + day : day;
+		var formattedMonth = month < 10 ? "0" + month : month;
+
+		// Construct the date string in dd-mm-yyyy format
+		var formattedDate = formattedDay + "-" + formattedMonth + "-" + year;
+
+		return formattedDate;
+	}
+	
+	function getCurrentTime() {
+	    var currentTime = new Date();
+
+	    var hours = currentTime.getHours(); // Get the hours (0-23)
+	    var minutes = currentTime.getMinutes(); // Get the minutes (0-59)
+
+	    // Format hours, minutes, and seconds with leading zeros if necessary
+	    var formattedHours = hours < 10 ? "0" + hours : hours;
+	    var formattedMinutes = minutes < 10 ? "0" + minutes : minutes;
+	 
+	    // Construct the time string in HH:MM:SS format
+	    var formattedTime = formattedHours + ":" + formattedMinutes ;
+
+	    return formattedTime;
+	}
+	
+//master save
+
+function masterSaveData(){
+	if (mobValid1 && mobValid2 && validProductData()){
+		
+	
+		var ambulanceData = [];
+		  activityOptions.api.forEachNode(function(rowNode, index) {
+		        if (rowNode.isSelected()) {
+		            var item = rowNode.data;
+		            ambulanceData.push(item);
+		            console.log(item);
+		        }
+		    });
+		
+		var datas = [];
+		
+			var obj = {};
+			obj.bookingId = $("#bookingid").html();
+			obj.patientName = $("#patientName").val();
+			obj.age = $("#age").val();
+			obj.mobNo = $("#mobNo").val();
+			obj.isdate = $("#isdate").val();
+			obj.time = $("#occSdate").val();
+			obj.mobNo2 = $("#mobNo2").val();
+			obj.countryid = $("#countryid_").val();
+			obj.stateid = $("#stateid_").val();
+			obj.dist = $("#dist").val();
+			obj.cityid = $("#cityid_").val();
+			obj.pincode = $("#pincode").val();
+			obj.add = $("#add").val();
+			obj.reasonambulance = $("#reasonambulance").val();
+			obj.gender = $("#gender").val();
+			obj.typeAmb = $("#typeAmb").val();
+			obj.reqAmb = $("#reqAmb").val();
+						
+			obj.ambulancelist = ambulanceData;
+           datas.push(obj);
+           console.log(datas);
+          saveAmbulaneBooking(datas);
+			
+	}
+	
+}
+
+function saveAmbulaneBooking(datas) {
+		$('.loader').show();
+		console.log(datas);
+		$
+				.ajax({
+					type : "POST",
+					url : "booking-ambulance-add",
+					contentType : "application/json",
+					data : JSON.stringify(datas),
+					success : function(response) {
+						if (response.message == "Success") {
+							$('.loader').hide();
+							$("#messageParagraph").text(
+									"Data Saved Successfully");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+
+							cancel()
+							
+
+							agGrid.simpleHttpRequest({
+								url : "booking-ambulance-view-through-ajax"
+							}).then(function(data) {
+								var jsonData = JSON.parse(data.body);
+								var allData=jsonData.viewBook;
+								console.log(allData)
+								gridOptions.api.setRowData(allData);
+							});
+							
+						}
+
+					},
+					error : function(datas) {
+						console.log(datas)
+						$('.loader').hide();}
+				})
+		   
+
+	}
+
+function validFormData() {
+	var allValid = true;
+
+	if (!validationUpdated("patient name Required", 'patientName')){
+		allValid = false;
+	}	
+	if (!validationUpdated("Mobile No Required", 'mobNo')){
+		allValid = false;
+	}
+	
+	if (!validationUpdated("Country Required", 'countryid_')){
+		allValid = false;
+	}
+	
+	if (!validationUpdated("State Required", 'stateid_')){
+		allValid = false;
+	}
+	
+	if (!validationUpdated("Dist Required", 'dist')){
+		allValid = false;
+	}
+	if (!validationUpdated("City Required", 'cityid_')){
+		allValid = false;
+	}
+	if (!validationUpdated("Pin code Required", 'pincode')){
+		allValid = false;
+	}
+	if (!validationUpdated("Address Required", 'add')){
+		allValid = false;
+	}
+	mobVal1();
+	mobVal2();
+	
+	return allValid;
+}
+
+function validProductData() {
+	var item = null;
+
+	activityOptions.api.forEachNode(function(rowNode, index) {
+		if (rowNode.isSelected()) {
+			 let selectedRows = rowNode.data; 
+			
+			if(selectedRows.availability === "0"){
+				 console.log(selectedRows)
+				 item = selectedRows; 
+	            console.log("Selected Row Data:", item); 
+	            
+			}else{
+				 console.log(selectedRows,'aaa')
+				
+			}
+			
+		}
+		
+	});
+	if (item) {
+		console.log(item)
+		return true;
+	} else {
+		$("#messageParagraph").text("Please Give one Available Ambulance");
+		$("#msgOkModal").removeClass("btn3");
+		$("#msgOkModal").addClass("btn1");
+		$("#msgModal").modal('show');
+		return false;
+	}
+	
+}
+
+// delete Ambulance
+function deleteFun() {
+
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var selectedRowsString = '';
+	selectedRows.forEach(function (selectedRow, index) {
+		if (index > 0) {
+			selectedRowsString += ',';
+		}
+
+		selectedRowsString += selectedRow.bookingId;
+	});
+	
+	var id = selectedRowsString;
+	$.ajax({
+		type: "GET",
+		url: "booking-ambulance-delete?id=" + id,
+		dataType: "json",
+		contentType: "application/json",
+		success: function (response) {
+			if (response.message == "Success") {
+				swal("Ambulance deleted successfully")
+			     agGrid.simpleHttpRequest({
+                 url : "booking-ambulance-view-through-ajax"
+				}).then(function(data) {
+				var jsonData = JSON.parse(data.body);
+				var allData=jsonData.viewBook;
+				console.log(allData)
+				gridOptions.api.setRowData(allData);
+				});
+				location.reload();
+			}
+		},
+		error: function (response) {
+			console.log(response);
+		}
+	})
+}
+
+//OnChange district
+function getDistrictDetails() {
+	let state = '';
+	if ($('#stateid_').val() == "" || $('#stateid_').val() == null) {
+		state = getStates;
+	} else {
+		state = $('#stateid_').val();
+	}
+
+	if (state) {
+		var option = $("<option></option>");
+		$(option).val(null);
+		$(option).html("Select");
+		$.ajax({
+			type: "GET",
+			url: "booking-ambulance-districtList?id=" + state,
+			success: function (response) {
+				if (response.message == "success") {
+					$("#dist").empty();
+					var option = $("<option></option>");
+					$(option).val(null);
+					$(option).html("Select");
+					$("#dist").append(option);
+					for (var i = 0; i < response.body.length; i++) {
+						var option = $("<option></option>");
+						$(option).val(response.body[i].key);
+						$(option).html(response.body[i].name);
+						$("#dist").append(option);
+					}
+					if (id == "0") {
+
+					} else {
+
+						$("#dist").val(id);
+					}
+				}
+			},
+			error: function (e) {
+			}
+		});
+	} else {
+		$("#dist").empty();
+		var option = $("<option></option>");
+		$(option).val(null);
+		$(option).html("Select");
+		$("#dist").append(option);
+		$("#dist").empty();
+		var option = $("<option></option>");
+		$(option).val(null);
+		$(option).html("Select");
+	}
+}
+
+
+//OnChange City
+function getCityDetails() {
+	let dist = '';
+	if ($('#dist').val() == "" || $('#dist').val() == null) {
+		dist = getdist;
+	} else {
+		dist = $('#dist').val();
+	}
+
+	if (dist) {
+		var option = $("<option></option>");
+		$(option).val(null);
+		$(option).html("Select");
+		$.ajax({
+			type: "GET",
+			url: "booking-ambulance-CityList?id=" + dist,
+			success: function (response) {
+				if (response.message == "success") {
+					$("#cityid_").empty();
+					var option = $("<option></option>");
+					$(option).val(null);
+					$(option).html("Select");
+					$("#cityid_").append(option);
+					for (var i = 0; i < response.body.length; i++) {
+						var option = $("<option></option>");
+						$(option).val(response.body[i].key);
+						$(option).html(response.body[i].name);
+						$("#cityid_").append(option);
+					}
+					if (id == "0") {
+
+					} else {
+
+						$("#cityid_").val(id);
+					}
+				}
+			},
+			error: function (e) {
+			}
+		});
+	} else {
+		$("#cityid_").empty();
+		var option = $("<option></option>");
+		$(option).val(null);
+		$(option).html("Select");
+		$("#cityid_").append(option);
+		$("#cityid_").empty();
+		var option = $("<option></option>");
+		$(option).val(null);
+		$(option).html("Select");
+	}
+}
+
+function checkNumeric(fieldId) {
+	var tempVal = $("#" + fieldId).val().replace(/[^0-9 ]/g, '');
+	const input = document.getElementById(fieldId);
+	const position = input.selectionStart;
+	if (tempVal.slice(-1) == ' ') {
+		$("#" + fieldId).empty();
+		tempVal = '';
+	}
+	$("#" + fieldId).val(tempVal);
+}
+
+//Mobile Number validation
+var mobValid1;
+
+function mobVal1() {
+	var mob = $('#mobNo').val();
+	var phoneno = /^\d{10}$/;
+	if (mob != '') {
+		if (phoneno.test(mob)) {
+
+			$("#error9").hide();
+
+			mobValid1 = true;
+			return true;
+		} else {
+
+			$("#error9").html(
+				"please enter  10 digit mobile number");
+			$("#error9").show();
+			mobValid1 = false;
+			return false;
+		}
+	} else {
+		$("#error9").html(" Mobile No is Required");
+		mobValid1 = false;
+		return false;
+	}
+}
+
+//Mobile Number validation
+var mobValid3;
+
+function mobVal3() {
+	var mob = $('#mobNo2').val();
+	var phoneno = /^\d{10}$/;
+	if (mob != '') {
+		if (phoneno.test(mob)) {
+
+			$("#error2").hide();
+
+			mobValid3 = true;
+			return true;
+		} else {
+
+			$("#error2").html(
+				"please enter  10 digit mobile number");
+			$("#error2").show();
+			mobValid3 = false;
+			return false;
+		}
+	} else {
+		$("#error2").html(" Mobile No is Required");
+		mobValid3 = false;
+		return false;
+	}
+}
+//Pincode validation
+var mobValid2;
+
+function mobVal2() {
+	var pin = $('#pincode').val();
+	var pincode = /^\d{6}$/;
+	if (pin != '') {
+		if (pincode.test(pin)) {
+
+			$("#error1").hide();
+
+			mobValid2 = true;
+			return true;
+		} else {
+
+			$("#error1").html(
+				"please enter  6 digit pin code");
+			$("#error1").show();
+			mobValid2 = false;
+			return false;
+		}
+	} else {
+		$("#error1").html(" Pin code is Required");
+		mobValid2 = false;
+		return false;
+	}
+}
+
+function openApprovalBtn() {
+ 	var selectedRows = gridOptions.api.getSelectedRows();
+	var selectedRowsString = '';
+	var flag = true;
+	selectedRows.forEach(function(selectedRow, index) {
+		if (index > 0) {
+			selectedRowsString += ',';
+		}
+		console.log(JSON.stringify(selectedRow))
+		selectedRowsString += selectedRow.status;
+	});
+	if(selectedRowsString == "1"){
+		flag = false;
+		swal("Already Approved<br>")
+		return flag;
+	} 
+	//$("#ambId").val(id2);
+	$("#AprovalPopup").modal('show');
+}
+function cancelApproval() {
+	$('#AprovalPopup').modal('hide');
+}
+
+function radioBtn(){
+	var apr=$("#approval").val();
+	var rej=$("#reject").val();
+	if(apr=='2'){
+		$("#reject").val('null')
+	}else if(rej=='0'){
+		$("#approval").val('null')
+	}
+}
+function opdApproval() {
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var selectedRowsString = '';
+	selectedRows.forEach(function(selectedRow, index) {
+		if (index > 0) {
+			selectedRowsString += ',';
+		}
+		selectedRowsString += selectedRow.bookingId;
+	});
+	
+	var validation = true;
+	
+	var bookingId = selectedRowsString;
+	
+	const checkVal = $('input[name="approved"]:checked').val();
+	var approval=checkVal;
+
+	
+$.ajax({
+	type : "GET",
+	url : "booking-ambulance-approval-status?approval=" + approval + "&bookingId=" + bookingId,
+	async : false,
+	success : function(response) {
+		if (response.message == "Success") {
+			$("#AprovalPopup").modal('hide');				
+			swal({
+				text: "Status updated successfully!", 
+				type: "success"
+				}).then(function(){
+			   location.reload();
+			   }
+			);
+			
+			agGrid.simpleHttpRequest({
+				url : "booking-ambulance-view-through-ajax"
+			}).then(function(data) {
+				var jsonData = JSON.parse(data.body);
+				var allData=jsonData.viewBook;
+				console.log(allData)
+				gridOptions.api.setRowData(allData);
+			}); 
+		}
+
+	},
+	error : function(data) {
+	}
+});
+}
+
+function next(){
+	if(validProductData()){
+		$("#openOkModal").modal('show');
+		$("#next").attr('disabled', true);
+	}
+	
+}
+
+function yesOnClick(){
+	$("#openOkModal").modal('hide');
+	$("#next").attr('disabled', true);
+	$("#save").attr('disabled', false);
+}
+
+function noOnclick(){
+	$("#openOkModal").modal('hide');
+	$("#next").attr('disabled', true);
+	$("#save").attr('disabled', true);
+	$("#patientName").val('');
+	$("#bookingid").val('');
+	$("#patientName").val('');
+	$("#age").val('');
+	$("#mobNo").val('');
+	$("#mobNo2").val('');
+	$("#countryid_").val('');
+	$("#stateid_").val('');
+	$("#dist").val('');
+	$("#cityid_").val('');
+	$("#pincode").val('');
+	$("#add").val('');
+	$("#reasonambulance").val('');
+	$("#gender").val('');
+	activityOptions.api.deselectAll();
+}
+
+function approveBtn(){
+	$('#approveAmb').modal('show');
+}
+function cancelApproveModalBtn() {
+	$('#approveAmb').modal('hide');
+}	
+  function approveOnclick() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var selectedRowsString = '';
+		selectedRows.forEach(function(selectedRow, index) {
+			if (index > 0) {
+				selectedRowsString += ',';
+			}
+			selectedRowsString += selectedRow.bookingId;
+		});
+		var bookingId = selectedRowsString;
+		
+		var approveStatus = 1;
+		$('#approveAmb').modal('show');
+		$('.loader').show();
+		
+	$.ajax({
+		type : "GET",
+		url : "booking-ambulance-approve-th-ajax?approveStatus=" + approveStatus + "&bookingId=" + bookingId ,
+		async : false,
+		success : function(response) {
+			if (response.message == "Success") {
+				$('.loader').hide();
+				$("#messageParagraph").text("Patient Approved Successfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				
+				$('#approveAmb').modal('hide');
+				$('#approveBtn').attr("disabled", true);
+				$('#reqDltBtn').attr("disabled", true);
+				$('#newBtn').attr('disabled', false);
+				$('#openApprovalBtn').attr("disabled", true);
+				agGrid.simpleHttpRequest({
+					url : "booking-ambulance-view-through-ajax"
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.viewBook;
+					console.log(allData)
+					gridOptions.api.setRowData(allData);
+				}); 
+				
+			}else{
+				$('.loader').hide();
+				$('#approvePQtn').modal('show');
+			}
+			
+		},
+		error : function(data) {
+		}
+	});
+}	
+</script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="d-flex justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalAsset">
+									Ambulance List(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalAsset').find('span').html(gridOptions.api.getModel().getRowCount());"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+								<button class="delete-btn" id="reqDltBtn" onclick="deleteFun()">DELETE</button>
+								<button class="new-btn" id="newBtn" onclick="newPlan()">BOOK</button>
+								<button class="new-btn" id="openApprovalBtn" onclick="openApprovalBtn()">Action</button>
+								<button class="new-btn" id="approveBtn" onclick="approveBtn()">Approve</button>
+							</div>
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" />
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innercontent">
+								<div class="innerstickybg">
+									<div class="row">
+
+										<div class="col-md-6 text-end">
+											<div class="mandatory-txt">
+												Note: All fields marked with <span>*</span> are mandatory.
+												</div>
+										</div>
+
+
+										<div class="col-md-6" align="right">
+											<button class="btn4" id="cancelBtn" onclick="cancel()">Cancel</button>
+											<button class="approve-btn" id="next" onclick="next()">Next</button>
+											<button class="approve-btn" id="save"
+												onclick="masterSaveData()">Save</button>
+										</div>
+									</div>
+
+								</div>
+								<div class="row innersticky_contentgap">
+									<input type="hidden" id="bookingid">
+
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Patient Name</label> <span class="mandatory">*</span><input
+												type="text" class="form-control"
+												id="patientName" onblur="removeValid(event)">
+										</div>
+									</div>
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Age</label> <span class="mandatory">*</span> <input
+												type="text" class="form-control" id="age"
+												onblur="removeValid(event)">
+
+										</div>
+									</div>
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Mobile Number</label> <span class="mandatory">*</span>
+											<input type="text" class="form-control"
+												id="mobNo" maxLength="10"
+												onkeyup="mobVal1();checkNumeric('mobNo');"
+												onblur="removeValid(event)"> <span id="error9"
+												class="formValidation1"></span>
+										</div>
+									</div>
+									<div class="col-lg-4">
+										<div class="form-group calendar_box">
+											<label>Date</label> <span class="mandatory">*</span> <input
+												type="text" id="isdate" class="form-control"
+												onblur="removeValid(event)"
+												th:attr="onkeyup=|formatDate('date','${session.DATEFORMAT_JS}')|"
+												readonly> <i class="ti-calendar picker_calendar"
+												id="DateCalendar" onchange="Insurancefilter();"></i>
+										</div>
+									</div>
+
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Time</label> <span class="mandatory">*</span><input
+												type="text" id="occSdate" value="06:00" class="form-control"
+												onblur="removeValid(event)" readonly>
+
+										</div>
+									</div>
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Alternate Mobile No</label> <input type="text"
+												class="form-control" id="mobNo2"
+												maxLength="10" onkeyup="mobVal3();checkNumeric('mobNo2');"
+												onblur="removeValid(event)"> <span id="error2"
+												class="formValidation1"></span>
+										</div>
+									</div>
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Gender</label> <span class="mandatory">*</span>
+											<div class="select">
+												<select id="gender">
+													<option value="">Select</option>
+													<option th:each="c,iter:${genderList}" th:value="${c.key}"
+														th:text="${c.name}"></option>
+												</select>
+											</div>
+										</div>
+									</div>
+									<div class="col-lg-4">
+										<div class="form-group">
+
+											<label>Country</label> <span class="mandatory">*</span>
+											<div class="select">
+												<select class="form-control fromtxt countryclss"
+													id="countryid_" onblur="removeValid(event)">
+													<option value="">Select</option>
+													<option th:each="c,iter:${counntryList}"
+														th:if="${c.key} == 'cntry001'" th:value="${c.key}"
+														th:text="${c.name}"></option>
+												</select>
+											</div>
+										</div>
+									</div>
+
+										<div class="col-lg-4">
+											<div class="form-group">
+												<label>State</label> <span class="mandatory">*</span>
+												<div class="select">
+													<select class="form-control fromtxt stateclss"
+														id="stateid_" onchange="getDistrictDetails('0')"
+														onblur="removeValid(event)">
+														<option value="">Select</option>
+														<option th:each="c,iter:${stateList}" th:value="${c.key}"
+															th:text="${c.name}"></option>
+													</select>
+												</div>
+											</div>
+										</div>
+										<div class="col-lg-4">
+											<div class="form-group">
+												<label>District</label> <span class="mandatory">*</span>
+												<div class="select">
+													<select id="dist" onchange="getCityDetails('0')" 
+													  onblur="removeValid(event)">
+														<option th:value="NULL">Select District</option>
+														<option th:each="c,iter:${districtList}"
+															th:value="${c.key}" th:text="${c.name}"></option>
+													</select> <span class="focus"></span>
+												</div>
+											</div>
+										</div>
+									<!-- 	
+										<div class="col-lg-4">
+											<div class="form-group">
+												<label>City</label><span class="mandatory">*</span> <input
+													type="text" id="cityid_" placeholder="city"
+													class="form-control">
+											</div>
+										</div> -->
+										<div class="col-lg-4">
+											<div class="form-group">
+												<label>City</label> <span class="mandatory">*</span>
+												<div class="select">
+													<select class="form-control fromtxt cityclsss" id="cityid_"
+														onblur="removeValid(event)">
+														<option value="">Select</option>
+														<option th:each="c,iter:${cityList}" th:value="${c.key}"
+															th:text="${c.name}"></option>
+													</select>
+												</div>
+											</div>
+										</div>
+										<div class="col-lg-4">
+											<div class="form-group">
+												<label>Pin Code</label> <span class="mandatory">*</span> <input
+													type="text" class="form-control"
+													id="pincode" maxLength="6"
+													onkeyup="mobVal2();checkNumeric('pincode');"
+													onblur="removeValid(event)"> <span id="error1"
+													class="formValidation1"></span>
+											</div>
+										</div>
+									
+
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Address</label> <span class="mandatory">*</span>
+											<textarea class="form-control" id="add"
+												onblur="removeValid(event)" autocomplete="off"></textarea>
+										</div>
+									</div>
+
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Reason For Ambulance</label>
+											<textarea class="form-control" id="reasonambulance"
+												onblur="removeValid(event)" autocomplete="off"></textarea>
+										</div>
+									</div>
+
+
+									<div style="margin-top: 50px;">
+										<h6 style="color: blue;">Ambulance Booking Details</h6>
+									</div>
+									<hr class="col-lg-12">
+									<div class="col-lg-6">
+										<div class="form-group">
+											<label>Ambulance Type</label> <span class="mandatory">*</span>
+											<div class="select">
+												<select id="typeAmb" onblur="removeValid(event)">
+													<option th:value="NULL">Select</option>
+													<option th:each="c,iter:${ambulanceTypeList}"
+														th:value="${c.key}" th:text="${c.name}"></option>
+												</select> <span class="focus"></span>
+											</div>
+										</div>
+									</div>
+									<div class="col-lg-6">
+										<div class="form-group">
+											<label>Requirements</label>
+											<div class="select">
+												<select id="reqAmb" onblur="removeValid(event)">
+													<option th:value="NULL">Select</option>
+													<option th:each="c,iter:${ambulanceRequirementList}"
+														th:value="${c.key}" th:text="${c.name}"></option>
+												</select> <span class="focus"></span>
+											</div>
+										</div>
+									</div>
+
+									<div id="main" class="mt-4">
+										<div class="accordion-item">
+											<h2 class="accordion-header" id="headingOne">
+												<button class="accordion-button" type="button"
+													data-bs-toggle="collapse" data-bs-target="#collapseOne"
+													aria-expanded="false" aria-controls="collapseOne">
+													Ambulance Available Details</button>
+											</h2>
+
+											<div id="collapseOne"
+												class="accordion-collapse collapse show"
+												aria-labelledby="headingOne"
+												data-bs-parent="#accordionExample">
+												<div class="accordion-body">
+
+													<div class="row">
+														<div class="col-md-12 buttonsec btn-hs"></div>
+														<div id="activity" style="width: 100%; height: 200px;"
+															class="ag-theme-alpine"></div>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								
+								</div>
+
+							</div>
+						</div>
+					</div>
+
+
+					<!-- delete modal start -->
+					<div id="delete" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column"></div>
+								<div class="modal-body">
+									<p>Do you really want to delete these data? This process
+										cannot be undone.</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: 0px;">
+
+									<button type="button" class="cancel-btn"
+										data-bs-dismiss="modal" onclick="cancelModalBtn();">Cancel</button>
+									<button type="button" class="delete-btn"
+										onclick="deleteOnclick()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+
+					<!-- approve modal start -->
+					<div id="approveModal" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column"></div>
+								<div class="modal-body">
+									<p>Do you want to approve this policy? Once done you will
+										not be able to make further changes.</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: 0px;">
+
+									<button type="button" class="cancel-btn"
+										data-bs-dismiss="modal" onclick="cancelModalBtn();">Cancel</button>
+									<button type="button" class="new-btn"
+										onclick="approveOnclick()">Approve</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+
+
+					<!-- assign success modal start -->
+					<div id="assignsuccessModal" class="modal fade show"
+						aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column"></div>
+								<div class="modal-body">
+									<p>Asset Successfully Assigned</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: 0px;">
+
+									<button type="button" class="cancel-btn"
+										data-bs-dismiss="modal" onclick="cancelModalBtn();">Close</button>
+									<button type="button" class="new-btn"
+										onclick="goTOAssignedAsset()">View</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- delete product modal start -->
+					<div id="deleteDetails" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column"></div>
+								<div class="modal-body">
+									<p>Do you really want to delete these data? This process
+										cannot be undone.</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: 0px;">
+
+									<button type="button" class="cancel-btn"
+										data-bs-dismiss="modal" onclick="cancelModalBtn();">Cancel</button>
+									<button type="button" class="delete-btn"
+										onclick="deleteDetailsOnclick()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<!--  -->
+					<div id="dateModal1" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<!-- <button type="button" class="close" data-bs-dismiss="modal"
+								aria-hidden="true" onclick="cancelModalDeleteBtn()">
+								<i class="ti-close modal-close"></i>
+							</button> -->
+								</div>
+								<div class="modal-body">
+									<p>From Time must be lesser than To Time</p>
+								</div>
+								<div class="modal-footer justify-content-center">
+
+									<button type="button" class="btn1"
+										onclick="okModalDateBtnOnclick1()">OK</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<!-- alert modal start -->
+					<div id="alert" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-bs-dismiss="modal"
+										aria-hidden="true" onclick="cancelModalBtn()">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p id="textId"></p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: 0px;">
+
+									<button type="button" class="btn1" data-bs-dismiss="modal">SELECT</button>
+									<button type="button" class="btn3" onclick="deleteOnclick()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+
+					<div id="AprovalPopup" class="modal fade" role="dialog">
+						<div class="modal-dialog modal-md">
+							<!-- Modal content-->
+							<div class="modal-content">
+
+								<div class="modal-body">
+
+
+									<div class="row mdsec">
+										<input type="hidden" id="ambId">
+
+										<div class="col-lg-6">
+											<div class="form-group">
+												<input type="radio" id="approval" value="1" name="approved">
+												<label>Accepted</label>
+											</div>
+											<span id="errmsg_payApproval"></span>
+										</div>
+
+
+										<div class="col-lg-6">
+											<div class="form-group">
+												<input type="radio" id="reject" value="2" name="approved">
+												<label>Rejected</label>
+											</div>
+										</div>
+
+									</div>
+								</div>
+								<div class="modal-footer">
+									<button class="btn4" id="cancel" onclick="cancelApproval()">CANCEL</button>
+									<button class="btn1" id="save" onclick="opdApproval()">Approve</button>
+								</div>
+
+							</div>
+						</div>
+					</div>
+					
+					<div id="openOkModal" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									
+								</div>
+								<div class="modal-body">
+									<p>Are you sure you want to Proceed & Save The Data? </p>
+								</div>
+								<div class="modal-footer justify-content-center">
+
+									<button type="button" class="btn1"
+										onclick="yesOnClick()">Yes</button>
+									<button type="button" class="delete-btn"
+										onclick="noOnclick()">No</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+					<div id="approveAmb" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column"></div>
+								<div class="modal-body">
+									<p>Do you want to approve this  Patirnt Booking</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: -30px;">
+									<button type="button" class="cancel-btn" data-dismiss="modal"
+										onclick="cancelApproveModalBtn();">No</button>
+									<button type="button" class="approve-btn"
+										onclick="approveOnclick()">Yes</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

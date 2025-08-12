@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+	th:fragment="outstandingrecievedledgerReport">
+<head>
+
+
+<link rel="stylesheet"
+	href="/assets/css/account/outstanding-receive-ledger.css" />
+
+<script type="text/javascript"
+	src="../javaScript/account/outstanding-recieved-ledger.js"></script>
+
+
+<script type="text/javascript">
+	$(document).ready(
+			function() {
+
+				var today = new Date();
+				var fromDateString = ('01').slice(-2) + '-'
+						+ ('0' + (today.getMonth() + 1)).slice(-2) + '-'
+						+ today.getFullYear();
+				var toDateString = ('0' + today.getDate()).slice(-2) + '-'
+						+ ('0' + (today.getMonth() + 1)).slice(-2) + '-'
+						+ today.getFullYear();
+				var fromDate = fromDateString.toString();
+				var todate = toDateString.toString();
+				$("#toDateReceiveLedger").val(todate);
+				$("#fromDateReceiveLedger").val(fromDate);
+
+				var dateFormat = localStorage.getItem("dateFormat");
+
+				$("#toDateCalendarReceiveLedger").datetimepicker({
+					format : dateFormat,
+					closeOnDateSelect : true,
+					timepicker : false,
+				//minDate : 0,
+				}).on("change", function() {
+					$('#fromDateReceiveLedger').val($(this).val());
+				})
+				$('#fromDateReceiveLedger').blur(function() {
+					$("#toDateCalendarReceiveLedger").val($(this).val());
+				})
+
+				$("#toDateCalendar2ReceiveLedger").datetimepicker({
+					format : dateFormat,
+					closeOnDateSelect : true,
+					timepicker : false,
+				//minDate : 0,
+				}).on("change", function() {
+					$('#toDateReceiveLedger').val($(this).val());
+				})
+				$('#toDateReceiveLedger').blur(function() {
+					$("#toDateCalendar2ReceiveLedger").val($(this).val());
+				});
+
+				var gridDivLedgerReceive = document
+						.querySelector('#receivedLedgerGrid');
+				new agGrid.Grid(gridDivLedgerReceive,
+						gridOptionsOutstandingLedger);
+				gridOptionsOutstandingLedger.api.setRowData();
+				
+				var gridDivSales = document.querySelector('#itemGridSalesreceiveLedger');
+				new agGrid.Grid(gridDivSales, itemOptionsSalesReceiveLedger);
+				itemOptionsSalesReceiveLedger.api.setRowData("");
+				
+
+				$("#modeOfSearch").val('invDate');
+				viewFilteredDataReceiveLedger();
+
+			});
+
+	var columnDefsOutStandingLedger = [
+			{
+				headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : true,
+				//checkboxSelection : true,
+				checkboxSelection : function(params) {
+					const paymentStatus = params.data.paymentStatus;
+					return paymentStatus !== 'Paid';
+				},
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true,
+				pinned : 'left',
+			},
+			{
+				headerName : "Sales Invoice Id",
+				field : "SALE_VOUCHER_ID",
+				pinned : 'left',
+				width : 150,
+			/*cellRenderer: function(params) {
+				return '<a onclick=viewVoucherDetail("'
+					+ params.data.SALE_VOUCHER_ID + '") href="javascript:void(0)">'
+					+ params.data.SALE_VOUCHER_ID + '</a>';
+			}*/
+			},
+			{
+				headerName : 'COMPANY VOUCHER ID',
+				field : "COMPANY_INVOICE_NO",
+				width : 180,
+				hide : true,
+				cellStyle : {
+					textAlign : 'center'
+				}
+			},
+			{
+				headerName : 'INVOICE NUMBER',
+				field : "SAP_ID",
+				hide : true,
+				width : 150,
+				cellStyle : {
+					textAlign : 'center'
+				}
+			},
+			{
+				headerName : 'TAX INVOICE NUMBER',
+				field : "TAX_INVOICE_NUMBER",
+				width : 180,
+				cellStyle : {
+					textAlign : 'center'
+				}
+			},
+			{
+				headerName : 'PO Id',
+				field : "poId",
+				width : 150,
+				hide : true
+			},
+			{
+				headerName : 'CUSTOMER NAME',
+				field : "LEDGERNAME"
+			},
+			{
+				headerName : 'TOTAL BILL AMOUNT',
+				field : "TOTALBILLAMOUNT",
+				width : 150,
+				type : 'rightAligned',
+				cellRenderer : function(params) {
+					var value = params.value;
+					return amountFormatter(value.toFixed(2));
+				}
+			},
+			{
+				headerName : 'RECEIVED AMOUNT',
+				field : "RECEIVE_AMOUNT",
+				width : 150,
+				type : 'rightAligned',
+				cellRenderer : function(params) {
+					var value = params.value;
+					return amountFormatter(value.toFixed(2));
+				}
+			},
+			{
+				headerName : 'PENDING AMOUNT',
+				field : "PENDING_AMOUNT",
+				width : 150,
+				type : 'rightAligned',
+				cellRenderer : function(params) {
+					var value = params.value;
+					return amountFormatter(value.toFixed(2));
+				}
+
+			},
+			{
+				headerName : 'PAYMENT STATUS',
+				field : "INVOICE_STATUS",
+				width : 140,
+				cellStyle : {
+					textAlign : 'center'
+				},
+				cellRenderer : function(params) {
+					if (params.data.INVOICE_STATUS === null) {
+						return '<div style="color: red; font-weight: bold;">Pending</div>';
+					} else {
+						var statusStyle = getStatusStyle(params.data.INVOICE_STATUS);
+						return `<div style="${statusStyle}">${params.data.INVOICE_STATUS}</div>`;
+					}
+				}
+			},
+
+			{
+				headerName : 'INVOICE DATE',
+				field : "INVOICE_DATE",
+				width : 150,
+				type : 'left'
+			}, {
+				headerName : 'DUE  DATE',
+				field : "DueDate",
+				width : 150,
+				type : 'left'
+			}
+			,
+			{
+				headerName: "View",
+				width: 200,
+				cellStyle: {
+					textAlign: 'center'
+				},
+				cellRenderer: function(params) {
+					return `
+				        <a href="javascript:void(0)" 
+				           onclick="openTransDivReceiveLedger('${params.node.id}', '${params.data.SALE_VOUCHER_ID}', '${params.data.LEDGERNAME}')" title="View Invoice Details">
+				          <i class="fas fa-eye"></i>
+				        </a>
+				    `;
+				}
+			}
+
+	];
+	var gridOptionsOutstandingLedger = {
+		columnDefs : columnDefsOutStandingLedger,
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		onSelectionChanged : rowSelect,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 251,
+			height : 10
+		},
+		pagination : true,
+		paginationPageSize : 15,
+	};
+
+	function rowSelect() {
+		var selectedRows = gridOptionsOutstandingLedger.api.getSelectedRows();
+		var outstandingLedgerId = selectedRows[0].SALE_VOUCHER_ID;
+		console.log("Selected rows-->", selectedRows);
+
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			viewReceiveLedgerVoucher(outstandingLedgerId);
+		} else {
+			console.log("");
+		}
+	}
+
+	function viewFilteredDataReceiveLedger() {
+		var validation = true;
+		var fromDateFilter = $("#fromDateReceiveLedger").val();
+		var toDateFilter = $("#toDateReceiveLedger").val();
+		var modOfSearch = $("#modeOfSearch").val();
+		var customerId = $("#customerId").val();
+		var totalBillAmount = 0.00;
+		var totalPendingAmount = 0.00;
+		var totalReceiableAmount = 0.00;
+		if (fromDateFilter == null || fromDateFilter == "") {
+			toastr.error("Please Provide From Date");
+			validation = false;
+		} else if (toDateFilter == null || toDateFilter == "") {
+			toastr.error("Please Provide To Date");
+			validation = false;
+		}
+		if (validation) {
+			agGrid
+					.simpleHttpRequest(
+							{
+								url : "outstanding-recieved-ledger-view?fromDate="
+										+ fromDateFilter
+										+ "&toDate="
+										+ toDateFilter
+										+ "&modOfSearch="
+										+ modOfSearch
+										+ "&customerId="
+										+ customerId,
+							})
+					.then(
+							function(data) {
+								var jsonData = JSON.parse(data.body);
+								console.log("jsonData-->", jsonData);
+								var allData = jsonData.viewOutStandingData;
+
+								if (allData == "" || allData == "null"
+										|| allData == null) {
+									$('#totalCandidate').find('span').html('0');
+									var emptyArray = [];
+									gridOptionsOutstandingLedger.api
+											.setRowData(emptyArray);
+								} else {
+									var filteredData = allData
+											.filter(function(row) {
+												return row.INVOICE_STATUS !== "Fully Paid";
+											});
+									//var filteredData = allData;
+
+									console
+											.log("filteredData-->",
+													filteredData);
+									var len = filteredData.length;
+
+									for (var i = 0; i < len; i++) {
+										totalBillAmount = totalBillAmount
+												+ parseFloat(filteredData[i].TOTALBILLAMOUNT);
+										totalPendingAmount = totalPendingAmount
+												+ parseFloat(filteredData[i].PENDING_AMOUNT);
+										totalReceiableAmount = totalReceiableAmount
+												+ parseFloat(filteredData[i].RECEIVE_AMOUNT);
+									}
+
+									console.log("bill amount-->",
+											totalBillAmount);
+									$("#totalBillAmount").text(
+											amountFormatter(totalBillAmount
+													.toFixed(2)));
+									$("#totalReceiveAmount")
+											.text(
+													amountFormatter(totalReceiableAmount
+															.toFixed(2)));
+									$("#totalPendingAmount").text(
+											amountFormatter(totalPendingAmount
+													.toFixed(2)));
+									$('#totalCandidate').find('span').html(len);
+									//gridOptions.api.setRowData(filteredData);
+									var rowData = [];
+									gridOptionsOutstandingLedger.api
+											.setRowData(rowData);
+
+									gridOptionsOutstandingLedger.api
+											.setRowData(filteredData);
+
+									if (filteredData && filteredData.length > 0) {
+										gridOptionsOutstandingLedger.api
+												.forEachNode(function(node) {
+													if (node.rowIndex === 0) {
+														node.setSelected(true);
+													}
+												});
+									}
+								}
+							});
+		}
+	}
+
+	var itemDefsSalesReceivedLedger = [ {
+		headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true
+
+	}, {
+		headerName : "SlNo",
+		field : "rowIndex",
+		width : 80,
+		cellStyle : {
+			textAlign : 'center'
+		}
+	}, {
+
+		headerName : 'HSN CODE',
+		field : "hsnCode",
+		width : 120
+	}, {
+		headerName : 'Item Name',
+		field : "sItemName",
+		width : 200
+	}, {
+		headerName : 'Quantity',
+		field : "sItemQty",
+		width : 100,
+		cellStyle : {
+			textAlign : 'right'
+		},
+		cellRenderer : function(params) {
+			var value = params.value;
+			return amountFormatter(value);
+		}
+	}, {
+		headerName : 'Unit',
+		field : "sItemUnit",
+		width : 100
+	}, {
+		headerName : 'Unit Price',
+		field : "sItmUnitPrice",
+		width : 130,
+		cellStyle : {
+			textAlign : 'right'
+		},
+		cellRenderer : function(params) {
+			var value = params.value;
+			return amountFormatter(value);
+		}
+	}, {
+		headerName : 'Discount',
+		field : "sItmDiscount",
+		width : 120,
+		cellStyle : {
+			textAlign : 'right'
+		},
+		cellRenderer : function(params) {
+			var value = params.value;
+			return amountFormatter(value);
+		}
+	}, {
+		headerName : 'GST Rate',
+		field : "sItmGSTRate",
+		width : 100,
+		cellStyle : {
+			textAlign : 'right'
+		},
+		cellRenderer : function(params) {
+			var value = params.value;
+			return amountFormatter(value.toFixed(2));
+		}
+	}, {
+		headerName : 'Taxable Amount',
+		field : "taxableAmt",
+		width : 170,
+		cellStyle : {
+			textAlign : 'right'
+		},
+		cellRenderer : function(params) {
+			var value = params.value;
+			return amountFormatter(value);
+		}
+	}, {
+		headerName : 'Cgst',
+		field : "sItmCGST",
+		width : 100,
+		cellStyle : {
+			textAlign : 'right'
+		},
+		cellRenderer : function(params) {
+			var value = params.value;
+			return amountFormatter(value);
+		}
+	}, {
+		headerName : 'Sgst',
+		field : "sItmSGST",
+		width : 100,
+		cellStyle : {
+			textAlign : 'right'
+		},
+		cellRenderer : function(params) {
+			var value = params.value;
+			return amountFormatter(value);
+		}
+	}, {
+		headerName : 'Igst',
+		field : "sItmIGST",
+		width : 100,
+		cellStyle : {
+			textAlign : 'right'
+		},
+		cellRenderer : function(params) {
+			var value = params.value;
+			return amountFormatter(value);
+		}
+	}, {
+		headerName : 'Amount',
+		field : "sItmLineAmount",
+		width : 100,
+		cellStyle : {
+			textAlign : 'right'
+		},
+		cellRenderer : function(params) {
+			var value = params.value;
+			return amountFormatter(value);
+		}
+	}
+	];
+
+	itemOptionsSalesReceiveLedger = {
+		columnDefs : itemDefsSalesReceivedLedger,
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 251,
+			height : 10
+		}
+	};
+	
+	
+	
+	function openTransDivReceiveLedger(rowId, id, name) {
+		const rowNode = gridOptionsOutstandingLedger.api.getRowNode(rowId);
+		if (rowNode) {
+			rowNode.setSelected(true);
+		}
+		$("#left-side-receive-ledger").addClass("d-none");
+		$("#right-side-receive-ledger").removeClass("d-none");
+		$(".receiveLedgerheading").text(name);
+	}
+	
+	function receiveLedgerBackBtn(){
+		
+		$("#left-side-receive-ledger").removeClass("d-none");
+		$("#right-side-receive-ledger").addClass("d-none");
+		$(".receiveLedgerheading").text('');
+		
+	}
+
+
+	
+	function getStatusStyle(paymentStatus) {
+		switch (paymentStatus) {
+			case "Fully Paid":
+				return 'color: green; font-weight: bold;';
+			case "Pending":
+				return 'color: red; font-weight: bold;';
+			case "Partial Paid":
+				return 'color: orange; font-weight: bold;';
+			default:
+				return 'color: black; font-weight: bold;';
+		}
+	}
+
+	
+	function dateWithAnimationCellRenderer(params) {
+		const scheduledDate = params.data.scheduleDate;
+		const payStatus = params.data.paymentStatus;
+		if (!scheduledDate) {
+			return '';
+		}
+		const [day, month, year] = scheduledDate.split('-');
+		const scheduledDateObj = new Date(`${year}-${month}-${day}`);
+		const today = new Date();
+		const timeDiff = scheduledDateObj - today;
+		const pendingThreshold = 7 * 24 * 60 * 60 * 1000;
+		if (timeDiff >= -pendingThreshold && timeDiff <= pendingThreshold && payStatus == "Pending") {
+			return ' < div class = "pending-animation" > DUE < /div> &nbsp;' + scheduledDate;
+		} else {
+			return scheduledDate;
+		}
+	}
+	
+	function amountFormatter(value) {
+		if (value !== null && value !== undefined) {
+			var parts = value.toString().split('.');
+			var integerPart = parts[0];
+			var decimalPart = parts.length > 1 ? '.' + parts[1] : '';
+			var formattedIntegerPart = new Intl.NumberFormat('en-IN').format(integerPart);
+			return formattedIntegerPart + decimalPart;
+		} else {
+			return '';
+		}
+	}
+	
+	function scheduleDueDate() {
+		var scheduledDate = $("#scheduleDate").val();
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var selectedRowsString = '';
+		selectedRows.forEach(function(selectedRow, index) {
+			if (index > 0) {
+				selectedRowsString += ',';
+			}
+			selectedRowsString += '"' + selectedRow.saleInvoice + '"';
+		});
+		$.ajax({
+			type: "GET",
+			url: "outstanding-recieved-ledger-scheduleDate?invoiceId=" + selectedRowsString + "&scheduledDate=" + scheduledDate,
+			async: false,
+			success: function(response) {
+				if (response.message == "Success") {
+					//cancel();
+					toastr.success("Scheduled Date Successfull")
+					agGrid.simpleHttpRequest({
+						url: "outstanding-recieved-ledger-view"
+					}).then(function(data) {
+						$(".loader").hide();
+						var len = data.length;
+						$('#paymentInvoice').attr("disabled", true);
+						$('#paymentSchedule').attr("disabled", true);
+						$('#totalCandidate').find('span').html(len);
+						gridOptionsOutstandingLedger.api.setRowData(data);
+					});
+				}
+			},
+		});
+	}
+	
+	/* CUSTOMER AUTOSEARCH */
+
+	function getCustomerList() {
+		$('.loader').show();
+		var search = $("#customerName").val();
+
+
+		$("#addre").hide();
+		if (search) {
+
+			$
+				.ajax({
+					type: "POST",
+					url: "receipt-voucher-customerList",
+					dataType: 'json',
+					contentType: 'application/json',
+					data: search,
+					success: function(response) {
+						if (response.message == "success") {
+
+							if (response.body.length != 0) {
+								$("#search").css("background", "#FFF");
+								var content = '<ul id="autocomplete-list1" >';
+								for (var i = 0; i < response.body.length; i++) {
+									content += '<li   class="autocompletedata cp" onClick="selectAutocompleteValue3(\''
+										+ response.body[i].vendorId
+										+ '\',\''
+										+ response.body[i].vendorName
+										+ '\',\''
+										+ response.body[i].outstandingAmt
+										+ '\')">'
+										+ response.body[i].vendorName
+										+ '</li>';
+								}
+								content += '</ul>';
+
+								$("#suggesstion-box1_").show();
+								$("#suggesstion-box1_").html(content);
+
+							} else {
+								$("#search").css("background", "#FFF");
+								var content = '<ul id="autocomplete-list1">';
+								content += '<li  onClick="selectAutocompleteValue()">'
+									+ "No Data Found" + '</li>';
+								content += '</ul>';
+								$("#suggesstion-box1_").show();
+								$("#suggesstion-box1_").html(content);
+							}
+							$('.loader').hide();
+						}
+					},
+					error: function(data) {
+
+						$('.loader').hide();
+						$("#customerId").val('');
+					}
+				})
+		} else {
+			$("#suggesstion-box1_").hide();
+			$('.loader').hide();
+		}
+
+		if (search.length == 0) {
+			$("#suggesstion-box1_").hide();
+			$('.loader').hide();
+			$("#customerId").val('');
+		}
+
+	}
+
+	function selectAutocompleteValue3(customerId, customerName, outstandingAmt) {
+		if (customerId) {
+			$("#customerId").val(customerId);
+			$("#customerName").val(customerName);
+			$("#search").val(customerName);
+			$("#search").attr('data-procat', customerName);
+			$("#suggesstion-box1_").hide();
+			$("#adjustment").attr("disabled", false);
+
+			$("#outstandingAmountDiv").show();
+
+			var outAmount = amountFormatter(outstandingAmt);
+			$("#outstandingAmountView").val(outAmount);
+
+			$("#remainingAmtDiv").hide();
+			$("#parentDiv").hide();
+			selectMode()
+		} else {
+
+			$("#customerId").val("");
+			$("#customerName").val("");
+			$("#search").val("");
+
+			$("#outstandingAmountDiv").hide();
+			$("#outstandingAmountView").val("");
+
+			$("#search").attr('data-procat', "");
+			$("#suggesstion-box2_").hide();
+			$("#adjustment").attr("disabled", true);
+
+		}
+	}
+	function selectAutocompleteValue() {
+		$("#customerId").val("");
+		$("#customerName").val("");
+		$("#search").val("");
+		$("#search").attr('data-procat', "");
+		$("#suggesstion-box1_").hide();
+
+	}
+	
+	function viewReceiveLedgerVoucher(voucherId) {
+		$.ajax({
+			type: "GET",
+			url: "outstanding-recieved-ledger-voucherDetails?voucherId=" + voucherId,
+			async: false,
+			success: function(response) {
+				console.log(response)
+				var data = JSON.parse(response.body);
+				var parentData = data.editParentSales;
+				var childData = data.editChildSales;
+				//$('#ledgerDetailsPopup').modal('hide');
+				//$('#voucherDetailSalesPopup').modal('show');
+				$("#buyerNameSales").val(parentData[0].buyerName);
+				$("#sellerNameSales").val(parentData[0].sellerName);
+				$("#orderDateSales").val(parentData[0].invoiceDate);
+				$("#companyVoucherNo").val(parentData[0].COMPANY_INVOICE_NO);
+				$("#sapNo").val(parentData[0].SAP_ID);
+				$("#voucherNumberSales").val(voucherId);
+				$("#invoiceNumberSales").val(parentData[0].saleInvId);
+				$("#subTotalSales").val(amountFormatter(parentData[0].subTotal));
+				$("#qSGSTSales").val(amountFormatter(parentData[0].invSgst));
+				$("#qCGSTSales").val(amountFormatter(parentData[0].invCgst));
+				$("#qIGSTSales").val(amountFormatter(parentData[0].invIgst));
+				$("#grandTotalSales").val(amountFormatter(parentData[0].grandTotal));
+				itemOptionsSalesReceiveLedger.api.setRowData(childData);
+
+			},
+			error: function(e) {
+				console.error("An error occurred: " + e);
+			}
+		});
+
+
+	}
+
+
+	function downloadExcelFromGrid() {
+		var selectedHeaders = ['Sales Invoice Id',
+			'COMPANY VOUCHER ID',
+			'INVOICE NUMBER',
+			'TAX INVOICE NUMBER',
+			'CUSTOMER NAME',
+			'TOTAL BILL AMOUNT',
+			'RECEIVED AMOUNTv',
+			'PENDING AMOUNT',
+			'PAYMENT STATUS',
+			'INVOICE DATE',
+			'DUE  DATE'
+		];
+		var currentDate = new Date().toLocaleDateString('en-GB', {
+			day: '2-digit',
+			month: '2-digit',
+			year: 'numeric',
+		});
+		currentDate = currentDate.split('/').join('_');
+		var fileName = 'OutstandingReceive_Register_' + currentDate + '.xlsx';
+		var grandTotalAmount = 0;
+		var pendingAmount = 0;
+		var receiveAmount = 0;
+
+		var rowData = [];
+		var columns = gridOptionsOutstandingLedger.columnApi.getAllColumns();
+		var fieldMap = {};
+		columns.forEach(function(col) {
+			var colDef = col.getColDef();
+			fieldMap[colDef.headerName] = colDef.field;
+		});
+		gridOptionsOutstandingLedger.api.forEachNodeAfterFilterAndSort(function(node) {
+			var data = {};
+			selectedHeaders.forEach(function(header) {
+				var field = fieldMap[header];
+				var value = node.data[field] || '';
+				if (['TOTALBILLAMOUNT', 'RECEIVE_AMOUNT', 'PENDING_AMOUNT'].includes(field)) {
+					value = parseFloat(value);
+					value = isNaN(value) ? '0.00' : value.toFixed(2);
+					value = amountFormatter(parseFloat(value).toFixed(2));
+				}
+				data[header] = value;
+			});
+			rowData.push(data);
+			var billamount = parseFloat(node.data[fieldMap['TOTAL BILL AMOUNT']]) || 0;
+			var receive = parseFloat(node.data[fieldMap['RECEIVED AMOUNT']]) || 0;
+			var pending = parseFloat(node.data[fieldMap['PENDING AMOUNT']]) || 0;
+
+			grandTotalAmount += billamount;
+			pendingAmount += pending;
+			receiveAmount += receive;
+		});
+
+		grandTotalAmount = amountFormatter(grandTotalAmount.toFixed(2));
+		pendingAmount = amountFormatter(pendingAmount.toFixed(2));
+		receiveAmount = amountFormatter(receiveAmount.toFixed(2));
+
+		var totalRow = {
+			'Sales Invoice Id': "Total",
+			'COMPANY VOUCHER ID': "",
+			'INVOICE NUMBER': "",
+			'TAX INVOICE NUMBER': "",
+			'CUSTOMER NAME': "",
+			'TOTAL BILL AMOUNT': grandTotalAmount,
+			'RECEIVED AMOUNT': receiveAmount,
+			'PENDING AMOUNT': pendingAmount,
+			'PAYMENT STATUS': "",
+			'INVOICE DATE': "",
+			'DUE  DATE': ""
+		};
+		rowData.push(totalRow);
+		var ws = XLSX.utils.json_to_sheet(rowData, {
+			header: selectedHeaders
+		});
+		var wb = XLSX.utils.book_new();
+		XLSX.utils.book_append_sheet(wb, ws, 'Outstanding Receive Register');
+		XLSX.writeFile(wb, fileName);
+	}
+	
+	
+	function onQuickFilterChangedReceiveLedger() {
+		gridOptionsOutstandingLedger.api
+			.setQuickFilter(document.getElementById('quickFilterReceiveLedger').value);
+		var rowCount = gridOptionsOutstandingLedger.api.getDisplayedRowCount();
+		$('#totalReq').find('span').html(rowCount);
+	}
+	
+
+	function SearchUserInputReceiveLedger(event) {
+		if (event.key === "Enter" || event.keyCode === 13) {
+			event.preventDefault();
+			onQuickFilterChangedReceiveLedger();
+		}
+	}
+
+	function getMostClosestRowReceivedLedger() {
+		let searchValue = document.getElementById('quickFilterReceiveLedger').value;
+		gridOptionsOutstandingLedger.api.setQuickFilter(searchValue);
+
+		let rowCount = gridOptionsOutstandingLedger.api.getModel().getRowCount();
+
+		gridOptionsOutstandingLedger.api.forEachNodeAfterFilter((node, index) => {
+			if (index === 0) {
+				node.setSelected(true);
+				gridOptionsOutstandingLedger.api.ensureIndexVisible(node.rowIndex);
+			}
+		});
+	}
+
+	function resetBtnReceiveLedger() {
+		$("#quickFilterReceiveLedger").val('');
+		gridOptionsOutstandingLedger.api.setQuickFilter('');
+		gridOptionsOutstandingLedger.api.refreshCells({ force: true });
+		onQuickFilterChangedBank();
+		setTimeout(() => {
+			gridOptionsOutstandingLedger.api.forEachNode((node, index) => {
+				if (index === 0) {
+					node.setSelected(true);
+					gridOptionsOutstandingLedger.api.ensureIndexVisible(node.rowIndex);
+				}
+			});
+		}, 50);
+	}
+
+</script>
+
+</head>
+<body>
+	<div class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<div class="tab-content">
+
+						<!--Tabbination 1 Start-->
+						<div id="opd" class="tab-pane active d-block">
+							<div class="row">
+
+								<!--Left Sec Start-->
+								<div class="col-md-12 pd-r tab-transition position-relative"
+									id="left-side-receive-ledger">
+									<div class="out-box">
+										<div class="row d-flex  mb-20">
+
+											<div class="col-md-10 d-flex">
+													<input class="form-control me-2 search_input_bar"
+														placeholder="Search.." type="text" name="search"
+														id="quickFilterReceiveLedger" onkeyup="SearchUserInputReceiveLedger(event)" autocomplete="off">
+													<button class="btn btn-primary go-btn"
+														onclick="onQuickFilterChangedReceiveLedger()" id="SearchBtn"
+														type="button">Go</button>
+													<button class="btn go-btn ms-2" onclick="resetBtnReceiveLedger()"
+														type="reset">Reset</button>
+											</div>
+
+											<!-- <div class="col-md-2 d-flex justify-content-end">
+												<div class="btn btn-primary max-btn">
+													<i class="fas fa-arrows-alt"></i>
+												</div>
+											</div> -->
+
+										</div>
+
+										<div class="row  d-flex justify-content-between mt-3 px-4"
+											id="headingDiv">
+											<div class="col-md-3" id="fyearDiv">
+												<div class="form-group d-flex">
+													<div class="col-md-9" style="margin-top: -27px;">
+														<label>Mode Of Search</label>
+														<div class="select">
+															<select id="modeOfSearch" class="form-control">
+																<option value="">--Select--</option>
+																<option value="invDate">Invoice Date</option>
+																<option value="dueDate">Due Date</option>
+																<option value="dueDateCross">Due Date Cross</option>
+																<option value="ledger">Ledger</option>
+															</select>
+														</div>
+													</div>
+
+												</div>
+											</div>
+											<div class="col-md-3" id="fyearDiv">
+												<div class="form-group" id="customerDiv"
+													style="MARGIN-TOP: -23PX;">
+													<div class="" style="width: 100%;">
+														<label>Customer Name</label> <input type="text"
+															id="customerName" placeholder="Customer Name"
+															class="form-control" onkeyup='getCustomerList()'
+															autocomplete="off"> <input type="hidden"
+															id="customerId">
+													</div>
+													<div id="suggesstion-box1_" class="sugg-cls"></div>
+
+												</div>
+											</div>
+											<div class="col-md-2 form-group" id="fdateDiv"
+												style="margin-top: -24px;">
+												<div class="form-group calendar_box">
+													<label>From Date</label> <input type="text"
+														id="fromDateReceiveLedger" placeholder="From Date"
+														class="form-control"> <i
+														class="ti-calendar picker_calendar"
+														id="toDateCalendarReceiveLedger"
+														style="top: 45px; right: 5px;"></i>
+												</div>
+											</div>
+											<div class="col-md-2 form-group" id="tdateDiv"
+												style="margin-top: -24px;">
+												<div class="form-group calendar_box">
+													<label>To Date</label> <input type="text"
+														id="toDateReceiveLedger" placeholder="To Date"
+														class="form-control"> <i
+														class="ti-calendar picker_calendar"
+														id="toDateCalendar2ReceiveLedger"
+														style="top: 45px; right: 5px;"></i>
+												</div>
+											</div>
+											<div class="col-md-2" id="filterDiv">
+												<input type="button" id="filter" value="Search"
+													class="btn btn-primary search-btn"
+													onclick="viewFilteredDataReceiveLedger()">
+											</div>
+										</div>
+
+
+										<!-- <div class="font-design" id="totalReq">
+											ALL PAYMENT VOUCHERS (<span></span>)
+										</div> -->
+
+										<div class="voucherCounter  px-3">
+											<div class="btn-hs">
+												<div class="font-design" id="totalCandidate">
+													<!-- SALE INVOICE LIST ( <span></span>) -->
+												</div>
+											</div>
+											<div class="excelButton">
+												<!-- <input type="button" class="btn btn-primary search-btn"
+													id="salesRegisterPdf" value="Download Pdf"
+													style="width: 100px" onclick="generatePdfSalesRegister()"> -->
+												<input type="button" class="btn btn-primary search-btn"
+													id="dwnld" value="Download Excel" style="width: 120px"
+													onclick="downloadExcelFromGrid()">
+											</div>
+
+										</div>
+
+										<div class="leftSideParentContainer">
+											<input type="hidden" id="sessionOrganization1"
+												th:value="${session.ORGANIZATION}" />
+											<div id="receivedLedgerGrid"
+												style="height: 50vh; width: 100%;" class="ag-theme-alpine"></div>
+
+											<div id="totalAmountFooterDivReceive"
+												class="d-flex p-3 bg-white border rounded shadow-sm justify-content-evenly">
+												<div class="me-4">
+													<div class="text-muted small">Total Bill</div>
+													<div id="totalBillAmount" class="h5 mb-0">₹0.00</div>
+												</div>
+
+												<div class="me-4">
+													<div class="text-muted small">Pending</div>
+													<div id="totalPendingAmount" class="h5 mb-0 ">₹0.00</div>
+												</div>
+
+												<div>
+													<div class="text-muted small">Receivable</div>
+													<div id="totalReceiveAmount" class="h5 mb-0 ">₹0.00</div>
+												</div>
+											</div>
+										</div>
+
+										<input type="hidden" id="userId" th:value="${session.USER_ID}" />
+										<input type="hidden" id="docUniqueId" />
+
+									</div>
+
+								</div>
+
+								<!--Right Sec Start-->
+								<div class="col-md-12 pd-l tab-transition d-none"
+									id="right-side-receive-ledger">
+									<div class="out-box" id="rightSideDiv">
+
+										<!-- <div class="btn btn-primary max-btn">
+											<i class="fas fa-arrows-alt"></i>
+										</div> -->
+
+										<!--Right Inner Tab Start-->
+										<ul
+											class="nav nav-pills newtab mb-20 tablistUl navbarSticky d-none"
+											role="tablist">
+											<li class="nav-item wd-11"><a class="nav-link active"
+												data-bs-toggle="pill" id="manageTab" href="#manageControl"
+												onclick="tabAccess('manageControl')">Outstanding
+													Recieved Ledger </a></li>
+										</ul>
+
+
+
+										<!-- Tab panes -->
+
+										<div class="tab-content d-flex">
+											<!-- Create Workspace -->
+											<div id="manageControl"
+												class="tab-pane active operational-tabs d-block">
+
+												<div class="requisition-tbl ">
+
+													<!-- <div class="mb-2 operationBtnSticky">
+														<table class="table table-bordered mb-0" width="100%">
+															<tr valign="middle" class="operation-row">
+																<td>
+																	<div class="row justify-content-between">
+																		<div class="col-md-12 voucher-info">
+																			Voucher No:&nbsp;&nbsp;<span id="voucherNumber"></span>
+																		</div>
+																		<div class="col-md-12 voucher-info">
+																			Contra Voucher Date:&nbsp;&nbsp;<span
+																				id="recieptDate"></span>
+																			span id="recieptDay"></span>
+																		</div>
+																	</div>
+																</td>
+																<td>
+																	 <div class="d-flex justify-content-end">
+																		<div class="mr-2">
+																			<button
+																				class="btn btn-primary operation-btn  operation-btn-active"
+																				type="button" id="add-btn" onclick="newBtn()">Add</button>
+																		</div>
+																		<div class="mr-2">
+																			<button
+																				class="btn btn-primary edit-btn operation-btn"
+																				type="button" id="ticket-editBtn"
+																				onclick="editItems()">Edit</button>
+																			<input type="hidden" class="form-control"
+																				id="editTktId">
+
+																		</div>
+																		<div class="mr-2">
+																			<button class="btn btn-primary edit-btn"
+																				onclick="addPaymentInfo()" type="button">Save</button>
+																		</div>
+																		<div class="mr-2">
+																			<button
+																				class="btn btn-primary edit-btn operation-btn"
+																				type="button" id="next-btn-1"
+																				onclick="nextBtnFunction('voucherclass')">Next</button>
+																		</div>
+
+																		<div class="mr-2">
+																			<input type="hidden" class="form-control"
+																				id="editTktId">
+																		</div>
+
+																		<div class="mr-2">
+																			<button
+																				class="btn btn-primary edit-btn operation-btn"
+																				type="button" id="next-btn-1" style="display:none"
+																				onclick="nextBtnFunction('history')">Next</button>
+																		</div>
+
+
+																	</div>
+
+																</td>
+															</tr>
+														</table>
+													</div> -->
+
+													<div class="row"></div>
+
+													<div class="innercontent">
+														<div class="receiveLedger-content">
+															<div class="receiveLedger-bod position-relative">
+																<i
+																	class="bi bi-arrow-left-circle-fill bankBookBackBtn position-absolute"
+																	onclick="receiveLedgerBackBtn()"></i>
+																<div
+																	class="receiveLedger-header flex justify-content-between payment-Modal-Header">
+																	<h4 class="receiveLedgerheading"></h4>
+
+																</div>
+
+															</div>
+
+															<div class="modal-innercontent-style">
+																<div class="row" style="margin-top: 20px;">
+																	<div class="col-lg-4">
+																		<div class="subheading">
+																			<label>Buyer Name</label> <input type="text"
+																				id="buyerNameSales" class="form-control" readonly>
+																		</div>
+																	</div>
+																	<div class="col-lg-4">
+																		<div class="subheading col-lg-12">
+																			<label>Seller Name</label> <input type="text"
+																				id="sellerNameSales" class="form-control" readonly>
+																		</div>
+																	</div>
+																	<div class="col-lg-4">
+																		<div class="subheading">
+																			<label>Invoice date</label> <input type="text"
+																				id="orderDateSales" class="form-control" readonly>
+																		</div>
+																	</div>
+																	<div class="col-lg-4">
+																		<div class="subheading">
+																			<label>Voucher Number</label> <input type="text"
+																				id="voucherNumberSales" class="form-control"
+																				readonly>
+																		</div>
+																	</div>
+																	<div class="col-lg-4 d-none">
+																		<div class="subheading">
+																			<label>Company Voucher Number</label> <input
+																				type="text" id="companyVoucherNo"
+																				class="form-control" readonly>
+																		</div>
+																	</div>
+																	<div class="col-lg-4 d-none">
+																		<div class="subheading">
+																			<label>Invoice Number</label> <input type="text"
+																				id="sapNo" class="form-control" readonly>
+																		</div>
+																	</div>
+																	<div class="col-lg-4">
+																		<div class="subheading">
+																			<label>Tax Invoice Number</label> <input type="text"
+																				id="invoiceNumberSales" class="form-control"
+																				readonly>
+																		</div>
+																	</div>
+																</div>
+
+																<!-- item details starts sales -->
+
+																<div id="main_content" class="mt-3">
+
+																	<div id="itemGridSalesreceiveLedger"
+																		style="width: 100%; height: 250px;"
+																		class="ag-theme-alpine"></div>
+
+																	<div id="gstCalSales" class="col-md-6 float-end">
+																		<div>
+																			<table style="width: 100%;">
+																				<tr>
+																					<th>
+																						<div class="row">
+																							<div class="col-lg-6 text-style-voucher ">Sub
+																								Total:</div>
+																							<div class="col-lg-6">
+																								<div class="form-group">
+																									<input type="text" style="text-align: right;"
+																										id="subTotalSales" class="form-control"
+																										readonly>
+																								</div>
+																							</div>
+																						</div>
+																					</th>
+																				</tr>
+
+																				<tr class="tbl-box">
+																					<th>
+																						<div class="row">
+																							<div class="col-lg-6 text-style-voucher">SGST:</div>
+																							<div class="col-lg-6">
+																								<div class="form-group">
+																									<input type="text" style="text-align: right;"
+																										id="qSGSTSales" class="form-control" readonly>
+																								</div>
+																							</div>
+																						</div>
+																					</th>
+																				</tr>
+
+																				<tr class="tbl-box">
+																					<th>
+																						<div class="row">
+																							<div class="col-lg-6 text-style-voucher">CGST:</div>
+																							<div class="col-lg-6">
+																								<div class="form-group">
+																									<input type="text" style="text-align: right;"
+																										id="qCGSTSales" class="form-control" readonly>
+																								</div>
+																							</div>
+																						</div>
+																					</th>
+																				</tr>
+
+																				<tr class="tbl-box">
+																					<th>
+																						<div class="row">
+																							<div class="col-lg-6 text-style-voucher">IGST:</div>
+																							<div class="col-lg-6">
+																								<div class="form-group">
+																									<input type="text" style="text-align: right;"
+																										id="qIGSTSales" class="form-control" readonly>
+																								</div>
+																							</div>
+																						</div>
+																					</th>
+																				</tr>
+
+																				<tr>
+																					<th>
+																						<div class="row">
+																							<div class="col-lg-6 text-style-voucher">Grand
+																								Total:</div>
+																							<div class="col-lg-6">
+																								<div class="form-group">
+																									<input type="text" style="text-align: right;"
+																										id="grandTotalSales" class="form-control"
+																										readonly>
+																								</div>
+																							</div>
+																						</div>
+																					</th>
+																				</tr>
+
+																			</table>
+																		</div>
+																	</div>
+
+																</div>
+															</div>
+														</div>
+													</div>
+												</div>
+
+											</div>
+
+										</div>
+
+									</div>
+
+								</div>
+							</div>
+
+						</div>
+
+					</div>
+				</div>
+
+			</div>
+		</div>
+	</div>
+</body>
+</html>

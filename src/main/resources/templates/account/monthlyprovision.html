@@ -1,0 +1,730 @@
+
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+
+.btn-hs{
+  position: relative;
+ /*    right: -374px; */
+     right: 31px;
+  }
+  .btn-hs-month{
+  position: relative;
+    left: 5px;
+  }
+ .select-year{
+  position: relative;
+    top: -6px;
+    right: -49px;
+ }
+ .select-month{
+    position: relative;
+    right: -71px;
+    top: -6px;
+ }
+ 
+ .slidebox {
+    padding: 14px;
+    margin-top: 0;
+    padding-top: 0;
+}
+.font-design {
+    font-size: 13px;
+}
+.mr-10{
+margin-right:10px;
+}
+.sugg-cls ul {
+    /* height: auto; */
+    overflow-x: scroll;
+    height: 100px;
+}
+</style>
+<script>
+	$(document).ready(function() {
+var currentYear = new Date().getFullYear();
+var yearSelect = document.getElementById("year");
+
+for (var i = currentYear; i <= currentYear + 10; i++) {
+    var option = document.createElement("option");
+    option.value = i;
+    option.text = i;
+    
+    if (i === currentYear) {
+        option.selected = true;
+    }
+    
+    yearSelect.appendChild(option);
+    updateSelection();
+}
+		
+			var gridDiv = document.querySelector('#myGrid');
+			new agGrid.Grid(gridDiv, gridOptions);
+
+			var selectedYear = document.getElementById("year").value;
+			var selectedMonth = document.getElementById("month").value;
+
+			agGrid.simpleHttpRequest({
+				url: "manage-monthlyprovision-view?year=" + selectedYear  + "&month=" + selectedMonth,
+			}).then(function (data) {
+				console.log("####data",data)
+			    var len = data.length;
+			    $('#totalReq').find('span').html(len);
+			    gridOptions.api.setRowData("");
+			    gridOptions.api.setRowData(data);
+
+			    var totalProjectCost = data.reduce(function (sum, row) {
+			        return sum + parseFloat(row.projectcost);
+			    }, 0);
+
+			    var totalAnnualCost = data.reduce(function (sum, row) {
+			        return sum + parseFloat(row.annualcost);
+			    }, 0);
+
+			    var totalDifference = data.reduce(function (sum, row) {
+			        return sum + parseFloat(row.difference);
+			    }, 0);
+
+			    var totalRow = {
+			        categoryName: 'Total',
+			        projectcost: totalProjectCost,
+			        annualcost: totalAnnualCost,
+			        difference: totalDifference
+			    };
+
+			    gridOptions.api.setRowData(data.concat(totalRow));
+			});
+			
+			//$('#new').show();
+			$('#delete1').attr('disabled', true);
+	
+});
+
+	var columnDefs = [{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				//checkboxSelection : true,
+				checkboxSelection: function (params) {
+            return params.node.data.categoryName !== 'Total';
+            },
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			}, {
+				headerName : "Provision Id",
+				field : "provisionId",
+				width : 240,
+				//hide : true,
+				cellRenderer: function (params) {
+		            if (params.data.categoryName === 'Total') {
+		                return ''; // Hide the content for the "Total" row
+		            } else {
+		                return '<a onclick=editPage("' + params.data.provisionId + ',' + '0' + '") href="javascript:void(0)">' + params.data.provisionId + '</a>';
+		            }
+		        },
+			}, {
+				headerName : "Category",
+				field : "categoryName",
+				width : 300,
+			}, {
+				headerName : "ProjectCost",
+				field : "projectcost",
+				width : 300,
+			}, {
+				headerName : 'Annual Cost',
+				field : "annualcost",
+				width : 300,
+			}, {
+				headerName : "Difference",
+				field : "difference",
+				width : 300,
+			} ];
+	
+	var gridOptions = {
+	columnDefs : columnDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 150
+	},
+	onSelectionChanged : onSelectionChanged1,
+};
+	
+	function cancelbtn() {
+		$('#reqDltBtn').attr('disabled', true);
+		$("#myGrid").show();
+		$("#btn1").hide();
+		$("#demo").hide();
+		$("#hideTbl").show();
+		$("#buttonDetails").show();
+	}
+	function add(){
+		
+		$("#delete").hide();
+	}
+	
+  
+	function onSelectionChanged() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			$('#delete').attr('disabled', false);
+			$("#reject").attr('disabled', false);
+			$("#approve").attr('disabled', false);
+		} else {
+			$('#delete').attr('disabled', true);
+			$("#reject").attr('disabled', true);
+			$("#approve").attr('disabled', true);
+		}
+
+	}
+	/* function onSelectionChanged1(){
+		var selectedRows = gridOptions.api.getSelectedRows();
+		if (selectedRows > 0) {
+				$('#delete1').attr("disabled", false);
+		}
+	} */
+	function onSelectionChanged1() {
+	    var selectedRows = gridOptions.api.getSelectedRows();
+	    if (selectedRows.length > 0) {
+	        $('#delete1').attr('disabled', false);
+	        $('#addId2').hide(); 
+	    } else {
+	        $('#delete1').attr('disabled', true);
+	        $('#addId2').show();
+	    }
+	}
+
+	
+	function addId1() {
+		            $("#addId2").hide();
+		            $("#delete1").show();
+					$("#categoryName").val("");
+					$("#projectcost").val("");
+					$("#annualcost").val("");
+					$("#difference").val("");
+					
+		document.getElementById("mySidenav2").style.cssText = "width: 350px; position: absolute; right:1px; overflow: hidden; height:auto; top:115px;";
+		document.getElementById("upperOne").style.width = "73%";
+	}
+	function cancel() {
+		location.reload();
+	}
+
+	function closeNav2() {
+		 $("#addId2").show();
+		document.getElementById("mySidenav2").style.width = "0";
+		document.getElementById("upperOne").style.width = "100%";
+		$('#addId2').attr('disabled', false);
+		$("#delete").attr('disabled', false);
+	}
+	
+
+	  $("#projectcost").val(0);
+      $("#annualcost").val(0);
+      $("#difference").val(0);
+	    
+       $("#projectcost, #annualcost").on("input", function() {
+           calculateDifference();
+       });
+	    
+	 function calculateDifference1() {
+	        $("#difference").val('0');
+	    }
+	 function calculateDifference() {
+	        var projectCost = parseFloat($("#projectcost").val()) || 0;
+	        var annualCost = parseFloat($("#annualcost").val()) || 0;
+	        var difference = projectCost - annualCost;
+	        $("#difference").val(difference);
+	    }
+
+	//autosearch
+	 function getCategoryList() {
+		    var search = $("#categoryName").val();
+		    $("#addre").hide();
+
+		    if (search) {
+		        $.ajax({
+		            type: "POST",
+		            url: "manage-monthlyprovision-get-category-list",
+		            dataType: 'json',
+		            contentType: 'application/json',
+		            data: search,
+		            success: function (response) {
+		                if (response.message == "success") {
+		                    if (response.body.length != 0) {
+		                        var data = JSON.parse(response.body);
+		                        $("#search").css("background", "#FFF");
+		                        var content = '<ul id="autocomplete-list1">';
+		                        for (var i = 0; i < data.length; i++) {
+		                            content += '<li style="margin-left:-30px; font-weight:100; font-size:12px; cursor: pointer;" data-category-id="' + data[i].categoryId + '" class="autocompletedata cp" onclick="selectAutocompleteValue1(\'' + data[i].categoryId + '\', \'' + data[i].categoryName + '\')">'
+		                                + data[i].categoryName
+		                                + '</li>';
+		                        }
+		                        content += '</ul>';
+		                        $("#suggesstion-box1_").html(content);
+		                        $("#suggesstion-box1_").show();
+		                    } else {
+		                        $("#suggesstion-box1_").hide();
+		                    }
+		                }
+		            },
+		            error: function (data) {
+		                console.log(data);
+		            }
+		        });
+		    } else {
+		        $("#suggesstion-box1_").hide();
+		    }
+		}
+
+	 function selectAutocompleteValue1(categoryId, categoryName) {
+
+			if (categoryId) {
+
+				$("#categoryId").val(categoryId);
+				$("#categoryName").val(categoryName);
+				$("#search").val(categoryName);
+				$("#search").attr('data-procat', categoryId);
+				$("#suggesstion-box1_").hide();
+				$("#addre").show();
+				hideShowS();
+				getAddressDetails(categoryId)
+				getReferenceList(categoryId,'');
+				//priceCalculation();
+			} else {
+
+				$("#categoryId").val("");
+
+				$("#categoryName").val("");
+				$("#search").val("");
+				$("#search").attr('data-procat', "");
+				$("#suggesstion-box1_").hide();
+
+			}
+		}
+		function selectAutocompleteValue() {
+			$("#categoryId").val("");
+			$("#categoryName").val("");
+			$("#search").val("");
+			$("#search").attr('data-procat', "");
+			$("#suggesstion-box1_").hide();
+
+		}
+
+	 
+	//add 
+	
+	var listItem = [];
+
+	function saveTableData1() {
+		obj = {};
+		obj.provisionId = $("#provisionId").val();
+		obj.categoryId = $("#categoryId").val();
+		obj.categoryName = $("#categoryName").val();
+		obj.projectcost = $("#projectcost").val();
+		obj.annualcost = $("#annualcost").val();
+		obj.difference = $("#difference").val();
+		obj.year = $("#year").val();
+		obj.month = $("#month").val();
+
+		console.log(obj)
+		 /* var validation = true;
+
+		if (obj.categoryName == null || obj.categoryName == "") {
+			validation = validationUpdated("categoryName Required", "categoryName");
+		}
+		if (obj.projectcost == null || obj.projectcost == "") {
+			validation = validationUpdated("projectcost Required",
+					"projectcost");
+		}
+		if (obj.annualcost == null || obj.annualcost == "") {
+			validation = validationUpdated("annualcost Required", "annualcost");
+		} 
+		if (obj.difference == null || obj.difference == "") {
+			validation = validationUpdated("difference Required", "difference");
+		}
+		 */
+		
+			$.ajax({
+				type : "POST",
+				url : "manage-monthlyprovision-master-add",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "success") {
+						$("#messageParagraph").text("Data saved successfully");
+						updateSelection();
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$("#activityone").show();
+						//$("#activity").show();
+						$("#add").show();
+						$("#myGrid").show();
+					   
+						$("#cancel").hide();
+						$("#save").hide();
+						$("#form").hide();
+						$("#new").hide();
+						/* var dataToAdd = [obj]; 
+						gridOptions.api.updateRowData({ add: dataToAdd }); */
+						 /* agGrid.simpleHttpRequest({
+							url : "manage-monthlyprovision-view"
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						}); */
+						// updateGridData();
+						closeNav2();
+ 
+					}
+				},
+				error : function(data) {
+				}
+			})
+		
+	}
+	
+
+ function editPage(id) {
+	 var idParts = id.split(',');
+	    id = idParts[0];
+		$("#addId2").hide();
+		//$("#myGrid").show();
+		$("#delete").hide();
+		$("#add").hide();
+	
+		// $("#difference").val('0');
+	
+		//$("#download").hide();
+         document.getElementById("mySidenav2").style.cssText = "width: 350px; position: absolute; right:1px; overflow: hidden; height:auto; top:100px;";
+	     document.getElementById("upperOne").style.width = "73%";
+		$.ajax({
+			type : "GET",
+			url : "manage-monthlyprovision-edit?Id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+
+					console.log("edit" + response.body)
+
+					$("#provisionId").val(response.body.provisionId);
+					$("#categoryName").val(response.body.categoryName);
+					$("#projectcost").val(response.body.projectcost);
+					$("#annualcost").val(response.body.annualcost);
+					$("#difference").val(response.body.difference);
+
+					openNav();
+				}
+			},
+            
+			error : function(data) {
+				console.log(data)
+
+				$("#provisionId").val();
+				$("#categoryName").val();
+				$("#projectcost").val();
+				$("#annualcost").val();
+				$("#difference").val();
+
+			}
+		});
+
+	}
+	
+	//Delete 
+	function deleteMonthlyprovision() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var id = selectedRows[0].provisionId;
+		$.ajax({
+			type : "POST",
+			url : "manage-monthlyprovision-delete?id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+
+					agGrid.simpleHttpRequest({
+						url : "manage-monthlyprovision-view"
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+					});
+					location.reload();
+
+					closeNav()
+				}
+			},
+			error : function(data) {
+				console.log(data);
+			}
+		})
+	}
+
+	
+/* 	  function updateSelection() {
+	    const selectedYear = $("#year").val();
+	    const selectedMonth = $("#month").val();
+	    
+	    agGrid.simpleHttpRequest({
+		    //url: "manage-monthlyprovision-view"
+			url: "manage-monthlyprovision-view?year=" + selectedYear  + "&month=" + selectedMonth,
+		}).then(function (data) {
+			console.log("####data",+data)
+		    var len = data.length;
+		    $('#totalReq').find('span').html(len);
+		    gridOptions.api.setRowData("");
+		    gridOptions.api.setRowData(data);
+
+		    var totalProjectCost = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.projectcost);
+		    }, 0);
+
+		    var totalAnnualCost = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.annualcost);
+		    }, 0);
+
+		    var totalDifference = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.difference);
+		    }, 0);
+
+		    var totalRow = {
+		        categoryName: 'Total',
+		        projectcost: totalProjectCost,
+		        annualcost: totalAnnualCost,
+		        difference: totalDifference
+		    };
+
+		    gridOptions.api.setRowData(data.concat(totalRow));
+		});
+	} 
+	 */
+ 
+ 
+	 function updateSelection() {
+		    const selectedYear = $("#year").val();
+		    const selectedMonth = $("#month").val();
+            
+		    console.log("Selected Year:", selectedYear);
+		    console.log("Selected Month:", selectedMonth);
+		    agGrid.simpleHttpRequest({
+		        url: "manage-monthlyprovision-view?year=" + selectedYear  + "&month=" + selectedMonth,
+		    }).then(function (data) {
+		        console.log("####data", +data);
+		        var len = data.length;
+		        $('#totalReq').find('span').html(len);
+
+		        if (len === 0) {
+		        	 //gridOptions.api.setRowData("No data found for the selected year and month");		            
+		             var noDataMessage = {
+		            	provisionId: '',
+		                categoryName: 'No data found',
+		                projectcost: '',
+		                annualcost: '',
+		                difference: ''
+		            }; 
+		            // Display the message row in the ag-Grid
+		            gridOptions.api.setRowData([noDataMessage]);
+		        } else {
+		            // If data is found, populate the ag-Grid with the data
+		            var totalProjectCost = data.reduce(function (sum, row) {
+		                return sum + parseFloat(row.projectcost);
+		            }, 0);
+
+		            var totalAnnualCost = data.reduce(function (sum, row) {
+		                return sum + parseFloat(row.annualcost);
+		            }, 0);
+
+		            var totalDifference = data.reduce(function (sum, row) {
+		                return sum + parseFloat(row.difference);
+		            }, 0);
+
+		            var totalRow = {
+		                categoryName: 'Total',
+		                projectcost: totalProjectCost,
+		                annualcost: totalAnnualCost,
+		                difference: totalDifference
+		            };
+		           
+		            gridOptions.api.setRowData(data.concat(totalRow));
+		        }
+		    });
+		}
+
+
+</script>
+
+
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+						<div class="row">
+				<div class="maincontentsec">
+					<div class="">
+								<div class="d-flex justify-content-between">
+									<!-- <div class="row"> -->
+						                 <div class="col-md-3  btn-hs-month">
+                                         <div class="font-design" id="totalReq">
+                                         Monthly Provision (<span></span>)
+                                          </div>
+
+                                         </div>
+										<div class="col-md-3 select-year">
+										<div class="form-group d-flex">
+										<label>Year:</label>
+										<div class="select top-select-box">
+										<select class="" id="year" onchange="updateSelection();" onblur="removeValid(event);">
+                                         <!-- <option value="2022">2022</option>
+                                       <option value="2023">2023</option>
+                                       <option value="2024">2024</option> -->
+                                        <option value="2023" selected></option>
+                                       </select>
+										</div>
+										</div>
+										</div> 
+										
+										<!-- <div class="col-md-3">
+                                        <div class="form-group d-flex">
+                                        <label>Select a Year:</label>
+                                        <div class="select top-select-box">
+                                        <select class="" id="year" onchange="updateSelection();" onblur="removeValid(event);">
+                                        <option value="2023">Select</option>
+                                       <option value="2023" selected>2023</option>
+                                       <option value="2023" th:selected="${selectedYear == '2023'}"></option>
+                                       <option th:each="c,iter:${getYearList}" th:value="${c.key}"
+                                       th:text="${c.name}"></option>
+                                        </select>
+                                         </div>
+                                      </div>
+                                      </div> -->
+										
+                                   
+                                     <div class="col-md-3 select-month">
+									 <div class="form-group d-flex">
+                                     <label>Month:</label>
+									 <div class="select top-select-box">
+									 <select class="" id="month" onchange="updateSelection();" onblur="removeValid(event);">
+                                       <option value="01">January</option>
+                                       <option value="02">February</option>
+                                        <option value="03">March</option>
+                                        <option value="04">April</option>
+                                        <option value="05">May</option>
+                                        <option value="06">June</option>
+                                        <option value="07">July</option>
+                                        <option value="08">August</option>
+                                        <option value="09">September</option>
+                                        <option value="10">October</option>
+                                        <option value="11">November</option>
+                                        <option value="12">December</option>
+                                     </select> 
+									 </div>
+									</div>
+									</div>
+									 <div class="col-md-3 buttonsec btn-hs" id="btndiv">
+										<button class="new-btn" id="addId2" onclick="addId1()">Add</button>
+										<button class="btn3" id="delete1" onclick="deleteMonthlyprovision()">Delete</button>
+									</div>
+								</div>
+								<div class="row" id="upperOne">
+								<div id="myGrid" style="width: 100%; height: 300px;"
+									class="ag-theme-alpine"></div>
+									
+							<!-- SIDE BAR NAVIGATION STARTS -->
+							<div id="mySidenav2" class="sidenav">
+								<div class="slidebox">
+									<div class="row">
+										<div class="col-md-10 edit"></div>
+										<div class="col-md-2">
+											<div class="arrow">
+												<a href="javascript:void(0)" class="closebtn"
+													onclick="closeNav2()"><i class="ti-arrow-right"></i></a>
+											</div>
+										</div>
+									</div>
+									<div style="clear: both;"></div>
+									<div class="chartbtnsec">
+										<div align="right" class="mr-10">
+											<button class="cancel-btn" onclick="closeNav2()">CANCEL</button>
+											<button class="btn1" id="saveId1" onclick="saveTableData1()">SAVE</button>
+										</div>
+
+									</div>
+									<div class="clearfix"></div>
+									<div class="row">
+                                     <!-- <input type="hidden" id="provisionId" value=""> -->
+                                      <input type="hidden" id="provisionId">
+										
+										
+										<!--  <div class="col-md-12">
+											<div class="form-group">
+										<div class="autocomplete" style="width: 100%;">
+											<label>Category</label> <input type="text" id="categoryName"
+												placeholder="Search Here.." class="form-control"
+												onkeyup='getCategoryList()'><input type="hidden"
+												id="categoryId">
+										</div>
+										<div id="suggesstion-box1_" class="sugg-cls"></div>
+
+									    </div>
+										</div>  -->
+										
+										<div class="col-md-12">
+										<div class="form-group">
+										<div class="autocomplete" style="width: 100%;">
+										<label>Category</label> 
+										<input type="text" id="categoryName"
+												placeholder="Search Here.." class="form-control"
+												onkeyup='getCategoryList()'><input type="hidden"
+												id="categoryId"><input type="hidden"
+										id="categoryId">
+										</div>
+										<div id="suggesstion-box1_" class="sugg-cls"></div>
+										</div>
+										</div>
+										
+										
+										<div class="col-md-12">
+		                                <div class="form-group">
+			                            <label>ProjectCost</label>
+			                           <input type="text" class="form-control transparenttxtbox" id="projectcost" oninput="calculateDifference1()">
+		                                </div>
+	                                  </div>
+
+	                                   <div class="col-md-12">
+		                               <div class="form-group">
+			                           <label>Annual cost</label>
+			                             <input type="text" class="form-control transparenttxtbox" id="annualcost" oninput="calculateDifference()">
+		                                </div>
+	                                   </div>
+
+	                                   <div class="col-md-12">
+		                              <div class="form-group">
+			                          <label>Difference</label>
+			                          <input type="text" class="form-control transparenttxtbox" id="difference" readonly>
+		                             </div>
+	                                </div>
+
+									</div>
+								</div>
+							</div>
+
+						</div>
+
+					</div>
+				
+			</div>
+			</div>
+			</div>
+			</div>
+</body>
+</html>

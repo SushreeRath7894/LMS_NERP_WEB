@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<!-- 
+<link rel="stylesheet"
+	href="../assets/css/account/manage-purchase-voucher.css" /> -->
+
+<link rel="stylesheet"
+	href="https://use.fontawesome.com/releases/v5.0.7/css/all.css">
+
+<script src="../javaScript/account/manage-purchase-voucher.js"></script>
+
+<script
+	src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+
+<style>
+.voucherCounter {
+	justify-content: space-between;
+	align-items: center;
+	display: flex;
+	/* margin-top: -30px; */
+}
+
+.font-design {
+	text-transform: capitalize;
+	font-weight: 600;
+}
+
+.voucher-info {
+	font-size: 16px;
+	font-weight: 500;
+}
+
+#no_purchase_voucher {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 100%;
+	flex-direction: column;
+}
+
+#no_purchase_voucher strong {
+	color: #bf05ff;
+}
+
+.tablenewhead tr th {
+	vertical-align: bottom;
+	border-bottom: 1px solid var(--grayborderColor);
+	background: transparent;
+	font-size: 12px !important;
+	color: #141414;
+	text-align: center;
+	font-weight: 500;
+	letter-spacing: .5px;
+}
+
+.itm-list {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.itm-dtls {
+	display: flex;
+	align-items: center;
+	justify-content: end;
+}
+
+.out-box .max-btn1 {
+	color: var(--mainColor);
+	background-color: var(--whiteColor) !important;
+	border: solid 1px var(--grayborderColor) !important;
+	font-size: 16px;
+	padding: 8px 12px;
+	width: 40px;
+	height: 37px;
+	line-height: 20px !important;
+	transition: all 0.5s;
+}
+
+.bold-fnt {
+	font-weight: bold;
+	color: #000 !important;
+}
+
+.icon-dis {
+	pointer-events: none; 
+	opacity: 0.5;
+}
+</style>
+
+
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<div class="tab-content">
+
+						<!--Tabbination 1 Start-->
+						<div id="opd" class="tab-pane active">
+							<div class="d-flex flex-column flex-lg-row">
+
+								<!--Left Sec Start-->
+								<div class="box-sec" id="collapseWidthR1">
+									<div class="out-box">
+
+										<div class="d-flex justify-content-between bdr-line p-2">
+											<div class="col-md-8 col-12">
+												<div class="d-flex search-sec gap-2 flxwrap">
+													<input class="form-control" type="text"
+														placeholder="Search" id="quickFilter" autocomplete="off"
+														onkeyup="SearchUserInput(event)">
+													<button class="btn go-btn" type="button"
+														onclick="onQuickFilterChanged()">Go</button>
+													<button class="btn go-btn" onclick="resetBtn()"
+														type="reset">Reset</button>
+												</div>
+											</div>
+											<button class="btn btn-primary max-btn" id="collapseButtonR1"
+												onclick="triggerExpansionR(1)" data-bs-toggle="tooltip"
+												data-bs-placement="top" title="Expand">
+												<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+													class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+											</button>
+										</div>
+
+										<div class="card p-2 m-2">
+											<div class="row row-cols-1 row-cols-xl row-cols-xxl g-3">
+
+												<div class="col col-xl-3 col-xxl-4">
+													<div class="form-group">
+														<label class="fs--13">Financial Year</label>
+														<div>
+															<select id="orderStatusFilter" class="form-select"
+																onchange="financialYearChange()">
+																<option value="">--Select--</option>
+																<option th:each="c,iter:${fiscalList}"
+																	th:value="${c.key}" th:text="${c.name}"></option>
+															</select>
+														</div>
+													</div>
+
+												</div>
+												<div class="col col-xl-3 col-xxl-auto">
+													<div class="form-group calendar_box">
+														<label class="fs--13">From Date</label>
+														<div class="position-relative">
+															<input type="text" id="fromDate" placeholder="From Date"
+																class="form-control" readonly> <i
+																class="ti-calendar picker_calendar" id="toDateCalendar"></i>
+														</div>
+													</div>
+												</div>
+												<div class="col col-xl-3 col-xxl-auto">
+													<div class="form-group calendar_box">
+														<label class="fs--13">To Date</label>
+														<div class="position-relative">
+															<input type="text" id="toDate" placeholder="To Date"
+																class="form-control" readonly> <i
+																class="ti-calendar picker_calendar" id="toDateCalendar2"></i>
+														</div>
+													</div>
+												</div>
+
+												<div
+													class="col text-end align-content-center col-xl-auto col-xxl-auto ms-auto mt-4">
+													<!-- <input type="button" id="filter" style="margin-right: -30px;" value="Search" class=" btn btn-primary search-btn">  -->
+													<button class="btn go-btn" id="filter" type="button"
+														value="Search" onclick="viewFilteredData()">Search</button>
+												</div>
+
+											</div>
+
+
+											<!-- <div class="font-design" id="totalReq">
+											ALL PAYMENT VOUCHERS (<span></span>)
+										</div> -->
+
+											<div class="voucherCounter mt-4 mb-2">
+												<div class="counterTExt font-design" id="totalReq">
+													<!-- All Purchase Vouchers (<span></span>) -->
+													<input type="hidden" id="docId">
+												</div>
+												<div class="excelButton">
+													<button type="button" class="btn go-btn d-none"
+														id="purchaseRegisterPdf"
+														onclick="generatePdfPurchaseRegister()">Download
+														Pdf</button>
+													<button type="button" class="btn go-btn d-none"
+														id="purchaseRegisterExcel"
+														onclick="downloadExcelFromGrid()">Download Excel</button>
+												</div>
+
+											</div>
+
+											<div class="leftSideParentContainer">
+												<div id="myGrid" style="width: 100%; height: 60vh;"
+													class="ag-theme-alpine"></div>
+
+												<div id="totalAmountFooterDiv" class="d-none">
+
+													<div class="summary-card">
+														<div class="row ">
+															<div class="col-md-3 mt-1">
+																<label class="form-label">Total Taxable Amount:</label>
+																<input type="text" id="totalAmountFooter"
+																	class="form-control text-end" readonly>
+															</div>
+
+															<div class="col-md-3 mt-1">
+																<label class="form-label">Total IGST:</label> <input
+																	type="text" id="totalIGSTAmount"
+																	class="form-control text-end" readonly>
+															</div>
+
+															<div class="col-md-3 mt-1">
+																<label class="form-label">Total CGST:</label> <input
+																	type="text" id="totalCGSTAmount"
+																	class="form-control text-end" readonly>
+															</div>
+
+															<div class="col-md-3 mt-1">
+																<label class="form-label">Total SGST:</label> <input
+																	type="text" id="totalSGSTAmount"
+																	class="form-control text-end" readonly>
+															</div>
+
+															<div class="col-md-3 mt-1">
+																<label class="form-label">Total Invoice Value:</label> <input
+																	type="text" id="totalInvoiceAmount"
+																	class="form-control text-end" readonly>
+															</div>
+
+															<div class="col-md-3 mt-1">
+																<label class="form-label">Total TDS Amount:</label> <input
+																	type="text" id="totalTdsAmount"
+																	class="form-control text-end" readonly>
+															</div>
+
+															<div class="col-md-3 mt-1">
+																<label class="form-label">Total Payable Amount:</label>
+																<input type="text" id="totalPayableAmount"
+																	class="form-control text-end" readonly>
+															</div>
+
+														</div>
+													</div>
+												</div>
+
+											</div>
+											<input type="hidden" id="userId"
+												th:value="${session.USER_ID}" /> <input type="hidden"
+												id="docUniqueId" />
+
+										</div>
+									</div>
+
+								</div>
+
+								<!--Right Sec Start-->
+								<div class="box-sec" id="collapseWidthL1">
+									<div class="out-box" id="rightSideDiv">
+
+
+
+										<!--Right Inner Tab Start-->
+										<!-- <ul class="nav nav-pills newtab mb-20 tablistUl navbarSticky"
+											role="tablist">
+											<li class="nav-item wd-11"><a class="nav-link active"
+												data-bs-toggle="pill" id="manageTab" href="#manageControl"
+												onclick="tabAccess(manageControl)">Manage</a></li>
+										</ul> -->
+
+										<div
+											class="d-flex justify-content-between align-items-center flex-row-reverse p-2 bdr-line">
+											<button class="btn btn-primary max-btn" id="collapseButtonL1"
+												type="button" onclick="triggerExpansionL(1)"
+												data-bs-toggle="tooltip" data-bs-placement="top"
+												title="Expand">
+												<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+													class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+											</button>
+											<ul class="nav nav-pills newtab" role="tablist">
+												<li class="nav-item wd-11"><a class="nav-link active"
+													data-bs-toggle="pill" id="manageTab" href="#manageControl"
+													onclick="tabAccess(manageControl)">Manage</a></li>
+												<li class="nav-item accessLink"><a class="nav-link"
+													data-bs-toggle="pill" id="voucherClassTab"
+													href="#voucherNarration"
+													onclick="nextBtnFunction('voucherNarration')">Voucher
+														Narration</a></li>
+												<li class="nav-item accessLink "><a class="nav-link"
+													data-bs-toggle="pill" id="tdsTab" href="#tdssection"
+													onclick="nextBtnFunction('tdssection')">TDS/Round Off</a></li>
+											</ul>
+										</div>
+
+										<!-- Tab panes -->
+
+										<div class="tab-content flex-fill">
+											<!-- Create Workspace -->
+											<div id="manageControl" class="tab-pane active p-2 h-100">
+
+												<div
+													class="requisition-tbl d-flex flex-column h-100 d-none "
+													id="purchase_vchr_dtls">
+
+													<div class="mb-2 operationBtnSticky">
+														<table class="table table-bordered mb-0" width="100%">
+															<tr valign="middle">
+																<td class="invoice_id_info_text d-none">
+																	<div class="row justify-content-between">
+																		<div class="col-md-12 voucher-info ">
+																			<span id="invoiceIdText"></span>
+																		</div>
+																	</div>
+																</td>
+																<td class="next_btn_section ">
+																	<div class="d-flex justify-content-end gap-1">
+																		<button class="btn btn-primary edit-btn"
+																			onclick="updateVoucher()"
+																			id="update_btn" type="button">Update</button>
+																		<button class="btn btn-primary edit-btn"
+																			onclick="approvePVoucher()"
+																			id="parent_apv_btn" type="button">Approve</button>
+																		<button class="btn btn-primary edit-btn"
+																			onclick="nextBtnFunction('voucherNarration')"
+																			id="parent_next_btn" type="button">Next</button>
+
+																		<input type="hidden" class="form-control"
+																			id="editTktId">
+
+																	</div>
+
+																</td>
+															</tr>
+														</table>
+													</div>
+													<div class="card p-2">
+
+														<div class="row"></div>
+
+														<div class="innercontent">
+															<div class="row">
+																<div class="col col-md-4 d-none">
+																	<label class="form-label">Voucher Number</label> <input
+																		type="text" id="voucherId" class="form-control bold-fnt"
+																		Readonly>
+																</div>
+																<!-- <div class="col col-md-3">
+																	<label class="form-label">Voucher Date</label> <input
+																		type="text" id="voucherDate" class="form-control">
+																</div>
+ -->
+																<div class="col col-md-4">
+																	<label class="form-label">Supplier Invoice
+																		Number</label> <input type="text" id="purchaseNumber"
+																		class="form-control bold-fnt" >
+																</div>
+																<div class="col-md-4">
+																	<div class="subheading">
+																	<label class="form-label">Invoice Date</label> 
+																	<div class="position-relative">
+																		<input
+																			type="text" id="invoiceDate" class="form-control bold-fnt"
+																			Readonly>
+																			<i class="ti-calendar picker_calendar" id="invoiceDateCalendar"></i>
+																		</div>
+																	</div>
+																</div>
+																<div class="col-md-4">
+																	<div class="subheading">
+																	<label class="form-label">Voucher Date</label> 
+																	<div class="position-relative">
+																		<input
+																			type="text" id="voucherDate" class="form-control bold-fnt"
+																			Readonly>
+																			<i class="ti-calendar picker_calendar" id="voucherDateCalendar"></i>
+																		</div>
+																	</div>
+																</div>
+																<div class="col-md-3 d-none">
+																	<label class="form-label">Purchase Ledger</label> <input
+																		type="text" id="buyerName" class="form-control"
+																		Readonly> <input type="hidden" id="buyerId"
+																		class="form-control">
+																</div>
+																<div class="col-md-6">
+																	<label class="form-label">Party A/C Name</label>
+																	<!-- <input type="text" id="sellerName" class="form-control" onkeyup="sellerNameList(this.id);"> -->
+																	<input type="text" id="sellerName"
+																		class="form-control bold-fnt" Readonly>
+																	<div id="ledger_suggesstion"></div>
+																	<input type="hidden" id="sellerNameId"
+																		class="form-control" />
+																</div>
+																<div class="col-md-6">
+																	<label class="form-label">Party GST No</label> <input
+																		type="text" id="partyGSTNo"
+																		class="form-control bold-fnt" readonly>
+																</div>
+																<div class="col-md-4">
+																	<label class="form-label">Party PAN No</label> <input
+																		type="text" id="partyPANNo"
+																		class="form-control bold-fnt" readonly>
+																</div>
+																<div class="col-md-4">
+																	<label class="form-label">Product GRN Id</label> <input
+																		type="text" id="productGrnId" class="form-control bold-fnt"
+																		readonly>
+																</div>
+																<div class="col-md-4">
+																	<label class="form-label">Account Group</label> <input
+																		type="text" id="accountGroup" class="form-control bold-fnt" readonly>
+																</div>
+																<div class="col-md-3 d-none">
+																	<label class="form-label">Voucher Class</label> <input
+																		type="text" id="vClass" class="form-control" readonly>
+																</div>
+															</div>
+
+
+															<div id="main_content" class="mt-3">
+
+
+																<div class="d-flex flex-column gap-2"
+																	id="viewItemListSecId">
+																	<div class="row">
+																		<div class="col-md-12 btn-hs1 itm-list">
+																			<div class="font-design">Item Details</div>
+																			<div class="gap-1">
+																				<button class="btn btn-primary max-btn1"
+																					id="addLedgerButton" type="button"
+																					onclick="addLedger()" data-bs-toggle="tooltip"
+																					data-bs-placement="top" title=""
+																					data-bs-original-title="Add">
+																					<i class="fa-solid fa-add" id="addLedgerIcon"></i>
+																				</button>
+																				<button class="btn btn-primary max-btn1"
+																					id="editLedgerButton" type="button"
+																					onclick="editLedger()" data-bs-toggle="tooltip"
+																					data-bs-placement="top" title=""
+																					data-bs-original-title="Edit">
+																					<i class="fa-solid fa-edit" id="editLedgerIcon"></i>
+																				</button>
+																			</div>
+																		</div>
+
+																	</div>
+																	<div id="item" style="width: 100%; height: 150px;"
+																		class="ag-theme-alpine"></div>
+																</div>
+																<div class="d-flex flex-column gap-2 card"
+																	style="padding: 5px;" id="viewItemDtlsSecId">
+																	<div class="row">
+																		<div class="col-md-12 btn-hs1 itm-dtls">
+																			<button class="btn btn-primary max-btn1"
+																				id="saveLedgerButton" type="button"
+																				onclick="updateItemLedger()"
+																				data-bs-toggle="tooltip" data-bs-placement="top"
+																				title="" data-bs-original-title="Save">
+																				<i class="fa-solid fa-save" id="saveLedgerIcon"></i>
+																			</button>
+																			<button class="btn btn-primary max-btn1"
+																				style="margin-left: 5px;" id="closeLedgerButton"
+																				type="button" onclick="closeLedger()"
+																				data-bs-toggle="tooltip" data-bs-placement="top"
+																				title="" data-bs-original-title="Close">
+																				<i class="fa-solid fa-remove" id="closeLedgerIcon"></i>
+																			</button>
+																		</div>
+																	</div>
+																	<div class="row">
+																		<div class="col-md-6">
+																			<div class="form-group">
+																				<label>Item Name</label> <input type="text"
+																					class="form-control" id="itemName" readonly>
+																				<input type="hidden" id="invItemId">
+																			</div>
+																		</div>
+																		<div class="col-md-6">
+																			<div class="form-group">
+																				<label>Ledger</label>
+
+																				<div class="select">
+																					<select id="itemLedgerId" class="form-control">
+																						<option value="">Select</option>
+																						<option th:each="a: ${ledgerList}"
+																							th:value="${a.key}" th:text="${a.name}"></option>
+																					</select>
+																				</div>
+																			</div>
+																		</div>
+																		<div class="col-md-6">
+																			<div class="form-group">
+																				<label>Quantity</label> <input type="text"
+																					class="form-control" id="itemQty">
+																			</div>
+																		</div>
+																		<div class="col-md-6">
+																			<div class="form-group">
+																				<label>Unit Price</label> <input type="text"
+																					class="form-control" id="itemUnitPrice">
+																			</div>
+																		</div>
+																	</div>
+																</div>
+																<div class="d-flex flex-column gap-2 card"
+																	style="padding: 5px;" id="viewItemDtlsSecId2">
+																	<div class="row">
+																		<div class="col-md-12 btn-hs1 itm-dtls">
+																			<button class="btn btn-primary max-btn1"
+																				id="addLedgerButton" type="button"
+																				onclick="addItemLedger()"
+																				data-bs-toggle="tooltip" data-bs-placement="top"
+																				title="" data-bs-original-title="Save">
+																				<i class="fa-solid fa-save" id="saveLedgerIcon2"></i>
+																			</button>
+																			<button class="btn btn-primary max-btn1"
+																				style="margin-left: 5px;" id="closeLedgerButton2"
+																				type="button" onclick="closeLedger2()"
+																				data-bs-toggle="tooltip" data-bs-placement="top"
+																				title="" data-bs-original-title="Close">
+																				<i class="fa-solid fa-remove" id="closeLedgerIcon2"></i>
+																			</button>
+																		</div>
+																	</div>
+																	<div class="row">
+																		<div class="col-md-6">
+																			<div class="form-group">
+																				<label>Item Name</label> 
+																				<div class="select">
+																					<select id="itemId1" class="form-control" onchange="setItemDetails()">
+																						<option value="">Select</option>
+																						<option th:each="a: ${itemList}"
+																							th:value="${a.key}" th:text="${a.name}"
+																							th:attr="data-hsn=${a.id}, data-unitid=${a.code}, data-unit=${a.data}, data-gstrate=${a.createdBy}, data-ledger=${a.orgName}"
+																							></option>
+																					</select>
+																				</div>
+																			</div>
+																		</div>
+																		<div class="col-md-6">
+																			<div class="form-group">
+																				<label>Ledger</label>
+
+																				<div class="select">
+																					<select id="itemLedgerId1" class="form-control">
+																						<option value="">Select</option>
+																						<option th:each="a: ${ledgerList}"
+																							th:value="${a.key}" th:text="${a.name}"></option>
+																					</select>
+																				</div>
+																			</div>
+																		</div>
+																		<div class="col-md-4">
+																			<div class="form-group">
+																				<label>HSN Code</label> <input type="text"
+																					class="form-control" id="itemHSNCOde1" readonly>
+																			</div>
+																		</div>
+																		<div class="col-md-4">
+																			<div class="form-group">
+																				<label>Unit</label> <input type="text"
+																					class="form-control" id="itemUnit1" readonly>
+																				<input type="hidden" id="itemUnitId1">
+																			</div>
+																		</div>
+																		<div class="col-md-4">
+																			<div class="form-group">
+																				<label>GST Rate</label> <input type="text"
+																					class="form-control" id="itemGSTRate1" oninput="validateNumber(this)">
+																			</div>
+																		</div>
+																		<div class="col-md-6">
+																			<div class="form-group">
+																				<label>Quantity</label> <input type="text"
+																					class="form-control" id="itemQty1" oninput="validateNumber(this)">
+																			</div>
+																		</div>
+																		<div class="col-md-6">
+																			<div class="form-group">
+																				<label>Unit Price</label> <input type="text"
+																					class="form-control" id="itemUnitPrice1" oninput="validateNumber(this)">
+																			</div>
+																		</div>
+																	</div>
+																</div>
+
+																<div id="gstCalS" class="col my-3">
+																	<div class="mt-1">
+																		<div class="gst-summary">
+																			<div class="row">
+
+																				<div class="col-md-3">
+																					<label class="gst-label form-label">Sub
+																						Total:</label> <input type="text" id="subTotal"
+																						class="form-control gst-input text-end bold-fnt"
+																						readonly>
+																				</div>
+
+																				<div class="col-md-3">
+																					<label class="gst-label form-label">Total
+																						Quantity:</label> <input type="text" id="totalQuantity"
+																						class="form-control gst-input text-end bold-fnt"
+																						readonly>
+																				</div>
+
+																				<div class="col-md-3">
+																					<label class="gst-label form-label">SGST:</label> <input
+																						type="text" id="qSGST"
+																						class="form-control gst-input text-end bold-fnt"
+																						readonly>
+																				</div>
+
+																				<div class="col-md-3">
+																					<label class="gst-label form-label">CGST:</label> <input
+																						type="text" id="qCGST"
+																						class="form-control gst-input text-end bold-fnt"
+																						readonly>
+																				</div>
+
+																				<div class="col-md-3">
+																					<label class="gst-label form-label">IGST:</label> <input
+																						type="text" id="qIGST"
+																						class="form-control gst-input text-end bold-fnt"
+																						readonly>
+																				</div>
+
+																				<div class="col-md-3">
+																					<label class="gst-label form-label">TDS
+																						Amount:</label> <input type="text" id="tdsAmount"
+																						class="form-control gst-input text-end bold-fnt"
+																						readonly>
+																				</div>
+
+																				<div class="col-md-3">
+																					<label class="gst-label form-label">TDS
+																						Rate (%):</label> <input type="text" id="tdsRate"
+																						class="form-control gst-input text-end bold-fnt"
+																						readonly>
+																				</div>
+
+																				<div class="col-md-3">
+																					<label class="gst-label form-label">Grand
+																						Total:</label> <input type="text" id="grandTotal"
+																						class="form-control gst-input text-end bold-fnt"
+																						readonly>
+																				</div>
+
+																			</div>
+																		</div>
+																	</div>
+
+
+																	<div id="mySidenav" class="d-none sidenav visble">
+																		<div class="slidebox" style="padding-right: 20px;">
+																			<div class="row">
+																				<div class="chartbtnsec">
+																					<div align="right">
+																						<button class="btn4" onclick="closeNav()">CANCEL</button>
+																						<button class="btn1" id="saveTableData"
+																							onclick="saveTableData()">SAVE</button>
+																					</div>
+																				</div>
+
+																				<div class="col-lg-6">
+																					<div class="autocomplete"
+																						style="width: auto !important; margin-top: 0px;">
+																						<div class="form-group">
+																							<label>Product Name</label> <input type="text"
+																								id="categoryName" class="form-control"
+																								onkeyup='getProductList();'><input
+																								type="hidden" id="categoryId"> <input
+																								type="hidden" id="editProduct">
+																						</div>
+																					</div>
+																					<div id="suggesstion-box11_" class="sugg-cls"></div>
+
+																				</div>
+
+																				<div class="col-lg-6" id="regularDiv">
+																					<div class="form-group">
+
+																						<label>Size</label> <input type="text"
+																							id="productDimension" class="form-control"
+																							onkeyup='getDimensionList();alphabetCheck();calculateLineTotal();'>
+																						<input type="hidden" id="productDimensionId">
+
+																						<div id="suggesstion-box1_" class="sugg-bx"
+																							style="overflow-y: hidden; padding: 0; height: auto;"></div>
+																					</div>
+																				</div>
+
+																				<div class="col-lg-6">
+																					<div class="form-group">
+																						<label>Quantity</label> <input type="text"
+																							id="quantity" class="form-control"
+																							onkeyup="calculateLineTotal();numberCheck()"
+																							onblur="offerQty()">
+																					</div>
+																				</div>
+																				<div class="col-lg-6">
+																					<div class="form-group">
+																						<label>Unit Price</label><input type="text"
+																							id="itemUnitPrice" class="form-control"
+																							onkeyup="calculateLineTotal()" autocomplete="off">
+																					</div>
+																				</div>
+
+																				<div class="col-lg-6">
+																					<div class="form-group">
+																						<label>Discount Code</label>
+																						<div class="d-flex">
+																							<input type="text" id="dealerCode"
+																								class="form-control"
+																								onkeyup="calculateLineTotal()"> <input
+																								type="hidden" id="itemDiscount"> <input
+																								type="hidden" id="OfferedlineTotal">
+
+
+																						</div>
+																					</div>
+																				</div>
+																				<div class="col-lg-6">
+																					<div class="form-group">
+																						<label>GST Rate</label><input type="text"
+																							id="gstRate" class="form-control"
+																							autocomplete="off">
+																					</div>
+																				</div>
+																				<div class="col-lg-6">
+																					<div class="form-group">
+																						<label>Line Total</label> <input type="text"
+																							id="lineTotal" class="form-control">
+																					</div>
+																				</div>
+
+																			</div>
+																		</div>
+																	</div>
+																</div>
+															</div>
+														</div>
+													</div>
+
+												</div>
+
+
+												<div class="text-center d-none" id="no_purchase_voucher">
+													<div><strong>No purchase vouchers found.</strong></div> <div>Please add a
+													new purchase voucher to view details.</div>
+												</div>
+
+
+											</div>
+
+
+											<div id="tdssection" class="tab-pane fade p-2">
+
+												<div class="mb-2">
+													<table class="table table-bordered mb-0" width="100%">
+														<tr valign="middle">
+															<td>
+																<div class="d-flex justify-content-end gap-1">
+
+																	<button class="btn btn-primary edit-btn operation-btn"
+																		type="button" id="save-btn"
+																		onclick="nextBtnFunction('voucherNarration')">Prev</button>
+																	<button class="btn btn-primary edit-btn operation-btn"
+																		id="saveTdsBtn" onclick="tdsEdit()">Save</button>
+
+																</div>
+
+															</td>
+														</tr>
+													</table>
+												</div>
+												<div class="card p-2">
+													<div class="tds_content">
+
+														<div class="tds_content_body">
+
+															<!-- <div
+																class="flex justify-content-between payment-Modal-Header">
+																<h4 id="ledgerNameModal" class="modalheading"></h4>
+																<button type="button" class="close" data-dismiss="modal"
+																	aria-hidden="true" onclick="cancelInvoiceModalBtn()">
+																	<i class="ti-close modal-close"></i>
+																</button>
+															</div> -->
+															<div class="row">
+																<div class="col-md-12 form-group" id="invListDiv">
+																	<div id="tdsInvoiceGrid"
+																		style="width: 100%; height: 250px;"
+																		class="ag-theme-alpine mt-3"></div>
+																</div>
+															</div>
+															<div class='row mt-2'>
+															
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>TDS Section</label>
+																		<div>
+																			<select id="tdsSection" class="form-select">
+																				<option value="">Select</option>
+																			</select>
+																			<input type="hidden" id="totalAmnt_all">
+																			<input type="hidden" id="totalAmnt_noTds">
+																		</div>
+																	</div>
+																</div>
+															
+																<div class="form-group col-md-4">
+																	<div class="py_Amt" id="payAmountDiv">
+																		<label>TDS <span>(<span
+																				id="tdsPercentageAmt"></span> )
+																		</span></label> <input type="text" id="payTdsAmountGlobal" hidden>
+																		<input type="text" id="payTdsPercentGlobal" hidden>
+																		<input type="text" id="payTdsAmount" value=""
+																			onclick="TdsAmountInput(this.value)"
+																			onkeyup="checkNumberInput(this.id)"
+																			class="form-control" oninput="checkPayAmount();"
+																			placeholder="TDS" autocomplete=off readonly>
+																	</div>
+																</div>
+
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>TDS Ledger</label>
+																		<div>
+																			<select id="tdsLedgerId" class="form-select">
+																				<option value="">Select</option>
+																				<option th:each="c,iter:${tdsLedgerList}"
+																					th:value="${c.key}" th:text="${c.name}"></option>
+																			</select>
+																		</div>
+																	</div>
+																</div>
+
+																<div class="col-md-4 form-group"
+																	id="tdsTransactionDateDiv">
+																	<div class="form-group calendar_box">
+																		<label>Date</label> <input type="text"
+																			id="tdsTransactionDate"
+																			placeholder="TDS Transaction Date"
+																			class="form-control" readonly> <i
+																			class="ti-calendar picker_calendar"
+																			id="tdsTransactionDateCalendar"
+																			style="top: 35px; right: 5px;"></i>
+																	</div>
+																</div>
+																<div class="form-group col-md-4">
+																	<div class="off_Amt" id="offAmountDiv">
+																		<label>Round Off</label> <input type="text"
+																			id="offAmount" value="0" class="form-control"
+																			oninput="restrictedInput('offAmount');"
+																			onkeyup="offAmountInput(this.value);"
+																			placeholder="Round Off" autocomplete=off>
+																	</div>
+																</div>
+																<!-- <div class="col-md-8 mt-2">
+																	<div class="modal-inrheading">Narration</div>
+																	<div class="position-text">
+																		<textarea class="form-controlarea" rows="4" cols="100"
+																			id="tdsNarration" onkeyup="textCount(event)"
+																			autocomplete=off></textarea>
+																		<div id="charNumSN" class="txtcounter" align="right">
+																			<span>0</span> characters
+																		</div>
+																	</div>
+																</div> -->
+
+															</div>
+
+														</div>
+
+														<div class="row">
+															<input type="hidden" id="pVendorid" class="form-control">
+															<table
+																class="duetable table table-bordered table-striped mt-2"
+																style="width: 100%; margin-top: 0px;"
+																id="offeredScheduleTable">
+																<thead class="tablenewhead">
+																	<tr>
+																		<th class="text-style">Invoice Id</th>
+																		<th class="text-style">Voucher No</th>
+																		<th class="text-style">GST Rate</th>
+																		<th class="text-style">Taxable Amount</th>
+																		<th class="text-style">IGST</th>
+																		<th class="text-style">CGST</th>
+																		<th class="text-style">SGST</th>
+																		<th class="text-style">Invoice Amount</th>
+																		<th class="text-style">TDS AMOUNT <span>(<span
+																				id="PercentageTDS"></span>)
+																		</span></th>
+																		<th class="text-style">Round Off</th>
+																		<th class="text-style">Final Amount</th>
+																	</tr>
+																</thead>
+																<tbody id="vendorInvoiceList">
+																</tbody>
+
+															</table>
+														</div>
+														<div class="row">
+															<!-- <div class="modal-footer mt-2">
+																<button class="btn3" id="cancel"
+																	onclick="cancelInvoiceModalBtn()">BACK</button>
+																<button class="btn1" id="saveTdsBtn" onclick="tdsEdit()">SAVE</button>
+															</div> -->
+
+														</div>
+													</div>
+												</div>
+											</div>
+
+
+											<div id="voucherNarration" class="tab-pane fade p-2">
+
+												<div class="mb-2">
+													<table class="table table-bordered mb-0" width="100%">
+														<tr valign="middle">
+															<td>
+																<div class="d-flex justify-content-end gap-1">
+																	<button class="btn btn-primary edit-btn operation-btn"
+																		type="button" id="voucher_cls_prv_btn"
+																		onclick="nextBtnFunction('manageControl')">Prev</button>
+
+																	<button class="btn btn-primary edit-btn operation-btn"
+																		id="saveNarration" onclick="addNarration()">Save</button>
+
+																	<button class="btn btn-primary edit-btn operation-btn"
+																		type="button" id="vchr_Nxt_btn"
+																		onclick="nextBtnFunction('tdssection')">Next</button>
+																</div>
+																</div>
+															</td>
+														</tr>
+													</table>
+												</div>
+
+
+												<div class="col-md-12" id="shippingInfo">
+
+													<div class="row">
+														<!-- <input type="hidden" id="empIds">-->
+														<input type="hidden" id="ledgerId"> <input
+															type="hidden" id="pVoucherId">
+
+														<div class="col-lg-12">
+															<div class="form-group">
+																<label>Narration</label>
+																<textarea class="form-controlarea" rows="4" cols="100"
+																	id="vchNarration" autocomplete=off></textarea>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

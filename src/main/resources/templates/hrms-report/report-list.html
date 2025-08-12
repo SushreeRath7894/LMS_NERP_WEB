@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+	body{
+		/*overflow:hidden;*/
+	}
+.mb-3 {
+	/*margin-bottom: 3px !important*/
+}
+.reset-btn {
+	background-color: #e4e4e4 !important;
+	color: #000 !important;
+	border-color: #e4e4e4 !important;
+	margin-left: 2px;
+}
+.mandatory {
+	color: red;
+	font-weight: bold;
+}
+.mr-tp{
+	margin-top: 20px;
+}
+
+.out-box2 {
+    background-color: #fff;
+    border: 1px solid #BF05FF;
+    padding: 10px;
+    min-height: 448px;
+    position: relative;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    height: 31.9em;
+}
+
+.swal2-popup .swal2-title{
+	font-size: 15px!important;
+	font-weight: 500!important;
+}
+.swal2-popup .swal2-styled.swal2-confirm {
+    border: 0;
+    border-radius: .25em;
+    background: initial;
+    background-color: #3085d6;
+    color: #fff;
+    font-size: 13px!important;
+}
+.swal2-popup .swal2-styled.swal2-cancel {
+    border: 0;
+    border-radius: .25em;
+    background: initial;
+    background-color: #aaa;
+    color: #fff;
+    font-size: 13px!important;
+}
+.swal2-popup #swal2-content {
+    text-align: center;
+    font-size: 13px;
+}
+.top-expand-sec{
+	position: relative;
+}
+@media (max-width:769px){
+	.top-expand-sec{
+	display: none!important;
+	}
+}
+
+.ag-theme-alpine .ag-ltr .ag-cell a {
+	font-weight: 600 !important;
+    text-decoration: none !important;
+    color: #000 !important;
+}
+</style>
+
+
+
+
+<script>
+	var masterData = [];
+	
+	var columnDefs1 = [
+		{
+			headerCheckboxSelection : false,
+			checkboxSelection : true,
+			width : 8,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			pinned : 'left',
+		}, 
+    {
+        headerName: "Name",
+        field: "name",
+        flex: 1,
+        cellRenderer : function(params) {
+        	let id = params.data.name ? (params.data.name).replaceAll(' ','') : null;
+			return '<div role="presentation" id="'+id+'"><a class="nav-manual" data-bs-toggle="pill" href="#'+params.data.key+'" aria-selected="false" role="tab" tabindex="-1">' + params.data.name + '</a></div>';
+		}
+    }, {
+        headerName: "Description",
+        field: "desc",
+        flex: 2,
+        hide: true
+    },
+	{
+	    headerName: "Module",
+	    field: "group",
+	    flex: 1,
+	    hide: true
+	}
+];
+var gridOptions1 = {
+	    columnDefs: columnDefs1,
+	    defaultColDef: {
+	        sortable: true,
+	        filter: true,
+	        resizable: true,
+	        width: 195,
+	        height: 10
+	    },
+	    rowSelection: 'single',
+	    rowMultiSelectWithClick: true,
+	    suppressRowClickSelection: true, 
+	    onRowClicked: (event) => {
+	        const selectedNode = event.node;
+	        if (!selectedNode.isSelected()) {
+	            selectedNode.setSelected(true);
+	        }
+	    },
+	    onSelectionChanged: onSelectionDesignation1,
+	    getRowNodeId : function(data) {
+			return data.key;
+		}
+	};
+
+	$(document).ready(()=>{
+		var gridDiv1 = document.querySelector('#myGrid1');
+	    new agGrid.Grid(gridDiv1, gridOptions1);
+	    $('.ag-center-cols-container').addClass('nav');
+	    getAllData();
+	})
+	function getAllData() {
+		agGrid.simpleHttpRequest({
+		    url: "hrmsReport-get-data"
+		}).then(data => {
+			let d = JSON.parse(data.body);
+			masterData = d;
+			appendDataToMasterSection(null);
+		});
+	}
+	function onSelectionDesignation1() {
+		const navManualElements = document.querySelectorAll('.nav-manual');
+		navManualElements.forEach(element => {
+		    element.classList.remove('active');
+		});
+	    var selectedNodes = gridOptions1.api.getSelectedNodes();
+	    var selectedData = selectedNodes.map(node => node.data);
+	    let id = selectedData[0] ? (selectedData[0].name).replaceAll(' ','') : null;
+		focusTab(id);
+	}
+	function searchMasterDataFunction() {
+		let searchvalue = $("#searchMasterData").val();
+		appendDataToMasterSection(searchvalue);
+	}
+	function resetMasterDataFunction() {
+		$("#searchMasterData").val('');
+		appendDataToMasterSection(null);
+	}
+	function appendDataToMasterSection(searchvalue) {
+		
+		let searchedMasterData = masterData;
+		if(searchvalue)
+			searchedMasterData = masterData.filter(f => f.name == searchvalue);
+		gridOptions1.api.setRowData(searchedMasterData);
+		let rowId = searchedMasterData[0].key;
+		gridOptions1.api.getRowNode(rowId).setSelected(true);
+		let id = searchedMasterData[0].name ? (searchedMasterData[0].name).replace(' ','') : "Designation";
+		focusTab(id);
+	}
+	function focusTab(id) {
+		const tabElement = document.querySelector('#' + id + ' a');
+		if (!tabElement) {
+	        console.error('Tab element not found');
+	        return;
+	    }
+		const tab = new bootstrap.Tab(tabElement);
+	    tab.show();
+	}
+</script>
+</head>
+
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid requisition">
+
+			<!-- Tab panes -->
+			<div class="tab-content">
+
+				<!--Tabbination 1 Start-->
+				<div id="ambulance" class="tab-pane active">
+					<div class="d-flex flex-column flex-lg-row">
+
+						<!--Left Sec Start-->
+
+						<div class="box-sec flex-25" id="collapseWidthR1">
+							<div class="out-box">
+								<div class="d-flex justify-content-end bdr-line p-2 top-expand-sec">
+									<button class="btn max-btn" id="collapseButtonR1"
+										onclick="triggerExpansionR(1)" data-bs-toggle="tooltip"
+										data-bs-placement="top" title="Expand">
+										<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+											class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+									</button>
+								</div>
+								<div class="requisition-tbl table-responsive">
+									<ul class="nav nav-pills newtab mb-20" role="tablist" style="margin-left: 0px !important" id="masterSection">
+
+									</ul>
+								</div>
+
+								<div class="card p-2 m-2">
+									<div id="myGrid1" style="height: 100vh" class="ag-theme-alpine"></div>
+								</div>
+
+							</div>
+						</div>
+
+
+						<!--Left Sec End-->
+
+						<!--Right Sec Start-->
+						<div class="box-sec" id="collapseWidthL1">
+							<div class="out-box">
+
+								<div class="d-flex flex-row-reverse justify-content-between align-items-center p-2 bdr-line top-expand-sec">
+
+									<button class="btn max-btn" id="collapseButtonL1"
+										type="button" onclick="triggerExpansionL(1)"
+										data-bs-toggle="tooltip" data-bs-placement="top"
+										title="Expand">
+										<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+											class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+									</button>
+								</div>
+								<div class="tab-content flex-fill">
+									<div id="attendanceDiv" class="tab-pane fade active show h-100 p-2">
+                    <div class="d-flex h-100">
+                      <div class="card p-2">
+                        <div th:replace="hrms-report/attendance-report :: attendanceReport"></div>
+                      </div>
+                    </div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+
+</html>

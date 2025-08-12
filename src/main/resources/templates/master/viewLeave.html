@@ -1,0 +1,622 @@
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+.modal-content-md {
+	padding: 15px 14px;
+	position: relative;
+	display: -ms-flexbox;
+	display: flex;
+	-ms-flex-direction: column;
+	flex-direction: column;
+	background-color: #fff;
+	background-clip: padding-box;
+	border: 1px solid rgba(0, 0, 0, .2);
+	border-radius: .3rem;
+	outline: 0;
+}
+
+.picker_calendar {
+	cursor: pointer;
+	position: absolute;
+	top: 10px;
+	right: 18px;
+}
+</style>
+<script>
+$(document).ready(function(){
+	
+	var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+	
+	
+	
+})
+ 	/* -------------------search bar for mygrid------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+
+var gridOptions = {
+	//columnDefs : columnDefs,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 410,
+		height : 20
+	},
+	rowSelection: 'multiple',
+	rowMultiSelectWithClick: true,
+	};
+ 
+
+	
+	$(document).ready(function(){
+		var curdate = new Date();
+		var date = curdate.getDate();
+		var mnth = curdate.getMonth();
+		var sday=$("#startDayForAtten").val();
+		if(parseInt(sday)>1){
+				if (parseInt(date) > parseInt(sday)) {
+					var month = (curdate.getMonth() + 1);
+					var year = curdate.getFullYear();
+				} else {
+					var month = curdate.getMonth();
+					if (month == 0) {
+						var year = curdate.getFullYear() - 1;
+						month = 12;
+					} else {
+						var month = curdate.getMonth();
+						var year = curdate.getFullYear();
+					}
+				}
+		}else{
+				var month = (curdate.getMonth() + 1);
+				var year = curdate.getFullYear();
+		} 
+		
+		var nextmonth = month + 1;
+		if(parseInt(sday)>1){
+			$("#attndmonth").val(month+1);
+		}else{
+			$("#attndmonth").val(month);	
+		}
+
+		var fromdate = sday+"-" + String(month).padStart(2, '0')+ "-" + year;
+		const lastDayOfMonth =  new Date(year, month, 0).getDate();
+		if(sday>1){
+			if (month == "12") {
+				var todate = (parseInt(sday)-1)+"-" + String(1).padStart(2, '0')+ "-" + (year + 1);
+			} else {
+				 var todate = (parseInt(sday)-1)+"-"+ String(nextmonth).padStart(2, '0') + "-" + year;
+			}
+		}else{
+			   var todate = lastDayOfMonth+"-" + String(month).padStart(2, '0')+ "-" + year;
+		}
+		
+		$("#fromDate").val(fromdate);
+		$("#fromDateCalendar").val(fromdate);
+		$("#endDate").val(todate);
+		$("#endDateCalendar").val(todate);
+		
+		var obj = {};
+		
+		obj.key = month;
+		obj.name = year;
+		
+		console.log("obj===="+JSON.stringify(obj))
+		$('.loader').show();
+		$.ajax({
+	        type: "POST",
+	        url: "view-leave-get-attnd-date",
+	        dataType: "json",
+	        contentType: "application/json",
+	        data: JSON.stringify(obj), 
+	        success: function(response) {
+	            if (response.message == "success") {
+	            	var columnDefs = [
+	            		 {
+		            		headerName : "Employee Id",
+		            		field : "empId",
+		            		width :140,
+	            		}, {
+	            			headerName : "Employee Name",
+	            			field : "name",
+	            			cellStyle : {
+	            				textAlign : 'left'
+	            			},
+	            			width :200,
+	            		}, {
+	            			headerName : "DepartMent",
+	            			field : "dept",
+	            			cellStyle : {
+	            				textAlign : 'left'
+	            			},
+	            			width : 200,
+	            		}, {
+	            			headerName : "Sub Department",
+	            			field : "subDept",
+	            			cellStyle : {
+	            				textAlign : 'left'
+	            			},
+	            			width : 200,
+	            		}
+	            	];
+	            	
+	            	for(var i = 0; i < response.body.length; i++) {
+	            		
+	            		var obj = {};
+	            		
+	            		obj.headerName = response.body[i].name;
+	            		obj.field = "id"+response.body[i].name;
+	            		
+	            		var ob = {};
+	            		ob.textAlign = "left";
+	            		obj.cellStyle = ob;
+	            		obj.width = 50;
+	            		
+	            		columnDefs.push(obj);
+	            	}
+	            	
+/* 	            	var newobj1 = {};
+	            	var newobj2 = {};
+	            	
+	            	newobj1.headerName = "Status";
+	            	newobj1.field = "approveStatus";
+	            	
+	            	newobj2.headerName = "Remarks";
+	            	newobj2.field = "remarks";
+            		
+            		var ob1 = {};
+            		ob1.textAlign = "left";
+            		
+            		newobj1.cellStyle = ob1;
+            		newobj2.cellStyle = ob1;
+            		newobj1.width = 200;
+            		newobj2.width = 200;
+            		
+            		columnDefs.push(newobj1);
+            		columnDefs.push(newobj2); */
+            		
+            		
+	            	console.log(columnDefs)
+	            	gridOptions.api.setColumnDefs(columnDefs);
+	            	var d1 = [];
+	            	gridOptions.api.setRowData(d1);
+	            }
+	        }, error: function(response) {
+	        	console.log(response);
+	        }
+	});
+		
+		var band = $("#attndband").val();
+		var fromDate = $("#fromDate").val();
+		var toDate = $("#endDate").val();
+	agGrid.simpleHttpRequest({
+		url : 'view-leave-get-listing-data?fromDate='+fromDate+'&toDate='+toDate+'&band='+band,
+		}).then(function(data) {
+			$('.loader').hide();
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+			gridOptions.api.setRowData(data);
+		});
+	
+		$("#save").attr("disabled","disabled");
+		
+	$("#attndmonth,#attndband").change(function(){
+			var curdate = new Date();
+			var month = $("#attndmonth").val();
+			var mt=month-1;
+			if(mt>curdate.getMonth()){
+				$("#messageParagraph").text("Please Choose Current month Or Previous Month!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');	
+				
+				var curdate = new Date();
+				var date = curdate.getDate();
+				var mnth = curdate.getMonth();
+				var sday = $("#startDayForAtten").val();
+				if (parseInt(sday) > 1) {
+					if (parseInt(date) > parseInt(sday)) {
+						var month = (curdate.getMonth() + 1);
+						var year = curdate.getFullYear();
+					} else {
+						var month = curdate.getMonth();
+						if (month == 0) {
+							var year = curdate.getFullYear() - 1;
+							month = 12;
+						} else {
+							var month = curdate.getMonth();
+							var year = curdate.getFullYear();
+						}
+					}
+				} else {
+					var month = (curdate.getMonth() + 1);
+					var year = curdate.getFullYear();
+				}
+
+				var nextmonth = month + 1;
+				if (parseInt(sday) > 1) {
+					$("#attndmonth").val(month + 1);
+				} else {
+					$("#attndmonth").val(month);
+				}
+
+				var fromdate = sday + "-"
+						+ String(month).padStart(2, '0') + "-" + year;
+				const lastDayOfMonth = new Date(year, month, 0)
+						.getDate();
+				if (sday > 1) {
+					if (month == "12") {
+						var todate = (parseInt(sday) - 1) + "-"
+								+ String(1).padStart(2, '0') + "-"
+								+ (year + 1);
+					} else {
+						var todate = (parseInt(sday) - 1) + "-"
+								+ String(nextmonth).padStart(2, '0')
+								+ "-" + year;
+					}
+				} else { 
+					var todate = lastDayOfMonth + "-"
+							+ String(month).padStart(2, '0') + "-"
+							+ year;
+				}
+
+				$("#fromDate").val(fromdate);
+				$("#fromDateCalendar").val(fromdate);
+				$("#endDate").val(todate);
+				$("#endDateCalendar").val(todate);
+			}else{
+				$('.loader').show();
+				var columnDefs1 = [];
+				gridOptions.api.setColumnDefs(columnDefs1);
+				
+				var curdate = new Date();
+				var month = $("#attndmonth").val();
+				var sday=$("#startDayForAtten").val();
+				
+				if(parseInt(sday)>1){
+						if (month == 1) {
+							var year = curdate.getFullYear() - 1;
+							month = 12;
+						} else {
+							var year = curdate.getFullYear();
+							month = month - 1;
+						}
+					}else{
+							var year = curdate.getFullYear();
+					} 
+				var nextmonth = parseInt(month) + 1;
+
+				var fromdate = sday+"-" + String(month).padStart(2, '0')+ "-" + year;
+				const lastDayOfMonth =  new Date(year, month, 0).getDate();
+				if(sday>1){
+					if (month == "12") {
+						var todate = (parseInt(sday)-1)+"-" + String(1).padStart(2, '0')+ "-" + (year + 1);
+					} else {
+						 var todate = (parseInt(sday)-1)+"-"+ String(nextmonth).padStart(2, '0') + "-" + year;
+					}
+				}else{
+					   var todate = lastDayOfMonth+"-" + String(month).padStart(2, '0')+ "-" + year;
+				}
+
+				
+				$("#fromDate").val(fromdate);
+				$("#fromDateCalendar").val(fromdate);
+				$("#endDate").val(todate);
+				$("#endDateCalendar").val(todate);
+				
+				
+				var obj = {};
+				
+				obj.key = month
+				obj.name = year;
+				console.log(JSON.stringify(obj))
+				
+				$.ajax({
+			        type: "POST",
+			        url: "view-leave-get-attnd-date",
+			        dataType: "json",
+			        contentType: "application/json",
+			        data: JSON.stringify(obj), 
+			        success: function(response) {
+			            if (response.message == "success") {
+			            	
+			            	var columnDefs1 = [];
+			    			gridOptions.api.setColumnDefs(columnDefs1);
+			    			
+			    			
+			            	var columnDefs = [
+			            	    {
+				            		headerName : "Employee Id",
+				            		field : "empId",
+				            		width :140,
+			            		}, {
+			            			headerName : "Employee Name",
+			            			field : "name",
+			            			cellStyle : {
+			            				textAlign : 'left'
+			            			},
+			            			width :200,
+			            		}, {
+			            			headerName : "DepartMent",
+			            			field : "dept",
+			            			cellStyle : {
+			            				textAlign : 'left'
+			            			},
+			            			width : 200,
+			            		}, {
+			            			headerName : "Sub Department",
+			            			field : "subDept",
+			            			cellStyle : {
+			            				textAlign : 'left'
+			            			},
+			            			width : 200,
+			            		}
+			            	];
+			            	
+			            	for(var i = 0; i < response.body.length; i++) {
+			            		
+			            		var obj = {};
+			            		
+			            		obj.headerName = response.body[i].name;
+			            		obj.field = "id"+response.body[i].name;
+			            		
+			            		var ob = {};
+			            		ob.textAlign = "left";
+			            		obj.cellStyle = ob;
+			            		obj.width = 50;
+			            		
+			            		columnDefs.push(obj);
+			            	}
+			/*             	
+			            	var newobj1 = {};
+			            	var newobj2 = {};
+			            	
+			            	newobj1.headerName = "Status";
+			            	newobj1.field = "approveStatus";
+			            	
+			            	newobj2.headerName = "Remarks";
+			            	newobj2.field = "remarks";
+		            		
+		            		var ob1 = {};
+		            		ob1.textAlign = "left";
+		            		
+		            		newobj1.cellStyle = ob1;
+		            		newobj2.cellStyle = ob1;
+		            		newobj1.width = 200;
+		            		newobj2.width = 200;
+		            		
+		            		columnDefs.push(newobj1);
+		            		columnDefs.push(newobj2); */
+			            	
+			            	console.log(columnDefs)
+			            	gridOptions.api.setColumnDefs(columnDefs);
+			            	$('.loader').hide();
+			            }
+			        }, error: function(response) {
+			        	console.log(response);
+			        }
+			})
+			
+			var band = $("#attndband").val();
+				var fromDate = $("#fromDate").val();
+				var toDate = $("#endDate").val();
+			agGrid.simpleHttpRequest({
+				url : 'view-leave-get-listing-data?fromDate='+fromDate+'&toDate='+toDate+'&band='+band,
+			}).then(function(data) {
+				var len = data.length;
+				$('#totalReq').find('span').html(len);
+				gridOptions.api.setRowData(data);
+			});	
+			}
+
+		
+		})
+		
+	})
+	
+
+
+
+</script>
+
+<script>
+function totalUserCSV() {
+    var dataset = [];
+    gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+        dataset.push(rowNode.data);
+    });
+    gridOptions.api.exportDataAsCsv(dataset);
+}
+
+function approve() {
+	var selectedRows = gridOptions.api.getSelectedRows();
+	
+	var curdate = new Date();
+	var month = $("#attndmonth").val();
+	
+	var year = curdate.getFullYear();
+	
+	var dataset = [];
+	
+	var fromDate = $("#fromDate").val();
+	var toDate = $("#endDate").val();
+	
+	selectedRows.forEach(function(selectedRow, index) {
+		
+		var obj = {};
+		
+		obj.key = selectedRow.empId;
+		obj.name = fromDate;
+		obj.code = toDate;
+		
+		dataset.push(obj)
+	})
+	
+	console.log(dataset)
+	
+	if(dataset.length > 0) {
+		$.ajax({
+	        type: "POST",
+	        url: "view-leave-approve-attnd",
+	        dataType: "json",
+	        contentType: "application/json",
+	        data: JSON.stringify(dataset), 
+	        success: function(response) {
+	            if (response.message == "success") {
+	            	
+	            	$("#messageParagraph").text("Approved Successfully");
+	            	$("#msgOkModal").removeClass("btn3");
+	            	$("#msgOkModal").addClass("btn1");
+	            	$("#msgModal").modal('show');
+	            	
+	            	var band = $("#attndband").val();
+	    			var fromDate = $("#fromDate").val();
+	    			var toDate = $("#endDate").val();
+	    		agGrid.simpleHttpRequest({
+	    			url : 'view-leave-get-listing-data?fromDate='+fromDate+'&toDate='+toDate+'&band='+band,
+	        		}).then(function(data) {
+	        			console.log(data)
+	        			gridOptions.api.setRowData(data);
+	        		});
+	            }
+	        }, error : function(response) {
+	        	console.log(response)
+	        }
+		});
+	}
+}
+</script>
+
+
+</head>
+
+<body>
+	<div layout:fragment="content">
+		<div class="content-wrap">
+			<div class="container-fluid">
+				<div class="maincontent">
+					<div class="row">
+						<div class="maincontentsec">
+							<div class="content_padding">
+								<div id="main_content">
+									<div class="panel-body">
+										<div class="row">
+											<input type="hidden" id="startDayForAtten"
+												th:value="${startDayForAtten}" />
+											<div class="col-md-3">
+												<div class="form-group">
+												  <label>Band Name</label>
+													<div class="select">
+														<select id="attndband" class="form-control">
+															<option value="">--SELECT--</option>
+															<option th:each="c,iter:${bandList}" th:value="${c.key}"
+																th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-3">
+												<div class="form-group">
+												  <label>Month Name</label>
+													<div class="select">
+														<select id="attndmonth" class="form-control">
+															<option value="">--SELECT--</option>
+															<option value="1">JANUARY</option>
+															<option value="2">FEBRUARY</option>
+															<option value="3">MARCH</option>
+															<option value="4">APRIL</option>
+															<option value="5">MAY</option>
+															<option value="6">JUNE</option>
+															<option value="7">JULY</option>
+															<option value="8">AUGUST</option>
+															<option value="9">SEPTEMBER</option>
+															<option value="10">OCTOBER</option>
+															<option value="11">NOVEMBER</option>
+															<option value="12">DECEMBER</option>
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-3">
+											   <label>From Date</label>
+												<div class="form-group calendar_box">
+													<input type="text" id="fromDate" value=""
+														class="form-control"
+														th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+														readonly> <!-- <i class="ti-calendar picker_calendar"
+														id="fromDateCalendar"></i> -->
+												</div>
+											</div>
+											<div class="col-md-3">
+											 <label>To Date</label>
+												<div class="form-group calendar_box">
+													<input type="text" id="endDate" value=""
+														class="form-control"
+														th:attr="onkeyup=|formatDate('endDate','${session.DATEFORMAT_JS}')|"
+														readonly> <!-- <i class="ti-calendar picker_calendar"
+														id="endDateCalendar"></i> -->
+												</div>
+											</div>
+
+										</div>
+										<div class="d-flex justify-content-between mt-4">
+											<div class="btn-hs">
+												<div class="font-design" id="totalReq">
+													Employee Leave Details(<span></span>)
+												</div>
+											</div>
+											<div id="searchRowDiv">
+												<div class="input-style">
+													<input type="text" placeholder="Search.." name="search"
+														class="searchboxinput" onkeyup="cancelBar()"
+														oninput="onQuickFilterChanged()" id="quickFilter"
+														autocomplete="off">
+													<div class="searchicon">
+														<a href="javascript:void(0)"><span
+															style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+															id="closeKey"
+															onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+															class="close_i"><i class="ti-close srchicon"></i></span></a><a
+															href="javascript:void(0)"><i
+															class="ti-search srchicon"></i></a>
+													</div>
+												</div>
+											</div>
+											<div class="buttonsec btn-hs" id="btndiv">
+												<button class="download-btn" onclick="totalUserCSV()">Download</button>
+											</div>
+										</div>
+
+										<div id="myGrid" style="width: 100%; height: 500px;"
+											class="ag-theme-alpine"></div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+.hvrbox .hvrbox-layer_top {
+	opacity: 0;
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	width: 25%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.3);
+	color: #fff;
+	padding: 15px;
+}
+
+.btn1 {
+	border: none;
+	border-radius: 7px;
+	font-size: 14px;
+	background-color: #5784c4;
+	color: #fff !important;
+	margin-left: 5px;
+	margin-bottom: 8px;
+	width: 180px;
+	height: 28px;
+	line-height: 12px;
+	float: right;
+	text-transform: uppercase;
+	cursor: pointer;
+	font-weight: bold;
+}
+
+.btn3 {
+	border: none;
+	border-radius: 7px;
+	font-size: 14px;
+	background-color: #ff4b4b;
+	color: #fff !important;
+	margin-left: 5px;
+	margin-bottom: 8px;
+	width: 70px;
+	height: 28px;
+	line-height: 12px;
+	float: right;
+	text-transform: uppercase;
+	cursor: pointer;
+	white-space: normal;
+	font-weight: bold;
+}
+
+.taskInfo {
+	padding-left: 10px;
+	color: #0c63e4;
+}
+
+.rating {
+	float: left;
+}
+
+.rating:not(:checked)>input {
+	position: absolute;
+	top: -9999px;
+	clip: rect(0, 0, 0, 0);
+}
+
+.rating:not(:checked)>label {
+	float: right;
+	width: 1em;
+	padding: 0 .1em;
+	overflow: hidden;
+	white-space: nowrap;
+	cursor: pointer;
+	font-size: 200%;
+	line-height: 1.2;
+	color: rgba(0, 0, 0, 0.6);
+	/*  text-shadow:1px 1px #bbb, 2px 2px #666, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating:not(:checked)>label:before {
+	content: '★ ';
+}
+
+.rating>input:checked ~ label {
+	color: #ea0;
+	/*  text-shadow:1px 1px #c60, 2px 2px #940, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating:not(:checked)>label:hover, .rating:not(:checked)>label:hover ~
+	label {
+	color: black;
+	/*  text-shadow:1px 1px goldenrod, 2px 2px #B57340, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating>input:checked+label:hover, .rating>input:checked+label:hover ~
+	label, .rating>input:checked ~ label:hover, .rating>input:checked ~
+	label:hover ~ label, .rating>label:hover ~ input:checked ~ label {
+	color: #ea0;
+	/*  text-shadow:1px 1px goldenrod, 2px 2px #B57340, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating>label:active {
+	position: relative;
+	top: 2px;
+	left: 2px;
+}
+
+.btn-outline-primary {
+	color: #007bff;
+	background-color: rgb(240 243 241/ 90%);
+	background-image: none;
+	border-color: #007bff;
+	cursor: pointer;
+}
+
+.picker_calendar5 {
+	cursor: pointer;
+	position: absolute;
+	bottom: 361px;
+	left: 742px;
+}
+
+.picker_calendar6 {
+	cursor: pointer;
+	position: absolute;
+	bottom: 361px;
+	left: 1132px;
+}
+
+/* PAGINATION CSS*/
+
+#pagination {
+	margin-top: 15px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-direction: column;
+	float: right;
+}
+
+#pagination ul {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+}
+
+#pagination ul li {
+	color: #fff;
+	display: flex;
+}
+
+#pagination ul li a {
+	background-color: #45166a;
+	padding: 5px 10px;
+	border: 2px solid border-color;
+	border-right: 0;
+}
+
+#pagination ul li.active a {
+	background-color: #fff;
+	color:#45166a;
+	border: 1px solid #45166a;
+}
+
+#pagination ul li:first-child a {
+	border-radius: border-radius 0 0 border-radius;
+}
+</style>
+<script>
+	
+
+
+$(function() {
+	var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+	
+	var gridDiv = document.querySelector('#item');
+	new agGrid.Grid(gridDiv, itemOptions);
+	
+	gridOptions.api.setRowData();
+	//itemOptions.api.setRowData();
+	
+	var pages;
+ 	var pageno=1;
+	agGrid.simpleHttpRequest({
+		url : "pos-customers-view?pageno="+pageno,
+	}).then(function(data) {
+		var len = data.length;
+		$('#totalReq').find('span').html(len);
+		gridOptions.api.setRowData(data);
+		
+		//alert(len)
+		if(len > 0) {
+			//alert(data[0].totalPageno)
+			$('#totalPageno').val(data[0].totalPageno);
+			pages=data[0].totalPageno;
+			
+		}
+		createPagination(pages, pageno);
+	});
+	$("#myGrid").show();
+	$("#delete").attr("disabled", true);
+});
+
+$(function() {
+	$('.collapse').on('show.bs.collapse', function() {
+		$(this).siblings('.panel-heading').addClass('active');
+	});
+
+})
+	//search bar
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+
+	$('input,textarea').focus(
+			function() {
+				$(this).data('placeholder', $(this).attr('placeholder')).attr(
+						'placeholder', '');
+			}).blur(function() {
+		$(this).attr('placeholder', $(this).data('placeholder'));
+	});
+
+	var count = 0;
+	function allCheck() {
+		count++;
+
+		if (count == 1) {
+			$('.checkCls').prop("checked", true);
+		} else {
+			count = 0;
+			$('.checkCls').prop("checked", false);
+		}
+	}
+
+	var txtLen = 0;
+	function textCount(event) {
+
+		var id = event.target.id;
+		var pId = $('#' + id).next().attr("id");
+		$('#' + pId + ' span').empty();
+		txtLen = $('#' + id).val().length;
+		$('#' + pId + ' span').append(txtLen);
+	}
+	// column Defs
+	const columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				checkboxSelection : true,
+				width : 8,
+				sortable : false,
+				filter : false,
+				resizable : true
+
+			},
+			{
+				headerName : 'Customer Id',
+				field : "customerId",
+				cellRenderer : function(params) {
+					return '<a onclick=editPage("' + params.data.customerId
+							+ '") href="javascript:void(0)">'
+							+ params.data.customerId + '</a>';
+				}
+			}, {
+				headerName : "Customer Name",
+				field : "custName",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			}, {
+				headerName : "Mobile No",
+				field : "custMobile",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			}, {
+				headerName : "Email",
+				field : "custEmail",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			}  ];
+
+	const gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 224,
+			height : 10
+		},
+		rowSelection : 'single',
+		suppressRowClickSelection : true,
+		onSelectionChanged : rowSelect,
+		getRowNodeId : function(data) {
+			return data.customerId;
+		}
+	};
+
+	var orderIdd = "";
+	function rowSelect() {
+		//alert('hello select');
+		var selectedRows = gridOptions.api.getSelectedRows();
+
+		for (var i = 0; i < selectedRows.length; i++) {
+			orderIdd = orderIdd + '' + selectedRows[i].customerId + ',';
+		}
+
+		
+		orderIdd = orderIdd.substring(0, orderIdd.length - 1);
+		console.log(orderIdd)
+		var rowCount = 0;
+
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			$('#delete').attr("disabled", false);
+
+		} else {
+			$('#delete').attr("disabled", true);
+		}
+	}
+	// for new button
+	function newBtn() {
+		//	alert('hello');
+		$("#add").hide();
+		$("#copy").hide();
+		$("#delete").hide();
+		$("#myGrid").hide();
+		$("#searchRowDiv").hide();
+		$("#totalReq").hide();
+		$("#statusDiv").hide();
+		$("#idDiv").hide();
+		$("#collapseFour").hide();
+		$("#headingFour").hide();
+		$("#myGridActivity").hide();
+
+		$("#demo").show();
+
+	}
+	// for cancel button
+	function cancelBtn() {
+		$("#add").show();
+		$("#copy").show();
+		$("#delete").show();
+		$("#totalReq").show();
+		$("#myGrid").show();
+		$("#searchRowDiv").show();
+		$("#demo").hide();
+
+		$('#complaintId').val("");
+		$('#customerId').val("");
+		$('#productId').val("");
+		$('#orderId').val("");
+		$('#customerName').val("");
+		$('#customerMobile').val("");
+		$('#customerEmail').val("");
+		$('#complaitSubject').val("");
+		$('#complaintDesc').val("");
+		$('#complaintImage').val("");
+		$('#complaintStatus').val("");
+		$("#star1").attr("checked", false);
+		$("#star2").prop("checked", false);
+		$("#star3").prop("checked", false);
+		$('#complaintType').val("");
+		$('#complaintRemark').val("");
+		$('#complaint_CreatedOn').val("");
+		$('#complaint_CreatedTime').val("");
+		$('#complaint_UpdatedOn').val("");
+		$('#complaint_DeletedFlag').val("");
+		$('#complaint_Org_Name').val("");
+		$('#complaint_Org_Division').val("");
+
+		agGrid.simpleHttpRequest({
+			url : "pos-customers-view"
+		}).then(function(data) {
+			gridOptions.api.setRowData(data);
+		});
+	}
+
+//alert("sdfs")
+	
+	var itemDefs = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : true,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true
+
+		},
+		{
+			headerName : "SlNo",
+			field : "slNo",
+			width : 153,
+			cellStyle : {
+				textAlign : 'center'
+			},
+			cellRenderer : function(params) {
+				if (params.data.slNo) {
+					return '<a onclick=editProduct("' + params.data.slNo
+							+ '") href="javascript:void(0)">'
+							+ params.data.slNo + '</a>';
+				} else {
+					return '<a onclick=editProduct("' + params.data.slNo
+							+ '") href="javascript:void(0)">'
+							+ params.data.slNo + '</a>';
+				}
+			}
+		},{
+
+			headerName : 'Order Id',
+			field : "orderId",
+			width : 170,
+			cellStyle : {
+				textAlign : 'center'
+			},
+		},
+		{
+
+			headerName : 'Product Name',
+			field : "productid",
+			width : 170,
+			cellStyle : {
+				textAlign : 'center'
+			},
+		},
+		{
+			headerName : 'Product Size',
+			field : "dimension",
+			cellStyle : {
+				textAlign : 'center'
+			},
+			width : 170,
+		},{
+			headerName : 'Discount',
+			field : "proDisc",
+			cellStyle : {
+				textAlign : 'center'
+			},
+			width : 150,
+			valueFormatter : currencyFormatter
+		}, {
+			headerName : 'Unit Price',
+			field : "productUnitPrice",
+			type : 'rightAligned',
+			width : 175,
+			valueFormatter : currencyFormatter
+		}, {
+			headerName : 'Quantity',
+			field : "productQnty",
+			cellStyle : {
+				textAlign : 'center'
+			},
+			width : 185,
+			valueFormatter : currencyFormatter
+		},
+		 {
+			headerName : 'Product Amount',
+			field : "productAmnt",
+			cellStyle : {
+				textAlign : 'center'
+			},
+			width : 190,
+			valueFormatter : currencyFormatter
+		}, {
+			headerName : 'Discount Amount',
+			field : "discountAmnt",
+			cellStyle : {
+				textAlign : 'center'
+			},
+			width : 200,
+			valueFormatter : currencyFormatter,
+			aggFunc : 'sum'
+		} ];
+
+		
+		var itemOptions = {
+				columnDefs : itemDefs,
+				rowSelection : 'single',
+				groupSelectsChildren : true,
+				suppressRowClickSelection : true,
+				suppressAggFuncInHeader : true,
+				defaultColDef : {
+					sortable : true,
+					filter : true,
+					resizable : true,
+					width : 251,
+					height : 10
+				},
+				onSelectionChanged : rowSelectItem,
+				 getRowNodeId : function(data) {
+					return data.slNo;
+				} 
+			};
+		
+		function rowSelectItem() {
+			//alert('hi')
+			
+			
+			var selectedRows = itemOptions.api.getSelectedRows();
+			var rowCount = 0;
+			selectedRows.forEach(function(selectedRow, index) {
+				rowCount = rowCount + 1;
+			});
+			if (rowCount > 0) {
+				//alert(JSON.stringify(selectedRows))
+				$('#delete1').attr("disabled", false);
+				$('#newItem').attr("disabled", true);
+				$('#replace').attr("disabled", false);
+				$('#addNew').attr("disabled", true);
+				$("#itemId").val(selectedRows[0].categoryId);
+				$("#rtnitemName").val(selectedRows[0].categoryName);
+				$("#totalQty").val(selectedRows[0].quantity);
+				$("#returnedQty").val(selectedRows[0].productId);
+				$("#productSize").val(selectedRows[0].productDimension);
+				var userRoleCheck = $('#userType').val();
+				if(selectedRows[0].replaceBtnStatus){
+					if(userRoleCheck == "Dealer"){
+						$('#replaceDismiss').show();
+						$('#replace').show();
+						$('#replaceAssign').hide();
+						
+					}
+				}
+				else{
+					if(userRoleCheck == "SuperAdmin"){
+						$('#replaceAssign').show();
+						$('#replace').hide();
+						$('#replaceDismiss').hide();
+					}
+				}
+			} else {
+				$('#newItem').attr("disabled", false);
+				$('#delete1').attr("disabled", true);
+				$('#cancelOrderBtn').attr("disabled", true);
+				$('#replace').attr("disabled", true);
+				$('#addNew').attr("disabled", false);
+				$('#replaceDismiss').hide();
+				$('#replaceAssign').hide();
+			}
+		}
+	
+
+	// Edit & stage change 
+	function editPage(id) {
+		//alert('edit clicked');
+
+		cancelBtn();
+
+		var editId = id.split(",");
+
+		var complaintId = editId[0];
+
+		var modal = editId[1];
+		//alert('complaintId------'+complaintId);
+		$("#demo").show();
+
+		$('#delete1').attr("disabled", true);
+		$("#searchRowDiv").hide();
+		$("#myGrid").hide();
+		$("#reqTable").hide();
+		$("#add").hide();
+		$("#save").show();
+		$("#Cancel").show();
+		$("#delete").hide();
+		$("#totalReq").hide();
+
+		$
+				.ajax({
+					type : "GET",
+					url : "pos-customers-edit?custId=" + id,
+					async : false,
+					success : function(response) {
+						if (response.message == "Success") {
+
+							console.log("response for edit product---------------"
+											+ JSON.stringify(response.body));
+							//alert(response.body[0].customerId)
+							$("#customerId").val(response.body[0].customerId);
+							$("#custName").val(response.body[0].custName);
+							$("#custEmail").val(response.body[0].custEmail);
+							$("#custMobile").val(response.body[0].custMobile);
+							$("#shippingaddress").val(response.body[0].shippingaddress);
+							$("#custCity").val(response.body[0].custCity);
+							$("#custPincode").val(response.body[0].custPincode);
+							$("#gender").val(response.body[0].gender);
+							$("#birthday").val(response.body[0].birthday);
+							$("#spouseName").val(response.body[0].spouseName);
+							$("#anniversary").val(response.body[0].anniversary);
+							
+							
+							
+
+				}
+			}
+		})
+	}
+
+	function Cancel() {
+
+		/* var userRoleCheck = $('#userType').val();
+
+		if (userRoleCheck == "Dealer") {
+			$('#add').show();
+			$('#delete').show();
+			$("#payOnlineDtls").show();
+			$('#reqAppvBtn').hide();
+			$('#createPackageDtls').hide();
+			$("#dealerPayBtn").show();
+			$('#reqAppvBtn').attr('disabled', true);
+			$('#dealerPayBtn').attr('disabled', true);
+			$('#add').attr('disabled', false);
+			$('#createPackageDtls').attr('disabled', true);
+		} else if (userRoleCheck == "SuperAdmin") {
+			$('#add').hide();
+			$('#delete').show();
+			$('#reqAppvBtn').show();
+			$('#createPackageDtls').show();
+			$("#payOnlineDtls").show();
+			$("#dealerPayBtn").hide();
+			$("#add").hide();
+			$('#createPackageDtls').attr('disabled', true);
+			$('#reqAppvBtn').attr('disabled', true);
+		} */
+
+		$("#copy").show();
+		$("#totalReq").show();
+		$("#myGrid").show();
+		$("#searchRowDiv").show();
+		$("#demo").hide();
+
+		agGrid.simpleHttpRequest({
+			url : "pos-customers-view"
+		}).then(function(data) {
+			gridOptions.api.setRowData(data);
+		});
+
+	}
+	
+	function downloadInvoice() {
+		
+		window.open("/shoukeen/pos-display-invoiceview-pdf?orderId="+ orderIdd,'_blank');
+	}
+	
+	//Pagination
+	var pages;
+	function createPagination(pages, page) {
+		if($("#totalPageno").val()==''){
+			var pages=10;
+		}else{
+			var pages=$("#totalPageno").val();
+		}
+		
+	  var str = '<ul>';
+	  var active;
+	  var pageCutLow = page - 1;
+	  var pageCutHigh = page + 1;
+	  // Show the Previous button only if you are on a page other than the first
+	  if (page > 1) {
+	    str += '<li class="page-item previous no"><a onclick="createPagination(pages, '+(page-1)+')">Previous</a></li>';
+	  }
+	  // Show all the pagination elements if there are less than 6 pages total
+	  if (pages < 6) {
+	    for (let p = 1; p <= pages; p++) {
+	      active = page == p ? "active" : "no";
+	      str += '<li class="'+active+'"><a onclick="createPagination(pages, '+p+')">'+ p +'</a></li>';
+	    }
+	  }
+	  // Use "..." to collapse pages outside of a certain range
+	  else {
+	    // Show the very first page followed by a "..." at the beginning of the
+	    // pagination section (after the Previous button)
+	    if (page > 2) {
+	      str += '<li class="no page-item"><a onclick="createPagination(pages, 1)">1</a></li>';
+	      if (page > 3) {
+	          str += '<li class="out-of-range"><a onclick="createPagination(pages,'+(page-2)+')">...</a></li>';
+	      }
+	    }
+	    // Determine how many pages to show after the current page index
+	    if (page === 1) {
+	      pageCutHigh += 2;
+	    } else if (page === 2) {
+	      pageCutHigh += 1;
+	    }
+	    // Determine how many pages to show before the current page index
+	    if (page === pages) {
+	      pageCutLow -= 2;
+	    } else if (page === pages-1) {
+	      pageCutLow -= 1;
+	    }
+	    // Output the indexes for pages that fall inside the range of pageCutLow
+	    // and pageCutHigh
+	    for (let p = pageCutLow; p <= pageCutHigh; p++) {
+	      if (p === 0) {
+	        p += 1;
+	      }
+	      if (p > pages) {
+	        continue
+	      }
+	  
+	      active = page == p ? "active" : "no";
+	      str += '<li class="page-item '+active+'"><a onclick="createPagination(pages, '+p+')">'+ p +'</a></li>';
+	      
+	    }
+	    // Show the very last page preceded by a "..." at the end of the pagination
+	    // section (before the Next button)
+	    if (page < pages-1) {
+	      if (page < pages-2) {
+	        str += '<li class="out-of-range"><a onclick="createPagination(pages,'+(page+2)+')">...</a></li>';
+	      }
+	      str += '<li class="page-item no"><a onclick="createPagination(pages, pages)">'+pages+'</a></li>';
+	    }
+	  }
+	  // Show the Next button only if you are on a page other than the last
+	  if (page < pages) {
+	    str += '<li class="page-item next no"><a onclick="createPagination(pages, '+(page+1)+')">Next</a></li>';
+		  changePagination(page);
+	  }else if(page <= pages){
+		  //str += '<li class="page-item next no"><a onclick="createPagination(pages, '+(page+1)+')">Next</a></li>';
+		  changePagination(page);
+	  }
+	  str += '</ul>';
+	  // Return the pagination string to be outputted in the pug templates
+	  document.getElementById('pagination').innerHTML = str;
+	  return str;
+
+	}
+	 function changePagination(page){
+		   $('.loader').show(); 
+			
+				var pageno=page;
+			 agGrid.simpleHttpRequest({
+					url : "pos-customers-view?pageno="+pageno,
+				}).then(function(data) {
+					var len = data.length;
+					
+					gridOptions.api.setRowData(data);
+					if(data.length > 0) {
+						$('#totalPageno').val(data[0].totalPageno);
+						pages=data[0].totalPageno;
+						console.log(pages);
+					}
+					$('.loader').hide(); 
+				 	
+				});
+		} 		
+</script>
+
+</head>
+
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+
+					<div class="d-flex justify-content-between">
+						<div class="col-md-2  btn-hs">
+							<div class="font-design" id="totalReq">
+								Customer LIST (<span></span>)
+							</div>
+						</div>
+						<div class="col-md-4  btn-hs" id="searchRowDiv">
+							<div class="input-style">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter">
+								<div class="searchicon">
+									<a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+
+						</div>
+						<div class="col-md-6 buttonsec btn-hs">
+							<!-- <input type="button" class="btn1" onclick="downloadInvoice()" id="delete" value="Download Invoice" readonly> -->
+							<!-- <input type="button" class="btn2" id="action" value="Action"
+									 readonly>
+
+							<input type="button" class="btn1" id="add" value="Add Complaint"
+								onclick="newBtn()" readonly> -->
+						</div>
+					</div>
+
+					<!-- <div id="myGrid" style="width: 100%; height: 500px;"
+						class="ag-theme-alpine"></div> -->
+						<input type="hidden" id="totalPageno">
+					<div id="myGrid" style="width: 100%; height: 500px;"
+						class="ag-theme-alpine"></div>
+					<div id="pagination" style="cursor: pointer;"></div>
+
+					<div class="collapse" id="demo">
+						<div class="innercontent">
+							<div class="innerstickybg">
+								<div class="d-flex justify-content-between" id="main">
+									<div hidden class="col-md-3" id="idDiv">
+										Product ID: <span id="productHeadId"></span> <input
+											type="hidden" id="custOrderId">
+									</div>
+									<div>
+										<span class="taskInfo">Customer Information</span>
+									</div>
+
+
+									<div class="col-md-9 padding-0" align="right">
+										<button class="btn4" id="cancel" onclick="Cancel()">CANCEL</button>
+										<!-- <button class="btn1" id="save" onclick="addProductInfo()">SAVE</button> -->
+										<button class="btn1" id="cancel" onclick="Cancel()">BACK</button>
+
+									</div>
+								</div>
+							</div>
+							<div class="innercontent">
+
+								<!-- <div class="row"> -->
+								<div class="row">
+
+									
+
+
+									
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Customer Name</label><input type="text" id="custName"
+												 class="form-control"
+												autocomplete="off" readonly>
+
+										</div>
+									</div>
+
+
+
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Customer Email ID</label><input type="text"
+												id="custEmail"  class="form-control"
+												autocomplete="off" readonly>
+										</div>
+									</div>
+
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Customer Phone No</label><input type="text"
+												id="custMobile" class="form-control" autocomplete="off" readonly>
+										</div>
+									</div>
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Shipping Address</label><input type="text"
+												id="shippingaddress" 
+												class="form-control" autocomplete="off" readonly>
+										</div>
+									</div>
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>City</label><input type="text"
+												id="custCity"
+												class="form-control" autocomplete="off" readonly>
+										</div>
+									</div>
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Pincode</label><input type="text"
+												id="custPincode" 
+												class="form-control" autocomplete="off" readonly>
+										</div>
+									</div>
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Gender</label><input type="text"
+												id="gender" 
+												class="form-control" autocomplete="off" readonly>
+										</div>
+									</div>
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Birthday</label><input type="text"
+												id="birthday"
+												class="form-control" autocomplete="off" readonly>
+										</div>
+									</div>
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Spouse Name</label><input type="text"
+												id="spouseName"
+												class="form-control" autocomplete="off" readonly>
+										</div>
+									</div>
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Marriage Anniversary</label><input type="text"
+												id="anniversary"
+												class="form-control" autocomplete="off" readonly>
+										</div>
+									</div>
+
+
+                                    
+
+
+								</div>
+							</div>
+
+
+						
+						</div>
+						
+						
+
+						
+
+
+						<div id="deleteProduct" class="modal fade show" aria-modal="true">
+							<div class="modal-dialog modal-confirm">
+								<div class="modal-content">
+									<div class="modal-header flex-column">
+										<button type="button" class="close" data-dismiss="modal"
+											aria-hidden="true" onclick="cancelModalProductBtn()">
+											<i class="ti-close modal-close"></i>
+										</button>
+									</div>
+									<div class="modal-body">
+										<p>Do you really want to delete these records? This
+											process cannot be undone.</p>
+									</div>
+									<div class="modal-footer justify-content-center"
+										style="margin-top: -30px;">
+
+										<button type="button" class="btn4" data-dismiss="modal"
+											onclick="cancelModalBtn();">Cancel</button>
+										<button type="button" class="btn3"
+											onclick="deleteProductOnclick()">Delete</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+/* .form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+} */
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+</style>
+
+<script type="text/javascript">
+
+	$(document).ready(function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		$('.loader').show();
+		gridOptions.api.setRowData("");
+		agGrid.simpleHttpRequest({
+			url : 'billing-view'
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.billing;
+			console.log(allData)
+			var len = allData.length;
+			$('#totalAsset').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+		});
+		$('.loader').hide();
+		
+		
+  
+	});
+	
+	
+	
+	/* -------------------search bar for mygrid----------------------- */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+		var totalRowCount = gridOptions.api.getModel().getRowCount();
+		$('#totalAsset').find('span').html(totalRowCount);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	var columnDefs = [{
+			headerName: "Billing No.",
+			field: "billNo",
+			width:150,
+			
+		},
+		{
+			headerName: "Patient ID",
+			field: "patientId",
+			
+		},
+		{
+			headerName: "Patient Type",
+			field: "patientType",
+			width:150,
+			hide : true,
+		}, {
+			headerName: "Patient name",
+			field: "pName"
+		},  {
+			headerName: "Gender",
+			field: "gender",
+			width:150,
+			
+		},{
+			headerName: "Address",
+			field: "address"
+		}, {
+			headerName: "Mobile",
+			field: "mobNo",
+			width:150
+		}, {
+			headerName: "date Of Birth",
+			field: "dateOfBirth",
+			hide : true,
+		},{
+			headerName: "Email Id",
+			field: "email",
+			hide : true,
+		},{
+			headerName: "Billing Amount",
+			field: "billAmount",
+			cellStyle : {
+				textAlign : 'right'
+			}
+		},{
+			headerName : 'Receipt',
+			field : "action",
+			cellStyle : {
+				textAlign : 'center'
+			},cellRenderer : function(params) {
+				return '<a  onclick=reportDownload("'
+				+params.data.patientId
+				+ '") href="javascript:void(0)"><i class="bi bi-cloud-download">Download</i></a>';
+				
+			}
+		},   ];
+	
+
+// let the grid know which columns and what data to use
+var gridOptions = {
+	columnDefs : columnDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 170
+	},
+	onSelectionChanged : onSelectionChanged,
+};
+//function for row select parents
+var id = "";
+var apstatus = "";
+
+function onSelectionChanged() {
+	var selectedNodes = gridOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	 
+	 id= selectedData.map(node => node.logbookId);
+	 apstatus=selectedData.map(node => node.approveStatus);
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+
+	if (rowCount > 0) {
+			if(apstatus=="Approved"){
+			$('#newBtn').attr('disabled', true);
+			$('#reqDltBtn').attr("disabled", true);
+			$('#approveBtn').attr("disabled", true);
+			
+			
+		}else{
+			$('#approveBtn').attr("disabled", false);
+			$('#reqDltBtn').attr("disabled", false);
+			$('#newBtn').attr('disabled', true);
+		}
+	}else {
+		$('#reqDltBtn').attr("disabled", true);
+		$('#approveBtn').attr("disabled", true);
+		$('#newBtn').attr('disabled', false);
+	}
+}
+
+
+function reportDownload(id) {
+	window.open("/his/billing-pdf-downloads?id="+window.btoa(id), '_blank');  
+}
+
+
+
+
+	
+//function for download
+	function downloadDetails() {
+		var params = {
+			fileName: 'Billing_List.csv', // Specify your custom filename here
+		};
+		gridOptions.api.exportDataAsCsv(params);
+	}
+
+</script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="d-flex justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalAsset">
+									Billing List(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalAsset').find('span').html(gridOptions.api.getModel().getRowCount());"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+								<button class="download-btn" id="download"
+									onclick="downloadDetails()">Download</button>
+								
+							</div>
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" />
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innercontent">
+								
+								<div class="row innersticky_contentgap">
+									
+									
+								</div>
+
+							</div>
+						</div>
+					</div>
+	
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

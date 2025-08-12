@@ -1,0 +1,147 @@
+package nirmalya.aathithya.webmodule.lms.controller;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
+
+import nirmalya.aathithya.webmodule.common.utils.DropDownModel;
+import nirmalya.aathithya.webmodule.common.utils.EnvironmentVaribles;
+import nirmalya.aathithya.webmodule.common.utils.JsonResponse;
+import nirmalya.aathithya.webmodule.master.model.AdvanceManagementModel;
+
+@Controller
+@RequestMapping("academic")
+public class AdminCommonController {
+	Logger logger = LoggerFactory.getLogger(lmsCommonController.class);
+
+	@Autowired
+	EnvironmentVaribles env;
+	@Autowired
+	RestTemplate restTemplate;
+
+	@GetMapping("admin-dashboard")
+	public String adminDashboard(Model model, HttpSession session) {
+		logger.info("Mothod:view admin dashboard page started...");
+
+		logger.info("Mothod: view admin dashboard page ends...");
+		return "lms/admin-dashboard";
+	}
+
+	@GetMapping("instructor-dashboard")
+	public String facultyDashboard(Model model, HttpSession session) {
+		logger.info("Mothod:view faculty dashboard page started...");
+
+		logger.info("Mothod: view faculty dashboard page ends...");
+		return "lms/faculty-dashboard";
+	}
+
+	/*
+	 * @GetMapping("courses") public String academicCourses(Model model, HttpSession
+	 * session) { logger.info("Mothod:view courses page started...");
+	 * 
+	 * logger.info("Mothod: view courses page ends..."); return
+	 * "lms/academic-courses"; }
+	 */
+
+	@GetMapping("users-management")
+	public String userManagement(Model model, HttpSession session) {
+		logger.info("Mothod:view user-management page started...");
+
+		logger.info("Mothod: view user-management page ends...");
+		return "lms/user-management";
+	}
+
+	@GetMapping("certificate-builder")
+	public String certificateBuilder(Model model, HttpSession session) {
+		logger.info("Mothod:view certificateBuilder page started...");
+
+		DropDownModel[] course = restTemplate.getForObject(env.getMasterUrl() + "/courseList",
+				DropDownModel[].class);
+		List<DropDownModel> courseList = Arrays.asList(course);
+		model.addAttribute("courseList", courseList);
+
+		logger.info("Mothod: certificateBuilder page ends...");
+		return "lms/certificate-builder";
+	}
+	
+	
+	@GetMapping("subscription")
+	public String subscription(Model model, HttpSession session) {
+		logger.info("Mothod:view user-management page started...");
+
+		logger.info("Mothod: view user-management page ends...");
+		return "lms/lms-subscription";
+	}
+	
+	//view
+	@SuppressWarnings("unchecked")
+	@GetMapping("subscription-student-view")
+	public @ResponseBody Object viewStudent(HttpSession session) {
+		logger.info("Method :viewStudent starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String orgName = "";
+		String orgDivision = "";
+		try {
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+
+			resp = restTemplate.getForObject(env.getHisUrl() + "rest-subscription-student-view?orgName=" + orgName + "&orgDivision="
+					+ orgDivision , JsonResponse.class);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		if (resp.getMessage() != "" && resp.getMessage() != null) {
+			resp.setCode(resp.getMessage());
+			resp.setMessage("Success");
+		} else {
+			resp.setMessage("Unsuccess");
+		}
+		logger.info("Method :viewStudent ends"+resp);
+		return resp;
+	}
+	//
+	@SuppressWarnings("unchecked")
+	@GetMapping("subscription-student-course-enable")
+	public @ResponseBody JsonResponse<Object> enableCourse(@RequestParam String studentId, @RequestParam String status) {
+	    logger.info("Method : enableCourse starts");
+	    JsonResponse<Object> response = new JsonResponse<>();
+
+	    try {
+	        response = restTemplate.getForObject(
+	            env.getHisUrl() + "rest-subscription-student-course-enable?id=" + studentId + "&status=" + status,
+	            JsonResponse.class
+	        );
+	    } catch (RestClientException e) {
+	        logger.error("Error calling REST service: ", e);
+	        response.setCode("500");
+	        response.setMessage("Exception occurred: " + e.getMessage());
+	        return response;
+	    }
+
+	    logger.info("Method : enableCourse ends");
+	    return response;
+	}
+
+
+
+
+}

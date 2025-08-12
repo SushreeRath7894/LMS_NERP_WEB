@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{/layout/master}">
+<head>
+<style>
+
+.hvrbox .hvrbox-layer_top {
+	opacity: 0;
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	width: 25%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.3);
+	color: #fff;
+	padding: 15px;
+}
+
+.btn1 {
+    border: none;
+    border-radius: 4px;
+    font-size: 10px;
+    background-color: #5784c4;
+    color: #fff!important;
+    margin-left: 5px;
+    margin-bottom: 8px;
+    width: 105px;
+    height: 28px;
+    line-height: 12px;
+    float: right;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.taskInfo{
+	padding-left: 10px;
+    color: #0c63e4;
+}
+
+.rating {
+	float: left;
+}
+
+.rating:not(:checked)>input {
+	position: absolute;
+	top: -9999px;
+	clip: rect(0, 0, 0, 0);
+}
+
+.rating:not(:checked)>label {
+	float: right;
+	width: 1em;
+	padding: 0 .1em;
+	overflow: hidden;
+	white-space: nowrap;
+	cursor: pointer;
+	font-size: 200%;
+	line-height: 1.2;
+	color: rgba(0, 0, 0, 0.6);
+	/*  text-shadow:1px 1px #bbb, 2px 2px #666, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating:not(:checked)>label:before {
+	content: '★ ';
+}
+
+.rating>input:checked ~ label {
+	color: #ea0;
+	/*  text-shadow:1px 1px #c60, 2px 2px #940, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating:not(:checked)>label:hover, .rating:not(:checked)>label:hover ~
+	label {
+	color: black;
+	/*  text-shadow:1px 1px goldenrod, 2px 2px #B57340, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating>input:checked+label:hover, .rating>input:checked+label:hover ~
+	label, .rating>input:checked ~ label:hover, .rating>input:checked ~
+	label:hover ~ label, .rating>label:hover ~ input:checked ~ label {
+	color: #ea0;
+	/*  text-shadow:1px 1px goldenrod, 2px 2px #B57340, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating>label:active {
+	position: relative;
+	top: 2px;
+	left: 2px;
+}
+
+.btn-outline-primary {
+	color: #007bff;
+	background-color: rgb(240 243 241/ 90%);
+	background-image: none;
+	border-color: #007bff;
+	cursor: pointer;
+}
+.picker_calendar5 {
+ cursor: pointer;
+    position: absolute;
+    bottom: 361px;
+    left: 742px;
+}
+.picker_calendar6 {
+    cursor: pointer;
+    position: absolute;
+    bottom: 361px;
+    left: 1132px;
+}
+</style>
+<script>
+	
+	$(function() {
+		
+		 $("input[name=ReminderYesOrNo]:radio").click(function () {
+		        if ($('input[name=ReminderYesOrNo]:checked').val() == "Yes") {
+		            $('.reminderBtn').show();
+
+		        } else if ($('input[name=ReminderYesOrNo]:checked').val() == "No") {
+		            $('.reminderBtn').hide();
+		            $('#reminderDateid').val("");
+		            $('#reminderTime').val("");
+		            $('#taskAlertBy').val("");
+
+		        }
+		    });
+		
+		
+		var dateFormat = localStorage.getItem("dateFormat");								
+		$("#startDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#startDate').val($(this).val());
+		})
+		
+		$('#startDate').blur(function(){
+			$("#startDateCalendar").val($(this).val());
+		})
+		
+		
+		$("#endDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#endDate').val($(this).val());
+		})
+		
+		$('#endDate').blur(function(){
+			$("#endDateCalendar").val($(this).val());
+		})	
+	
+	
+	 $("#toDateCalendarTime").datetimepicker({
+		format : 'H:i',
+		closeOnDateSelect : false,
+		timepicker : true,
+		datepicker : false,
+		step : 15
+	}).on("change", function() {
+		$('#reminderTime').val($(this).val());
+	})
+
+	$('#reminderTime').blur(function() {
+		$("#toDateCalendarTime").val($(this).val());
+	}) 
+	});
+	
+	$(function() {
+
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		agGrid.simpleHttpRequest({
+			url : "manage-dealer-mstr-throughAjax"
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+
+			gridOptions.api.setRowData(data);
+
+		});
+		$("#myGrid").show();
+		$("#delete").attr("disabled", true);
+	});
+
+	$(function() {
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+	})
+	//search bar
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+
+	$('input,textarea').focus(
+			function() {
+				$(this).data('placeholder', $(this).attr('placeholder')).attr(
+						'placeholder', '');
+			}).blur(function() {
+		$(this).attr('placeholder', $(this).data('placeholder'));
+	});
+
+	var count = 0;
+	function allCheck() {
+		count++;
+
+		if (count == 1) {
+			$('.checkCls').prop("checked", true);
+		} else {
+			count = 0;
+			$('.checkCls').prop("checked", false);
+		}
+	}
+
+	var txtLen = 0;
+	function textCount(event) {
+
+		var id = event.target.id;
+		var pId = $('#' + id).next().attr("id");
+		$('#' + pId + ' span').empty();
+		txtLen = $('#' + id).val().length;
+		$('#' + pId + ' span').append(txtLen);
+	}
+	// column Defs
+	const columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				checkboxSelection : true,
+				width : 8,
+				sortable : false,
+				filter : false,
+				resizable : true
+
+			},{
+				headerName : 'Dealer Id',
+				field : "dealerId",
+				cellRenderer : function(params) {
+					return '<a onclick=editPage("' + params.data.dealerId
+							+ ',' + '0' + '") href="javascript:void(0)">'
+							+ params.data.dealerId + '</a>';
+				}
+			},		
+			 {
+				headerName : "Dealer Name",
+				field : "dealerName",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			},{
+				headerName : "Email",
+				field : "dealerEmail",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			},{
+				headerName : "Phone",
+				field : "dealerMobile",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			},{
+				headerName : "City",
+				field : "city",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			},
+			   {
+				headerName : "CreatedDate",
+				field : "createdDate",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			}
+			,
+			   {
+				headerName : "CreatedTime",
+				field : "createdTime",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			} ];
+
+	const gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 187,
+			height :10
+		},
+		rowSelection : 'multiple',
+		suppressRowClickSelection : true,
+		onSelectionChanged : rowSelect,
+		getRowNodeId : function(data) {
+			return data.dealerId;
+		}
+	};
+	
+	var deleteId = "";
+	function rowSelect() {
+		//alert('hello select');
+		var selectedRows = gridOptions.api.getSelectedRows();
+		deleteId = "";
+
+		for (var i = 0; i < selectedRows.length; i++) {
+			deleteId = deleteId + '"' + selectedRows[i].dealerId + '",';
+			 // deleteId = deleteId  + selectedRows[i].dealerId + ',';
+		}
+		deleteId = deleteId.substring(0, deleteId.length - 1);
+		console.log(deleteId)
+		var rowCount = 0;
+
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			$('#delete').attr("disabled", false);
+
+		} else {
+			$('#delete').attr("disabled", true);
+		}
+	}
+	// for new button
+	function newBtn() { 
+	//	alert('hello');
+		$("#add").hide();
+		$("#copy").hide();
+		$("#delete").hide();
+		$("#myGrid").hide();
+		$("#searchRowDiv").hide();
+		$("#totalReq").hide();
+		$("#statusDiv").hide();
+		$("#idDiv").hide();
+		$("#collapseFour").hide();
+		$("#headingFour").hide();
+		$("#myGridActivity").hide();
+
+		$("#demo").show();
+
+	}
+	// for cancel button
+	function cancelBtn() {
+		$("#add").show();
+		$("#copy").show();
+		$("#delete").show();
+		$("#totalReq").show();
+		$("#myGrid").show();
+		$("#searchRowDiv").show();
+		$("#demo").hide();
+
+		$('#dealerId').val("");
+		$('#oppertunity').val("");
+		$('#expectedRevenue').val("");
+		$('#probability').val("");
+		$('#customer').val("");
+		$('#email').val("");
+		$('#phone').val("");
+		$('#saleperson').val("");
+		$('#salesTeam').val("");
+		$('#date').val("");
+		$("#star1").attr("checked", false);
+		$("#star2").prop("checked", false);
+		$("#star3").prop("checked", false);
+		$('#tags').val("");
+		$('#campanyName').val("");
+		$('#description').val("");
+		$('#campanyName').val("");
+		$('#addressStreet').val("");
+		$('#addressStreet2').val("");
+		$('#city').val("");
+		$('#states').val("");
+		$('#zip').val("");
+		$('#country').val("");
+		$('#website').val("");
+		$('#language').val("");
+		$('#contactName').val("");
+		$('#tittle').val("");
+		$('#jobPosition').val("");
+		$('#mobile').val("");
+		$('#referdBy').val("");
+		$('#campaign').val("");
+		$('#medium').val("");
+		$('#source').val("");
+
+		agGrid.simpleHttpRequest({
+			url : "manage-dealer-mstr-throughAjax"
+		}).then(function(data) {
+			gridOptions.api.setRowData(data);
+		});
+	}
+
+	$(document).ready(function() {
+		$("#date").datetimepicker({
+			format : "d-m-Y",
+			closeOnDateSelect : true,
+			minDate : new Date(),
+			timepicker : false,
+		});
+		$("#dealerId").val("");
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#fromDate').val($(this).val());
+		})
+
+		$('#fromDate').blur(function() {
+			$("#fromDateCalendar").val($(this).val());
+		})
+
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#toDate').val($(this).val());
+		})
+
+		$('#toDate').blur(function() {
+			$("#toDateCalendar").val($(this).val());
+		})
+
+		$("#fromTime").datetimepicker({
+			format : 'H:i',
+			closeOnDateSelect : false,
+			timepicker : true,
+			datepicker : false,
+			step : 15
+		})
+
+		$("#toTime").datetimepicker({
+			format : "H:i",
+			closeOnDateSelect : false,
+			timepicker : true,
+			datepicker : false,
+			step : 15
+		})
+
+	});
+	
+	
+	// Edit & stage change 
+	function editPage(id) {
+		//alert(id);
+		var editId = id.split(",");
+		
+		var dealerId = editId[0];
+		
+		var modal = editId[1];
+		//alert('dealerId------'+dealerId);
+		$("#demo").show();
+
+		$.ajax({
+			type : "GET",
+			url : "manage-dealer-mstr-edit?id=" + dealerId,
+			async : false,
+			success : function(response) {
+				console.log("response------"+JSON.stringify(response));
+				if (response.message == "Success") {
+					
+					$("#add").hide();
+					$("#copy").hide();
+					$("#delete").hide();
+					$("#myGrid").hide();
+					$("#searchRowDiv").hide();
+					$("#totalReq").hide();
+					$("#statusDiv").hide();
+					$("#idDiv").hide();
+					$("#collapseFour").hide();
+					$("#headingFour").hide();
+					$("#myGridActivity").hide();
+
+					$("#demo").show();
+					
+					$(".container").hide();
+					var dealerId=$("#dealerId").text(response.body[0].dealerId);
+					$("#dealerName").val(response.body[0].dealerName);
+					$("#dealerMobile").val(response.body[0].dealerMobile);
+					$("#dealerEmail").val(response.body[0].dealerEmail);
+					$("#dealerPassword").val(response.body[0].dealerPassword);
+					$("#dealerConfirmPassword").val(response.body[0].dealerPassword);
+					$("#legalName").val(response.body[0].legalName);
+					$("#storeName").val(response.body[0].storeName);
+					
+					$("#productCategory").val(response.body[0].productCategory);
+					$("#country").val(response.body[0].country);
+					$('#states').val(response.body[0].states);
+					$('#city').val(response.body[0].city);
+					$('#address1').val(response.body[0].address1);
+					$('#address2').val(response.body[0].address2);
+					$('#pinCode').val(response.body[0].address2);
+					
+					var isTaxable=response.body[0].isTaxable;	
+					if(isTaxable =='on'){
+						console.log('isTaxable-----------'+response.body[0].isTaxable);
+						$('#isTaxable').prop('checked', true);
+					}else{
+						$('#isTaxable').prop('checked', false);
+					}
+					
+					$('#taxStateGst').val(response.body[0].taxStateGst);					
+					$('#provisionalGSTINNo').val(response.body[0].provisionalGSTINNo);
+					$('#panNumber').val(response.body[0].panNumber);
+					
+					
+					var buyProductFrom = response.body[0].buyProductFrom;
+					
+					if(buyProductFrom =='I manufacture self'){
+						$('input:radio[name=buyProductFrom]')[0].checked = true;
+					}else if(buyProductFrom=="Buy from other vendors"){
+						$('input:radio[name=buyProductFrom]')[1].checked = true;
+					}else if(buyProductFrom=="I import them"){
+						$('input:radio[name=buyProductFrom]')[2].checked = true;
+					}else if(buyProductFrom=="Resell product that i buy"){
+						$('input:radio[name=buyProductFrom]')[3].checked = true;
+					}
+					
+					
+					
+					
+					$('#annualTurnOver').val(response.body[0].annualTurnOver);
+					$('#annualSell').val(response.body[0].annualSell);
+					//sellOnOtherWebsiteYesOrNo
+					
+					var sellOnOtherWebsiteYesOrNo = response.body[0].sellOnOtherWebsiteYesOrNo;
+					
+					if(sellOnOtherWebsiteYesOrNo =='Yes'){
+						$('input:radio[name=sellOnOtherWebsiteYesOrNo]')[0].checked = true;
+					}else{
+						$('input:radio[name=sellOnOtherWebsiteYesOrNo]')[1].checked = true;
+					}
+					
+					$('#otherWebsiteName').val(response.body[0].otherWebsiteName);
+					$('#productCategoryWishToSell').val(response.body[0].productCategoryWishToSell);
+					$('#description').val(response.body[0].description);
+					
+					
+					var isAgreeWithTermCondition=response.body[0].isAgreeWithTermCondition;	
+					if(isTaxable =='on'){
+						console.log('isAgreeWithTermCondition-----------'+response.body[0].isAgreeWithTermCondition);
+						$('#isAgreeWithTermCondition').prop('checked', true);
+					}else{
+						$('#isAgreeWithTermCondition').prop('checked', false);
+					}
+					$('#imgLoc').attr('src', '');
+					if(response.body[0].imageName!=null && response.body[0].imageName!="") { 
+						$('#imgLoc').attr('src', response.body[0].imageName);
+					} else {
+						$('#imgLoc').attr('src', '../assets/images/noimage.jpg');
+					}
+					
+				}
+			}
+		})
+	}
+
+</script>
+<script>
+	//addDealerInfo
+	
+	function addDealerInfo() { 
+		//alert('hello');return false;
+		var obj = {};
+		
+		obj.dealerId = $('#dealerId').text();
+		obj.dealerName = $('#dealerName').val();
+		obj.dealerMobile = $('#dealerMobile').val();
+		obj.dealerEmail = $('#dealerEmail').val();
+		obj.dealerPassword = $('#dealerPassword').val();
+		obj.dealerConfirmPassword = $('#dealerConfirmPassword').val();
+		obj.legalName = $('#legalName').val();
+		
+		obj.storeName = $('#storeName').val();
+		obj.productCategory = $('#productCategory').val();
+		obj.country = $('#country').val();
+		obj.states = $('#states').val();
+		obj.city = $('#city').val();
+		obj.address1 = $('#address1').val();
+		obj.address2 = $('#address2').val();
+		obj.pinCode = $('#pinCode').val();		
+		
+		obj.isTaxable = $('#isTaxable').val();
+		obj.taxStateGst = $('#taxStateGst').val();
+		obj.provisionalGSTINNo = $('#provisionalGSTINNo').val();
+		obj.panNumber = $('#panNumber').val();
+		obj.buyProductFrom = $("input[name='buyProductFrom']:checked").val();
+		obj.annualTurnOver = $('#annualTurnOver').val();
+		obj.annualSell = $('#annualSell').val();
+		obj.sellOnOtherWebsiteYesOrNo = $("input[name='sellOnOtherWebsiteYesOrNo']:checked").val();
+		obj.otherWebsiteName = $('#otherWebsiteName').val();
+		obj.productCategoryWishToSell = $('#productCategoryWishToSell').val();
+		obj.description = $('#description').val();
+		obj.isAgreeWithTermCondition = $('#isAgreeWithTermCondition').val();
+		
+		
+		
+		
+		
+		console.log("object on add-----------"+JSON.stringify(obj));
+		//return false;
+
+		/* FORM VALIDATION STARTS*/
+
+		var validation = true;
+
+	   /* if (obj.leadOwner == null || obj.leadOwner == "") {
+			validation = validationUpdated("Lead Executive Required",
+					"leadOwner");
+		}
+ 	
+	    if (obj.company == null || obj.company == "") {
+			validation = validationUpdated("Lead company Required",
+					"company");
+		}
+	    
+	    
+	    if (obj.firstName == null || obj.firstName == "") {
+			validation = validationUpdated("First Name Required",
+					"firstName");
+		}
+	    
+	    
+	    if (obj.lastName == null || obj.lastName == "") {
+			validation = validationUpdated("Last Name Required",
+					"lastName");
+		}
+	    
+	    if (obj.title == null || obj.title == "") {
+			validation = validationUpdated("Title Required",
+					"title");
+		}
+	    
+	    if (obj.phone == null || obj.phone == "") {
+			validation = validationUpdated("Phone Required",
+					"phone");
+		}
+	    
+	    if (obj.email == null || obj.email == "") {
+			validation = validationUpdated("Email Required",
+					"email");
+		}
+	    
+	    if (obj.mobile == null || obj.mobile == "") {
+			validation = validationUpdated("Mobile Required",
+					"mobile");
+		}
+	    
+	    if (obj.leadSource == null || obj.leadSource == "") {
+			validation = validationUpdated("Lead Source Required",
+					"leadSource");
+		}
+	    
+	    
+	    if (obj.leadStatus == null || obj.leadStatus == "") {
+			validation = validationUpdated("Lead Status Required",
+					"leadStatus");
+		}
+	    
+	    if (obj.industry == null || obj.industry == "") {
+			validation = validationUpdated("Lead Industry Required",
+					"industry");
+		}
+	    
+	    
+	    if (obj.noOfEmp == null || obj.noOfEmp == "") {
+			validation = validationUpdated("Number Of Emp Required",
+					"noOfEmp");
+		}
+	    
+	    if (obj.country == null || obj.country == "") {
+			validation = validationUpdated("Country Required",
+					"country");
+		}
+	    
+	    if (obj.states == null || obj.states == "") {
+			validation = validationUpdated("State Required",
+					"states");
+		}
+	    
+	    
+	    if (obj.city == null || obj.city == "") {
+			validation = validationUpdated("City Required",
+					"city");
+		}
+	    
+	    if (obj.addressStreet == null || obj.addressStreet == "") {
+			validation = validationUpdated("Address Street Required",
+					"addressStreet");
+		}
+	    
+	    if (obj.zip == null || obj.zip == "") {
+			validation = validationUpdated("Zip Street Required",
+					"zip");
+		}
+	    */
+ 
+	    
+		/* FORM VALIDATION ENDS*/
+
+		if (validation) {
+			$.ajax({
+				type : "POST",
+				url : "manage-dealer-mstr-add-details",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "Success") {
+						console.log(response);
+						/* viewDetails();
+						$("#add").show();
+						$("#copy").show();
+						$("#delete").show();
+						$("#totalReq").show();
+						$(".container").show();
+						$("#searchRowDiv").show();
+						$("#demo").hide();
+						$("#demoSetReminder").hide();
+						$("#demoMassUpdate").hide();
+						$("#demoAddCampaign").hide();
+						$("#demoUpdateResponse").hide();
+						$("#demoPrintMailingLabels").hide();
+						$("#demoMassConvert").hide(); */
+						location.reload();
+
+						
+					}
+				},
+				error : function(data) {
+
+					//console.log(data);
+				}
+			})
+		}
+
+	}
+	
+
+	
+	function deleteDealer(){
+		//console.log("delete ids--------------"+deleteId);
+		
+		$.ajax({
+			type : "GET",
+			url : "manage-dealer-mstr-delete-id?id=" + deleteId,
+			success : function(response) {
+				if (response.message == "Success") {
+					cancelBtn();
+					/*agGrid.simpleHttpRequest({
+						url : "manage-dealer-mstr-throughAjax"
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+					});*/
+
+				}
+			}
+
+		});
+		
+		$('#delete').attr("disabled", true);
+	}
+	
+	
+	
+	function saveFile() {
+		var uFile = $('#fileUpload')[0].files[0];
+		var fileName = $('#fileUpload').val();
+
+		var lastIndex = fileName.lastIndexOf("\\");
+		if (lastIndex >= 0) {
+			fileName = fileName.substring(lastIndex + 1);
+		}
+		var iURL = URL.createObjectURL(uFile);
+
+		$('#imgLoc').attr('src', '');
+		$('#imgLoc').attr('src', iURL);
+
+		var fileData = new FormData();
+		fileData.append('file', uFile);
+		fileData.append('path', 'none');
+
+		$.ajax({
+			type : "POST",
+			url : "manage-dealer-mstr-upload-file",
+			enctype : "multipart/form-data",
+			contentType : false,
+			data : fileData,
+			processData : false,
+			cache : false,
+			success : function(response) {
+
+			},
+			error : function(e) {
+
+			}
+		});
+	}
+
+	function deleteFile() {
+
+		$('#imgLoc').attr('src', '');
+		$('#imgLoc').attr('src', '../assets/images/noimage.jpg');
+
+		var fileData = new FormData();
+
+		fileData.append('file', 'none');
+		fileData.append('path', 'none');
+
+		$.ajax({
+			type : "POST",
+			url : "view-crm-vendors-delete-file",
+			enctype : "multipart/form-data",
+			contentType : false,
+			/* data        : fileData, */
+			processData : false,
+			cache : false,
+			success : function(response) {
+			},
+			error : function(e) {
+
+			}
+		});
+	}
+	
+	
+	function getStateDetails(){
+		
+		var cname = $('#country').val();
+		if (cname) { 
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+			$.ajax({type : "GET",
+				url : "manage-dealer-mstr-stateList?id="+ cname,
+						success : function(response) {
+							if (response.message == "success") {
+								$("#states").empty();
+								var option = $("<option></option>");
+								$(option).val(null);
+								$(option).html("Select");
+								$("#states").append(option);
+								for (var i = 0; i < response.body.length; i++) {
+									var option = $("<option></option>");
+									$(option).val(response.body[i].key);
+									$(option).html(response.body[i].name);
+									$("#states").append(option);
+								}
+							}
+						},
+						error : function(e) { 
+						}
+					});
+		} else {
+			$("#states").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#states").append(option);
+			$("#states").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+		}
+	}
+
+
+</script>
+</head>
+
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+
+						<div class="d-flex justify-content-between">
+							<div class="col-md-4  btn-hs">
+								<div class="font-design" id="totalReq">
+									ALL DEALERS (<span></span>)
+								</div>
+							</div>
+							<div class="col-md-4  btn-hs" id="searchRowDiv">
+							<div class="input-style">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter">
+								<div class="searchicon">
+									<a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+
+						</div>
+					<div class="buttonsec btn-hs">
+								<input type="button" class="btn3" onclick="deleteDealer()" id="delete" value="DELETE"
+									data-toggle="modal" data-target="#delete" readonly> 
+									<!-- <input type="button" class="btn2" id="action" value="Action"
+									 readonly> -->
+									
+									<input type="button" class="btn1" id="add" value="Create Dealer"
+									onclick="newBtn()" readonly>
+							</div>
+						</div>
+						
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innercontent">
+								<div class="innerstickybg">
+									<div class="d-flex justify-content-between" id="main">
+										<div class="col-md-3" id="idDiv">
+											Dealear ID: <span id="dealerId"></span>
+										</div>
+										<div><span class="taskInfo">Dealer Information</span></div>
+
+
+										<div class="col-md-3 padding-0" align="right">
+											<button class="btn4" id="cancel" onclick="cancelBtn()">CANCEL</button>
+											<button class="btn1" id="save" onclick="addDealerInfo()">SAVE</button>
+										</div>
+									</div>
+								</div>
+								<div class="innercontent">
+
+									<!-- <div class="row"> -->
+									<div class="row">
+									
+									<div class="hvrbox">
+										<img src="../assets/images/noimage.jpg" id="imgLoc"
+											alt="Location" class="hvrbox-layer_bottom img-fluid"
+											style="height: 203px; width: 241px;">
+										<div class="hvrbox-layer_top">
+											<div class="hvrbox-text">
+												<input type="file" id="fileUpload" onchange="saveFile();" />
+												<span><label for="fileUpload"><i
+														class="ti-files" style="cursor: pointer;"></i> </label></span> <span><i
+													class="fa fa-trash red" onclick="deleteFile();"></i></span>
+											</div>
+										</div>
+									</div>
+					                    
+					                    
+					                    <div class="col-md-4">
+											<div class="form-group">
+												<label>Dealer Name</label>
+												<input type="text" class="form-control"
+													id="dealerName" placeholder="Dealer Name">
+											</div>
+										</div>
+										
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Dealer Mobile</label>
+												<input type="text" class="form-control"
+													id="dealerMobile" placeholder="Dealer Mobile">
+											</div>
+										</div>
+										
+										
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Dealer Email</label>
+												<input type="text" class="form-control"
+													id="dealerEmail" placeholder="Dealer Email">
+											</div>
+										</div>
+										
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Dealer Password</label>
+												<input type="text" class="form-control"
+													id="dealerPassword" placeholder="Dealer Password">
+											</div>
+										</div>
+										
+										
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Dealer Confirm Password</label>
+												<input type="text" class="form-control"
+													id="dealerConfirmPassword" placeholder="Dealer Confirm Password">
+											</div>
+										</div>
+					                    
+					                  <div class="col-md-4">  
+					                     <div class="form-group">
+					                        <label>Legal Name</label>
+					                        <input type="text" class="form-control"
+													id=legalName placeholder="Legal Name">
+					                       
+					                      </div>
+					                    </div>
+					                    
+										     							
+									</div>
+									
+									
+								
+				<div class="accordion-item">
+					<h2 class="accordion-header" id="headingTwo2">
+						<button class="accordion-button" type="button"
+							data-bs-toggle="collapse" data-bs-target="#collapseTwo2"
+							aria-expanded="true" aria-controls="collapseTwo2">
+							Dealer Information</button>
+					</h2>
+					<div id="collapseTwo2" class="accordion-collapse collapse show"
+						aria-labelledby="headingTwo2"
+						data-bs-parent="#accordionExample">
+						<div class="accordion-body">
+	
+							<div class="row">
+							
+							<div class="col-md-4">
+								<div class="form-group">
+									<label>Store Name</label>
+									<input type="text" class="form-control"
+										id="storeName" placeholder="Store Name">
+								</div>
+							</div>
+							
+							
+							<div class="col-md-4">
+								<div class="form-group">
+									<label>Select Product Catogory</label>
+									<input type="text" class="form-control"
+										id="productCategory" placeholder="Select Product Category">
+								</div>
+							</div>
+							
+							
+							<div class="col-md-4">
+									<div class="form-group">
+										<label>Country</label>
+										<div class="select">
+											<select id="country" onchange="getStateDetails()">
+												<option th:value="NULL">Select Country</option>
+												<option th:each="c,iter:${countryList}"
+													th:value="${c.key}" th:text="${c.name}"></option>
+											</select>
+										</div>
+									</div>
+								</div>
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>State</label>
+										<div class="select">
+											<select id="states">
+												<option th:value="NULL">Select State</option>
+												
+											</select>
+										</div>
+									</div>
+								</div>
+								
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>City</label>
+										<input type="text" class="form-control"
+											id="city" placeholder="City">
+									</div>
+								</div>
+	
+								
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Address 1</label>
+										<input type="text" class="form-control"
+											id="address1" placeholder="Address 1">
+									</div>
+								</div>
+								
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Address 2</label>
+										<input type="text" class="form-control"
+											id="address2" placeholder="Address 2">
+									</div>
+								</div>
+								
+							
+	
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>PinCode</label>
+										<input type="text" class="form-control"
+											id="pinCode" placeholder="pinCode">
+									</div>
+								</div>
+								
+							
+	
+							</div>
+	
+						</div>
+					</div>
+				</div>
+				
+				
+				<div class="accordion-item">
+					<h2 class="accordion-header" id="headingTwo2">
+						<button class="accordion-button" type="button"
+							data-bs-toggle="collapse" data-bs-target="#collapseTwo2"
+							aria-expanded="true" aria-controls="collapseTwo2">
+							Tax Information</button>
+					</h2>
+					<div id="collapseTwo2" class="accordion-collapse collapse show"
+						aria-labelledby="headingTwo2"
+						data-bs-parent="#accordionExample">
+						<div class="accordion-body">
+	
+							<div class="row">
+													
+							<div class="col-md-4">
+								<div class="form-group">
+									<input type="checkbox" id="isTaxable" name="isTaxable"
+										value="on"> <label>Taxable?</label>
+								</div>
+							</div>
+							
+							
+							
+							<div class="col-md-4">
+									<div class="form-group">
+										<label>Enter Your Tax Details</label>
+										<div class="select">
+											<select id="taxStateGst">
+												<option th:value="NULL">Select Tax State</option>
+												<option th:each="c,iter:${statesList1}"
+													th:value="${c.key}" th:text="${c.name}"></option>
+											</select>
+										</div>
+									</div>
+								</div>
+							
+							
+							<div class="col-md-4">
+								<div class="form-group">
+									<label>Provisional GSIN No</label>
+									<input type="text" class="form-control"
+										id="provisionalGSTINNo" placeholder="Select Provisional GSTIN No">
+								</div>
+							</div>
+							
+							<div class="col-md-4">
+								<div class="form-group">
+									<label>PAN Number</label>
+									<input type="text" class="form-control"
+										id="panNumber" placeholder="Pan Number">
+								</div>
+							</div>
+							
+							
+	
+							</div>
+	
+						</div>
+					</div>
+				</div>
+				
+				
+				
+				<div class="accordion-item">
+					<h2 class="accordion-header" id="headingTwo2">
+						<button class="accordion-button" type="button"
+							data-bs-toggle="collapse" data-bs-target="#collapseTwo2"
+							aria-expanded="true" aria-controls="collapseTwo2">
+							Other Information</button>
+					</h2>
+					<div id="collapseTwo2" class="accordion-collapse collapse show"
+						aria-labelledby="headingTwo2"
+						data-bs-parent="#accordionExample">
+						<div class="accordion-body">
+	
+							<div class="row">
+							
+							
+							<div class="col-md-8">
+			                      <div class="form-group">
+			                        <label>From where do you buy product?</label><br>
+			                          <input type="radio" id="Yes" name="buyProductFrom" value="I manufacture self">
+									  <label for="html">I manufacture self</label>
+									  <input type="radio" id="No" name="buyProductFrom" value="Buy from other vendors">
+									  <label for="css">Buy from other vendors</label>
+									  <input type="radio" id="No" name="buyProductFrom" value="I import them">
+									  <label for="css">I import them</label>									
+									  <input type="radio" id="No" name="buyProductFrom" value="Resell product that i buy">
+									  <label for="css">Resell product that i buy</label>
+			                      </div>
+			                    </div>
+							
+							
+							
+							
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>What is your annual turnover?</label>
+										<div class="select">
+											<select id="annualTurnOver">
+												<option value="">Select</option>
+												<option value="Between 1 - 10 lakhs">Between 1 - 10 lakhs</option>
+												<option value="Between 10 lakhs - 1 Crore">Between 10 lakhs - 1 Crore</option>
+												<option value="More than 1 Crore">More than 1 Crore</option>
+
+
+											</select>
+										</div>
+									</div>
+								</div>
+							
+							
+							
+							
+							<div class="col-md-4">
+									<div class="form-group">
+										<label>How many product do you sell?</label>
+										<div class="select">
+											<select id="annualSell">
+												<option value="">Select</option>
+												<option value="Between 1 - 10">Between 1 - 10</option>
+												<option value="Between 11 - 100">Between 11 - 100</option>
+												<option value="Between 101 - 1000">Between 101 - 1000</option>
+												<option value="More than 1000">More than 1000</option>						
+
+											</select>
+										</div>
+									</div>
+								</div>
+							
+							
+							
+							<div class="col-md-4">
+					                      <div class="form-group">
+					                        <label>Do you sell on other website?</label><br>
+					                          <input type="radio" id="Yes" name="sellOnOtherWebsiteYesOrNo" value="Yes">
+											  <label for="html">Yes</label>
+											  <input type="radio" id="No" name="sellOnOtherWebsiteYesOrNo" value="No">
+											  <label for="css">No</label>
+					                      </div>
+					                    </div>
+							
+							
+							<div class="col-md-4">
+								<div class="form-group">
+									<label>what is the name of other selling website?</label>
+									<input type="text" class="form-control"
+										id="otherWebsiteName" placeholder="Selling website Name">
+								</div>
+							</div>
+							
+							<div class="col-md-4">
+								<div class="form-group">
+									<label>Select Product Catogory you  wish to sell</label>
+									<input type="text" class="form-control"
+										id="productCategoryWishToSell" placeholder="Select Product Category">
+								</div>
+							</div>
+							
+							
+							
+							
+							
+	
+							</div>
+	
+						</div>
+					</div>
+				</div>
+									
+								<!-- 	main div start here -->
+									<div id="main">
+
+										<!-- 	collapse for Contact InformationStart here -->
+											<div class="accordion-item">
+												<h2 class="accordion-header" id="headingOne">
+													<button class="accordion-button" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapseOne"
+														aria-expanded="false" aria-controls="collapseOne">
+														Dealer Description Information</button>
+												</h2>
+												<div id="collapseOne"
+													class="accordion-collapse collapse show"
+													aria-labelledby="headingOne"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+													<div class="row">
+														<div class="col-md-8">
+														<div class="modal-inrheading">Description</div>
+														<div class="position-text">
+															<textarea rows="4" cols="100" id="description"
+																onkeyup="textCount(event)"></textarea>
+															<div id="charNumSN" class="txtcounter" align="right">
+																<span>0</span> characters
+															</div>
+														</div>
+													</div>
+													
+													<div class="col-md-8">
+														<div class="form-group">
+															<input type="checkbox" id="isAgreeWithTermCondition" name="isAgreeWithTermCondition"
+																value="on"> <label>Do you agree with Shoukeen's terms and conditions?</label>
+														</div>
+													</div>
+													
+													</div>
+			
+													</div>
+												</div>
+											</div>
+								
+								
+									<!-- 	sidenave for Marketing End here -->
+
+									<!-- 	sidenave for Misc Start here -->
+
+
+								</div>
+						</div>
+					</div>
+
+
+
+
+					<!-- The Modal For Delete-->
+					<div class="modal fade" id="delete">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-dismiss="modal"
+										aria-hidden="true">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p>Do you really want to delete these records? This process
+										cannot be undone.</p>
+								</div>
+								<div class="modal-footer justify-content-center">
+									<button type="button" class="btn1" data-dismiss="modal"
+										aria-hidden="true">Cancel</button>
+									<button type="button" class="btn3" id="deleteModalBtn"
+										onclick="deleteReq()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+
+					<!-- The Modal For Validation-->
+					<div class="modal fade" id="reqValid">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-dismiss="modal"
+										aria-hidden="true">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p id="modalMsg"></p>
+								</div>
+								<div class="modal-footer justify-content-center">
+									<button type="button" class="btn1" data-dismiss="modal"
+										aria-hidden="true">Ok</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+						<!-- ------------------Mark Lost modal------------------------- -->
+
+					<div id="markLostModal" class="modal fade">
+						<div class="modal-dialog">
+							<!-- Modal content-->
+							<div class="modal-content">
+								<div class="modal-header">
+									<h4 class="modal-title">Lost Reason</h4>
+									<button type="button" class="close" data-dismiss="modal"
+										aria-label="Close">
+										<i class="ti-close"></i>
+									</button>
+
+								</div>
+								<div class="modal-body">
+									<!-- text input -->
+									<div class="row">
+										<div class="col-md-12">
+											<div class="form-group">
+												<label>Comment</label> <input class="form-control"
+													type="text" id="comment">
+											</div>
+										</div>
+
+									</div>
+								</div>
+								<div class="modal-footer justify-content-left">
+									<button type="button" class="btn1" data-dismiss="modal"
+										aria-hidden="true" id="SubmitBtn"
+										onclick="rejectLeave()">Submit</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+					
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>

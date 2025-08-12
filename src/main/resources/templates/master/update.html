@@ -1,0 +1,479 @@
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+.rating {
+	float: left;
+}
+
+.rating:not(:checked)>input {
+	position: absolute;
+	top: -9999px;
+	clip: rect(0, 0, 0, 0);
+}
+
+.rating:not(:checked)>label {
+	float: right;
+	width: 1em;
+	padding: 0 .1em;
+	overflow: hidden;
+	white-space: nowrap;
+	cursor: pointer;
+	font-size: 200%;
+	line-height: 1.2;
+	color: rgba(0, 0, 0, 0.6);
+	/*  text-shadow:1px 1px #bbb, 2px 2px #666, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating:not(:checked)>label:before {
+	content: '★ ';
+}
+
+.rating>input:checked ~ label {
+	color: #ea0;
+	/*  text-shadow:1px 1px #c60, 2px 2px #940, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating:not(:checked)>label:hover, .rating:not(:checked)>label:hover ~
+	label {
+	color: black;
+	/*  text-shadow:1px 1px goldenrod, 2px 2px #B57340, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating>input:checked+label:hover, .rating>input:checked+label:hover ~
+	label, .rating>input:checked ~ label:hover, .rating>input:checked ~
+	label:hover ~ label, .rating>label:hover ~ input:checked ~ label {
+	color: #ea0;
+	/*  text-shadow:1px 1px goldenrod, 2px 2px #B57340, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating>label:active {
+	position: relative;
+	top: 2px;
+	left: 2px;
+}
+</style>
+<script>
+	$(document).ready(function() {
+
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		var rowData = [];
+		gridOptions.api.setRowData(rowData);
+		
+
+	})
+	var columnDefs = [
+
+	{
+		headerName : "Goal Name",
+		field : "goal",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 200,
+	}, {
+		headerName : "Expected Results",
+		field : "expectedResults",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 300,
+	}, {
+		headerName : "Weightage",
+		field : "weightage",
+		width : 150,
+	}, {
+		headerName : "Self Review",
+		field : "selfReview",
+		width : 350,
+	}, {
+		headerName : "Manager's Review",
+		field : "managersReview",
+		width : 350,
+	},];
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 410,
+			height : 20
+		},
+		rowSelection : 'single',
+		rowMultiSelectWithClick : true,
+		onSelectionChanged : onSelectionOneToOne
+	};
+	function onSelectionOneToOne() {
+		openNav();
+		var selectedNodes= gridOptions.api.getSelectedNodes();
+		var selectedData= selectedNodes.map(node => node.data);
+
+		$('#goalName').val(selectedData.map(node => node.goalName));
+		$('#expectedResult').val(selectedData.map(node => node.expectedResult));
+		$('#weightage').val(selectedData.map(node => node.weightage));
+	}
+
+	function openNav() {
+
+		$('#goalName').val("");
+		$('#expectedResult').val("");
+		$('#weightage').val("");
+
+		document.getElementById("mySidenav").style.cssText = "width: 250px; position: absolute; right:-30px; overflow: hidden; height:auto; top:100px;";
+
+		document.getElementById("main_content").style.width = "80%";
+	}
+
+	function closeNav() {
+
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main_content").style.width = "100%";
+	}
+	
+	//get designation list on change of name
+	function getDesignation() {
+		var empName = $("#empID").val();
+		var seid = $("#sessionId").val();
+		if(empName==seid){
+			$("#promotion").attr("disabled", true);
+			$("#designationID").attr("disabled", true);
+		}
+		if (empName) {
+			
+			$("#designation").empty();
+			$.ajax({
+				type : 'GET',
+				url : 'view-goal-update-ajax?name=' + empName,
+				contentType : false,
+				success : function(response) {
+					console.log(response)
+					if (response.message == "success") {
+						
+							for (var i = 0; i < response.body.length; i++) {
+								$("#band").val(response.body[i].band);
+								$("#designation").val(response.body[i].designationTitle);
+								var emp = $("#empID").val();
+								agGrid.simpleHttpRequest({
+									url : 'view-goal-update-result?name=' + emp
+								}).then(function(data) {
+									gridOptions.api.setRowData(data);
+									
+								});
+								
+							
+						}
+						
+					}
+				},
+				error : function(e) {
+					
+				}
+			});
+			$.ajax({
+				type : 'GET',
+				url : 'view-goal-update-ajax-recommendation?name=' + empName,
+				contentType : false,
+				success : function(response) {
+					console.log(response)
+					if (response.message == "success") {
+						if(response.body.length == 0){
+							   var rowData = [];
+								gridOptions.api.setRowData(rowData);
+								$("#finalrating").val("");
+								$("#recommendation").val("");
+								$("#promotion").val("");
+								$("#designationID").val("");
+								$("input[name='promotionChk']").removeAttr('checked');   
+								 $("#star1").attr("checked", false);
+								    $("#star2").prop("checked", false);
+								    $("#star3").prop("checked", false);
+								    $("#star4").prop("checked", false);
+								    $("#star5").prop("checked", false);
+								}else {
+									$("#recommendation").val(response.body[0].recommendation);
+									$("#finalrating").val(response.body[0].finalRating);
+									/* $("#promotion").val(response.body[0].promotion); */
+									$("#" + response.body[0].promotion).attr("checked","checked");
+									$("#designationID").val(response.body[0].designationTitle);
+									let index = response.body[0].ratings;
+								    $('#star' + index).prop('checked', true);
+								}
+							
+					}
+						
+				   }
+				});
+		} else {
+			$("#band").val("");
+			$("#designation").val("");
+		}
+		
+	}
+	 var datas = [];
+		function Save(){
+			if (gridOptions.api.getDisplayedRowCount() > 0) {
+				gridOptions.api.forEachNode(function(rowNode, indrx) {
+					var obj = rowNode.data;
+					obj.recommendation=$("#recommendation").val(); 
+					obj.finalRating=$("#finalrating").val(); 
+					obj.promotion=$("#promotion").val(); 
+					obj.designationTitle=$("#designationID").val(); 
+					var ratingId = $("input:radio[name=rating]:checked").val();
+					obj.ratings = ratingId;
+					console.log(obj);
+					datas.push(obj);
+				});
+				
+			} else {
+				var obj = {};
+				/* obj.summary=$("#summary").val();
+				*/
+				obj.recommendation=$("#recommendation").val(); 
+				obj.finalRating=$("#finalrating").val(); 
+				obj.promotion=$("#promotion").val(); 
+				obj.designationTitle=$("#designationID").val(); 
+				var ratingId = $("input:radio[name=rating]:checked").val();
+				obj.ratings = ratingId;
+				datas.push(obj);
+			}
+			console.log(datas);
+			 $.ajax({
+				type : "POST",
+				url : "view-goal-update-add",
+				dataType : "json",
+				contentType : "application/json",
+				data : JSON.stringify(datas),
+				success : function(response) {
+					if (response.message == "Success") {
+						$("#messageParagraph").text("Data Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						var emp = $("#empID").val();
+						agGrid.simpleHttpRequest({
+							url : 'view-goal-update-result?name=' + emp
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+							
+						});
+						}
+						},
+						error : function(response) {
+						console.log(response);
+					}
+				}) 
+			
+		}
+</script>
+
+</head>
+
+<body>
+	<div layout:fragment="content">
+		<div class="content-wrap">
+			<div class="container-fluid">
+				<div class="maincontent">
+					<div class="row">
+
+						<div class="maincontentsec">
+							<div class="content_padding">
+
+								<div id="main_content">
+
+									<div class="panel-body">
+										<div class="row">
+
+											<div class="col-md-4 btn-hs1">
+												<div class="font-design"></div>
+											</div>
+											<div class="col-md-8 butttonsec">
+
+
+
+												<button class="btn1" id="save" onclick="Save()">Save</button>
+											</div>
+										</div>
+
+										<div class="row">
+											<div class="col-md-4">
+												<div class="form-group">
+												<label>Employee Name</label>
+													<div class="select">
+														<select id="empID" onchange="getDesignation()"
+															class="form-control">
+															<option value="">NAME</option>
+															<option th:each="c,iter:${nameList}" th:value="${c.key}"
+																th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Band</label>
+													<input id="band" class="form-control" readonly> 
+												</div>
+											</div>
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Designation</label>
+													<input id="designation" class="form-control" readonly> 
+												</div>
+											</div>
+											<div class="col-md-12">
+												
+												<div class="box_reference">
+													<div id="myGrid" style="width: 100%; height: 200px;"
+														class="ag-theme-alpine"></div>
+												</div>
+												<div class="row">
+													<div class="col-md-12">
+														<div class="modal-inrheading">Rating</div>
+														<div class="form-group">
+															<fieldset class="rating">
+																<input type="radio" class="rating1" id="star5"
+																	name="rating" value="5" /><label for="star5"
+																	title="Excellent">5 stars</label> <input type="radio"
+																	class="rating1" id="star4" name="rating" value="4" /><label
+																	for="star4" title="Very Good">4 stars</label> <input
+																	type="radio" class="rating1" id="star3" name="rating"
+																	value="3" /><label for="star3" title="High">3
+																	stars</label> <input type="radio" class="rating1" id="star2"
+																	name="rating" value="2" /><label for="star2"
+																	title="Medium">2 stars</label> <input type="radio"
+																	class="rating1" id="star1" name="rating" value="1" /><label
+																	for="star1" title="Low">1 star</label>
+															</fieldset>
+														</div>
+													</div>
+													<br>
+													<div class="col-md-12">
+														<div class="modal-inrheading">Recommendations</div>
+														<div class="position-text">
+															<textarea rows="4" cols="100" id="recommendation"
+																onkeyup="textCount(event)" style="background: #fff"></textarea>
+															<div id="charNumSN" class="txtcounter" align="right">
+																<span>0</span> characters
+															</div>
+														</div>
+													</div>
+													<div class="col-md-12">
+														<div class="modal-inrheading">FINAL RATING</div>
+														<div class="position-text">
+															<textarea rows="4" cols="100" id="finalrating"
+																onkeyup="textCount(event)" style="background: #fff"></textarea>
+															<div id="charNum" class="txtcounter" align="right">
+																<span>0</span> characters
+															</div>
+														</div>
+													</div>
+													
+													</div>
+													<br>
+													<input type="hidden" id="sessionId" th:value="${userId}" />
+													<input type="hidden" id="hrRole" th:value="${hrRole}" />
+													<div class="row">
+													<div class="col-md-3">
+												
+														<label class="checkbox" th:if="${hrRole != null}">
+														 <input type="checkbox" class="promotionChk" id="promotion" value="promotion" name="promotionChk" th:if="${hrRole != null}"><span>Promotion</span> <span class="checkmark"></span></label>
+													</div>
+													<div class="col-md-3">
+														
+														<div class="select">
+															<select id="designationID" class="form-control" th:if="${hrRole != null}">
+																<option value="">--Select--</option>
+																<option th:each="c,iter:${designationList}" th:value="${c.key}"
+																	th:text="${c.name}"></option> 
+															</select>
+														</div>
+													
+												</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+
+							</div>
+					</div>
+
+
+						<div id="mySidenav" class="sidenav">
+							<div class="slidebox">
+								<div class="row">
+									<div class="col-md-9">
+										<div class="edit">Update</div>
+									</div>
+									<div class="col-md-3">
+										<div class="arrow">
+											<a href="javascript:void(0)" class="closebtn"
+												onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+										</div>
+									</div>
+
+									<div class="chartbtnsec1">
+										<div align="right">
+											<button class="btn3" onclick="closeNav()">CANCEL</button>
+											<button class="btn1" onclick="saveGoal()">SAVE</button>
+										</div>
+									</div>
+                                                                                                                                                                                     
+
+									<div class="col-md-12">
+										<div class="form-group">
+											<label>Goal Name</label> <input type="text"
+												class="form-control transparenttxtbox" placeholder="Name"
+												id="goalName" readonly>
+										</div>
+									</div>
+									<div class="col-md-12">
+										<div class="form-group">
+											<label>Expected Results</label> <input type="text"
+												class="form-control transparenttxtbox"
+												placeholder="Expected Results.." id="expectedResult"
+												readonly>
+										</div>
+									</div>
+
+									<div class="col-md-12">
+										<div class="form-group">
+											<label>Weightage</label> <input type="text"
+												class="form-control transparenttxtbox"
+												placeholder="Weightage..." id="weightage" readonly>
+										</div>
+									</div>
+									<div class="col-md-12">
+										<div class="form-group">
+											<label>Self Review</label>
+											<textarea class="form-control transparenttxtbox"
+												placeholder="Self Review..." id="selfReview"></textarea>
+										</div>
+									</div>
+									<div class="col-md-12">
+										<div class="form-group">
+											<label>Manager's Review</label>
+											<textarea class="form-control transparenttxtbox"
+												placeholder="Self Review..." id="managerReview"></textarea>
+										</div>
+									</div>
+
+								</div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+/* .form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+} */
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+</style>
+
+<script type="text/javascript">
+
+	$(document).ready(function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		var gridDiv = document.querySelector('#activity');
+		
+		agGrid.simpleHttpRequest({
+			url : 'draft-training-view'
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body[0]);
+			var allData=jsonData.assign;
+			console.log(allData)
+			var len = allData.length;
+			$('#totalReq').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+		});
+		$('#reqDltBtn').attr('disabled', true);
+    	$('#dltboth').hide();
+    	$('#dltsc').hide();
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+		$('.collapse').on('hide.bs.collapse', function() {
+			$(this).siblings('.panel-heading').removeClass('active');
+		});
+
+
+
+  
+	});
+	
+	
+	
+	/* -------------------search bar for mygrid------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	var columnDefs = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			pinned : 'left',
+
+		},
+		{
+			headerName : 'Assign ID',
+			field : "assignid",
+			hide:true
+
+		}, {
+			headerName : 'Schedule ID',
+			field : "scheduleid",
+			hide:true
+			
+		}, {
+			headerName : 'Employee Name',
+			field : "empname",
+			
+		}, {
+			headerName : 'Scheduled Date',
+			field : "scheduleddate",
+			cellRenderer : function(params) {
+				if(params.data.scheduleddate!=null){
+					return params.data.scheduleddate;
+				}else{
+					return 'Not Scheduled ';
+				}
+				
+
+			}
+			
+		}, {
+			headerName : 'Category',
+			field : "categoryName",
+			
+		}, {
+			headerName : 'Assign Status',
+			field : "assignstatus",
+			cellStyle : {
+				textAlign : 'center'
+			},cellRenderer : function(params) {
+					return '<div style="color:#0642f5">'+params.data.assignstatus+'</div>';
+			}
+		},{
+			headerName : 'Schedule Status',
+			field : "scstatus",
+			cellStyle : {
+				textAlign : 'center'
+			},cellRenderer : function(params) {
+				if(params.data.scheduleid!=null){
+					return '<div style="color:#0642f5">Scheduled</div>';
+				}else{
+					return '<div style="color:#a9a9a9">Pending</div>';
+				}
+				
+
+			}
+		}];
+
+// let the grid know which columns and what data to use
+var gridOptions = {
+	columnDefs : columnDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 240
+	},
+	onSelectionChanged : onSelectionChanged,
+};
+//function for row select parents
+var assignid = "";
+var scheduleid = "";
+var categoryName="";
+
+function onSelectionChanged() {
+	var selectedNodes = gridOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	 assignid= selectedData.map(node => node.assignid);
+	 scheduleid=selectedData.map(node => node.scheduleid);
+	 categoryName=selectedData.map(node => node.categoryName);
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+	console.log(scheduleid);
+	if (rowCount > 0) {
+			if(scheduleid[0]!=null){
+			$('#reqDltBtn').attr("disabled", false);
+			$('#dltboth').show();
+			$('#dltsc').show();
+			$('#dltas').hide();
+		}else{
+			$('#reqDltBtn').attr("disabled", false);
+			$('#dltboth').hide();
+			$('#dltsc').hide();
+			$('#dltas').show();
+		}
+	}else {
+		$('#reqDltBtn').attr("disabled", true);
+	}
+}
+
+
+// function for delete qc  
+function deleteAssignclick() {
+		if (assignid) {
+				$.ajax({
+		type : "POST",
+		url : "draft-training-delete?id="+ assignid+"&categoryName="+categoryName,
+		success : function(response) {
+		 if (response.message == "Success") {
+				$("#messageParagraph").text("Assigned task deleted sucessfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('#delete').modal('hide');
+				agGrid.simpleHttpRequest({
+					url : 'draft-training-view'
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body[0]);
+					var allData=jsonData.assign;
+					console.log(allData)
+					var len = allData.length;
+					$('#totalReq').find('span').html(len);
+					gridOptions.api.setRowData(allData);
+				});
+				
+			} else {
+				$("#messageParagraph").text("Something went to wrong!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+			}
+		},
+		error : function(data) {
+			console.log(data)
+		}
+	})
+		} else {
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+}
+function deleteScheduleclick() {
+		if (scheduleid) {
+				$.ajax({
+		type : "POST",
+		url : "draft-training-deleteSc?id="+ scheduleid,
+		success : function(response) {
+		 if (response.message == "Success") {
+				$("#messageParagraph").text("Schedule deleted sucessfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('#delete').modal('hide');
+				agGrid.simpleHttpRequest({
+					url : 'draft-training-view'
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body[0]);
+					var allData=jsonData.assign;
+					console.log(allData)
+					var len = allData.length;
+					$('#totalReq').find('span').html(len);
+					gridOptions.api.setRowData(allData);
+				});
+				
+			} else {
+				$("#messageParagraph").text("Something went to wrong!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+			}
+		},
+		error : function(data) {
+			console.log(data)
+		}
+	})
+		} else {
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+}
+function deleteBothOnclick(){
+	deleteAssignclick();
+	deleteScheduleclick();
+}
+
+
+	function deleteFun() {
+		$('#delete').modal('show');
+	}
+
+	function deleteDetails() {
+		$('#deleteDetails').modal('show');
+		closeNav();
+	}
+
+	function cancelModalBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+		$("#assignsuccessModal").removeAttr("disabled");
+	}
+
+	function cancelModalBtn() {
+		$('#myModal').modal('hide');
+
+	}
+	
+
+
+
+</script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="d-flex justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalReq">
+									Draft(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+								<button class="download-btn" id="download"
+									onclick="downloadDetails()">Download</button>
+								<button class="delete-btn" id="reqDltBtn" onclick="deleteFun()">DELETE</button>
+								
+							</div>
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" />
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+
+				</div>
+
+
+				<!-- delete modal start -->
+				<div id="delete" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column"></div>
+							<div class="modal-body">
+								<p>Do you really want to delete these records? This process
+									cannot be undone.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: 0px;">
+
+								<button type="button" class="cancel-btn" data-bs-dismiss="modal" id="dltcancel"
+									onclick="cancelModalBtn();">Cancel</button>
+								<button type="button" class="delete-btn" id="dltas"
+									onclick="deleteAssignclick()">Delete Assign</button>
+								<button type="button" class="delete-btn" id="dltsc"
+									onclick="deleteScheduleclick()">Delete Schedule</button>
+								<button type="button" class="delete-btn" id="dltboth"
+									onclick="deleteBothOnclick()">Delete Both</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>

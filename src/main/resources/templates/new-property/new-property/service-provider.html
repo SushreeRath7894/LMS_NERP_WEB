@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<script type="text/javascript">
+	$(document).ready(function() {
+		var now = new Date();
+
+		var day = ("0" + now.getDate()).slice(-2);
+		var month = ("0" + (now.getMonth() + 1)).slice(-2);
+
+		var today = now.getFullYear() + "-" + (month) + "-" + (day);
+
+		$('#todate').val(today);
+		$('#fromdate').val(today);
+
+		$("#demo").show();
+		$("#myGrid").show();
+
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		agGrid.simpleHttpRequest({
+			url : 'service-providers-view'
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+
+			gridOptions.api.setRowData(data);
+		});
+	})
+
+	var columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				sortable : false,
+				filter : false,
+				resizable : true,
+				width : 30
+			},
+			{
+				headerName : "Vendor ID ",
+				field : "vendorId",
+				width : 170,
+
+				cellRenderer : function(params) {
+					return '<a onclick=edit("' + params.data.vendorId
+							+ '") href="javascript:void(0)">'
+							+ params.data.vendorId + '</a>';
+				}
+
+			}, {
+				headerName : "Vendor Name ",
+				field : "vendorName"
+			}, {
+				headerName : "Service Category Elevator",
+				field : "serviceCategory"
+
+			}, {
+				headerName : "GSTN",
+				field : "gstn"
+
+			}, {
+				headerName : "Address",
+				field : "address"
+
+			}, {
+				headerName : "Email",
+				field : "email"
+
+			}, {
+				headerName : "Contact Person",
+				field : "person"
+
+			}, {
+				headerName : "Contact No",
+				field : "contact"
+
+			}, {
+				headerName : "Mobile No",
+				field : "mobile"
+
+			}, {
+				headerName : "Remarks",
+				field : "remarks"
+
+			} ];
+	$("#vendorId").click(function() {
+		$("#a").css("display", "block");
+		$("#b").css("display", "block");
+	});
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+
+		rowSelection : 'multiple',
+
+		onSelectionChanged : deleteDetails,
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 400
+		}
+	};
+
+	var deleteId = "";
+	function deleteDetails() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+
+		deleteId = "";
+		for (var i = 0; i < selectedRows.length; i++) {
+			deleteId = deleteId + '"' + selectedRows[i].vendorId + '",';
+
+		}
+		deleteId = deleteId.substring(0, deleteId.length - 1);
+
+		var rowCount = 0;
+		selectedRows.forEach(function() {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#delete').attr("disabled", false);
+			$('#add').hide();
+			if (rowCount == 1) {
+				$('#add').hide();
+			}
+		} else {
+			$('#delete').attr("disabled", true);
+			$('#add').show();
+
+		}
+
+	}
+	function add() {
+
+		$("#demo").hide();
+		$("#reqTable").hide();
+		$("#myGrid").show();
+
+		$("#vendorId").val("");
+		$("#vendorName").val("");
+		$("#serviceCategory").val("");
+		$("#gstn").val("");
+		$("#address").val("");
+		$("#email").val("");
+		$("#person").val("");
+		$("#contact").val("");
+		$("#mobile").val("");
+		$("#remarks").val("");
+
+		$('#delete').attr("disabled", true);
+
+	}
+	function cancelBtn() {
+		$("#demo").hide();
+		$("#myGrid").show();
+		$("#reqTable").show();
+	}
+
+	function save() {
+
+		var org = {};
+		org.vendorId = $("#vendorId").val();
+		org.vendorName = $("#vendorName").val();
+		org.serviceCategory = $("#serviceCategory").val();
+		org.gstn = $("#gstn").val();
+		org.address = $("#address").val();
+		org.email = $("#email").val();
+		org.person = $("#person").val();
+		org.contact = $("#contact").val();
+		org.mobile = $("#mobile").val();
+		org.remarks = $("#remarks").val();
+
+		console.log(org);
+
+		$.ajax({
+			type : "POST",
+			url : "service-providers-add",
+			contentType : "application/json",
+			data : JSON.stringify(org),
+			success : function(response) {
+				if (response.message == "Success") {
+
+					agGrid.simpleHttpRequest({
+						url : 'service-providers-view'
+					}).then(function(data) {
+						console.log(data);
+						var len = data.length;
+						$('#totalReq').find('span').html(len);
+
+						gridOptions.api.setRowData(data);
+					});
+
+					cancelBtn();
+				}
+			},
+			error : function(response) {
+				console.log(response);
+			}
+
+		});
+
+	}
+	function edit(id) {
+		alert("hii")
+
+		$
+				.ajax({
+
+					type : "GET",
+					url : "service-providers-edit?id=" + id,
+
+					success : function(response) {
+
+						if (response.message == "Success") {
+
+							$("#vendorId").val(response.body[0].vendorId);
+							$("#vendorName").val(response.body[0].vendorName);
+							$("#serviceCategory").val(
+									response.body[0].serviceCategory);
+							$("#gstn").val(response.body[0].gstn);
+							$("#address").val(response.body[0].address);
+							$("#email").val(response.body[0].email);
+							$("#person").val(response.body[0].person);
+							$("#contact").val(response.body[0].contact);
+							$("#mobile").val(response.body[0].mobile);
+							$("#remarks").val(response.body[0].remarks);
+
+						}
+					}
+				});
+
+	}
+
+	function deleteDemocategory() {
+
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var id = selectedRows[0].vendorId;
+
+		$.ajax({
+			type : "GET",
+			url : "service-providers-delete?id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+					location.reload();
+					agGrid.simpleHttpRequest({
+						url : 'service-providers-view'
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+					});
+
+					Cancel();
+					location.reload();
+				}
+			},
+			error : function(data) {
+				console.log(data);
+			}
+		})
+	}
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+</script>
+<style>
+.form-check-input::before {
+	display: none !important;
+}
+</style>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+
+			<div class="row">
+				<div class="maincontentsec"></div>
+				<div class="col-md-6"></div>
+				<div class="col-md-3"></div>
+
+				<div class="col-md-3" align="right">
+					<button type="button" class="btn4" onclick="cancelBtn()">Cancel</button>
+					<button class="btn1" onclick="save()">Save</button>
+
+
+					<!-- <button class="btn1" id="add" onclick="add()">NEW</button> -->
+					<button class="btn3" id="delete" onclick=" deleteDemocategory()">DELETE</button>
+					<button class="btn2" id="search" onclick=" search()">SEARCH</button>
+				</div>
+				<div class="row" id="reqTable">
+					<div class="col-md-6 btn-hs">
+						<div class="font-design" id="totalReq"></div>
+					</div>
+					<div class="row">
+						<div class="col-md-4">
+							<div class="input-style row">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter">
+								<div class="searchicon">
+									<a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+
+						</div>
+						<div class="col-md-4">
+							<div class="form-group">
+								<label>From Date</label> <input type="date" class="form-control"
+									id="fromdate">
+							</div>
+						</div>
+						<div class="col-md-4">
+							<div class="form-group">
+								<label>To Date</label> <input type="date" class="form-control"
+									id="todate">
+							</div>
+						</div>
+					</div>
+				</div>
+				<div id="myGrid" style="width: 100%; height: 270px;"
+					class="ag-theme-alpine"></div>
+				<div class="collapse" id="demo">
+					<div class=""></div>
+
+				</div>
+				<div class="content_padding">
+
+					<div class="row">
+						<input type="hidden" class="form-control" id="sid"
+							autocomplete="off">
+						<div class="col-md-6">
+							PROPERTY PERFORMANCE <span id="stdhead"></span>
+						</div>
+						<div class="row">
+							<div class="col-md-6">
+								<div class="form-group">
+									<input type="hidden" class="form-control" id="vendorId">
+									<label>Vendor Name</label> <input type="text"
+										class="form-control" id="vendorName">
+								</div>
+							</div>
+
+							<div class="col-md-6">
+								<div class="form-group">
+									<label>Service Category Elevator</label> <input type="text"
+										class="form-control" id="serviceCategory">
+								</div>
+							</div>
+							<div class="col-md-6">
+								<div class="form-group">
+									<label>GSTN</label> <input type="text" class="form-control"
+										id="gstn">
+								</div>
+							</div>
+							<div class="col-md-6">
+								<div class="form-group">
+									<label>Address</label> <input type="text" class="form-control"
+										id="address">
+								</div>
+							</div>
+							<div class="col-md-6">
+								<div class="form-group">
+									<label>Email</label> <input type="text" class="form-control"
+										id="email">
+								</div>
+							</div>
+							<div class="col-md-6">
+								<div class="form-group">
+									<label>Contact Person</label> <input type="text"
+										class="form-control" id="person">
+								</div>
+							</div>
+							<div class="col-md-6">
+								<div class="form-group">
+									<label>Contact No.</label> <input type="text"
+										class="form-control" id="contact">
+								</div>
+							</div>
+							<div class="col-md-6">
+								<div class="form-group">
+									<label>Mobile No.</label> <input type="text"
+										class="form-control" id="mobile">
+								</div>
+							</div>
+							<div class="col-md-6">
+								<div class="form-group">
+									<label>Remarks</label> <input type="text" class="form-control"
+										id="remarks">
+								</div>
+							</div>
+							<div class="col-md-6">
+								<div class="form-group">
+									<input class="form-check-input" type="hidden" id="created_by">
+								</div>
+							</div>
+						</div>
+					</div>
+					<div id="myGrid" style="width: 100%; height: 270px;"
+						class="ag-theme-alpine"></div>
+					<div class="collapse" id="demo">
+						<div class=""></div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+
+
+</html>

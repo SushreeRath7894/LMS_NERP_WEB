@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+
+.totalHour {
+	border: 1px solid #ddd;
+	border-top: none;
+	border-left: none;
+	border-right: none;
+	border-radius: 2px;
+	padding: 10px;
+	font-size: 12px;
+	color: #333;
+	transition: border-color 0.3s ease-in-out;
+	width: 580px;
+	height: 23px;
+}
+
+.sugg-cls ul {
+	height: 150px;
+	overflow-x: scroll;
+	position: relative;
+}
+</style>
+
+<script type="text/javascript">
+	$(document).ready(function() {
+		
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalender").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#filterFromDate').val($(this).val());
+		})
+
+		$('#filterFromDate').blur(function() {
+			$("#fromDateCalender").val($(this).val());
+		})
+
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#filterToDate').val($(this).val());
+		})
+
+		$('#filterToDate').blur(function() {
+			$("#toDateCalendar").val($(this).val());
+		})
+
+		var toDayDate = (new Date()).toISOString().split('T')[0];
+		var newDate = changeDateFormat(toDayDate);
+		var firstDayOfMonth = changeDateToFirstDay(toDayDate);
+
+		$("#filterFromDate").val(firstDayOfMonth);
+		$("#filterToDate").val(newDate);
+		var gridApi;
+		var nameSku;
+		reportDetails();
+	
+	});
+
+
+	function changeDateFormat(inputDate) { // expects Y-m-d
+		var splitDate = inputDate.split('-');
+		if (splitDate.count == 0) {
+			return null;
+		}
+		var year = splitDate[0];
+		var month = splitDate[1];
+		var day = splitDate[2];
+		return day + '-' + month + '-' + year;
+	}
+	function changeDateToFirstDay(inputDate) { // expects Y-m-d
+		var splitDate = inputDate.split('-');
+		if (splitDate.count == 0) {
+			return null;
+		}
+		var year = splitDate[0];
+		var month = splitDate[1];
+		var day = "01";
+
+		return day + '-' + month + '-' + year;
+	}
+	
+	function reportDetails(){
+		
+		var sku = $("#item").val();
+		var fdate = $("#filterFromDate").val();
+		var tdate = $("#filterToDate").val();
+		 console.log(sku,fdate,tdate);
+		$('.loader').show();
+		agGrid.simpleHttpRequest(
+				{
+					url : "test-report-dtls-view?sku=" + sku + "&fdate=" + fdate + "&tdate=" + tdate
+				}).then(function(data) {
+					console.log("data",data.body);
+					var jsonData = JSON.parse(data.body);
+					console.log("jsonData",jsonData);
+					
+					var allData = jsonData.viewTestReportDtlsData;
+					var gridDiv = document.querySelector('#myGrid');
+					 while (gridDiv.firstChild) {
+						 gridDiv.removeChild(gridDiv.firstChild);
+						  }
+					 var columnVals = [];
+					 var columnDefs;
+					 var len;
+					 if(allData == "" ||allData == null || allData == "null"){
+							var abd = {'Matiral Code':"",'Matiral Name':"",date:"",quantity:"",status:""};
+							 columnDefs = Object.keys(abd).map(key => ({ headerName: key.split('-/\@')[0], field: key }));
+							 //columnVals.push({});
+							 len = "0";
+						}else{
+							 len = allData.length;
+							 console.log("allData>>>>----"+allData);
+							for(var l =0; l<allData.length; l++){
+								var allData1 = allData[l];
+								
+								 const result = [];
+								 var i=0;
+								 var ObjectAbc = {};
+								 console.log("l>>>>----"+(parseInt(l)+1));
+								 ObjectAbc['Sl No'] = (parseInt(l)+1).toString();
+								 ObjectAbc['Matiral Code'] = allData1.sku;
+								 nameSku = allData1.itemName+' ('+ allData1.sku +')';
+								 ObjectAbc['Material Name'] = allData1.itemName;
+								 ObjectAbc['Date'] = allData1.date;
+								 ObjectAbc['Quantity'] = allData1.quantity
+								 ObjectAbc['Vendor Name'] = allData1.vendor
+								 ObjectAbc['Vehicle No'] = allData1.vechile_no
+								 ObjectAbc['Invoice Id'] = allData1.challan_no
+								 ObjectAbc['Invoice Dt'] = allData1.challan_date
+								 ObjectAbc['Status'] = allData1.status
+								 result.push(ObjectAbc);
+								 var abc = allData1.packingData;
+								 abc.forEach(item => {
+								        const key = Object.keys(item)[0]; // Assuming each object has only one key
+								        const value = item[key];
+								        
+								        const array = value.split('@/\-');
+								        if(array[1] == null || array[1] == "" || array[1] == 'null'){
+								        	const individualObject1 = {};
+								        	individualObject1[key] = value;
+								        	result.push(individualObject1);
+								        }else{
+								        	var x = JSON.parse(array[1]);
+								        	for (const key in x) {
+								        		  if (x.hasOwnProperty(key)) {
+								        		    const individualObject = {};
+								        		    individualObject[key+"-/\@"+i] = x[key];
+								        		    result.push(individualObject);
+								        		  }
+								        	}
+								        	const individualObject2 = {};
+								        	individualObject2[key] = array[0];
+								        	result.push(individualObject2);
+								        }
+											i+=1;			        
+								      });
+								 console.log("result",result);
+								  let mergedItems = result.reduce((result, currentObject) => {
+									  return { ...result, ...currentObject };
+									}, {}); 
+									
+								 columnDefs = Object.keys(mergedItems).map(key => ({ headerName: key.split('-/\@')[0], field: key }));
+								// const rowData = [mergedItems]; 
+								 columnVals.push(mergedItems);
+						console.log("rowData",mergedItems);
+								
+							}
+						}
+					//console.log("columnVals",columnVals);
+					 var gridOptions = {
+							  columnDefs:columnDefs,
+							  rowData: columnVals,
+							   defaultColDef : {
+									sortable : true,
+									filter : 'agTextColumnFilter',
+									floatingFilter: true,
+									resizable : true,
+									width : 265
+								},
+
+							  defaultColGroupDef: {
+							    marryChildren: true,
+							  },
+							  columnTypes: {
+							    numberColumn: { width: 130, filter: 'agNumberColumnFilter' },
+							    medalColumn: { width: 100, columnGroupShow: 'open', filter: false },
+							    nonEditableColumn: { editable: false },
+							    dateColumn: {
+							      filter: 'agDateColumnFilter',
+
+							      filterParams: {
+							        comparator: (filterLocalDateAtMidnight, cellValue) => {
+							          const dateParts = cellValue.split('-');
+							          const day = Number(dateParts[0]);
+							          const month = Number(dateParts[1]) - 1;
+							          const year = Number(dateParts[2]);
+							          const cellDate = new Date(year, month, day);
+
+							          if (cellDate < filterLocalDateAtMidnight) {
+							            return -1;
+							          } else if (cellDate > filterLocalDateAtMidnight) {
+							            return 1;
+							          } else {
+							            return 0;
+							          }
+							        },
+							      },
+							    },
+							  },
+							 
+							}; 
+					
+					$('#totalItem').find('span').html(len);
+					new agGrid.Grid(gridDiv, gridOptions)
+					$('.loader').hide();
+					gridApi = gridOptions.api;
+		})
+	}
+	
+
+	//function for download
+	/* function downloadDetails() {
+		var dataset = [];
+		gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+		gridOptions.api.exportDataAsCsv(dataset);
+	} */
+	
+	function downloadDetails() {
+		//console.log("nameSku",nameSku);
+		const params = {
+		        skipHeader: false,
+		        columnGroups: false,
+		        skipFooters: false,
+		        skipGroups: false,
+		        skipPinnedTop: false,
+		        skipPinnedBottom: false,
+		        allColumns: true,
+		        onlySelected: false,
+		        suppressQuotes: false,
+		        fileName: nameSku+'.csv',
+		        sheetName: 'Sheet1',
+		        customHeader: null,
+		        customFooter: null,
+		    };
+
+		gridApi.exportDataAsCsv(params);
+	}
+
+	function filter() {
+		var fromdatex = $("#filterFromDate").val();
+		var fd = fromdatex.split("-");
+		var todatex = $("#filterToDate").val();
+		var td = todatex.split("-");
+
+		if (fromdatex != '' && todatex != '') {
+			if (fd[2] == td[2]) {
+				if (fd[1] == td[1]) {
+					if (fd[0] <= td[0]) {
+						filterData();
+					} else {
+						setFromToDate();
+					}
+				} else if (fd[1] < td[1]) {
+					filterData();
+				} else {
+					setFromToDate();
+				}
+			} else if (fd[2] < td[2]) {
+				filterData();
+			} else {
+				setFromToDate();
+			}
+		}
+	}
+	function setFromToDate() {
+		$("#messageParagraph").text(
+				"Please choose to date greater than or equal to from date ");
+		$("#msgOkModal").removeClass("btn3");
+		$("#msgOkModal").addClass("btn1");
+		$("#msgModal").modal('show');
+		var date = (new Date()).toISOString().split('T')[0];
+		var newToDate = changeDateFormat(date);
+		var newFromDate = changeDateFormat(date);
+		$("#filterFromDate").val(newToDate);
+		$("#filterToDate").val(newToDate);
+
+		$("#fromDateCalender").val(newDate);
+		$("#toDateCalendar").val(newDate);
+	}
+
+	function filterData() {
+		reportDetails();
+	}
+</script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="d-flex flex-wrap justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalItem">
+									Report(<span></span>)
+								</div>
+							</div>
+
+							<div class="button-right flex-wrap">
+								<div>
+
+									<div class="form-group d-flex flex-wrap">
+										<label style="margin: 5px 5px 0px 0px;">Item Name:</label>
+										<div class="select" style="margin-right: 15px;">
+											<select id="item" class="form-control"
+												onblur="removeValid(event)"
+												style="width: 350px; padding-left: 7px;">
+												<!-- <option value="all">All</option> -->
+												<option th:each="c:${itemList}" th:value='${c.key}'
+													th:text="${c.name}"></option>
+											</select><span class="focus"></span>
+										</div>
+									</div>
+								</div>
+								<div id="dateDiv1" class="d-flex form-group">
+									<label style="margin: 5px 8px 0px 0px;">From Dt:</label>
+									<div class="form-group calendar_box" id='fdate'
+										style="margin-right: 15px; width: 100px;">
+										<input type="text" id="filterFromDate" value=""
+											class="form-control" placeholder="from date.."
+											th:attr="onkeyup=|formatDate('filterFromDate','${session.DATEFORMAT_JS}')|"
+											readonly> <i class="ti-calendar picker_calendar"
+											id="fromDateCalender" style="top: 14px; right: 0px;"></i>
+									</div>
+								</div>
+								<div id="dateDiv2" class="d-flex form-group">
+									<label style="margin: 5px 8px 0px 0px;">To Dt:</label>
+									<div class="form-group calendar_box" id="tdate"
+										style="margin-right: 15px; width: 100px;">
+										<input type="text" id="filterToDate" value=""
+											class="form-control" placeholder="to date.."
+											th:attr="onkeyup=|formatDate('filterToDate','${session.DATEFORMAT_JS}')|"
+											readonly> <i class="ti-calendar picker_calendar"
+											id="toDateCalendar" style="top: 14px; right: 0px;"></i>
+									</div>
+								</div>
+
+								<div class="butttonsec btn-hs" id="ttbtn">
+									<button class="new-btn" id="filterBtn" onclick="filter()">
+										<i class="bi bi-search"></i> Search
+									</button>
+								</div>
+								<div class="butttonsec btn-hs" id="ttbtn">
+									<button class="download-btn" id="download"
+										onclick="downloadDetails()">Download</button>
+								</div>
+
+							</div>
+
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" /> <input
+							type="hidden" id="userId" th:value="${session.USER_ID}" /> <input
+							type="hidden" id="registerIdHidden">
+						<div class="mt-2">
+							<div id="myGrid" style="width: 100%; height: 500px;"
+								class="ag-theme-alpine"></div>
+						</div>
+					</div>
+					<div class="modal fade" id="myModal10">
+						<div class="modal-dialog modal-lg" style="max-width: 1100px">
+							<div class="modal-content" style="width: 100%">
+
+								<!-- Modal Header -->
+								<div class="modal-header">
+									<h4 class="modal-title" style="font-size: 16px" id="entry">
+										<b>Item/SKU: </b><span></span>
+									</h4>
+									<button id="close" type="button" class="btn btn-danger"
+										data-bs-dismiss="modal">X</button>
+									<!-- <button type="button" class="close" data-bs-dismiss="modal"
+												style="font-size: 25px">
+												<i class="ti-close"></i>
+											</button> -->
+								</div>
+								<!-- Modal body -->
+								<div class="modal-body"
+									style="height: 300px; overflow-y: scroll;">
+									<div class="vertical-line">
+
+										<div class="row">
+											<div id="myGrid1" style="width: 100%; height: 250px;"
+												class="ag-theme-alpine"></div>
+										</div>
+
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

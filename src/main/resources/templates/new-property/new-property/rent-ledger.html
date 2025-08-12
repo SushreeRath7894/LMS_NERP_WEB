@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<script type="text/javascript">
+	$(document).ready(function() {
+		$("#myGrid").show();
+		$("#demo").hide();
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		agGrid.simpleHttpRequest({
+			url : 'rent-ledger-view'
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+
+			gridOptions.api.setRowData(data);
+		});
+	})
+
+	var columnDefs = [ {
+		headerCheckboxSelection : true,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		width : 30
+	}, {
+		headerName : " Property No. ",
+		field : "propNo",
+			width : 170,
+			
+			cellRenderer : function(params) {
+				return '<a onclick=edit("'
+						+ params.data.propNo
+						+ '") href="javascript:void(0)">'
+						+ params.data.propNo + '</a>';
+			}
+	}, {
+		headerName : " Property Name ",
+		field : "propName"
+	}, {
+		headerName : " Tenant Name ",
+		field : "tenantName"
+	}, {
+		headerName : " Address ",
+		field : "address"
+	},{
+		headerName : " Prev. Yrs. O/S Amt. ",
+		field : "osamount"
+	}, {
+		headerName : "Month",
+		field : "month"
+
+	}, {
+		headerName : "Due Rent",
+		field : "duerent"
+
+	}, {
+		headerName : "Total O/S",
+		field : "total"
+
+	}, {
+		headerName : "Received Amount",
+		field : "amount"
+
+	}, {
+		headerName : "Balance O/S(if any)",
+		field : "balance"
+
+	} ];
+	$("#propNo").click(function() {
+		$("#a").css("display", "block");
+		$("#b").css("display", "block");
+	});
+
+	var gridOptions = {
+			columnDefs : columnDefs,
+
+			rowSelection : 'multiple',
+			
+			onSelectionChanged : deleteDetails,
+			groupSelectsChildren : true,
+			suppressRowClickSelection : true,
+			suppressAggFuncInHeader : true,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 400
+			}
+		};
+
+		var deleteId = "";
+		function deleteDetails() {
+			var selectedRows = gridOptions.api.getSelectedRows();
+
+			deleteId = "";
+			for (var i = 0; i < selectedRows.length; i++) {
+				deleteId = deleteId + '"' + selectedRows[i].propNo + '",';
+
+			}
+			deleteId = deleteId.substring(0, deleteId.length - 1);
+
+			var rowCount = 0;
+			selectedRows.forEach(function() {
+				rowCount = rowCount + 1;
+			});
+			if (rowCount > 0) {
+				$('#delete').attr("disabled", false);
+				$('#add').hide();
+				if (rowCount == 1) {
+					$('#add').hide();
+				}
+			} else {
+				$('#delete').attr("disabled", true);
+				$('#add').show();
+
+			}
+
+		}
+		function add() {
+
+			$("#demo").hide();
+			$("#reqTable").hide();
+			$("#myGrid").show();
+			
+			
+			$("#propNo").val("");
+			$("#propName").val("");
+			$("#tenantName").val("");
+			$("#address").val("");
+			$("#osamount").val("");
+			$("#month").val("");
+			$("#duerent").val("");
+			$("#total").val("");
+			$("#amount").val("");
+			$("#balance").val("");
+			$("#date").val("");
+			
+			
+			
+			
+			
+
+			$('#delete').attr("disabled", true);
+
+		}
+		function cancelBtn() {
+			$("#demo").hide();
+			$("#myGrid").show();
+			$("#reqTable").show();
+		}
+
+		function save() {
+
+			var org = {};
+			
+			org.propNo = $("#propNo").val();
+			org.propName = $("#propName").val();
+			org.tenantName = $("#tenantName").val();
+			org.address= $("#address").val();
+			org.osamount = $("#osamount").val();
+			org.month = $("#month").val();
+			org.duerent = $("#duerent").val();
+			org.total = $("#total").val();
+			org.amount = $("#amount").val();
+			org.balance = $("#balance").val();
+			org.date = $("#date").val();
+			
+		
+			
+			
+
+			console.log(org);
+
+			$.ajax({
+				type : "POST",
+				url : "rent-ledger-add",
+				contentType : "application/json",
+				data : JSON.stringify(org),
+				success : function(response) {
+					if (response.message == "Success") {
+
+						agGrid.simpleHttpRequest({
+							url : 'rent-ledger-view'
+						}).then(function(data) {
+							console.log(data);
+							var len = data.length;
+							$('#totalReq').find('span').html(len);
+
+							gridOptions.api.setRowData(data);
+						});
+
+						cancelBtn();
+					}
+				},
+				error : function(response) {
+					console.log(response);
+				}
+
+			});
+
+		}
+		function edit(id) {
+			alert("hii")
+
+			$.ajax({
+
+				type : "GET",
+				url : "rent-ledger-edit?id=" + id,
+				
+				success : function(response) {
+
+					if (response.message == "Success") {
+						
+						
+						$("#propNo").val(response.body[0].propNo);
+						$("#propName").val(response.body[0].propName);
+						$("#tenantName").val(response.body[0].tenantName);
+						$("#address").val(response.body[0].address);
+						$("#osamount").val(response.body[0].osamount);
+						$("#month").val(response.body[0].month);
+						$("#duerent").val(response.body[0].duerent);
+						$("#total").val(response.body[0].total);
+						$("#amount").val(response.body[0].amount);
+						$("#date").val(response.body[0].date);
+						$("#balance").val(response.body[0].balance);
+						
+						
+						
+						
+
+					}
+				}
+			});
+
+		}
+
+		function deleteDemocategory() {
+
+			var selectedRows = gridOptions.api.getSelectedRows();
+			var id = selectedRows[0].Id;
+
+			$.ajax({
+				type : "GET",
+				url : "rent-ledger-delete?id=" + id,
+				success : function(response) {
+					if (response.message == "Success") {
+						location.reload();
+						agGrid.simpleHttpRequest({
+							url : 'rent-ledger-view'
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+
+						Cancel();
+						location.reload();
+					}
+				},
+				error : function(data) {
+					console.log(data);
+				}
+			})
+		}
+</script>
+<style>
+.form-check-input::before {
+	display: none !important;
+}
+</style>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+
+			<div class="row">
+				<div class="maincontentsec"></div>
+				<div class="col-md-6"></div>
+				<div class="col-md-3"></div>
+
+				<div class="col-md-3" align="right">
+					<button type="button" class="btn4" onclick="cancelBtn()">Cancel</button>
+					<button class="btn1" onclick="save()">Save</button>
+
+
+					<!-- <button class="btn1" id="add" onclick="add()">NEW</button> -->
+					<button class="btn3" id="delete" onclick=" deleteDemocategory()">DELETE</button>
+				</div>
+				<div class="row" id="reqTable">
+					<div class="col-md-6 btn-hs">
+						<div class="font-design" id="totalReq"></div>
+
+					</div>
+
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>To Date</label> <input type="date" class="form-control"
+									id="todate">
+							</div>
+						</div>
+
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>From Date</label> <input type="date" class="form-control"
+									id="fromdate">
+							</div>
+						</div>
+						<div id="myGrid" style="width: 100%; height: 270px;"
+							class="ag-theme-alpine"></div>
+						<div class="collapse" id="demo">
+							<div class=""></div>
+
+						</div>
+
+						
+
+					
+						<div class="content_padding">
+
+								<div class="row">
+									<input type="hidden" class="form-control" id="sid"
+										autocomplete="off">
+									<div class="col-md-6">
+										MANAGE RENT LEDGER <span id="stdhead"></span>
+									</div>
+
+							
+								<div class="row">
+								
+								
+
+								<div class="col-md-6">
+									<div class="form-group">
+									<input type="hidden" autocomplete="off" id="propNo"> 
+										<label>Property Name</label> <input type="text"
+											class="form-control" id="propName">
+									</div>
+								</div>
+
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Tenant Name</label> <input type="text"
+											class="form-control" id="tenantName">
+									</div>
+								</div>
+
+
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Tenant Address</label> <input type="text"
+											class="form-control" id="address">
+									</div>
+								</div>
+								
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Month</label> <input type="text"
+											class="form-control" id="month">
+									</div>
+								</div>
+
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>O/S Amount</label> <input type="text"
+											class="form-control" id="osamount">
+									</div>
+								</div>
+
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Due Rent</label> <input type="text"
+											class="form-control" id="duerent">
+									</div>
+								</div>
+
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Total O/S</label> <input type="text"
+											class="form-control" id="total">
+									</div>
+								</div>
+
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Recd. Amount</label> <input type="text"
+											class="form-control" id="amount">
+									</div>
+								</div>
+
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Recd. Date</label> <input type="date"
+											class="form-control" id="date">
+									</div>
+								</div>
+
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Balance  O/S.(if any)</label> <input type="text"
+											class="form-control" id="balance">
+									</div>
+								</div>
+
+
+
+
+								<div class="col-md-6">
+									<div class="form-group">
+										<input class="form-check-input" type="hidden" id="createdby">
+
+									</div>
+								</div>
+
+							</div>
+							<div class="col-md-6">
+								<div class="form-group">
+									<input class="form-check-input" type="hidden" id="createdOn">
+
+								</div>
+							</div>
+						</div>
+
+
+						<div id="myGrid" style="width: 100%; height: 270px;"
+							class="ag-theme-alpine"></div>
+						<div class="collapse" id="demo">
+							<div class=""></div>
+
+						</div>
+					</div>
+				</div>
+			</div>
+
+
+		</div>
+		</div>
+	</div>
+
+
+</body>
+
+
+</html>

@@ -1,0 +1,464 @@
+package nirmalya.aathithya.webmodule.lms.controller;
+
+import java.io.File;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpSession;
+
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import nirmalya.aathithya.webmodule.common.utils.DropDownModel;
+import nirmalya.aathithya.webmodule.common.utils.EnvironmentVaribles;
+import nirmalya.aathithya.webmodule.common.utils.JsonResponse;
+
+@Controller
+@RequestMapping("academic")
+public class AcademicCourseController {
+	@Autowired
+	RestTemplate restClient;
+
+	@Autowired
+	RestTemplate restTemplate;
+
+	@Autowired
+	EnvironmentVaribles env;
+
+	Logger logger = LoggerFactory.getLogger(AcademicCourseController.class);
+
+	@GetMapping(value = { "/courses" })
+	public String academicCourses(Model model, HttpSession session) {
+		logger.info("Mothod:view courses page started...");
+		String org = "";
+		String orgDiv = "";
+		try {
+			org = (String) session.getAttribute("ORGANIZATION");
+			orgDiv = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		try {
+			DropDownModel[] hsnCode = restClient.getForObject(
+					env.getMasterUrl() + "getProductCategoryList?org=" + org + "&orgDiv=" + orgDiv,
+					DropDownModel[].class);
+			List<DropDownModel> productCategoryList = Arrays.asList(hsnCode);
+			model.addAttribute("productCategoryList", productCategoryList);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		logger.info("Mothod: view courses page ends...");
+		return "lms/academic-courses";
+	}
+
+	// academic-course-add
+	@PostMapping("academic-course-add")
+	public @ResponseBody JsonResponse<Object> saveCourse(HttpSession session, @RequestParam("courseId") String courseId,
+			@RequestParam("courseTittle") String courseTittle, @RequestParam("parentCategory") String parentCategory,
+			@RequestParam("duration") String duration, @RequestParam("price") String price,
+			@RequestParam("startDate") String startDate, @RequestParam("endDate") String endDate,
+			@RequestParam("patientStatus") String patientStatus, @RequestParam("courseDesc") String courseDesc,
+			@RequestParam("rate") String rate, @RequestParam("currencySymbol") String currencySymbol,
+			@RequestParam("level") String level,
+			@RequestParam(value = "document", required = false) MultipartFile document) {
+
+		logger.info("Method : saveCourse starts");
+
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String userId = "";
+		String orgName = "";
+		String orgDivision = "";
+
+		try {
+			userId = (String) session.getAttribute("USER_ID");
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		} catch (Exception e) {
+			logger.error("Error getting session attributes", e);
+		}
+
+		try {
+			Map<String, Object> courseData = new HashMap<>();
+			courseData.put("courseId", courseId);
+			courseData.put("courseTittle", courseTittle);
+			courseData.put("parentCategory", parentCategory);
+			courseData.put("duration", duration);
+			courseData.put("price", price);
+			courseData.put("startDate", startDate);
+			courseData.put("endDate", endDate);
+			courseData.put("patientStatus", patientStatus);
+			courseData.put("courseDesc", courseDesc);
+			courseData.put("rate", rate);
+			courseData.put("currencySymbol", currencySymbol);
+			courseData.put("level", level);
+
+			if (document != null && !document.isEmpty()) {
+				String uploadDir = env.getFileUploadDocumenttUrl();
+				File uploadPath = new File(uploadDir);
+
+				if (!uploadPath.exists()) {
+					uploadPath.mkdirs();
+				}
+
+				// Generate a unique filename
+				String fileName = System.currentTimeMillis() + "_" + document.getOriginalFilename();
+
+				// Save the file
+				String filePath = uploadDir + fileName;
+				String fileURL = env.getBaseURL() + "document/image/" + fileName;
+				document.transferTo(new File(filePath));
+
+				// Store the relative path in your course data
+				courseData.put("documentURL", fileURL);
+				courseData.put("documentName", document.getOriginalFilename());
+			}
+
+			// Send data to your REST client
+			resp = restClient.postForObject(env.getHisUrl() + "rest-academic-course-add?userId=" + userId + "&org="
+					+ orgName + "&orgDiv=" + orgDivision, courseData, JsonResponse.class);
+
+		} catch (Exception e) {
+			logger.error("Error saving course", e);
+			resp.setMessage("Error saving course");
+			resp.setCode("Failed");
+		}
+
+		logger.info("Method : saveCourse ends");
+		return resp;
+	}
+
+	@SuppressWarnings("unchecked")
+	@GetMapping("academic-course-view")
+	public @ResponseBody Object viewCourse(HttpSession session) {
+		logger.info("Method :viewCourse starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String orgName = "";
+		String orgDivision = "";
+		try {
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+
+			resp = restClient.getForObject(
+					env.getHisUrl() + "rest-viewCourse?orgName=" + orgName + "&orgDivision=" + orgDivision,
+					JsonResponse.class);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		if (resp.getMessage() != "" && resp.getMessage() != null) {
+			resp.setCode(resp.getMessage());
+			resp.setMessage("Unsuccess");
+		} else {
+			resp.setMessage("Success");
+		}
+		logger.info("Method :viewCourse ends");
+		return resp;
+	}
+
+	// edit
+	@SuppressWarnings("unchecked")
+	@GetMapping("academic-course-edit")
+	public @ResponseBody Object editCourse(@RequestParam String Id, HttpSession session) {
+		logger.info("Method :editCourse starts" + Id);
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+
+		try {
+
+			String orgName = (String) session.getAttribute("ORGANIZATION");
+			String orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+
+			resp = restClient.getForObject(env.getHisUrl() + "rest-editCourse?Id=" + Id + "&organization=" + orgName
+					+ "&orgDivision=" + orgDivision, JsonResponse.class);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		if (resp.getMessage() != "" && resp.getMessage() != null) {
+			resp.setCode(resp.getCode());
+			resp.setMessage(resp.getMessage());
+		} else {
+			resp.setMessage(resp.getMessage());
+		}
+		logger.info("Method :editCourse ends");
+		return resp;
+	}
+
+	@SuppressWarnings("unchecked")
+	@GetMapping("academic-course-employee-view")
+	public @ResponseBody Object viewEmpolyee(HttpSession session) {
+		logger.info("Method :viewEmpolyee starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String orgName = "";
+		String orgDivision = "";
+		try {
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+
+			resp = restClient.getForObject(env.getHisUrl() + "rest-academic-course-employee-view?orgName=" + orgName
+					+ "&orgDivision=" + orgDivision, JsonResponse.class);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		if (resp.getMessage() != "" && resp.getMessage() != null) {
+			resp.setCode(resp.getMessage());
+			resp.setMessage("Unsuccess");
+		} else {
+			resp.setMessage("Success");
+		}
+		logger.info("Method :viewEmpolyee ends");
+		return resp;
+	}
+
+	/// addd/////
+	@SuppressWarnings("unchecked")
+	@PostMapping("academic-course-employee-add")
+	public @ResponseBody JsonResponse<Object> saveAssign(HttpSession session, @RequestBody Map<String, Object> data) {
+		logger.info("Method : saveAssign starts");
+
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String userId = "";
+		String orgName = "";
+		String orgDivision = "";
+		try {
+			userId = (String) session.getAttribute("USER_ID");
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		} catch (Exception e) {
+
+		}
+		try {
+			resp = restClient.postForObject(env.getHisUrl() + "rest-academic-course-employee-add?userId=" + userId
+					+ "&org=" + orgName + "&orgDiv=" + orgDivision, data, JsonResponse.class);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		logger.info("Method : saveAssign ends");
+		return resp;
+	}
+
+	// view instructor
+	@SuppressWarnings("unchecked")
+	@GetMapping("get-all-instructor-list")
+	public @ResponseBody Object viewList(HttpSession session) {
+		logger.info("Method :viewList starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String orgName = "";
+		String orgDivision = "";
+		try {
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+
+			resp = restClient.getForObject(
+					env.getHisUrl() + "rest-get-all-instructor-list?orgName=" + orgName + "&orgDivision=" + orgDivision,
+					JsonResponse.class);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		if (resp.getMessage() != "" && resp.getMessage() != null) {
+			resp.setCode(resp.getMessage());
+			resp.setMessage("Unsuccess");
+		} else {
+			resp.setMessage("Success");
+		}
+		logger.info("Method :viewList ends");
+		return resp;
+	}
+
+	@SuppressWarnings("unchecked")
+	@GetMapping("course-details-view")
+	public @ResponseBody Object viewCourses(@RequestParam String courseId, HttpSession session) {
+		logger.info("Method :viewEnrollCourses starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String orgName = "";
+		String orgDivision = "";
+		try {
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		try {
+			resp = restTemplate.getForObject(env.getHisUrl() + "rest-viewCourses?orgName=" + orgName + "&orgDivision="
+					+ orgDivision + "&courseId=" + courseId, JsonResponse.class);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		if (resp.getMessage() != "" && resp.getMessage() != null) {
+			resp.setCode(resp.getMessage());
+			resp.setMessage("Unsuccess");
+		} else {
+			resp.setMessage("Success");
+		}
+		logger.info("Method :viewEnrollCourses ends" + resp);
+		return resp;
+	}
+
+	@SuppressWarnings("unchecked")
+	@PostMapping(value = { "get-all-course-list" })
+	public @ResponseBody JsonResponse<DropDownModel> getCourseAutoSearchList(Model model,
+			@RequestBody String searchValue, BindingResult result, HttpSession session) {
+		logger.info("Method : getCourseAutoSearchList starts");
+		String orgName = "";
+		String orgDivision = "";
+
+		try {
+
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		} catch (Exception e) {
+			logger.error(e.getMessage());
+		}
+		JsonResponse<DropDownModel> res = new JsonResponse<DropDownModel>();
+
+		try {
+			res = restTemplate.getForObject(env.getHisUrl() + "getCourseAutoSearchList?id=" + searchValue + "&org="
+					+ orgName + "&orgDiv=" + orgDivision, JsonResponse.class);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		if (res.getMessage() != null) {
+
+			res.setCode(res.getMessage());
+			res.setMessage("Unsuccess");
+		} else {
+			res.setMessage("success");
+		}
+
+		logger.info("Method : getCourseAutoSearchList ends");
+		return res;
+	}
+
+	@SuppressWarnings("unchecked")
+	@GetMapping("get-catlog-courses")
+	public @ResponseBody Object viewCatlog(@RequestParam String catId, String level, HttpSession session) {
+		logger.info("Method :viewCatlog starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String orgName = "";
+		String orgDivision = "";
+
+		try {
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+
+			String url = env.getHisUrl() + "rest-get-catlog-courses?orgName=" + orgName + "&orgDivision=" + orgDivision
+					+ "&catId=" + catId + "&level=" + level;
+
+			resp = restClient.getForObject(url, JsonResponse.class);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		if (resp.getMessage() != null && !resp.getMessage().equals("")) {
+			resp.setCode(resp.getMessage());
+			resp.setMessage("Unsuccess");
+		} else {
+			resp.setMessage("Success");
+		}
+
+		logger.info("Method :viewCatlog ends");
+		return resp;
+	}
+
+	@GetMapping(value = { "course-builder" })
+	public String courseBuilder(Model model, HttpSession session) {
+		logger.info("Mothod:view courseBuilder page started...");
+
+		logger.info("Mothod: view courseBuilder page ends...");
+		return "lms/course-builder";
+	}
+	
+	@GetMapping(value = { "progress-dashboard" })
+	public String studentProgressDashboard(Model model, HttpSession session) {
+		logger.info("Mothod:view studentProgressDashboard page started...");
+		DropDownModel[] course = restTemplate.getForObject(env.getMasterUrl() + "/courseList",
+				DropDownModel[].class);
+		List<DropDownModel> courseList = Arrays.asList(course);
+		model.addAttribute("courseList", courseList);
+		logger.info("Mothod: view studentProgressDashboard page ends...");
+		return "lms/student-progress-dashboard";
+	}
+
+	@SuppressWarnings("unchecked")
+	@PostMapping("save-course-content")
+	public @ResponseBody JsonResponse<Object> saveCorseContent(HttpSession session, @RequestParam String courseId,
+			@RequestBody Map<String, Object> data) {
+		logger.info("Method : saveCorseContent starts");
+
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String userId = "";
+		String orgName = "";
+		String orgDivision = "";
+		try {
+			userId = (String) session.getAttribute("USER_ID");
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		} catch (Exception e) {
+
+		}
+		try {
+			resp = restClient.postForObject(env.getHisUrl() + "rest-academic-course-content-add?userId=" + userId
+					+ "&org=" + orgName + "&orgDiv=" + orgDivision + "&courseId=" + courseId, data, JsonResponse.class);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		logger.info("Method : saveCorseContent ends");
+		return resp;
+	}
+
+	@SuppressWarnings("unchecked")
+	@GetMapping("get-course-details")
+	public @ResponseBody Object getCourseDetails(@RequestParam String courseId, HttpSession session) {
+		logger.info("Method :getCourseDetails starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String orgName = "";
+		String orgDivision = "";
+		try {
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		try {
+			resp = restTemplate.getForObject(env.getHisUrl() + "rest-get-course-details?orgName=" + orgName + "&orgDivision="
+					+ orgDivision + "&courseId=" + courseId, JsonResponse.class);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		logger.info("Method :getCourseDetails ends" + resp);
+		return resp;
+	}
+
+}

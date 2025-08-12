@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+    padding: 14px;
+    margin: 0px 10px;
+    position: relative;
+    top: 20px;  
+}
+
+/* .form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+} */
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+.textarea {
+    border: 1px solid #efeeee;
+    background: floralwhite;
+    color: #0b0a0b;
+    font-size: 16px;
+    font-weight: 100;
+    width: 100%;
+}
+.accordion-body {
+    padding: 1rem 3.25rem;
+}
+.modal-body{
+    padding: 0rem;
+    }
+ .delete-btn {
+    border: none;
+    border-radius: 4px;
+    font-size: 9px;
+    background-color: #ff4b4b;
+    color: #fff !important;
+    margin-left: 5px;
+    margin-bottom: 8px;
+    width: 70px;
+    height: 28px;
+    line-height: 12px;
+    float: right;
+    text-transform: uppercase;
+    cursor: pointer !important;
+    white-space: normal;
+}   
+</style>
+<script type="text/javascript">
+
+	$(document).ready(function() {
+		$('#reqSchdlBtn').attr('disabled', true);
+		$('#unSchdlBtn').attr('disabled', true);
+		
+		var dateFormat = localStorage.getItem("dateFormat");
+		var today = new Date();
+		   $("#DateCalendarAssign").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			minDate:today,
+			timepicker : false,
+		  }).on("change", function() {
+			$('#asdate').val($(this).val());
+		  })
+
+		$('#asdate').blur(function() {
+			$("#DateCalendarAssign").val($(this).val());
+		})
+		
+		  let auditType = ""; 
+          $('#scheduleButton').click(function() {
+               
+              schedulePlan();
+          });
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		var gridDiv = document.querySelector('#activity');
+		new agGrid.Grid(gridDiv, activityOptions);
+		$('.loader').show();
+		gridOptions.api.setRowData(""); 
+		agGrid.simpleHttpRequest({
+		    url: 'inspection-schedule-view'
+		}).then(function(data) {
+		    var jsonData = JSON.parse(data.body);  
+		    var allData = jsonData.auditPlan;  
+		    var len = allData.length;  
+		    $('#totalPlan').find('span').html(len);  
+		    gridOptions.api.setRowData(allData);  
+		});
+		$('.loader').hide();
+		activityOptions.api.setRowData();
+		 
+		  
+ 	$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+		$('.collapse').on('hide.bs.collapse', function() {
+			$(this).siblings('.panel-heading').removeClass('active');
+		});
+		$("#newBtn").click(function() {
+
+		})
+		
+		  $('input[name="options"]').on('change', function() {
+			    var selectedValue = $('input[name="options"]:checked').val();
+			    if(selectedValue=="Employee"){
+			    	$("#emplist").show();
+			    	$("#loclist").hide();
+			    	$("#assetlocation").val("");
+			    	$("#assigndate").show();
+			    }else if(selectedValue=="Location"){
+			    	$("#emplist").hide();
+			    	$("#loclist").show();
+			    	$("#assetemployee").val("");
+			    	s$("#assigndate").show();
+			    }
+			  });
+
+  
+	});
+	
+	
+	
+	/* -------------------search bar for mygrid----------------------- */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+		var totalRowCount = gridOptions.api.getModel().getRowCount();
+		$('#totalPlan').find('span').html(totalRowCount);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	var columnDefs = [
+	    {
+	        headerCheckboxSelection: false,
+	        headerCheckboxSelectionFilteredOnly: false,
+	        checkboxSelection: true,
+	        width: 10,
+	        sortable: false,
+	        filter: false,
+	        resizable: true,
+	        pinned: 'left'
+	    },
+	    {
+	        headerName: 'Plan ID',
+	        field: "planId",
+	        pinned: 'left',
+	        width: 120,  
+	    },
+	    {
+	        headerName: 'Inspection Category',
+	        field: "auditCategory",
+	        pinned: 'left'
+	    },
+	    {
+	        headerName: 'Plan Type',
+	        field: 'auditType',
+	        width: 140, 
+	        cellStyle: {
+	            textAlign: 'center'
+	        },
+	        valueFormatter: function(params) {
+	            const auditTypes = {
+	                "2": "Internal",
+	                "1": "External"
+	            };
+	            return auditTypes[params.value] || params.value;
+	        }
+	    },
+	    {
+	        headerName: 'Plan Location',
+	        field: "auditLocation",
+	        width:200
+	    },
+	    {
+	        headerName: 'Frequency',
+	        field: "frequency",
+	        width: 150,
+	        cellStyle: {
+	            textAlign: 'center'
+	        },
+	    },
+	    {
+	        headerName: 'Status',
+	        field: "scheduleStatus",
+	        width: 130,
+	        cellStyle: {
+	            textAlign: 'center'
+	        },
+	        cellRenderer: function(params) {
+	            var status = params.value === 1 ? 'Scheduled' : 'Unscheduled';
+	            var style = params.value === 1 
+	                ? 'color: #0642f5; padding: 5px; text-align: center;  #000000; font-size: 14px;' 
+	                : 'color: #a9a9a9; padding: 5px; text-align: center;  0px 0px 0px #000000; font-size: 14px;';
+	            return '<span style="' + style + '">' + status + '</span>';
+	        }
+	    },
+	    {
+	        headerName: 'Assign To',
+	        field: "assignTo",
+	        width: 170 
+	    }, 
+	    {
+	        headerName: 'Assign Date',
+	        field: "assignDate",
+	        width: 150,
+	        cellStyle: {
+	            textAlign: 'center'
+	        },
+	    }, 
+	    {
+	        headerName: 'Remark',
+	        field: "remark",
+	        hide: true,
+	        width: 150  
+	    },
+	    {
+	        headerName: 'Start Date',
+	        field: "startDate",
+	        width: 150 ,
+	        hide: true,
+	        cellStyle: {
+	            textAlign: 'center'
+	        },
+	    },
+	    {
+	        headerName: 'End Date',
+	        field: "endDate",
+	        width: 150,
+	        hide: true,
+	        cellStyle: {
+	            textAlign: 'center'
+	        },
+	    }
+	];
+
+var gridOptions = {
+	columnDefs : columnDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 240
+	},
+	onSelectionChanged : onSelectionChanged,
+};
+//function for row select parents
+var id = "";
+var apstatus = "";
+var auditType= "";
+var auditCategory="";
+var auditLocation="";
+var auditFrequency="";
+var auditSchedule="";
+
+function onSelectionChanged() {
+	var selectedNodes = gridOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	 id= selectedData.map(node => node.planId);
+	 auditType=selectedData.map(node => node.auditType);
+	 apstatus=selectedData.map(node => node.approvests);
+	 auditCategory=selectedData.map(node => node.auditCategory);
+	 auditLocation=selectedData.map(node => node.auditLocation);
+	 auditFrequency=selectedData.map(node => node.frequency);
+	 auditSchedule=selectedData.map(node => node.scheduleStatus);
+	 
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+
+	if (rowCount > 0) {
+	    if (auditSchedule == "1") {
+	        $('#reqSchdlBtn').prop("disabled", true);
+	        $('#unSchdlBtn').prop("disabled", false);
+	    } else {
+	        $('#reqSchdlBtn').prop("disabled", false);
+	        $('#unSchdlBtn').prop("disabled", true);
+	    }
+	} else {
+	    $('#reqSchdlBtn').prop("disabled", true);
+	    $('#unSchdlBtn').prop("disabled", true);
+	}
+
+}
+// for activity table
+ 
+ 
+var activityOptions = {
+	columnDefs : activityDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 240
+	},
+	onSelectionChanged : onSelectionChangeChild,
+
+};
+ 
+function deleteOnclick() {
+	
+		if (id) {
+			$('.loader').show();
+				$.ajax({
+		type : "POST",
+		url : "audit-plan-delete?id="+ id,
+		success : function(response) {
+		 if (response.code == "success") {
+			 cancel();
+				$("#messageParagraph").text("Plan deleted Successfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('#delete').modal('hide');
+				agGrid.simpleHttpRequest({
+					url : 'inspection-schedule-view'
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.auditPlan;
+					var len = allData.length;
+					$('#totalPlan').find('span').html(len);
+					gridOptions.api.setRowData(allData);
+					onSelectionChanged()
+				});
+				$('.loader').hide();
+			} else {
+				$("#messageParagraph").text("Something went to wrong!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('.loader').hide();
+			}
+		},
+		error : function(data) {
+		}
+	})
+		} else {
+			$('.loader').hide();
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+}
+
+ 
+
+	// delete selected record from child ag grid
+	function deleteDetailsOnclick() {
+		$('.modal').hide();
+		var selectedRows = activityOptions.api.getSelectedRows();
+		activityOptions.api.applyTransaction({
+			remove : selectedRows
+		});
+		cancelModalProductBtn();
+	}
+	 
+
+	 
+	
+ 
+ 
+ 
+
+ 
+ 
+  
+	
+	function schedulePlan() {
+		
+		$("#agencyAuditorName").val("");
+		$("#agencyId").val("");
+		$("#auditorName").val("");
+		$("#asdate").val("");
+        var auditTypeStr = Array.isArray(auditType) ? auditType[0] : auditType;
+        $('#assignmodal').modal('show');
+        $('#divAuditorDropDown').show();
+        $(".formValidation").remove();
+
+    }
+	
+	function closeOnclick(){
+		 $('#assignmodal').modal('hide');
+	}
+ 
+	
+	function assignOnclick() {
+	    var valid = true;
+	    var auditTypeStr = Array.isArray(auditType) ? auditType[0] : auditType;
+	    var auditCategoryStr = Array.isArray(auditCategory) ? auditCategory[0] : auditCategory;
+	    var auditLocationStr = Array.isArray(auditLocation) ? auditLocation[0] : auditLocation;
+	    var auditFrequencyStr = Array.isArray(auditFrequency) ? auditFrequency[0] : auditFrequency;
+	    var auditPlanStr = Array.isArray(id) ? id[0] : id;
+	    var item = {};
+	    var item = {};
+
+	        item.auditScheduleId = $("#planid").val();
+	        item.auditorId = $("#auditorName").val();
+	        item.agencyAuditorName = $("#auditorName option:selected").text();
+	        item.assigndate = $("#asdate").val();
+
+	        if (item.assigndate == null || item.assigndate == "") {
+	            valid = validationUpdated("Date is Required", "asdate");
+	        }
+	        if (item.auditorId == null || item.auditorId == "") {
+	            valid = validationUpdated("Name is Required", "auditorName");
+	        }
+
+	    item.auditType = auditTypeStr;
+	    item.auditCategory = auditCategoryStr;
+	    item.auditLocation = auditLocationStr;
+	    item.auditFrequency = auditFrequencyStr;
+	    item.planId = auditPlanStr;
+
+	    
+
+	    if (valid) {
+	        $.ajax({
+	            type: "POST",
+	            url: "inspection-schedule-add",
+	            data: JSON.stringify(item),
+	            contentType: "application/json",
+	            success: function(response) {
+	                if (response.code == "success") {
+	                    $('#assignmodal').modal('hide');
+	    				$("#messageParagraph").text("Inspection Plan Successfully Scheduled");
+	    				$("#msgOkModal").removeClass("btn3");
+	    				$("#msgOkModal").addClass("btn1");
+	    				$("#msgModal").modal('show');
+	    				$('#approveModal').modal('hide');
+	                    var type = "approved";  
+	            		agGrid.simpleHttpRequest({
+	            		    url: 'inspection-schedule-view'
+	            		}).then(function(data) {
+	            		    var jsonData = JSON.parse(data.body);  
+	            		    var allData = jsonData.auditPlan;  
+	            		    var len = allData.length;  
+	            		    $('#totalPlan').find('span').html(len);  
+	            		    gridOptions.api.setRowData(allData);  
+	            		    $("#reqSchdlBtn").attr('disabled', true);
+	            		});
+	            		
+	            		 $(".formValidation").remove();
+	                } else {
+	                    $("#messageParagraph").text("Something went to wrong!");
+	                    $("#msgOkModal").removeClass("btn3");
+	                    $("#msgOkModal").addClass("btn1");
+	                    $("#msgModal").modal('show');
+	                }
+	            },
+	            error: function(data) {
+	                 
+	            }
+	        });
+	    }
+	}
+
+	function unSchedule() {
+		$('#approveModal').modal('show');
+	}
+	
+ 
+		function unScheduleOnclick() {
+			if (id) {
+				$('.loader').show();
+					$.ajax({
+			type : "POST",
+			url : "inspection-schedule-unschedule?id="+ id[0],
+			success : function(response) {
+
+			 if (response.code == "success") {
+				 $('.loader').hide();
+					$("#messageParagraph").text("Plan Unscheduled Successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$('#approveModal').modal('hide');
+					 var type = "approved";  
+	            		agGrid.simpleHttpRequest({
+	            		    url: 'inspection-schedule-view' 
+	            		}).then(function(data) {
+	            		    var jsonData = JSON.parse(data.body);  
+	            		    var allData = jsonData.auditPlan;  
+	            		    var len = allData.length;  
+	            		    $('#totalPlan').find('span').html(len);  
+	            		    gridOptions.api.setRowData(allData);  
+	            		});
+					
+					$("#unSchdlBtn").attr('disabled',true);
+				} else {
+					$('.loader').hide();
+					$("#messageParagraph").text("Something went to wrong!");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+				}
+			},
+			error : function(data) {
+
+			}
+		})
+			} else {
+				$('.loader').hide();
+				$("#alert").modal('show');
+				document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+			}
+
+	}
+		
+		function goToScheduledAudit() {
+			sessionStorage.setItem('activity', 'ACT0419');
+			window.location.href = "/grc/inspection-record";
+			
+		} 
+	
+</script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="d-flex justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalPlan">
+									Plan List(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalPlan').find('span').html(gridOptions.api.getModel().getRowCount());"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+								  <!--  <button class="download-btn" id="download"
+									onclick="downloadDetails()">Download</button> -->
+								<button class="delete-btn" id="unSchdlBtn" onclick="unSchedule()">UNSCHEDULED</button>
+								<button class="new-btn" id="reqSchdlBtn" onclick="schedulePlan()">SCHEDULE</button>
+								  
+							</div>
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" />
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innercontent">
+								<div class="innerstickybg">
+								</div>
+							</div>
+						</div>
+					</div>
+  <div class="modal fade" id="assignmodal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLongTitle">Inspection Plan Allocation</h5>
+                </div>
+                <div class="modal-body">
+                    <!-- <label>Assigning To</label>
+                   <div class="col-lg-6">
+						    <div class="form-group" id="divagency">
+						     <input type="hidden" id="planid">
+						        <label>Agency</label>
+						        <div class="select">
+						            <select class="" id="agencyId">
+						                <option value="">Select</option>
+						                <option th:each="c,iter:${agencyList}" th:value="${c.key}" th:text="${c.name}"></option>
+						            </select>
+						        </div>
+						       
+						    </div>
+						</div> -->
+
+                     <div class="col-lg-6"  id="divAuditorTextField"  style="display: none;">
+									<div class="form-group">
+										<label>Auditor</label>
+										<input type="text"
+										id="agencyAuditorName" placeholder="Auditor Name" class="form-control"> 
+									</div>
+								</div>
+                    
+                    <div class="col-lg-6" id="divAuditorDropDown">
+                        <div class="form-group">
+                            <label>Employee List</label>
+                            <div class="select">
+                                <select class="" id="auditorName">
+                                    <option value="">Select</option>
+                                    <option th:each="c,iter:${auditorList}" th:value="${c.key}" th:text="${c.name}"></option>
+                                </select>
+                            </div>
+                        </div>
+                        </div>
+                        
+                        <div class="col-lg-4" id="assigndate">
+                            <div class="form-group calendar_box"style="margin:3px;">
+                                <label>Assigning From</label>
+                                <input type="text" id="asdate" class="form-control" onblur="removeValid(event)"
+                                    th:attr="onkeyup=|formatDate('date','${session.DATEFORMAT_JS}')|" readonly>
+                                <i class="ti-calendar picker_calendar" id="DateCalendarAssign"></i>
+                            </div>
+                        </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn download-btn" onclick="closeOnclick();">Close</button>
+                    <button type="button" class="new-btn" onclick="assignOnclick();">Schedule</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+					<!-- Unschedule modal start -->
+					<div id="approveModal" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column"></div>
+								<div class="modal-body">
+									<p>Do you want to Unschedule this plan? Once done you will
+										not be able to make further changes.</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: 0px;">
+
+									<button type="button" class="cancel-btn"
+										data-bs-dismiss="modal" onclick="cancelModalBtn();">Cancel</button>
+									<button type="button" class="new-btn"
+										onclick="unScheduleOnclick()">Unschedule</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+
+				<!-- delete modal start -->
+
+					<!-- delete product modal start -->
+					<div id="deleteDetails" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column"></div>
+								<div class="modal-body">
+									<p>Do you really want to delete these data? This process
+										cannot be undone.</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: 0px;">
+
+									<button type="button" class="cancel-btn"
+										data-bs-dismiss="modal" onclick="cancelModalBtn();">Cancel</button>
+									<button type="button" class="delete-btn"
+										onclick="deleteDetailsOnclick()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<!-- alert modal start -->
+					<div id="alert" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-bs-dismiss="modal"
+										aria-hidden="true" onclick="cancelModalBtn()">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p id="textId"></p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: 0px;">
+
+									<button type="button" class="btn1" data-bs-dismiss="modal">SELECT</button>
+									<button type="button" class="btn3" onclick="deleteOnclick()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

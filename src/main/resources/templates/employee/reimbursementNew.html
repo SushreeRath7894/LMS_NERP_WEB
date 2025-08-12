@@ -1,0 +1,2122 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<!-- <link
+	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+	rel="stylesheet">
+<script
+	src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script> -->
+<!-- <link rel="stylesheet"
+	href="https://use.fontawesome.com/releases/v5.0.7/css/all.css">
+ -->
+<style type="text/css">
+.disabledCalender {
+	pointer-events: none; /* Prevents any mouse event */
+	opacity: 0.5; /* Makes it appear disabled */
+}
+.picker_calendar{
+	top: 40px;
+ }
+ .bdr-n{border: none !important; margin: 0px 4px;}
+</style>
+
+<script type="text/javascript">
+let type = '';
+	$(document).ready(
+					function() {
+						
+						const urlParams = new URLSearchParams(window.location.search);
+						type = urlParams.get('id');
+						
+						if(type == null || type == 'null') {
+							type = '';
+						}
+						
+						$("#add").show();
+						/* var dateFormat = localStorage.getItem("dateFormat");
+						$("#expenseDateCalendar12").datetimepicker({
+							format : dateFormat,
+							closeOnDateSelect : true,
+							timepicker : false,
+							maxDate : new Date(),
+						}).on("change", function() {
+							$('#expenseDate12').val($(this).val());
+						})
+
+						$('#expenseDate12').blur(function() {
+							$("#expenseDateCalendar12").val($(this).val());
+						})
+						
+						$("#expenseDateCalendar1").datetimepicker({
+								format : dateFormat,
+								closeOnDateSelect : true,
+								timepicker : false,
+								minDate : new Date(),
+						    }).on("change", function() {
+							$('#expenseDate1').val($(this).val());
+						    })
+
+						    $('#expenseDate1').blur(function() {
+							$("#expenseDateCalendar1").val($(this).val());
+						    }) */
+						
+						var gridDiv = document.querySelector('#myGrid');
+						new agGrid.Grid(gridDiv, gridOptions);
+
+						var userid = $("#sessionId").val();
+						var userrole = $("#sessionRole").val();
+						var roleid = "";
+						for (var i = 6; i <= userrole.length; i = i + 6) {
+							roleid = roleid + '"' + userrole.slice(i - 6, i)
+									+ '",';
+						}
+						roleid = roleid.substring(0, roleid.length - 1);
+						
+						//reimbursement-view
+						agGrid.simpleHttpRequest(
+										{
+											url : "reimbursement-view-through-ajax?userid="
+													+ userid
+													+ "&roleid="
+													+ roleid+"&selftype="+type,
+										}).then(function(data) {
+									gridOptions.api.setRowData(data);
+									
+									if (data && data.length > 0) {
+										gridOptions.api.getDisplayedRowAtIndex(0).setSelected(true);
+										
+									} else {
+										if(type) {
+											$("#empName").attr("disabled",true);
+											getEmployeeList()
+										} else {
+											$("#empName").removeAttr("disabled");
+										}
+										newDtls()
+									}
+								});
+						
+						var dateFormat = localStorage.getItem("dateFormat");
+						
+						$("#reqType").on('change', function() {
+							var reqtype = $(this).val();			
+							if (reqtype =="1") {
+								if ($("#No").is(":checked")) {
+									$("#amount").hide();
+								} else {
+									$("#amount").show();
+								}
+							
+							$('#refno').hide();
+							$('#upload').hide();
+							$('#amountrequired').show(); 
+							$('#dateExpnc').show();
+							$('#dateExpnc1').hide();
+							}			
+							else
+								{
+								$("#expenseDateCalendar12").datetimepicker({
+									format : dateFormat,
+									closeOnDateSelect : true,
+									timepicker : false,
+									maxDate : new Date(),
+								}).on("change", function() {
+									$('#expenseDate12').val($(this).val());
+								})
+
+								$('#expenseDate12').blur(function() {
+									$("#expenseDateCalendar12").val($(this).val());
+								})
+								
+								$('#refno').show();
+								$('#upload').show();
+								$('#amountrequired').hide();
+								$('#amount').hide();
+								$('#dateExpnc').hide();
+								$('#dateExpnc1').show();
+						}		
+					});
+		 
+
+						
+		                $("#expenseDateCalendar").datetimepicker({
+							format : dateFormat,
+							closeOnDateSelect : true,
+							timepicker : false,
+						}).on("change", function() {
+							$('#expenseDate').val($(this).val());
+						})
+
+						$('#expenseDate').blur(function() {
+							$("#expenseDateCalendar").val($(this).val());
+						})
+						
+						//date time picker
+					//	HideBank();
+						$("#form").hide();
+						$("#cancel").hide();
+						$("#save").show();
+						//$('#delete').attr("disabled", true);
+						$("#myGrid").show();
+						
+						
+
+						$('#docTbl').on('click', '.rmv1', function() {
+							openDeleteConfirm();
+							var value = $(this).parent("div").attr("id");
+							$("#dltValue").val(value);
+						});
+
+						$("#statusDiv").hide();
+						$('.collapse').on('show.bs.collapse', function() {
+							$(this).siblings('.panel-heading').addClass('active');
+						});
+
+						$(function() {
+							$("input[name='advanceReq']").click(function() {
+								if ($("#No").is(":checked")) {
+									$("#amount").hide();
+								} else {
+									$("#amount").show();
+								}
+							});
+
+						});
+					});
+
+						//Reimbursement Management
+						const columnDefs = [
+								{
+									headerCheckboxSelection : false,
+									headerCheckboxSelectionFilteredOnly : false,
+									checkboxSelection : true,
+									width : 10,
+									sortable : false,
+									filter : false,
+									resizable : true,
+									pinned : 'left'
+								},
+								{
+									headerName : 'Reimbursement Id',
+									field : "reimbursementReqId",
+									width : 120,
+									pinned : 'left',
+									cellRenderer : function(params) {
+										var sempid = $("#sessionId").val();
+										
+										return '<b>'
+										+ params.data.reimbursementReqId
+										+ '</b>';
+										//params.data.empID1==sempid && 
+										/* if (params.data.empID1 == sempid
+												&& params.data.approveStatus == "Pending") {
+											return '<a id="" onclick=editPage("'
+													+ params.data.reimbursementReqId
+													+ ','
+													+ params.data.empID1
+													+ ','
+													+ params.data.approveStatus
+													+ ','
+													+ params.data.reqType
+													+ '") href="javascript:void(0)">'
+													+ params.data.reimbursementReqId
+													+ '<i class="fa fa-edit"></a>';
+										} else {
+											return '<div>'
+													+ params.data.reimbursementReqId
+													+ '</div>';
+										} */
+										
+									}
+								},
+								{
+									headerName : 'Requisition Type',
+									field : "reqTypeName",
+									width : 100,
+									pinned : 'left',
+
+								},
+								{
+									headerName : 'Employee Name',
+									field : "createdBy",
+									width : 100,
+									pinned : 'left',
+
+								},
+								{
+									headerName : 'Apply Date',
+									field : "applyDate",
+									cellStyle : {
+										textAlign : 'center'
+									}
+								},
+								{
+									headerName : 'Expense Date',
+									field : "expenseDate1",
+									width : 100,
+									cellStyle : {
+										textAlign : 'center'
+									}
+								},
+								{
+									headerName : 'Amount',
+									field : "eAmount",
+									cellStyle : {
+										textAlign : 'right'
+									}
+
+								},
+								{
+									headerName : 'Expense Description',
+									field : "descExpense",
+									width : 180,
+									cellRenderer : function(params) {
+										return (params.data.descExpense && params.data.descExpense!="" && params.data.descExpense !='null') ? window.atob(params.data.descExpense) : null;
+									}
+								},
+								{
+									headerName : 'Approve Status',
+									field : "approveStatus",
+									width : 100,
+									cellRenderer : function(params) {
+										if (params.data.approveStatus == "Pending") {
+											return '<div style="color:#a9a9a9">Pending</div>';
+										} else if (params.data.approveStatus == "Forwarded") {
+											return '<div style="color:#ffa500">Forwarded</div>';
+										} else if (params.data.approveStatus == "Approved") {
+											return '<div style="color:#0642f5">Approved</div>';
+										} else if (params.data.approveStatus == "Rejected") {
+											return '<div style="color:#ff8242">Rejected</div>';
+										} else {
+											return '<div style="color:#9932CC">Completed</div>';
+										}
+									}
+								},
+								{
+									headerName : 'Purpose',
+									field : "travellingPurpose",
+									width : 170,
+									cellRenderer : function(params) {
+										return (params.data.travellingPurpose && params.data.travellingPurpose!="" && params.data.travellingPurpose !='null') ? window.atob(params.data.travellingPurpose) : null;
+									}
+								},
+								{
+									headerName : 'Advance Required',
+									field : "advanceReq",
+									width : 100,
+								},
+								{
+									headerName : 'Advance Amount',
+									field : "advanceAmount",
+									width : 100,
+									cellStyle : {
+										textAlign : 'right'
+									}
+								},
+								{
+									headerName : 'Reference Number',
+									field : "referenceNo1",
+									width : 100,
+								},
+								{
+									headerName : 'Receipt',
+									field : "docName1",
+									width : 100,
+									hide: true,
+									cellRenderer : function(params) {
+										var div = "";
+										if (params.data.docName1) {
+											var ext = params.data.docName1
+													.split(".");
+											if (ext[1] == "pdf") {
+												div = div
+														+ " "
+														+ '<div class ="fa fa-file-pdf-o" style="cursor: pointer; color: red;" onclick=viewImage("'
+														+ params.data.docName1
+														+ '")> </div>';
+											} else {
+												div = div
+														+ " "
+														+ '<div class ="fa fa-picture-o" style="cursor: pointer; color: blue;" onclick=viewImage("'
+														+ params.data.docName1
+														+ '")> </div>';
+											}
+										}
+										return div;
+									}
+								}, {
+									headerName : 'Approved By',
+									field : "approvedBy",
+									width : 100,
+								}, {
+									headerName : 'Rejected By',
+									field : "rejectedBy",
+									width : 100,
+								}, {
+									headerName : 'Comments',
+									field : "approveComment",
+									width : 240,
+									hide: true
+								} ];
+
+						//Reimbursement management
+						var gridOptions = {
+							columnDefs : columnDefs,
+							defaultColDef : {
+								sortable : true,
+								filter : true,
+								resizable : true,
+								width : 100,
+								height : 10
+							},
+							pagination : true,
+							paginationPageSize: 15, 
+							rowSelection : 'single',
+							
+							onSelectionChanged : rowSelectId,
+							//suppressRowClickSelection : true,
+							groupSelectsChildren: true,
+						    suppressRowClickSelection: false,
+						    suppressAggFuncInHeader: true,
+							getRowNodeId : function(data) {
+								return data.reimbursementReqId;
+							},
+							getRowClass : function(params) {
+								if (params.data.approveStatus === "Approved") {
+									return 'hide-checkbox';
+								} else {
+									return '';
+								}
+							},
+							 /* onRowDataChanged: function() {
+							        // Select the first row when data is loaded
+							        gridOptions.api.forEachNode(function(node) {
+							            if (node.rowIndex === 0) {
+							                node.setSelected(true);
+							            }
+							        });
+							    } */
+						};
+
+						var deleteId = " ";
+						var rId="";
+						function rowSelectId() {
+							 var selectedNodes = gridOptions.api.getSelectedNodes();
+							 var selectedData = selectedNodes.map(node => node.data);
+							 var empID= selectedData.map(node => node.empID1);
+							 deleteId = selectedData.map(node => node.reimbursementReqId);
+							 rId= selectedData.map(node => node.reimbursementReqId);//alert(rId)	
+							 
+					     	 
+					     	 // var empID = $("#sessionId").val(); 
+							var selectedRows = gridOptions.api.getSelectedRows();
+							id = "";
+							var rowCount = 0;
+							for (var i = 0; i < selectedRows.length; i++) {
+								id = id + '"' + selectedRows[i].reimbursementReqId+ '"';
+							     rowCount = rowCount + 1;
+							     $("#employeeNameTop1").text(selectedRows[0].createdBy);
+							     $("#cancelRem").hide();
+							}
+								 var uid=$("#sessionId").val();
+								 var adRole=$("#adRole").val();
+								 
+								 let rowCount1 = rowCount;
+								 let status= selectedData.map(node => node.approveStatus)[0];
+								 var type = selectedData.map(node => node.reqTypeName)[0];
+								 clearImg();
+								 if(rowCount1 != 0){
+									 editPage(rId);
+									 disableFields();
+									 $("#addDtls").show();
+									 if (type === "Adhoc") {
+								        	$('#addDtls').show();
+								        	$('#editDtls').hide();
+								        	$('#masterSaveBtn').hide();
+								        	$('#deleteDtls').hide();
+								        	$('#approveReqBtn').hide();
+								        	$('#rejectReqBtn').hide();
+								        	
+								        } else if (type === "Planned") {
+								        	/* $('#addDtls').show();
+								        	$('#editDtls').show();
+								        	$('#masterSaveBtn').show();
+								        	$('#deleteDtls').show();
+								        	$('#approveReqBtn').show();
+								        	$('#rejectReqBtn').show(); */
+								        	 if(status == "Pending"){
+													if (window.location.href.indexOf("self-service") !== -1) {
+														$('#approveReqBtn,#rejectReqBtn').hide();
+												    }else{										
+												 $("#rejectReqBtn").show();
+												 $("#approveReqBtn").show();
+												    }
+												 $("#deleteDtls").show();
+												 $("#masterSaveBtn").show();
+												 $("#editDtls").show();
+												 $("#uploadDoc_0").attr("disabled" , false);
+											 }else{
+												 $("#rejectReqBtn").hide();
+												 $("#approveReqBtn").hide();
+												 $("#deleteDtls").hide();
+												 $("#masterSaveBtn").hide();
+												 $("#editDtls").hide();
+												 $("#uploadDoc_0").attr("disabled" , true);
+											 }
+								        }
+									
+								 }else{
+									 openNav();
+									 enableFields();
+									 $("#rejectReqBtn").hide();
+									 $("#approveReqBtn").hide();
+									 $("#deleteDtls").hide();
+									 $("#masterSaveBtn").show();
+									 $("#editDtls").hide();
+									 $("#uploadDoc_0").attr("disabled" , false);
+								 }
+							   
+					    if (rowCount > 0) {
+							$('#add').attr('disabled', false);
+							if(adRole!=null && adRole!=''){
+								
+								if(selectedData.map(node => node.approveStatus) == "Pending"){
+									$('#approve').attr('disabled', false);
+									$('#reject').attr('disabled', false);
+									$('#delete').attr("disabled", false); 
+									$('#approve').show();
+									$('#reject').show();
+									$('#delete').show();
+								}else if(selectedData.map(node => node.approveStatus) == "Forwarded"){
+									$('#approve').show();
+									$('#reject').hide();
+									$('#delete').hide();
+								}else if(selectedData.map(node => node.approveStatus) == "Rejected"){
+									$('#approve').hide();
+									$('#reject').hide();
+									$('#delete').hide();
+								}else if(selectedData.map(node => node.approveStatus) == "Approved"){
+									$('#approve').hide();
+									$('#reject').hide();
+									$('#delete').hide();
+								}else if(selectedData.map(node => node.approveStatus) == "completed"){
+									$('#approve').hide();
+									$('#reject').hide();
+									$('#delete').hide();
+								}
+								else{
+									$('#approve').hide();
+									$('#reject').hide();
+									$('#delete').hide();
+								}
+							}else if(managerRole!=null && managerRole!=''){
+								
+								if(empID==uid){
+									
+									
+									$('#approve').hide();
+									$('#reject').hide();
+									if(empID==uid){
+										
+										if(selectedData.map(node => node.approveStatus) == "Pending"){
+											$('#delete').show();
+										}else if((selectedData.map(node => node.approveStatus) == "Forwarded") || (selectedData.map(node => node.approveStatus) == "Approved") || (selectedData.map(node => node.approveStatus) == "Rejected")){
+											$('#approve').hide();
+											$('#reject').hide();
+											$('#delete').hide();
+										}else if(selectedData.map(node => node.approveStatus) == "completed"){
+											$('#approve').hide();
+											$('#reject').hide();
+											$('#delete').hide();
+										}
+										else{
+											$('#delete').hide();
+										}
+									}
+								}else{
+									
+								if(selectedData.map(node => node.approveStatus) == "Pending"){
+									$('#approve').show();
+									$('#reject').show();
+									$('#delete').hide();
+								}else if(selectedData.map(node => node.approveStatus) == "Forwarded"){
+									$('#approve').hide();
+									$('#reject').hide();
+									$('#delete').hide();
+								}else if((selectedData.map(node => node.approveStatus) == "Approved")|| (selectedData.map(node => node.approveStatus) == "Rejected")){
+									$('#approve').hide();
+									$('#reject').hide();
+									$('#delete').hide();
+								}else if(selectedData.map(node => node.approveStatus) == "completed"){
+									$('#approve').hide();
+									$('#reject').hide();
+									$('#delete').hide();
+								}
+								else{
+									$('#approve').hide();
+									$('#reject').hide();
+									$('#delete').hide();
+								}
+							  }
+							}else{
+								$('#approve').hide();
+								$('#reject').hide();
+								if(empID==uid){
+									
+									if(selectedData.map(node => node.approveStatus) == "Pending"){
+										$('#delete').show();
+									}else{
+										$('#delete').hide();
+										
+									}
+								}
+							}
+							
+						} else {
+							$('#approve').hide();
+						$('#reject').hide();
+						$('#delete').hide();
+						$('#add').attr("disabled", false);
+						if(type) {
+							$("#empName").attr("disabled",true);
+							getEmployeeList()
+						} else {
+							$("#empName").removeAttr("disabled");
+						}
+						}
+					    
+					    if (rowCount > 0) {
+					        
+					    } else {
+					   
+					    }
+					}
+						
+						
+						//Open Nav for Reimbursement
+						function openNav() { 
+							
+							//gridOptions.api.deselectAll();
+							
+							$("#reimbursementReqId").val("");
+							$("#rembsHeadId").text("");
+							
+							
+							$(".formValidation").remove();
+							$("#cancel").show();
+							$("#save").show();
+							//$('#save').attr('disabled', false);
+							$("#add").attr("disabled", false);
+							$("#delete").attr("disabled", true);
+							
+							//$("#empName").attr("disabled", true);
+							$("#travellingPurpose").val("");
+							$("#descExpense").val("");
+							$("#eAmount").val("");
+							$("#dateExpnc").val("");
+							$("#expenseDate12").val("");
+							$("#expenseDate1").val("");
+							//$("#upload").val("");
+							$("#uploadFor_0").val("");
+							$("#uploadedBillDiv_0").html("");
+							$("#imageName_0").html("");
+							$("#advanceAmount").val("");
+							$("#placeName").val("");
+							$("#referenceNo1").val("");
+							
+							$("#reqType").val("");
+							if($("#reqType").val("")== 0 ){
+								$("#refno").show();
+								$("#upload").show();
+								$("#amountrequired").hide();
+							}else{
+								$("#refno").hide();
+								$("#upload").hide();
+								$("#amountrequired").show();
+							}
+							
+							$("input[type='radio'][name='advanceReq']").prop('checked', false);
+							$("#advanceAmount").val(""); 
+							$("#No").prop('checked', true);
+							$("#amount").hide(); 
+							$("#advanceAmount").val('');
+							
+							var date = (new Date()).toISOString().split('T')[0];
+							var newDate = changeDateFormat(date);
+							setTimeout(function() {
+						        if (newDate) {
+						            console.log("Formatted Date:", newDate);
+						            $("#applyDate").val(newDate);  
+						        } else {
+						            console.log("Invalid Date Format");
+						        }
+						    }, 200);
+							
+							var id = $("#sessionId").val();
+							$("#empId").val("");
+							$("#empName").val("");
+						//	$("#designation").val("");
+						  	/* $.ajax({
+								type : "GET",
+								url : "reimbursement-view-getEmpData?id="+id,
+								contentType : 'application/json',
+								success : function(response) {
+									console.log(response)
+									if (response.message == "Success") {
+										//console.log("aaaaaaaaa",response.body)
+										$("#empId").val(response.body.name);
+										$("#empName").val(response.body.name);
+										$("#designation").val(response.body.code);
+										
+										
+										
+										}
+								}
+							}); */
+						}
+						function closeNav() {
+								//$("#reqType").attr("disabled", false);
+								$("#btnDiv").show();
+								$("#searchRowDiv").show();
+								$("#error9").hide();
+								 var userid = $("#sessionId").val();
+								var userrole = $("#sessionRole").val();
+								var roleid = "";
+								for(var i = 6; i <= userrole.length; i=i+6){  
+								    roleid = roleid + '"' +userrole.slice(i-6, i)+ '",';
+								}
+								roleid = roleid.substring(0, roleid.length - 1); 
+								agGrid.simpleHttpRequest({
+									url : "reimbursement-view-through-ajax?userid=" + userid+"&roleid="+roleid+"&selftype="+type,
+								}).then(function(data) {
+									var len = data.length;
+									$('#totalReim').find('span').html(len);
+									gridOptions.api.setRowData(data);
+									if (data && data.length > 0) {
+										let rowId = data[0].reimbursementReqId;
+										gridOptions.api.getRowNode(rowId).setSelected(true);
+									} else {
+										if(type) {
+											$("#empName").attr("disabled",true);
+											getEmployeeList()
+										} else {
+											$("#empName").removeAttr("disabled");
+										}
+										newDtls()
+									}
+								}) 
+								
+							$("#reimbursementReqId").val("");
+							$("#rembsHeadId").text("");
+							$("#reqType").val("");
+							$("#placeName").val("");
+							$("#travellingPurpose").val("");
+							$("#expenseDate1").val("");
+							$("#descExpense").val("");
+							$("#eAmount").val("");
+							$("#advanceAmount").val("");
+							$("#uploadFor_0").val("");
+							$("#referenceNo1").val("");
+							$("#download").attr("disabled", false);
+							$("#download").show();
+							$("#add").attr("disabled", false);
+							$("#delete").attr("disabled", true);
+							$("#add").show();
+							//document.getElementById("mySidenav").style.width = "0";
+							//document.getElementById("main").style.width = "100%";
+							$("#uploadedBillDiv_0").html("");
+							$("#imageName_0").html("");
+							//location.reload();
+							
+							 /* $("input[type='radio'][name='advanceReq']").prop('checked', false); // Uncheck all radio buttons
+							$("#advanceAmount").val(""); // Clear the value of an input field
+							$("#No").prop('checked', true);
+							$("#advanceAmount").val(''); */
+							$("input[type='radio'][name='advanceReq']").prop('checked', false);
+							$("#advanceAmount").val(""); 
+							$("#No").prop('checked', true);
+							$("#amount").hide(); 
+							$("#advanceAmount").val('');
+							
+							}
+					 
+						
+						function setReimburseTabAsDefault() {
+							document.querySelectorAll('#tabMenu .nav-link').forEach((tab) => {
+								console.log("tab",tab);
+								//tab.classList.remove('show');
+								tab.classList.remove('active');
+								console.log("tab",tab);
+							});
+							
+							const reimburseTab = document.querySelector('#reimburse-tab .nav-link');
+							reimburseTab.classList.add('active');
+							reimburseTab.setAttribute('aria-selected', 'true');
+
+							document.querySelectorAll('.tab-pane').forEach((tab) => {
+								tab.classList.remove('show');
+								tab.classList.remove('active');
+								
+							});
+							
+							const reimburseContent = document.querySelector('#reimburse');
+							reimburseContent.classList.add('show', 'active');
+						}
+						
+						/*
+						 *Edit function
+						 */
+
+						function editPage(reimbursementReqId) {
+							//openNav()
+							console.log("Edit>>>>>Okkkkk")
+						    var sempid=$("#sessionId").val();
+						    setReimburseTabAsDefault
+						    $('.loader').show();
+						    $('.loader').show();
+							//$("body").addClass("overlay");
+							timeout = setTimeout(function() {
+							$.ajax({
+								type : "GET",
+								url : "reimbursement-edit-through-ajax?id=" + reimbursementReqId,
+								async : false,
+								success : function(response) {
+									console.log(response)
+									if (response.message == "Success") {
+										$('.loader').hide();
+										//$("body").removeClass("overlay");
+										var selectedNodes = gridOptions.api.getSelectedNodes();
+										var selectedData = selectedNodes.map(node => node.data);
+										var Id=selectedData.map(node => node.reimbursementReqId);
+										var empID = selectedData.map(node => node.empID1);
+										var sts = selectedData.map(node => node.approveStatus);
+										var type = selectedData.map(node => node.reqType); 
+										console.log("sts>>>>",sts);
+										/* if (sts== "Pending" && empID==sempid) {
+											$("#save").show();
+											/* $("#approve").show();
+											$("#reject").show();
+											$("#delete").show(); 
+										}else if(sts== "Approved" || sts== "completed" || sts== "Rejected"){
+											$("#save").hide();
+											/* $("#approve").hide();
+											$("#reject").hide();
+											$("#delete").hide(); 
+										} */
+										
+										$("#myGrid").show();
+										$("#cancel").show();
+										//$("#delete").show();
+										$("#empId").val(response.body.empId);
+										$("#empName").val(response.body.empName);
+										$("#reimbursementReqId").val(response.body.reimbursementReqId);
+										$("#rembsHeadId").text(response.body.reimbursementReqId);
+										$("#reqType").val(response.body.reqType);
+										//$("#reqType").attr("disabled", true);
+										$("#applyDate").val(response.body.applyDate);
+										let travellingPurpose = response.body.travellingPurpose;
+										if(travellingPurpose != "" && travellingPurpose != null){
+											$("#travellingPurpose").val(window.atob(travellingPurpose));
+										}else{
+											$("#travellingPurpose").val(null);
+										}
+										//$("#travellingPurpose").val(response.body.travellingPurpose);
+										let descExpense = response.body.descExpense;
+										if(descExpense != "" && descExpense != null && descExpense != "null"){
+											$("#descExpense").val(window.atob(descExpense));
+										}else{
+											$("#descExpense").val(null);
+										}
+										//$("#descExpense").val(response.body.descExpense);
+										$("#eAmount").val(response.body.eAmount);
+										$("#expenseDate1").val(response.body.expenseDate1);
+										if (response.body.reqType==1){
+									    	$('#refno').hide();
+											$('#upload').hide();
+											$('#amountrequired').show(); 
+											$('#dateExpnc1').hide(); 
+											$('#dateExpnc').show(); 
+											if(response.body.advanceReq==1){
+												$("#Yes").prop('checked', true);
+												$("#amount").show();
+												$("#advanceAmount").val(response.body.advanceAmount);
+											}else{
+												$("#No").prop('checked', true);
+												$("#amount").hide();
+											}
+											$("#advanceAmount").val(response.body.advanceAmount);
+											
+									    }else {
+									    	$('#refno').show();
+											$('#upload').show();
+											$('#amountrequired').hide();
+											$("#amount").hide();
+											//$("#expenseDate12").val(response.body.expenseDate1);
+											$("#referenceNo1").val(response.body.referenceNo1);
+											$('#dateExpnc1').show();
+											$('#dateExpnc').hide();
+											
+											var fileName=response.body.docName1;
+											if (fileName != null) {
+												var ext = response.body.docName1.split(".");
+												$("#imageName_0").html(fileName);
+									           if (ext[1] == "jpg" || ext[1] == "png") {
+													var LightImg = '<div class ="uploadicon position-l bdr-n"><a class="example-image-link" target="_balnk"><i class="bi bi-image" style="color: #BF05FF" onclick=viewImage("'
+														+ fileName + '")></i></a> </div>';
+												}else if (ext[1] == "pdf") {
+													var LightImg = '<div class ="uploadicon position-l bdr-n"><a class="example-image-link" target="_balnk"><i class="bi bi-file-pdf" style="color: red" onclick=viewImage("'
+														+ fileName + '")></i></a> </div>';
+												} else {
+													var LightImg = "<div class='uploadicon position-l bdr-n'> </div>";
+												}  
+
+												$("#uploadedBillDiv_0").html(LightImg);
+												//Ensure the delete button gets added to the #dltImage_0 div
+												if(sts[0] == "Pending"){
+													$("#dltImage_0").html(
+															"<button onclick='clearImg()' style='border: none; background: none;'><i class='fa fa-times' style='color: red; margin-left: 5px;'></i></button>"
+															);
+												}else{
+													$("#dltImage_0").html("");
+												}
+												
+											}
+									    }
+											
+										
+										}else{
+											$('.loader').hide();
+											//$("body").removeClass("overlay");
+											//showSnackbar(" Something went to wrong");
+											toastr.error('Something went to wrong');
+											
+										}
+									
+									
+								}
+							});
+							}, 500);
+						}
+						function viewImage(id){
+							window.open("/document/document/"+id,'_blank');
+						}
+						
+						function changeDateFormat(inputDate){  // expects Y-m-d
+						    var splitDate = inputDate.split('-');
+						    if(splitDate.count == 0){
+						        return null;
+						    }
+
+						    var year = splitDate[0];
+						    var month = splitDate[1];
+						    var day = splitDate[2]; 
+
+						    return day + '-' + month + '-' + year;
+						}
+						
+						function addDetails() {
+							$(".formValidation").remove();
+							obj = {};
+							var val=$("#eAmount").val();
+						    var formatted = val.replace(/,/g, '');
+						    val= parseFloat(formatted);
+							var validation = true;
+							let reimbursementReqId = $("#reimbursementReqId").val();
+							obj.reimbursementReqId = $("#reimbursementReqId").val();
+							 
+							obj.empId= $("#empId").val();
+							obj.reqType= $("#reqType").val();
+							obj.applyDate = $("#applyDate").val();
+							let travellingPurpose = $("#travellingPurpose").val();
+							if(travellingPurpose!= "" && travellingPurpose != null){
+								obj.travellingPurpose = window.btoa(travellingPurpose);
+							}else{
+								obj.travellingPurpose = null;
+							}
+							//obj.travellingPurpose = $("#travellingPurpose").val();
+							obj.expenseDate1 = $("#expenseDate1").val();
+							let descExpense = $("#descExpense").val();
+							if(travellingPurpose!= "" && travellingPurpose != null){
+								obj.descExpense = window.btoa(descExpense);
+							}else{
+								obj.descExpense = null;
+							}
+							//obj.descExpense = $("#descExpense").val();
+							obj.eAmount = val;
+							obj.docName1 = $("#imageName_0").html();
+							obj.referenceNo1 = $("#referenceNo1").val();
+							obj.advanceReq = $("input[type='radio'][name='advanceReq']:checked")
+									.val()
+							if (obj.advanceReq == 1) {
+								obj.advanceReq = "1";
+								obj.advanceAmount = $("#advanceAmount").val();
+
+							} else {
+								obj.advanceReq = "0";
+								obj.advanceAmount = null;
+							}
+							//obj.advanceAmount = $("#advanceAmount").val();
+							 obj.module = localStorage.getItem('module');
+							obj.component = localStorage.getItem('function');
+							obj.subcomponent = localStorage.getItem('activity'); 
+							
+							
+							console.log(obj);
+							 if (obj.empId == null || obj.empId == "") {
+								 toastr.error('Employee Name Required.');
+								 return;
+								}
+							 if (obj.reqType == null || obj.reqType == "") {
+								
+								toastr.error('Requisition Type Required.');
+								 return;
+							}
+							/* if (obj.applyDate == null || obj.applyDate == "") {
+								validation = validationUpdated("Apply Date Required", "applyDate");
+							} */
+							if (obj.travellingPurpose == null || obj.travellingPurpose == "") {
+								
+								toastr.error('Purpose Required.');
+								 return;
+							}
+							if (obj.expenseDate1 == null || obj.expenseDate1 == "") {
+								
+								toastr.error('Date of Expense Required.');
+								 return;
+							}
+							if (obj.eAmount == null || obj.eAmount == "" || isNaN(obj.eAmount)) {
+								
+								toastr.error('Total Amount is Required.');
+								 return;
+							}
+							
+							/* if (obj.descExpense == null || obj.descExpense == "") {
+								
+								toastr.error('Description Required.');
+								 return;
+							} */
+							if(obj.reqType=="0"){
+							   
+							    if (obj.referenceNo1 == null || obj.referenceNo1 == "") {
+									
+							    	toastr.error('Reference No Required.');
+									 return;
+								}
+							}
+							if (obj.reqType == "1" && obj.advanceReq == 1) {
+								
+								 if (obj.advanceAmount == null || obj.advanceAmount == "") {
+										//validation = validationUpdated("Advance Amount Required", "advanceAmount");
+										toastr.error('Advance Amount Required.');
+										 return;
+								}
+
+							}
+							
+							/*  if(obj.reqType=="1"){
+								    obj.expenseDate1 = $("#expenseDate1").val();
+									if (obj.expenseDate1 == null || obj.expenseDate1 == "") {
+										validation = validationUpdated("Date of Expense Required", "expenseDate1");
+									}
+									
+							 }else if(obj.reqType=="0"){
+								 obj.expenseDate1 = $("#expenseDate12").val();
+								 var doc = $("#imageName_0").html();
+									if (obj.expenseDate1 == null || obj.expenseDate1 == "") {
+										validation = validationUpdated("Date of Expense Required", "expenseDate12");
+									}
+
+									 if (obj.referenceNo1 == null || obj.referenceNo1 == "") {
+											validation = validationUpdated("Reference No Required", "referenceNo1");
+							          if (doc== null || doc == "") {
+							        	  validation = validationUpdated("Please Upload Receipt", "validationDiv");
+										}  
+							 }else{
+								 
+							 } */
+
+							
+								 //amtVal();
+								// validation = false;
+							if (validation) {
+								$(".formValidation").remove();
+									$('.loader').show();
+								$.ajax({
+									type : "POST",
+									url : "reimbursement-add-details",
+									contentType : "application/json",
+									data : JSON.stringify(obj),
+									success : function(response) {
+										if (response.code == "success") {
+											$('.loader').hide();
+											//showSnackbar(response.message);
+											toastr.success(response.message);
+											
+											$("#activityone").show();
+											$("#addDtls").show();
+											$("#myGrid").show();
+											$("#cancel").hide();
+											$("#save").hide();
+											$("#form").hide();
+											$("#new").hide();
+											var userid = $("#sessionId").val();
+											var userrole = $("#sessionRole").val();
+											var roleid = "";
+											for(var i = 6; i <= userrole.length; i=i+6){  
+											    roleid = roleid + '"' +userrole.slice(i-6, i)+ '",';
+											}
+											roleid = roleid.substring(0, roleid.length - 1); 
+											agGrid.simpleHttpRequest({
+												url : "reimbursement-view-through-ajax?userid=" + userid+"&roleid="+roleid+"&selftype="+type,
+											}).then(function(data) {
+												var len = data.length;
+												$('#totalReim').find('span').html(len);
+												gridOptions.api.setRowData(data);
+												if (data && data.length > 0) {
+													if(reimbursementReqId){
+														//let rowId = data[0].invoiceId;
+														gridOptions.api.getRowNode(reimbursementReqId).setSelected(true);
+													}else{
+														gridOptions.api.getDisplayedRowAtIndex(0).setSelected(true);
+													}
+													
+												}
+												if (data && data.length > 0) {
+													if(reimbursementReqId){
+														gridOptions.api.getRowNode(reimbursementReqId).setSelected(true);
+													}else{
+														gridOptions.api.getDisplayedRowAtIndex(0).setSelected(true);
+													}
+												} else {
+													if(type) {
+														$("#empName").attr("disabled",true);
+														getEmployeeList()
+													} else {
+														$("#empName").removeAttr("disabled");
+													}
+													//newDtls()
+												}
+											})
+											rowSelectId();
+											//closeNav();
+
+										}else{
+											$('.loader').hide();
+											//showSnackbar(" Something went to wrong");
+											toastr.error('Something went to wrong');
+											
+										}
+									},
+									error : function(data) {
+									}
+								})
+							}
+							 }
+						
+						//Amount validation
+						var amtValid1;
+						function amtVal() {
+						    var val = $('#eAmount').val();
+						    var formatted = val.replace(/,/g, '');
+						     val= parseFloat(formatted);
+						    if (val != '') {
+						        if (val>=100) {
+						            $("#error9").hide();
+						            amtValid1 = true;
+						            return true;
+						        } else {
+						            $("#error9").html(
+						                "Minimum Amount 100");
+						        	 $("#error9").show();
+						        	 amtValid1 = false;
+						            return false;
+						        }
+						    } else {
+						        $("#error9").html("Amount Required");
+						        amtValid1 = false;
+						        return false;
+						    }
+						}
+					 
+						function saveFile1(event) {
+							var uFile = $(uploadDoc_0)[0].files[0];
+							var fileName = event.currentTarget.value;
+							var lastIndex = fileName.lastIndexOf("\\");
+							if (lastIndex >= 0) {
+								fileName = fileName.substring(lastIndex + 1);
+							}
+							var extension = fileName.split(".");
+							var iURL = URL.createObjectURL(uFile);
+							$("#uploadedBillDiv_0").html("");
+
+							if (extension[1] == "jpg" || extension[1] == "png"|| extension[1] == "jpeg") {
+								var LightImg = "<div class='uploadicon position-l bdr-n'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='bi bi-image' style='color: blue'></i></a></div>";
+							}else if (extension[1] == "pdf") {
+								var LightImg = "<div class='uploadicon position-l bdr-n'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='bi bi-file-pdf' style='color: red'></i></a></div>";
+							} else {
+								var LightImg = "<div class='uploadicon position-l bdr-n'> </div>";
+							}
+							$("#uploadedBillDiv_0").html(LightImg);
+							$("#imageName_0").html(fileName);
+							//Ensure the delete button gets added to the #dltImage_0 div
+							$("#dltImage_0").html(
+							"<button onclick='clearImg()' style='border: none; background: none;'><i class='fa fa-times' style='color: red; margin-left: 5px;'></i></button>"
+							);
+							var fileData = new FormData();
+							fileData.append('file', uFile);
+							fileData.append('path', 'none');
+							$.ajax({
+								type : "POST",
+								url : "reimbursement-upload-file",
+								enctype : "multipart/form-data",
+								contentType : false,
+								data : fileData,
+								processData : false,
+								cache : false,
+								success : function(response) {
+								},
+								error : function(e) {
+
+								}
+							});
+						}
+						
+						//Your getId function
+						function getId(){
+						var empNameDropdown = document.getElementById("empName");
+						var selectedEmpKey = empNameDropdown.options[empNameDropdown.selectedIndex].value;
+						//document.getElementById("empId").value = selectedEmpKey;
+
+						var selectedOption = empNameDropdown.options[empNameDropdown.selectedIndex];
+						var designation = selectedOption.getAttribute("data-code");
+						//document.getElementById("designation").value = designation;
+						}
+						
+						
+						function check1() {
+						    // Get the amount and remove any commas
+						    var amt = $("#eAmount").val();
+						    var formattedAmt = amt.replace(/,/g, '');
+						    var amtFloat = parseFloat(formattedAmt);
+
+						    // Get the advance amount
+						    var adv = $("#advanceAmount").val();
+						    var advFloat = parseFloat(adv);
+						    
+
+						    // Check if both values are numbers
+						    if (isNaN(amtFloat)) {
+						    	toastr.error('Please enter valid numbers for Total amount fields.');
+						    	 $("#advanceAmount").val(null);
+						        return;
+						    }
+						    if (isNaN(advFloat)) {
+						    	toastr.error('Please enter valid numbers for Advance amount fields.');
+						    	 $("#advanceAmount").val(null);
+						        return;
+						    }
+
+						    // Perform the comparison
+						    if (amtFloat >= advFloat) {
+						        
+						    } else {
+						       
+						        toastr.error('Advance amount must be less than or equal to amount');
+						        
+						        $("#advanceAmount").val(null); // Clear the advance amount field
+						    }
+						}
+						function checkAmount(fieldId) {
+							 var myField = document.getElementById("eAmount")
+							 var reg = /^\d{0,8}(\.\d{0,2})?$/;   
+							 var val=parseInt(myField);
+							 var amt=$("#eAmount").val();
+							if(amt=="00"){
+								$("#" + fieldId).val(null);
+							}else if (reg.test(myField.value))
+							 {    
+								 $("#" + fieldId).val();
+								 reg = '';  
+							 }else{        
+								 $("#" + fieldId).val(null);    
+								 }
+							 }  
+					 function checkAmount1(fieldId) {   
+							 var myField = document.getElementById("advanceAmount")
+							 var reg = /^\d{0,8}(\.\d{0,2})?$/;   
+							 if (reg.test(myField.value))
+							 {       
+								 $("#" + fieldId).val();
+								 reg = '';  
+							 }else{        
+								 $("#" + fieldId).val(null);    
+								 }
+							 } 
+					 function checkNum(fieldId, message) {
+							//var alphaNumericRegExp = new RegExp(/^([0-9]|[a-z])+([a-z]+)$/i);
+							 var tempVal = $("#" + fieldId).val().replace(/[^a-zA-Z0-9]/g, '');
+							 $("#" + fieldId).val(tempVal);
+
+						}
+					 /* -------------------function for approve button----------------- */
+						
+						var empid = "";
+						var empname = "";
+						function approveRem() {
+							var selectedNodes = gridOptions.api.getSelectedNodes();
+							 var selectedData = selectedNodes.map(node => node.data);
+							 deleteId = selectedData.map(node => node.reimbursementReqId);
+							 rId= selectedData.map(node => node.reimbursementReqId);
+							var userrole = $("#sessionRole").val();
+							var roleid = "";
+							for(var i = 6; i <= userrole.length; i=i+6){  
+							    roleid = roleid + '"' +userrole.slice(i-6, i)+ '",';
+							}
+							roleid = roleid.substring(0, roleid.length - 1); 
+							empid = $("#sessionId").val();
+							empname = $("#sessionName").val();
+							comment = $("#comment").val();
+							setTimeout(function() {
+							$.ajax({
+								type : "GET",
+								url : "reimbursement-details-approve?approveId=" + rId + "&name=" + empid+"&comment="+comment+"&roleid="+roleid,
+								async : false,
+								success : function(response) {
+
+									if (response.code == "success") {
+										//closeNav();
+										//showSnackbar(response.message);
+										toastr.success(response.message);
+																				
+										var userid = $("#sessionId").val();
+										var userrole = $("#sessionRole").val();
+										var roleid = "";
+										for(var i = 6; i <= userrole.length; i=i+6){  
+										    roleid = roleid + '"' +userrole.slice(i-6, i)+ '",';
+										}
+										roleid = roleid.substring(0, roleid.length - 1); 
+										agGrid.simpleHttpRequest({
+											url : "reimbursement-view-through-ajax?userid=" + userid+"&roleid="+roleid+"&selftype="+type,
+										}).then(function(data) {
+											var len = data.length;
+											$('#totalReim').find('span').html(len);
+											gridOptions.api.setRowData(data);
+											
+											if (data && data.length > 0) {
+												gridOptions.api.getRowNode(rId).setSelected(true);
+											} else {
+												if(type) {
+													$("#empName").attr("disabled",true);
+													getEmployeeList()
+												} else {
+													$("#empName").removeAttr("disabled");
+												}
+												newDtls()
+											}
+										})
+										$('#delete').hide();
+										$('#approve').hide();
+										$('#reject').hide();
+										$("#comment").val(null);
+										//$("#payment").attr("disabled", true);
+									}else{
+										toastr.error('YOU’RE ALREADY APPROVED!');
+										//gridOptions.api.getRowNode(rId).setSelected(true);
+										//showSnackbar("YOU’RE ALREADY APPROVED!");
+										closeNav();
+										$('#commentModal').modal('hide');
+										$('#delete').hide();
+										$('#approve').hide();
+										$('#reject').hide();
+										$("#comment").val(null);
+									}
+
+								},
+								error : function(data) {
+								}
+							});
+							}, 1000)
+						} 
+						
+						/*-----------------------function for reject button------------------- */
+						var rejempid = "";
+						var rejempname = "";
+						function rejectRem() {
+							var selectedNodes = gridOptions.api.getSelectedNodes();
+							 var selectedData = selectedNodes.map(node => node.data);
+							 deleteId = selectedData.map(node => node.reimbursementReqId);
+							 rId= selectedData.map(node => node.reimbursementReqId);
+							rejempid = $("#sessionId").val();
+							rejempname = $("#sessionName").val();
+							comment = $("#comment").val();
+							
+							$.ajax({
+								type : "GET",
+								url : "reimbursement-details-reject?rejectId=" + rId + "&name=" + rejempid+"&comment="+comment,
+								async : false,
+								success : function(response) {
+
+									if (response.code == "success") {
+										//showSnackbar(response.message);
+										toastr.success(response.message);
+										
+										//	closeNav();
+										var userid = $("#sessionId").val();
+										var userrole = $("#sessionRole").val();
+										var roleid = "";
+										for(var i = 6; i <= userrole.length; i=i+6){  
+										    roleid = roleid + '"' +userrole.slice(i-6, i)+ '",';
+										}
+										roleid = roleid.substring(0, roleid.length - 1); 
+										agGrid.simpleHttpRequest({
+											url : "reimbursement-view-through-ajax?userid=" + userid+"&roleid="+roleid+"&selftype="+type,
+										}).then(function(data) {
+											var len = data.length;
+											$('#totalReim').find('span').html(len);
+											gridOptions.api.setRowData(data);
+											// gridOptions.api.getRowNode(rId).setSelected(true);
+											if (data && data.length > 0) {
+												gridOptions.api.getRowNode(rId).setSelected(true);
+											} else {
+												if(type) {
+													$("#empName").attr("disabled",true);
+													getEmployeeList()
+												} else {
+													$("#empName").removeAttr("disabled");
+												}
+												newDtls()
+											}
+										})
+										$('#delete').hide();
+										$('#approve').hide();
+										$('#reject').hide();
+										$("#comment").val(null);
+										//$("#payment").attr("disabled", true);
+									}else{
+										toastr.error('YOU’RE ALREADY REJECTED!');
+										//showSnackbar("YOU’RE ALREADY REJECTED!");
+										cancelBtn();
+										$('#commentModal').modal('hide');
+										$('#delete').hide();
+										$('#approve').hide();
+										$('#reject').hide();
+										$("#comment").val(null);
+									}
+
+								},
+								error : function(data) {
+								}
+							});
+						}
+						
+						function deleteData() {
+							var selectedRows = gridOptions.api.getSelectedRows();
+							 var id=selectedRows[0].reimbursementReqId;
+							 let rowIndex=0;
+							 rowIndex = gridOptions.api.getSelectedNodes()[0].rowIndex;
+							$(".loader").show();
+								$.ajax({
+									type : "POST",
+									url : "reimbursement-delete-details?id="+ id,
+									success : function(response) {
+									 if (response.message == "Success") {
+										 
+										 //closeNav()
+										//$('#delete').attr("disabled", true);
+										 //showSnackbar("Data Deleted Successfully");
+										 var userid = $("#sessionId").val();
+											var userrole = $("#sessionRole").val();
+											var roleid = "";
+											for(var i = 6; i <= userrole.length; i=i+6){  
+											    roleid = roleid + '"' +userrole.slice(i-6, i)+ '",';
+											}
+											roleid = roleid.substring(0, roleid.length - 1); 
+											agGrid.simpleHttpRequest({
+												url : "reimbursement-view-through-ajax?userid=" + userid+"&roleid="+roleid+"&selftype="+type,
+											}).then(function(data) {
+												gridOptions.api.setRowData(data);
+												if (data && data.length > 0) {
+													gridOptions.api.getDisplayedRowAtIndex(rowIndex).setSelected(true);
+												} else {
+													if(type) {
+														$("#empName").attr("disabled",true);
+														getEmployeeList()
+													} else {
+														$("#empName").removeAttr("disabled");
+													}
+													newDtls()
+												}
+											}) 
+										 toastr.success('Reimbursement Deleted Successfully');
+											$(".loader").hide();
+									}else{
+										$(".loader").hide();
+									} 
+									},
+									error : function(data) {
+										$(".loader").hide();
+									console.log(data);
+									}
+								})
+						} 
+						
+						/*-----------------------function for Snackbar message------------------- */
+						/* function showSnackbar(message) {
+						  const snackbar = document.getElementById("snackbar");
+						  snackbar.textContent = message;
+						  snackbar.className = "snackbar show";
+						  setTimeout(() => {
+						    snackbar.className = snackbar.className.replace("show", "");
+						  }, 3000);  
+						} */
+						
+						function check(fieldId) {
+							var tempVal = $("#" + fieldId).val().replace(/[^0-9 ]/g, '');
+							$("#" + fieldId).val(tempVal);
+						}
+						
+						function checkAlphabet(fieldId) {
+							
+						    var tempVal = $("#" + fieldId).val().replace(/[^a-zA-Z. ]/g,'');
+						    tempVal=tempVal.replace(/^\w/, c => c.toUpperCase());
+						    
+						    const input = document.getElementById(fieldId);
+						    const position = input.selectionStart;	
+						    if(position == 1 && tempVal.charAt(0) == ' '){
+						    	$("#" + fieldId).empty();
+						    	tempVal = '';
+						   } 
+						   $("#" + fieldId).val(tempVal);
+						} 
+
+//});
+
+function newDtls(){
+	gridOptions.api.deselectAll();
+	$("#addDtls").hide();
+	$("#cancelRem").show();
+	$("#descExpense").val("");
+	if(type){
+		getEmployeeList();
+	}
+}
+
+
+function disableFields(){
+	$('#empName').attr("disabled", true);
+	$('#reqType').attr("disabled", true);
+	$('#travellingPurpose').attr("disabled", true);
+	$('#descExpense').attr("disabled", true);
+	$('#advanceAmount').attr("disabled", true);
+	$('#eAmount').attr("disabled", true);
+	$('#referenceNo1').attr("disabled", true);
+	$('#expenseDateCalendar1').addClass("disabledCalender");
+	
+	
+	$('input[type=radio][name=advanceReq]').prop('disabled', true);
+}
+
+function enableFields(){
+	$('#empName').attr("disabled", false);
+	$('#reqType').attr("disabled", false);
+	$('#travellingPurpose').attr("disabled", false);
+	$('#descExpense').attr("disabled", false);
+	$('#advanceAmount').attr("disabled", false);
+	$('#eAmount').attr("disabled", false);
+	$('#referenceNo1').attr("disabled", false);
+	$('#expenseDateCalendar1').removeClass("disabledCalender");
+	$("#addDtls").hide();
+	$("#editDtls").hide();
+	$("#deleteDtls").hide();
+	$("#approveReqBtn").hide();
+	$("#rejectReqBtn").hide();
+	$("#cancelRem").show();
+	
+	
+	$('input[type=radio][name=advanceReq]').prop('disabled', false);
+	
+}
+
+function enterToSearch(event){
+	console.log(event.keyCode);
+	if(event.keyCode == 13){
+		let filterData = $("#quickFilter").val();
+		if(filterData){
+			onQuickFilterChanged();
+		}
+	}
+	
+}
+
+function onQuickFilterChanged() {
+	gridOptions.api
+			.setQuickFilter(document.getElementById('quickFilter').value);
+	gridOptions.api.getDisplayedRowAtIndex(0).setSelected(true);
+
+}
+function reset(){
+	let data = $("#quickFilter").val('');
+	if(data!=null && data!=""){
+		$("#quickFilter").val('');
+		onQuickFilterChanged();
+	}
+}
+
+function clearImg() {
+	$("#uploadDoc_0").val(null);  // Clear file input
+	$("#uploadedBillDiv_0").html('');  // Clear image preview
+	$("#imageName_0").html('');  // Clear image name
+	$("#dltImage_0").html('');   // Clear the delete button
+	$("#uploadDoc_0").attr("disabled" , false);
+	$.ajax({
+		type : "GET",
+		url : "reimbursement-remove-file",
+		enctype : "multipart/form-data",
+		contentType : false,
+		data : null,
+		processData : false,
+		cache : false,
+		success : function(response) {
+		},
+		error : function(e) {
+
+		}
+	});
+	}
+	
+/* Employee AutoSearch */
+
+function getEmployeeList() {
+	var search = null;
+	if(type) {
+		search = $("#sessionName").val();
+	} else {
+		search = $("#empName").val();
+	}
+	if (search) {
+		$.ajax({
+			type: "POST",
+			url: "travel-requisition-get-employee-list",
+			dataType: 'json',
+			contentType: 'application/json',
+			data: search,
+			success: function (response) {
+				if (response.message == "success") {
+					if (response.body.length != 0) {
+						//$("#empid").val("");
+						if(type == 'self-service') {
+							selectAutocompleteValueItem1(response.body[0].key,window.btoa(response.body[0].name),window.btoa(response.body[0].code))
+						} else {
+						$("#empNameList").css("background", "#FFF");
+						var content = '<ul id="autocomplete-list1" style="margin-left:-40px; font-weight:100; font-size:14px; color:#ccc;max-height: 200px;">';
+						for (var i = 0; i < response.body.length; i++) {
+							content += '<li class="autocompletedata cp" onClick="selectAutocompleteValueItem1(\''
+								+ response.body[i].key
+								+ '\',\''
+								+ window.btoa(response.body[i].name)
+								+ '\',\''
+								+ window.btoa(response.body[i].code)
+								+ '\')">'
+								+ response.body[i].key
+								+ " - "
+								+ response.body[i].name
+								+ '</li>';
+						}
+						content += '</ul>';
+						$("#suggesstion-box_").show();
+						$("#suggesstion-box_").html(content);
+						}
+
+					} else {
+						$("#empNameList").css("background", "#FFF");
+						var content = '<ul id="autocomplete-list1">';
+						content += '<font-weight:100; font-size:14px; color:#ccc; background-color: #0909e4;"li onClick="selectAutocompleteValueItem()">'
+							+ "No Data Found" + '</li>';
+						content += '</ul>';
+						$("#suggesstion-box_").show();
+						$("#suggesstion-box_").html(content);
+					}
+				}
+			},
+			error: function (data) {
+				console.log(data);
+			}
+		})
+	} else {
+		$("#empId").val("");
+		$("#empName").val("");
+		$("#designation").val("");
+		$("#suggesstion-box_").hide();
+	}
+}
+
+function selectAutocompleteValueItem1(empid, empName, designation) {
+	if (empid) {
+		//$("#error1").hide();
+		$("#empName").val(window.atob(empName));
+		$("#empId").val(empid);
+		$("#designation").val(window.atob(designation));
+		$("#empName").attr('data-procat', empid);
+		$("#suggesstion-box_").hide();
+	} else {
+		$("#empId").val("");
+		$("#empName").val("");
+		$("#designation").val("");
+		$("#empName").attr('data-procat', "");
+		$("#suggesstion-box_").hide();
+
+	}
+}
+
+function configureDatePicker(type) {
+    var dateFormat = "d-m-Y"; // Ensure correct date format
+
+    $("#expenseDate1").datetimepicker("destroy").datetimepicker({
+        format: dateFormat,
+        closeOnDateSelect: true,
+        timepicker: false,
+        minDate: type === "0" ? false : new Date(), // Adhoc: allow past dates, Planned: disable past dates
+        maxDate: type === "0" ? new Date() : false // Adhoc: disable future dates, Planned: allow future dates
+    });
+
+    // Optional: Auto-set the current date
+    $("#expenseDate1").val("").datetimepicker("reset");
+}
+
+function vieRemDetails(){
+	var userid = $("#sessionId").val();
+	var userrole = $("#sessionRole").val();
+	var roleid = "";
+	for (var i = 6; i <= userrole.length; i = i + 6) {
+		roleid = roleid + '"' + userrole.slice(i - 6, i)
+				+ '",';
+	}
+	roleid = roleid.substring(0, roleid.length - 1);
+	agGrid.simpleHttpRequest(
+			{
+				url : "reimbursement-view-through-ajax?userid="
+						+ userid
+						+ "&roleid="
+						+ roleid+"&selftype="+type,
+			}).then(function(data) {
+		gridOptions.api.setRowData(data);
+		
+		if (data && data.length > 0) {
+			gridOptions.api.getDisplayedRowAtIndex(0).setSelected(true);
+			
+		} else {
+			if(type) {
+				$("#empName").attr("disabled",true);
+				getEmployeeList()
+			} else {
+				$("#empName").removeAttr("disabled");
+			}
+		}
+	});
+}
+function cancelRem(){
+	vieRemDetails();
+	if (window.location.href.indexOf("self-service") !== -1) {
+		$('#approveReqBtn,#rejectReqBtn,#cancelRem').hide();
+		$("#addDtls, #editDtls, #deleteDtls").show();
+    }else{
+	$("#addDtls, #editDtls, #deleteDtls,#approveReqBtn,#rejectReqBtn").show();
+	$("#cancelRem").hide();
+    }
+	
+	
+}
+
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex ">
+				<div class="maincontentsec">
+					<!--Tabbination 1 Start-->
+					<div id="tab1" class="tab-pane" role="tabpanel">
+						<div class="d-flex flex-column flex-lg-row">
+							<!-- Tab panes -->
+							<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+								type="hidden" id="sessionName" th:value="${userName}" /> <input
+								type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+								type="hidden" id="adRole" th:value="${adRole}" /> <input
+								type="hidden" id="managerRole" th:value="${managerRole}" /> <input
+								type="hidden" id="aprRole" th:value="${aprRole}" />
+							<!--Left Sec Start-->
+							<div class="box-sec" id="collapseWidthR1">
+								<div class="out-box">
+									<div class="col d-flex flex-column gap-2 h-100">
+										<div class="d-flex justify-content-between bdr-line p-2">
+
+											<div class="col-md-8 col-12">
+												<div class="d-flex gap-2 search-sec position-relative">
+													<input class="form-control" type="text"
+														onkeydown="enterToSearch(event)" placeholder="Search"
+														id="quickFilter" autocomplete="off">
+													<button class="btn go-btn" type="button"
+														onclick="onQuickFilterChanged()">Go</button>
+													<button class="btn go-btn" type="button"
+														onclick="reset()">Reset</button>
+												</div>
+											</div>
+
+											<div class="d-flex justify-content-end">
+												<button class="btn max-btn"
+													id="collapseButtonR1" onclick="triggerExpansionR(1)"
+													data-bs-toggle="tooltip" data-bs-placement="top"
+													title="Expand">
+													<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+														class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+												</button>
+											</div>
+
+										</div>
+										<div class="card m-2 p-2">
+											<div id="myGrid" style="width: 100%; height: 100vh;"
+												class="ag-theme-alpine"></div>
+										</div>
+									</div>
+
+								</div>
+							</div>
+
+
+							<!-- Right Sec Start -->
+							<div class="box-sec" id="collapseWidthL1">
+								<div class="out-box">
+									<div
+										class="d-flex flex-row-reverse justify-content-between align-items-center p-2 bdr-line">
+										<button class="btn max-btn" id="collapseButtonL1"
+											type="button" onclick="triggerExpansionL(1)"
+											data-bs-toggle="tooltip" data-bs-placement="top"
+											title="Expand">
+											<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+												class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+										</button>
+
+
+
+										<!--Right Inner Tab Start-->
+										<div class="d-flex gap-2">
+											<ul class="nav nav-pills newtab" role="tablist">
+												<li class="nav-item" role="presentation" id="rembsment-tab"><a
+													class="nav-link active" data-bs-toggle="pill"
+													href="#rembsment" aria-selected="true" role="tab">Reimbursement
+														Details </a></li>
+												<!-- <li class="nav-item" role="presentation" id="services-tab"><a
+													class="nav-link" data-bs-toggle="pill" href="#services"
+													aria-selected="false" role="tab">Other Services</a></li>
+												<li class="nav-item claim-tab d-none" role="presentation"
+													id="claim-tab"><a class="nav-link"
+													data-bs-toggle="pill" href="#claim" aria-selected="false"
+													role="tab">Claim</a></li> -->
+
+											</ul>
+										</div>
+									</div>
+
+									<!-- Tab panes -->
+									<div class="tab-content flex-fill">
+										<div id="rembsment" class="tab-pane fade h-100 active show p-2"
+											role="tabpanel">
+
+
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+
+												<!--<div class="mb-2">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<td width="70%"><span class="head-user-name"
+																id="employeeNameTop1"></span></td>	
+
+																<td>
+																	<div class="d-flex justify-content-end">
+                                                                       <div class="mr-2">
+																			<button class="btn btn-primary  edit-btn"
+																				id="addDtls" type="button" onclick="newDtls()">Add</button>
+
+																		</div>
+																			<div class="mr-2">
+																			<button class="btn btn-primary edit-btn"
+																				id="editDtls" type="button" onclick="enableFields()">Edit</button>
+																		</div>
+																		
+																		<div class="mr-2">
+																			<button class="btn btn-primary edit-btn"
+																				id="masterSaveBtn" type="button"
+																				onclick="addDetails()">Save</button>
+																		</div>
+																		<div class="mr-2">
+																			<button class="btn btn-primary  edit-btn"
+																				id="deleteDtls" type="button" onclick="deleteData()">Delete</button>
+																		</div>
+																		<div class="mr-2">
+                                      <button class="btn btn-primary edit-btn" type="button"
+																		 id="cancelRem" onclick="cancelRem()">Cancel</button>
+                                    </div>
+																			<div class="mr-2">
+																			<button class="btn btn-primary  edit-btn"
+																				id="approveReqBtn" type="button"
+																				onclick="approveRem()">Approve</button>
+																		</div>
+																		<div class="mr-2">
+																			<button class="btn btn-primary  edit-btn"
+																				id="rejectReqBtn" type="button"
+																				onclick="rejectRem()">Reject</button>
+																		</div>
+																	</div>
+
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>-->
+
+                        <div class="d-flex w-100 flex-column flex-xl-row justify-content-between align-items-start align-items-xl-center gap-2 p-2 border rounded">
+                          <div class="project-name"><span class="head-user-name" id="employeeNameTop1"></span></div>
+                          <div class="d-flex justify-content-end w-100 flex-wrap gap-2 flex-1">
+                            <button class="btn m-0 edit-btn"
+                                    id="addDtls" type="button" onclick="newDtls()">Add</button>
+                            <button class="btn m-0 edit-btn"
+                                    id="editDtls" type="button" onclick="enableFields()">Edit</button>
+                            <button class="btn m-0 edit-btn"
+                                    id="masterSaveBtn" type="button"
+                                    onclick="addDetails()">Save</button>
+                            <button class="btn m-0 edit-btn"
+                                    id="deleteDtls" type="button" onclick="deleteData()">Delete</button>
+                            <button class="btn m-0 edit-btn" type="button"
+                                    id="cancelRem" onclick="cancelRem()">Cancel</button>
+                            <button class="btn m-0 edit-btn"
+                                    id="approveReqBtn" type="button"
+                                    onclick="approveRem()">Approve</button>
+                            <button class="btn m-0 edit-btn"
+                                    id="rejectReqBtn" type="button"
+                                    onclick="rejectRem()">Reject</button>
+                          </div>
+                        </div>
+
+												<div class="card p-2">
+													<div class="mb-2 text-end">
+
+														<div class="mandatory-txt">
+															Note: All fields marked with <span>*</span> are
+															mandatory.
+														</div>
+													</div>
+													<div id="detailsDiv">
+														<input type="hidden" id="reimbursementReqId"> <input
+															type="hidden" id="createdById">
+														<div class="row">
+															<!-- <div class="col-lg-4">
+																<div class="form-group">
+																	<label>Employee Name<span class="mandatory">*</span></label>
+																	<div class="select">
+																		<select class="form-control" id="empName"
+																			onChange="getId()">
+																			<option value="">Select</option>
+																			<option th:each="c,iter:${getEmployeeList}"
+																				th:value="${c.key}" th:text="${c.name}"
+																				th:attr="data-code=${c.code}"></option>
+																		</select>
+																	</div>
+																</div>
+															</div> -->
+															<div class="col-md-4">
+																<div class="form-group">
+																<input type="hidden" id="empId">
+																	<label for="empNameListInput" class="form-label">Employee
+																		Name<span class="mandatory">*</span>
+																	</label>
+																	<div>
+																		<input type="text" class="form-control" id="empName"
+																			autocomplete="off" onkeyup="getEmployeeList()"
+																			onblur="removeValid(event)"
+																			placeholder="Enter Employee Id Or Name" />
+																	</div>
+																	<div id="suggesstion-box_" class="sugg-cls"></div>
+																</div>
+															</div>
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Requisition Type<span class="mandatory">*</span></label>
+																	<div class="select">
+																		<select id="reqType" class="form-control"
+																			onblur="removeValid(event)" onchange="configureDatePicker(this.value)">
+																			<option value="">Select</option>
+																			<option value="0">Adhoc</option>
+																			<option value="1">Planned</option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Apply Date</label> <input type="text"
+																		id="applyDate" autocomplete="off" class="form-control"
+																		readonly>
+																</div>
+															</div>
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Purpose<span class="mandatory">*</span></label>
+																	<input type="text" class="form-control"
+																		id="travellingPurpose" onblur="removeValid(event)"
+																		onkeyup="checkAlphabet('travellingPurpose');">
+																</div>
+															</div>
+															<div class="col-md-4">
+																<div class="form-group calendar_box">
+																	<label>Date Of Expense<span class="mandatory">*</span></label>
+																	<input type="text" id="expenseDate1"
+																		class="form-control" onblur="removeValid(event)"
+																		readonly> <i
+																		class="ti-calendar picker_calendar"
+																		onclick="$('#expenseDate1').datetimepicker('show');"></i>
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Description</label>
+																	<textarea class="form-control" id="descExpense"
+																		onblur="removeValid(event)"></textarea>
+																</div>
+															</div>
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Total Amount<span class="mandatory">*</span></label>
+																	<input type="text" autocomplete="off"
+																		class="form-control" id="eAmount"
+																		onkeyup="checkAmount('eAmount');"
+																		onblur="removeValid(event)"> <span id="error9"
+																		class="formValidation1"></span>
+																</div>
+															</div>
+															<div class="col-md-4" id="refno">
+																<div class="form-group">
+																	<label>Reference Number<span class="mandatory">*</span></label>
+																	<input type="text" class="form-control"
+																		id="referenceNo1" autocomplete="off" maxLength="22"
+																		onblur="removeValid(event)"
+																		onkeyup="checkNum('referenceNo1');">
+																</div>
+															</div>
+
+															<div class="col-md-4" id="upload">
+																<label style="margin-bottom: 10px;">Upload
+																	Receipt</label>
+
+																<div class="control-group position-r">
+																	<label class="custom-file-upload" for="uploadDoc_0"
+																		style="margin-top: 10px;"> <i class="ti-plus"></i>
+																	</label>
+																	<div class="controls">
+																		<input type="file" class="document" id="uploadDoc_0"
+																			accept=".jpeg, .jpg, .png, .pdf" name="userImage"
+																			onchange="saveFile1(event)">
+																	</div>
+																</div>
+																<input type="hidden" id="uploadHidden_0"
+																	class="uploadHidCls">
+																<div class="d-flex">
+																	<div id="uploadedBillDiv_0" align="center"
+																		class="uploadedBillCls" style="margin-top: 8px;"></div>
+																	<div id="imageName_0" class="imageName"
+																		style="margin-top: 10px;"></div>
+																	<!-- Placeholder for delete button -->
+																	<div id="dltImage_0" class="dltImage"
+																		style="margin-top: 5px;"></div>
+																</div>
+															</div>
+
+															<div class="col-md-4" id="amountrequired">
+																<div class="form-group">
+																	<label>Advance Required</label>
+																	<div class="d-flex mt-2">
+																		<div style="margin: 0px 25px 0px 10px;">
+																			<input type="radio" id="Yes" value="1"
+																				name="advanceReq" /> Yes
+																		</div>
+																		<div>
+																			<input type="radio" id="No" value="0"
+																				name="advanceReq" checked /> No
+																		</div>
+																	</div>
+																</div>
+															</div>
+
+															<div class="col-md-4" id="amount">
+																<div class="form-group">
+																	<label>Advance Amount<span class="mandatory">*</span></label>
+																	<input type="text" class="form-control"
+																		id="advanceAmount" oninput="check1('advanceAmount')"
+																		onkeyup="checkAmount1('advanceAmount')"
+																		onblur="removeValid(event)">
+																</div>
+															</div>
+
+															<!-- <div class="col-md-4">
+																<div class="form-group calendar_box">
+																	<label>To Date<span class="mandatory">*</span></label>
+																	<input type="text" id="toDate" class="form-control"
+																		onblur="removeValid(event)"
+																		th:attr="onkeyup=|formatDate('toDate','${session.DATEFORMAT_JS}')|"
+																		readonly> <i
+																		class="ti-calendar picker_calendar"
+																		id="toDateCalendar"></i>
+																</div>
+															</div>
+															
+															<div class="col-lg-4">
+																<div class="form-group">
+																	<label>Purpose<span class="mandatory">*</span></label>
+																	<div class="select">
+																		<select class="form-control" id="purpose"
+																			onblur="removeValid(event)">
+																			<option value="">Select</option>
+																			<option th:each="c,iter:${getPurposeList}"
+																				th:value="${c.key}" th:text="${c.name}"></option>
+																		</select>
+																	</div>
+																</div>
+															</div> -->
+
+
+
+
+
+
+														</div>
+													</div>
+
+												</div>
+
+
+
+											</div>
+
+										</div>
+
+									</div>
+
+									<!--Right Inner Tab End-->
+								</div>
+							</div>
+							<!--Right Sec End-->
+						</div>
+					</div>
+					<!--Tabbination 1 End-->
+
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

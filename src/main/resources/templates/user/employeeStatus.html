@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+/* .ag-theme-alpine {
+	text-indent: 10px !important;
+	background: #fff !important;
+} */
+#myRoleGrid .ag-root-wrapper {
+	border: solid 1px #f6f8f8 !important;
+}
+
+#myEmpGrid .ag-root-wrapper {
+	border: solid 1px #f6f8f8 !important;
+}
+
+#myRoleGrid .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff !important;
+	text-indent: 10px !important;
+}
+
+#myRoleGrid .ag-row-selected::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 3px;
+	right: 4px;
+}
+/* .ag-theme-alpine */
+#myEmpGrid .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff !important;
+	text-indent: 10px !important;
+}
+/* .modal #myEmpGrid .ag-row-selected .ag-cell-focus {
+	background: #0076ba !important;
+	color: #fff !important;
+	text-indent: 10px !important;
+} */
+#myEmpGrid .ag-row-selected::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 3px;
+	right: 4px;
+}
+
+#myEmpGrid .ag-header {
+	display: none;
+}
+
+#myRoleGrid .ag-header {
+	display: none;
+}
+
+#myEmpGrid .ag-center-cols-viewport {
+	background: #ffff !important;
+}
+
+.modal-content {
+	padding: 40px 35px;
+}
+
+#myRoleGrid .ag-center-cols-viewport {
+	background: #ffff !important;
+}
+/* #myEmpGrid .ag-row {
+	background: #ffff !important;
+}
+
+#myRoleGrid .ag-row {
+	background: #ffff !important;
+} */
+</style>
+<script>
+	$(document).ready(
+			function() {
+
+				$("#selectRole").click(
+						function() {
+							$(".roletxtsec").empty();
+							var selectedRows = roleOptions.api
+									.getSelectedRows();
+							selectedRows.forEach(function(selectedRow, index) {
+
+								var div = '<div class="rolestxt">'
+										+ selectedRow.roleName + '</div>';
+
+								$(".roletxtsec").append(div);
+							});
+							closeModal();
+						})
+
+				$("#saveEmpData").click(function() {
+
+					data = {};
+
+					data.empId = $("#empId").val();
+					data.name = $("#name").val();
+					data.cont = $("#cont").val();
+					data.email = $("#email").val();
+					//data.empStatus = $("#empStatus").val();
+					var status = $("input[name='isActive']:checked").val();
+
+					if (status == 1) {
+						data.empStatus = true;
+					} else {
+						data.empStatus = false;
+					}
+
+					var dataset = [];
+					var selectedRows = roleOptions.api.getSelectedRows();
+					selectedRows.forEach(function(selectedRow, index) {
+						dataset.push(selectedRow.roleId);
+					});
+					data.roleList = dataset;
+
+					$(".formValidation").remove();
+					allPValid = true;
+					if (allPValid) {
+
+						$("body").addClass("overlay");
+						submitEmployeeData(data);
+					}
+				})
+
+			})
+
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	
+	function cancelModalBtn() {
+		$("#delete").modal("hide");
+		$("#deleteModalBtn").removeAttr("disabled");
+	}
+
+	var columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+			{
+				headerName : "Employee ID",
+				field : "empId",
+
+				cellRenderer : function(params) {
+					return '<a onclick=EditDetails("' + params.data.empId + ','
+							+ params.data.empStatus
+							+ '") href="javascript:void(0)">'
+							+ params.data.empId + '</a>';
+				}
+			}, {
+				headerName : "Name",
+				field : "name"
+			}, {
+				headerName : "Contact Number",
+				field : "cont"
+			}, {
+				headerName : "Email",
+				field : "email"
+			}, {
+				headerName : "Status",
+				field : "status",
+				cellStyle : {
+					textAlign : 'center'
+				},
+				cellRenderer : function(params) {
+					 if (params.data.status == "Active") {
+						return '<div style="color:#0642f5">Active</div>';
+					} else {
+						return '<div style="color:#ff8242">Inactive</div>';
+					}
+				}
+			}, {
+				headerName : "Role",
+				field : "role",
+				width : 300,
+			} ];
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowSelection : 'multiple',
+		suppressRowClickSelection : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 200,
+			height : 10
+		}
+	};
+	$(document).ready(function() {
+		agGrid.simpleHttpRequest({
+			url : 'employee-status-update-view'
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+			gridOptions.api.setRowData(data);
+		});
+
+		agGrid.simpleHttpRequest({
+			url : 'employee-status-update-view-listing',
+		}).then(function(data) {
+			roleOptions.api.setRowData(data);
+		});
+	})
+
+	function EditDetails(id) {
+		var data = id.split(",");
+		var empid = data[0];
+		var status = data[1];
+		$("#empId").val(empid);
+		if (status == 'true') {
+			$('#inactiveModal').modal("show");
+			$('#activeModal').modal("hide");
+		} else {
+			$('#activeModal').modal("show");
+			$('#inactiveModal').modal("hide");
+		}
+	}
+	function activeEmployee(id) {
+		data = {};
+
+		data.empId = $("#empId").val();
+		data.empStatus = true;
+		submitEmployeeData(data);
+	}
+	function inActiveEmployee(id) {
+		data = {};
+
+		data.empId = $("#empId").val();
+		data.empStatus = false;
+		submitEmployeeData(data);
+	}
+	function submitEmployeeData(data) {
+		console.log(data)
+		$.ajax({
+			type : "POST",
+			url : "employee-status-update-save",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(data),
+			success : function(response) {
+				if (response.message == "Success") {
+					location.reload();
+
+					$('#activeModal').modal("hide");
+					$('#inactiveModal').modal("hide");
+
+					$("#messageParagraph").text("Status Updated Successfully");
+
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					agGrid.simpleHttpRequest({
+						url : 'user-role-assign-view'
+					}).then(function(data) {
+						var len = data.length;
+						$('#totalReq').find('span').html(len);
+						gridOptions.api.setRowData(data);
+					});
+				}
+			},
+			error : function(data) {
+				console.log(data)
+
+				$("body").removeClass("overlay");
+			}
+		});
+	}
+	function closemodal() {
+		$("#browseModal").modal("hide");
+		$("#commentModal").modal("hide");
+		$("#commentModal1").modal("hide");
+	}
+	function cancelModalBtn1() {
+		$("#activeModal").modal('hide');
+	}
+
+	function cancelModalBtn0() {
+		$("#inactiveModal").modal('hide');
+
+	}
+	var roleOptions = {
+		columnDefs : [
+				{
+					headerName : '',
+					field : 'roleName',
+					cellClass : function(params) {
+						return (params.data.statusData === '1' ? 'ag-row-selected'
+								: '');
+					}
+				}, ],
+		defaultColDef : {
+			flex : 1,
+			minWidth : 100,
+		},
+		rowSelection : 'multiple',
+		rowMultiSelectWithClick : true
+	};
+
+	$(document).ready(function() {
+		agGrid.simpleHttpRequest({
+			url : 'user-role-assign-roles-listing',
+		}).then(function(data) {
+			roleOptions.api.setRowData(data);
+		});
+	});
+	document.addEventListener('DOMContentLoaded', function() {
+		var gridDiv = document.querySelector('#myRoleGrid');
+		new agGrid.Grid(gridDiv, roleOptions);
+
+	});
+
+	document.addEventListener('DOMContentLoaded', function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+	});
+	
+	function downloadDetails() {
+		var dataset = [];
+		gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+		gridOptions.api.exportDataAsCsv(dataset);
+	}
+</script>
+</head>
+<body>
+	<div layout:fragment="content">
+		<div class="content-wrap">
+			<div class="container-fluid">
+				<div class="maincontent">
+					<div class="row">
+
+						<div class="maincontentsec">
+							<div class="d-flex" id="reqTable">
+								<div class="col-md-3 btn-hs">
+									<div class="font-design" id="totalReq">
+										SHIFT SCHEDULE LIST (<span></span>)
+									</div>
+								</div>
+								<div class="col-md-3 " id="searchDiv">
+									<div class="input-style">
+										<input type="text" placeholder="Search.." name="search"
+											class="searchboxinput" onkeyup="cancelBar()"
+											oninput="onQuickFilterChanged()" id="quickFilter"
+											autocomplete="off">
+										<div class="searchicon">
+											<a href="javascript:void(0)"><span
+												style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+												id="closeKey"
+												onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+												class="close_i"><i class="ti-close srchicon"></i></span></a><a
+												href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+										</div>
+									</div>
+								</div>
+
+								<div class="col-md-6 buttonsec btn-hs" id=" mainbtns">
+									<button class="btn4" id="download" onclick="downloadDetails()">DOWNLOAD</button> 
+								</div>
+							</div>
+							<div id="myGrid" style="width: 100%; height: 500px;"
+								class="ag-theme-alpine"></div>
+						</div>
+					</div>
+
+					<div id="activeModal" class="modal fade">
+						<div class="modal-dialog">
+							<!--  Modal content-->
+							<div class="modal-content">
+								<input type="hidden" id="empId">
+
+								<div class="modal-body">
+									<p>Are you sure want to Active Status ?</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: -30px; border: none;">
+
+									<button class="btn3" onclick="cancelModalBtn1()">CANCEL</button>
+									<button type="button" class="btn1" onclick="activeEmployee(1)">Active</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+
+
+
+					<div id="inactiveModal" class="modal fade " aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<input type="hidden" id="empId">
+
+
+								<div class="modal-body">
+									<p>Are you sure want to InActive Status?</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: -30px; border: none;">
+
+									<button type="button" class="btn3" data-dismiss="modal"
+										onclick="cancelModalBtn0();">Cancel</button>
+									<button type="button" class="btn1"
+										onclick="inActiveEmployee(0)">InActive</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+
+
+					<div id="delete" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-dismiss="modal"
+										aria-hidden="true" onclick="cancelModalBtn()">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p>Do you really want to delete these records? This process
+										cannot be undone.</p>
+								</div>
+								<div class="modal-footer justify-content-center">
+									<button class="btn1" data-dismiss="modal"
+										onclick="cancelModalBtn();">Cancel</button>
+									<button class="btn3" id="deleteModalBtn">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div id="browseModal" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-md" style="margin-top: 130px;">
+							<div class="modal-content">
+								<div class="modal-header">
+									<h4 class="modal-title md-color">Select Roles</h4>
+									<button type="button" class="close cp" onclick="closeModal();"
+										data-dismiss="modal">&times;</button>
+								</div>
+								<div class="modal-body" style="height: 300px;">
+									<div id="myRoleGrid" class="ag-theme-alpine"
+										style="height: 90%;"></div>
+								</div>
+								<div class="modal-footer">
+									<button class="btn4" data-dismiss="modal"
+										onclick="closeModal();">Cancel</button>
+									<button class="btn1" id="selectRole">Select</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

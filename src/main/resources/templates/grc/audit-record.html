@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+    padding: 14px;
+    margin: 0px 10px;
+    position: relative;
+    top: 20px;  
+}
+
+/* .form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+} */
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+.textarea {
+    border: 1px solid #efeeee;
+    background: floralwhite;
+    color: #0b0a0b;
+    font-size: 16px;
+    font-weight: 100;
+    width: 100%;
+}
+.accordion-body {
+    padding: 1rem 3.25rem;
+}
+.modal-body{
+    padding: 0rem;
+    }
+ .delete-btn {
+    border: none;
+    border-radius: 4px;
+    font-size: 9px;
+    background-color: #ff4b4b;
+    color: #fff !important;
+    margin-left: 5px;
+    margin-bottom: 8px;
+    width: 70px;
+    height: 28px;
+    line-height: 12px;
+    float: right;
+    text-transform: uppercase;
+    cursor: pointer !important;
+    white-space: normal;
+}
+.approve-btn {
+    border: none;
+    border-radius: 4px;
+    font-size: 10px;
+    background-color: #264c82;
+    color: #fff;
+    margin-left: 5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    width: 70px;
+    height: 28px;
+    line-height: 12px;
+    float: right;
+    text-transform: uppercase;
+    cursor: pointer !important;
+    white-space: normal;
+} 
+.custom-file-upload {
+    position: fixed;
+    display: inline-block;
+    overflow: hidden;
+    cursor: pointer;
+    border: 0px solid #007bff;  
+    padding: 1px 10px;  
+    border-radius: 15px;  
+    background-color: #007bff;                                            
+    color: white;  
+    transition: background-color 0.3s, color 0.3s;
+    line-height: 23px; 
+    margin: 0px 63px; 
+}
+
+.custom-file-upload:hover {
+    background-color: #0056b3;  
+    color: #fff;  
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);  
+}
+
+.custom-file-upload .file-upload-button {
+    font-size: 1.5em; /* Increase the font size */
+}
+
+.view-icon {
+    display: inline-block;
+    padding: 5px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    transition: background-color 0.3s, box-shadow 0.3s;
+}
+
+.view-icon:hover {
+    background-color: #e0e0e0;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.view-icon-img {
+    width: 24px;
+    height: 24px;
+    transition: transform 0.3s;
+}
+
+.view-icon:hover .view-icon-img {
+    transform: scale(1.1);
+}
+
+ 
+ 
+</style>
+
+<script type="text/javascript">
+var auditPlanId = "";
+	$(document).ready(function() {
+		var dateFormat = localStorage.getItem("dateFormat");
+		   $("#DateCalendarAssign").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		  }).on("change", function() {
+			$('#asdate').val($(this).val());
+		  })
+
+		$('#asdate').blur(function() {
+			$("#DateCalendarAssign").val($(this).val());
+		})
+		
+		var today = new Date();
+		var dateString = ('0' + today.getDate()).slice(-2) + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + today.getFullYear();
+	    var fromDateString = '01-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + today.getFullYear();
+	    var fromDate = fromDateString.toString();
+		$('#filterDate').val(dateString);
+		
+		  let auditType = ""; 
+          $('#scheduleButton').click(function() {
+              //console.log("Schedule button clicked");
+              schedulePlan();
+          });
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		var gridDiv2 = document.querySelector('#activity');
+		new agGrid.Grid(gridDiv2, activityOptions);
+	
+		$('.loader').show();
+		gridOptions.api.setRowData("");
+		
+		/* agGrid.simpleHttpRequest({
+		    url: 'audit-record-schedule-view'
+		}).then(function(data) {
+		    var jsonData = JSON.parse(data.body);  
+		    var allData = jsonData.auditSchedule; 
+		    if (allData && allData.length > 0) {
+		        auditPlanId = allData[0].auditPlanId;
+		    }
+		    var len = allData.length;  
+		    $('#totalPlan').find('span').html(len);  
+		    gridOptions.api.setRowData(allData);  
+		});
+ */
+		$('.loader').hide();
+		activityOptions.api.setRowData("");
+		$('#uploadBtn').attr('disabled', true);
+		
+ 	$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+		$('.collapse').on('hide.bs.collapse', function() {
+			$(this).siblings('.panel-heading').removeClass('active');
+		});
+		$("#newBtn").click(function() {
+
+		})
+		
+		  $('input[name="options"]').on('change', function() {
+			    var selectedValue = $('input[name="options"]:checked').val();
+			    if(selectedValue=="Employee"){
+			    	$("#emplist").show();
+			    	$("#loclist").hide();
+			    	$("#assetlocation").val("");
+			    	$("#assigndate").show();
+			    }else if(selectedValue=="Location"){
+			    	$("#emplist").hide();
+			    	$("#loclist").show();
+			    	$("#assetemployee").val("");
+			    	s$("#assigndate").show();
+			    }
+			  });
+
+		
+		
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#filterDate').val($(this).val());
+		})
+
+		$('#filterDate').blur(function() {
+			$("#toDateCalendar").val($(this).val());
+		})
+		
+		
+		view();
+		
+  
+	});
+	
+	
+	
+	
+	function view(){
+		
+		var inputdate = $('#filterDate').val();
+		agGrid.simpleHttpRequest({
+		    url: 'audit-record-schedule-view?date=' + inputdate
+		}).then(function(data) {
+		    var jsonData = JSON.parse(data.body);  
+		    var allData = jsonData.auditSchedule; 
+		    
+		    
+		    if (allData && allData.length > 0) {
+		        auditPlanId = allData[0].auditPlanId;
+		   
+		    var len = allData.length;  
+		    $('#totalPlan').find('span').html(len);  
+		    gridOptions.api.setRowData(allData);  
+		    }
+			if(allData == null){
+				 var len = 0;  
+				    $('#totalPlan').find('span').html(len);  
+				    gridOptions.api.setRowData([]);  
+		    }
+		});
+	}
+	
+	
+	
+	/* -------------------search bar for mygrid----------------------- */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+		var totalRowCount = gridOptions.api.getModel().getRowCount();
+		$('#totalPlan').find('span').html(totalRowCount);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	  
+var columnDefs = [
+/*     {
+        headerCheckboxSelection: false,
+        headerCheckboxSelectionFilteredOnly: false,
+        checkboxSelection: true,
+        width: 10,
+        sortable: false,
+        filter: false,
+        resizable: true,
+        pinned: 'left'
+    }, */
+    {
+        headerName: 'Scheduled ID',
+        field: "scheduledId",
+        pinned: 'left',
+        width: 130,  
+        cellRenderer: function(params) {
+        	 var auditPlanId = params.data.auditPlanId;
+            return '<a id="scheduledId" onclick="viewScheduledAuditDetails(\''
+                + params.data.scheduledId
+                + '\', \'' + params.data.instanceId + '\')" href="javascript:void(0)">'
+                + params.data.scheduledId +'  ' +'<i class="bi bi-view-list"></i></a>';
+        }
+    } ,
+
+    {
+        headerName: 'Plan Id',
+        field: 'auditPlanId',
+        width: 120, 
+        cellStyle: {
+            textAlign: 'center'
+        }
+    }, 
+    {
+        headerName: 'Plan Type',
+        field: "auditPlanType",
+        width:200,
+        hide:true
+    },
+    {
+        headerName: 'Audit Name',
+        field: "auditCategory",
+        width:300
+    },
+    {
+        headerName: 'Auditor Name',
+        field: "auditorName",
+        width: 150 ,
+        cellStyle: {
+            textAlign: 'center'
+        },
+    },
+     
+    {
+		headerName : 'Result Status',
+		field : "instanceUserSts",
+		width: 150 ,
+		cellStyle : {
+			textAlign : 'center'
+		},			cellRenderer : function(params) {
+			if(parseInt(params.data.instanceUserSts)!=0){
+				return '<div style="color:#0642f5">Updated</div>';
+			}else{
+				return '<div style="color:#a9a9a9">Not Been Updated</div>';
+			}
+			
+
+		}
+	} , {
+		headerName : 'Review Status',
+		field : "instanceAdminSts",
+		width: 150 ,
+		cellStyle : {
+			textAlign : 'center'
+		},			cellRenderer : function(params) {
+			if (params.data.instanceAdminSts=="OKAY") {
+				return '<div style="color:#0642f5">OKAY</div>';
+			}else if(params.data.instanceAdminSts=="NOT OKAY"){
+				return '<div style="color:red">NOT OKAY</div>';
+			}else {
+				return '<div style="color:#a9a9a9">Pending</div>';
+			}
+			
+
+		}
+	},
+	{
+        headerName: 'Frequency',
+        field: "frequency",
+        width: 150,
+        cellStyle: {
+            textAlign: 'center'
+        },
+    },{
+        headerName: 'Audit Location',
+        field: "auditLocation",
+        width:200
+    },
+    {
+        headerName: 'Assign Date',
+        field: "assignDate",
+        width: 150 ,
+        cellStyle: {
+            textAlign: 'center'
+        },
+    }, 
+    {
+        headerName: 'Status',
+        field: "scheduleStatus",
+        width: 150,
+        cellStyle: {
+            textAlign: 'center'
+        },
+        cellRenderer: function(params) {
+            var status = params.value === 1 ? 'Scheduled' : 'Unscheduled';
+            var style = params.value === 1 
+                ? 'color: #0642f5; padding: 5px; text-align: center;  #000000; font-size: 14px;' 
+                : 'color: #a9a9a9; padding: 5px; text-align: center;  0px 0px 0px #000000; font-size: 14px;';
+            return '<span style="' + style + '">' + status + '</span>';
+        }
+    }
+];
+
+var gridOptions = {
+columnDefs : columnDefs,
+rowSelection : 'single',
+groupSelectsChildren : true,
+suppressRowClickSelection : true,
+suppressAggFuncInHeader : true,
+defaultColDef : {
+	sortable : true,
+	filter : true,
+	resizable : true,
+	width : 240
+},
+onSelectionChanged : onSelectionChanged,
+};
+
+var activityDefs = [ 
+{
+    headerName: "Status",
+    field: "status",
+    width: 100,
+    pinned:'left',
+    hide:true,
+    cellStyle: {
+        textAlign: 'center'
+    },
+    cellRenderer: function(params) {
+        var checkboxHtml = '<input class="checkbox" type="checkbox" name="checkBoxName" id="status' + params.rowIndex + '"';
+        if (params.data.status == 1) {
+            checkboxHtml += ' checked';
+        }
+        checkboxHtml += '>';
+        return checkboxHtml;
+    },
+    editable: false  
+}
+,
+{
+    headerName: "sl no.",
+    field: "taskName",
+    width: 100 
+},
+{
+    headerName: "Task Priority",
+    field: "taskPriority",
+    hide:true,
+    cellStyle: {
+        textAlign: 'center'
+    },
+    width:120
+},
+{
+    headerName: "Task Type",
+    field: "taskType",
+    hide:true,
+    cellStyle: {
+        textAlign: 'center'
+    },
+    width: 110
+},
+{
+    headerName: "Record",
+    field: "record",
+    width: 110
+},
+{
+    headerName: "Reference",
+    field: "reference",
+    width: 110
+},
+{
+    headerName: "Task Description",
+    field: "description",
+    width: 180
+},{
+    headerName: "Result",
+    field: "result",
+    width: 180,
+    editable: false,
+    cellRenderer: function(params) {
+        var $resultDropdown = $('<select class="resultDropdown" id="resultDropdown' + params.rowIndex + '"></select>');
+        var options = ['select','OK', 'NOT OK'];
+
+        options.forEach(function(option) {
+            var $option = $('<option></option>').val(option).text(option);
+            if (params.data.result == option) {
+                $option.attr('selected', 'selected');
+            }
+            $resultDropdown.append($option);
+        });
+
+        $resultDropdown.on('change', function() {
+            params.data.result = $(this).val();
+            params.api.refreshCells({ rowNodes: [params.node], columns: ['result'] });
+        });
+
+        return $resultDropdown[0];
+    }
+},
+{
+    headerName: "Remarks",
+    field: "remark",
+    editable: true,
+    cellStyle: {
+        textAlign: 'center'
+    },
+    width: 180
+},
+{
+    headerName: "Action Plan",
+    field: "actionPlan",
+    editable: true,
+   
+    width: 250
+},
+{
+    headerName: "File Upload",
+    field: "fileUpload",
+    width: 200,
+    editable: false,
+    cellRenderer: function(params) {
+        var uploadIndex = params.rowIndex;
+        var cellElement = document.createElement('div');
+        cellElement.innerHTML = `
+            <div class="control-group position-r">
+                <label class="custom-file-upload" for="uploadAuditDoc_${uploadIndex}" style="margin-top: 3px; cursor: pointer;">
+                    <span class="file-upload-button">+</span>
+                    <input type="file" class="wardocument" id="uploadAuditDoc_${uploadIndex}" accept=".jpeg, .jpg, .png, .pdf" name="userImage" style="display: none;">
+                </label>
+                <div class="controls" style="display: inline-block; vertical-align: middle;">
+                    <!-- Optional: You can display uploaded file information or preview here -->
+                </div>
+                <input type="hidden" id="uploadHidden_${uploadIndex}" class="uploadHidCls">
+                <div id="uploadedAuditDoc_${uploadIndex}" align="center" class="uploadedWarrCls" style="margin-top: 10px;"></div>
+                <div id="auditImageName_${uploadIndex}" class="imageName" style="margin-top: 10px;"></div>
+            </div>
+        `;
+
+        // Attach event listener to the label for clicking on the "+" icon
+        var labelUpload = cellElement.querySelector(`label.custom-file-upload[for="uploadAuditDoc_${uploadIndex}"]`);
+        labelUpload.addEventListener('click', function () {
+            var fileInput = document.getElementById(`uploadAuditDoc_${uploadIndex}`);
+            fileInput.click(); // Trigger click on file input
+        });
+
+        // Attach event listener to the file input itself for handling file selection
+        var fileInput = cellElement.querySelector(`#uploadAuditDoc_${uploadIndex}`);
+        fileInput.addEventListener('change', function(event) {
+            saveFile(event, uploadIndex, params);
+        });
+
+        return cellElement;
+    }
+}
+
+,
+{
+    headerName: "View Image",
+    field: "docUrl",
+    width: 150,
+    editable: false,
+    cellRenderer: function(params) {
+    	if(params.data.docUrl!=null && params.data.docUrl!="null"){
+			return '<a href="' + params.data.docUrl+'" target="_blank"><i class="bi bi-file-earmark-image">View</i></a>';
+		}else{
+			if(params.data.tempURL!=null && params.data.tempURL!="null"){
+				return '<a href="' + params.data.tempURL+'" target="_blank"><i class="bi bi-file-earmark-image">View</i></a>';
+			}else{
+				return "Not Available";
+			}
+		}
+    }
+}
+
+];
+
+
+var activityOptions = {
+    columnDefs: activityDefs,
+    rowSelection: 'single',
+    groupSelectsChildren: true,
+    suppressRowClickSelection: true,
+    suppressAggFuncInHeader: true,
+    defaultColDef: {
+        sortable: true,
+        filter: true,
+        resizable: true,
+        width: 240,
+        singleClickEdit: true,
+		stopEditingWhenCellsLoseFocus: true,
+    }
+};
+
+
+function updateRowData(updatedItem) {
+	//console.log("Updated Item---->>>>",updatedItem);
+    activityOptions.api.forEachNode(function(rowNode) {
+        if (rowNode.data.status === updatedItem.status) {
+            rowNode.setData(updatedItem);
+            return;
+        }
+    });
+}
+
+ 
+var scheduledId = "";
+
+ 
+
+function onSelectionChanged() {
+	var selectedNodes = gridOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	 scheduledId= selectedData.map(node => node.scheduledId);
+	 auditPlanId=selectedData.map(node => node.auditPlanId);
+	  
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+
+	if (rowCount > 0) {
+		  $('#uploadBtn').prop("disabled", false);
+	} else {
+	  
+	    $('#uploadBtn').prop("disabled", true);
+	}
+
+}
+ 
+ 
+function saveFile(event, uploadIndex, params) {
+    var fileInput = event.target;
+    var uFile = fileInput.files[0];
+    var fileName = fileInput.value;
+
+    var lastIndex = fileName.lastIndexOf("\\");
+    if (lastIndex >= 0) {
+        fileName = fileName.substring(lastIndex + 1);
+    }
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var base64Data = e.target.result;
+
+        var iURL = URL.createObjectURL(uFile);
+        $('#uploadedAuditDoc_' + uploadIndex).html('<img src="' + iURL + '" width="100">');
+        $('#auditImageName_' + uploadIndex).text(fileName);
+
+        var rowData = params.data;
+    	console.log("PARAM",params);
+        var item = {};
+
+        Object.keys(rowData).forEach(function(key) {
+            item[key] = rowData[key];
+        });
+        var checkbox = document.getElementById("status"+params.rowIndex);
+       /*  if (checkbox.checked) {
+        	item.status =1;
+        }else{
+        	item.status =0;
+        }  */
+        item.result = $('#resultDropdown' + params.rowIndex).val();
+        item['base64Image'] = base64Data;
+        item['fileName'] = fileName;
+        item['tempURL'] = iURL;
+        
+        
+
+        updateGridRow(params.data.slno, item);
+    };
+
+    reader.readAsDataURL(uFile);
+
+    function updateGridRow(field, updatedItem) {
+        activityOptions.api.forEachNode(function(rowNode) {
+            if (rowNode.data.slno === updatedItem.slno) {
+                rowNode.setData(updatedItem);
+                activityOptions.api.refreshCells({ rowNodes: [rowNode], force: true });
+                return;
+            }
+        });
+    }
+}
+
+
+
+  
+	 
+	function deleteDetailsOnclick() {
+		$('.modal').hide();
+		var selectedRows = activityOptions.api.getSelectedRows();
+		activityOptions.api.applyTransaction({
+			remove : selectedRows
+		});
+		cancelModalProductBtn();
+	}
+	 
+	function cancelModalProductBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+		$('#deleteDetails').modal('hide');
+	}
+
+	function deleteFun() {
+		$('#delete').modal('show');
+	}
+	
+
+	function deleteDetails() {
+		$('#deleteDetails').modal('show');
+		closeNav();
+	}
+
+	function cancelModalBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+		$("#assignsuccessModal").removeAttr("disabled");
+	}
+//function for download
+function downloadDetails() { 
+	var dataset = [];
+	gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		dataset.push(rowNode.data);
+	});
+    gridOptions.api.exportDataAsCsv(dataset);
+}
+
+
+function getParameterId(){
+	var parameterId= $("#parameterName").val();
+	$("#parameterId").val(parameterId);
+}
+ 
+	function dateChange() {   
+		var fromdate = $('#startDate').val();
+		var todate = $('#endDate').val();
+		var fd = fromdate.split("-");
+		var td = todate.split("-");
+		if (fromdate != '' && todate != '') {
+			if (fd[2] == td[2]) {
+				if (fd[1] == td[1]) {
+					if (fd[0] <= td[0]) { 
+						
+					} else {
+						setFromToDate();
+					}
+				} else if (fd[1] < td[1]) { 
+				} else {
+					setFromToDate();
+				}
+
+			} else if (fd[2] < td[2]) { 
+				
+			} else {
+				setFromToDate();
+			}
+		} else {
+
+		}
+	}
+	function setFromToDate() {
+		$("#messageParagraph").text(
+				"Please choose to date greater than or equal to from date ");
+		$("#msgOkModal").removeClass("btn3");
+		$("#msgOkModal").addClass("btn1");
+		$("#msgModal").modal('show');
+		$("#startDate").val("");
+		$("#endDate").val(""); 
+	} 
+	
+	function schedulePlan() {
+		
+		$("#agencyAuditorName").val("");
+		$("#agencyId").val("");
+		$("#auditorName").val("");
+		$("#asdate").val("");
+        var auditTypeStr = Array.isArray(auditType) ? auditType[0] : auditType;
+        $('#assignmodal').modal('show');
+        if (auditTypeStr === "External Audit") {
+            $('#divagency').show();
+            $('#divAuditorTextField').show();
+            $('#divAuditorDropDown').hide();
+        } else {
+            $('#divagency').hide();
+            $('#divAuditorDropDown').show();
+            $('#divAuditorTextField').hide();
+        }
+    }
+	
+	function closeOnclick(){
+		 $('#assignmodal').modal('hide');
+	}
+	function cancelModalBtn(){
+		 $('#assignsuccessModal').modal('hide');
+	}
+	
+	 
+
+	function unSchedule() {
+		$('#approveModal').modal('show');
+	}
+	
+ 
+	function viewScheduledAuditDetails(scheduledId, auditInstId) {
+	    //console.log("Scheduled ID clicked:", scheduledId);
+	    //console.log("Audit Plan ID:", auditPlanId);
+
+	    $.ajax({
+	        type: "GET",
+	        async: false,
+	        url: `audit-record-getScheduledAuditDetails?scheduledId=${scheduledId}&auditInstId=${auditInstId}`,
+	        success: function(response) {
+	            console.log(response);
+	                $('#scheduledDetailsModal').modal('show');
+	                var data = JSON.parse(response.body);
+	                var allData = data.scheduledDetails	;
+
+	                //console.log("data-->", data)
+	                console.log("alldata-->", allData)
+	                if(allData[0].instanceAdminSts=="PENDING"){
+	                	$('#SubmitBtn').show();
+	                }else{
+	                	$('#SubmitBtn').hide();
+	                }
+	          
+	                
+	                
+	                activityOptions.api.setRowData(allData);
+	            	
+
+	        },
+	        error: function(e) {
+	            console.error("An error occurred:", e);
+	        }
+	    });
+	}
+
+ function schedulePlanCancel(){
+	 $('#scheduledDetailsModal').modal('hide'); 
+ }
+ function schedulePlanSave() {
+	    var rowData = [];
+	    var item={};
+	    activityOptions.api.stopEditing();
+	    activityOptions.api.forEachNode(node => {
+	    	console.log("NODE:::",node)
+	        item = node.data;
+	    	if(item.remark=='null' || item.remark==null|| typeof item.remark === 'undefined'){
+	    		item.remark ='';
+	    	}
+	    	if(item.actionPlan=='null' || item.actionPlan==null|| typeof item.actionPlan === 'undefined'){
+	    		item.actionPlan ='';
+	    	}
+	    	var checkbox = document.getElementById("status"+node.rowIndex);
+	       /*  if (checkbox.checked) {
+	        	item.status =1;
+	        }else{
+	        	item.status =0;
+	        }  */
+	        var resultDropdown = $('#resultDropdown' + node.id);
+	   
+	        if (resultDropdown.length > 0) {
+	        	if(resultDropdown === "select"){
+	        		item.result = " "; 
+	        	}else{
+	        		item.result = resultDropdown.val();
+	        	}
+	            
+	        } else {
+	            item.result = "";   
+	        }
+	        var uploadedFileData = getUploadedFileData(node.id); 
+	        console.log("uploadData-->" , uploadedFileData);
+	        if (uploadedFileData) {
+	            item.uploadedFile = uploadedFileData;
+	        }
+
+	        rowData.push(item);
+	    });
+ 
+	    console.log("Updated RowData----", rowData);
+	    setTimeout(function() {
+		    $.ajax({
+		        url: 'audit-record-submit-progress',
+		        type: 'POST',
+		        contentType: 'application/json',
+		        data: JSON.stringify(rowData),
+		        success: function(response) {
+		            console.log('Save successful:', response);
+		            if (response.code == "success") {
+		                schedulePlanCancel();
+		                $("#messageParagraph").text(response.message);
+		                $("#msgOkModal").removeClass("btn3").addClass("btn1");
+		                $("#msgModal").modal('show');
+		            } else {
+		                $("#messageParagraph").text("Something Went Wrong");
+		                $("#msgOkModal").removeClass("btn3").addClass("btn1");
+		                $("#msgModal").modal('show');
+		            }
+		        },
+		        error: function(error) {
+		            console.error('Save failed:', error);
+		            $("#messageParagraph").text("Failed to save data. Please try again later.");
+		            $("#msgOkModal").removeClass("btn3").addClass("btn1");
+		            $("#msgModal").modal('show');
+		        }
+		    });
+	    }, 500);
+	    // AJAX request to send rowData to server
+
+	}
+ function getUploadedFileData(uploadIndex) {
+	    var uploadedImageElement = $(`#uploadedAuditDoc_${uploadIndex}`);
+	    if (uploadedImageElement.length > 0) {
+	        var imgSrc = uploadedImageElement.find('img').attr('src');
+	        if (imgSrc && imgSrc.startsWith('data:image')) {
+	            var base64Data = imgSrc.split(',')[1];  
+	            return base64Data;
+	        }
+	    }
+	    return null;
+	}
+	
+ 
+ function schedulePlanCancel(){
+	 $('#scheduledDetailsModal').modal('hide'); 
+ }
+</script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+					
+					
+
+						<div class="d-flex justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalPlan">
+									Scheduled List(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalPlan').find('span').html(gridOptions.api.getModel().getRowCount());"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+								<div id="dateDiv2" class="d-flex form-group">
+										<label style="margin: 5px 8px 0px 0px;">Filter Date:</label>
+										<div class="form-group calendar_box" id="tdate"
+											style="margin-right: 15px; width: 190px">
+											<input type="text" id="filterDate" value=""
+												class="form-control" placeholder="Filter Date.."
+												th:attr="onkeyup=|formatDate('filterDate','${session.DATEFORMAT_JS}')|"
+												readonly> <i class="ti-calendar picker_calendar"
+												id="toDateCalendar" style="top: 14px; right: 0px;"></i>
+										</div>
+									<div class="buttonsec btn-hs" id="ttbtn">
+										<button class="new-btn" id="filterBtn" onclick="view()">
+											<i class="bi bi-search"></i> Search
+										</button>
+									</div>
+									</div>
+							</div>
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" />
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innercontent">
+								<div class="innerstickybg">
+								</div>
+							</div>
+						</div>
+					</div>
+  
+	<div id="scheduledDetailsModal" class="modal fade" role="dialog">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-body p-0">
+                <div id="main_content" class="mt-3">
+                    <div id="activity" style="width: 100%; height: 400px;" class="ag-theme-alpine"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="SubmitBtn" class="btn btn-primary"onclick="schedulePlanSave()">Submit</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal"onclick="schedulePlanCancel()">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+				 
+ 
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

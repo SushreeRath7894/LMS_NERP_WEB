@@ -1,0 +1,377 @@
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+.modal-content-md {
+	padding: 15px 14px;
+	position: relative;
+	display: -ms-flexbox;
+	display: flex;
+	-ms-flex-direction: column;
+	flex-direction: column;
+	background-color: #fff;
+	background-clip: padding-box;
+	border: 1px solid rgba(0, 0, 0, .2);
+	border-radius: .3rem;
+	outline: 0;
+}
+</style>
+<script>
+	$(document).ready(function() {
+
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		
+		var rowData = [];
+		gridOptions.api.setRowData(rowData);
+		
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalendar").datetimepicker({
+			format : 'd-m-Y',
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#fromDate').val($(this).val());
+		})
+		$('#fromDate').blur(function() {
+			$("#fromDateCalendar").val($(this).val());
+		})
+
+		$("#endDateCalendar").datetimepicker({
+			format : 'd-m-Y',
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#endDate').val($(this).val());
+		})
+		$('#endDate').blur(function() {
+			$("#endDateCalendar").val($(this).val());
+		})
+		
+		
+		var userid = $("#sessionId").val();
+		
+		agGrid.simpleHttpRequest({
+			url : 'view-self-appraisal-result?name=' + userid
+		}).then(function(data) {
+			gridOptions.api.setRowData(data);
+			
+		}); 
+		
+
+	})
+
+	var columnDefs = [
+
+	{
+		headerName : "Goal ID",
+		field : "goalId",
+		width : 150,
+		 cellRenderer : function(params) {
+				return '<a id="" onclick=editId("' + params.data.goalId+','+params.data.slNo
+						+ '") href="javascript:void(0)">'
+						+ params.data.goalId + '</a>';
+	    }
+		
+
+	}, {
+		headerName : "Goal Name",
+		field : "goalName",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 250,
+	}, {
+		headerName : "Expected Results",
+		field : "expectedResults",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 500,
+	}, {
+		headerName : "Weightage",
+		field : "weightage",
+		cellStyle : {
+			textAlign : 'center'
+		},
+		width : 200,
+	}, {
+		headerName : "Self Review",
+		field : "selfReview",
+		width : 280,
+	} ];
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 410,
+			height : 20
+		},
+		rowSelection : 'single',
+		rowMultiSelectWithClick : true,
+		//onSelectionChanged : onSelectionAppraisal
+	};
+ 
+	
+	function editId(id)
+	 {
+		var data = id.split(",");
+		var goalid= data[0];
+		var slno = data[1];
+		
+		 openNav();
+			
+			$.ajax({
+			type : "GET",
+			url : "view-self-appraisal-edit?Id=" + slno,
+			success : function(response) {
+				if (response.message == "Success") {
+					
+				console.log(response.body)
+				$("#slNo").val(slno);
+				$("#goalId").val(response.body.goalId);
+				$("#goalName").val(response.body.goalName);
+				$("#expectedResults").val(response.body.expectedResults);
+				$("#weightage").val(response.body.weightage);
+				$("#selfReview").val(response.body.selfReview);
+			}
+		},
+		
+		error : function(data) {
+			console.log(data)
+			
+				 $("#goalId").val();
+	             $("#goalName").val();
+	             $("#expectedResults").val();
+	             $("#weightage").val();
+	             $("#selfReview").val();
+	             
+			
+		}
+	});
+
+	}	
+
+	function openNav() {
+		//$("#myModalEducation").modal('show');
+
+		$('#goalName').val("");
+		$('#expectedResults').val("");
+		$('#weightage').val("");
+		$('#goalId').val("");
+		document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:0px;";
+		document.getElementById("myGrid").style.width = "75%";
+	}
+
+	function closeNav() {
+		//$("#myModalEducation").modal('hide');
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("myGrid").style.width = "100%";
+		var userid = $("#sessionId").val();
+		
+		agGrid.simpleHttpRequest({
+			url : 'view-self-appraisal-result?name=' + userid
+		}).then(function(data) {
+			gridOptions.api.setRowData(data);
+			
+		}); 
+	}
+	
+	var data1 = {};
+	function saveGoal() {
+		data1.slNo= $("#slNo").val();
+		data1.selfReview= $("#selfReview").val();
+		
+		var validation = true;
+		if (data1.selfReview == null || data1.selfReview == "") {
+			validation = validationUpdated("Review is Required", "selfReview");
+		}
+		console.log(data1.slNo)
+if (validation) {
+		closeNav();
+	$.ajax({
+		type : "POST",
+		url : "view-self-appraisal-save",
+		dataType : "json",
+		contentType : "application/json",
+		data : JSON.stringify(data1),
+		success : function(response)
+		//console.log(response)
+		{
+			if (response.message == "Success") {
+				console.log(response)
+				location.reload();
+			
+				}
+				},
+				error : function(response) {
+				console.log(response);
+				}
+				})
+}
+					
+}
+</script>
+</head>
+
+<body>
+
+	<div layout:fragment="content">
+		<div class="content-wrap">
+			<div class="container-fluid">
+				<div class="maincontent">
+					<div class="row">
+
+						<div class="maincontentsec">
+							<div class="content_padding">
+
+								<div id="main_content">
+
+									<div class="panel-body">
+
+										<input type="hidden" id="sessionId" th:value="${userId}" />
+										<!-- <div class="row">
+											<div class="col-md-4">
+												<div class="form-group">
+													<div class="select">
+														<select id="empID" onchange="getDesignation()" class="form-control">
+															<option value="">NAME</option>
+															<option th:each="c,iter:${nameList}" th:value="${c.key}"
+																th:text="${c.name}" ></option>
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-4">
+												<div class="form-group">
+													
+														<select id="designation" onclick="getSelfAppraisal()" class="form-control">
+															<option value="">BAND</option>
+														</select>
+													
+												</div>
+											</div>
+											</div> -->
+ 
+											<div class="col-md-12">
+
+													<div id="myGrid" style="width: 100%; height: 300px;"
+														class="ag-theme-alpine"></div>
+											
+											</div>
+									</div>
+									</div>
+								</div>
+
+							</div>
+
+
+						</div>
+
+
+						<div id="mySidenav" class="sidenav">
+							<div class="slidebox">
+								<div class="row">
+									<div class="col-md-9">
+										<div class="edit">Self Appraisal</div>
+									</div>
+									<div class="col-md-3">
+										<div class="arrow">
+											<a href="javascript:void(0)" class="closebtn"
+												onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+										</div>
+									</div>
+
+									<div class="chartbtnsec1">
+										<div align="right">
+											<button class="cancel-btn" onclick="closeNav()">CANCEL</button>
+											<button class="save-btn" onclick="saveGoal()">SAVE</button>
+										</div>
+									</div>
+								<input	type="hidden" id="slNo" >
+                                 <input	type="hidden" id="goalId" >
+									<div class="col-md-12">
+										<div class="form-group">
+											<label>Goal Name</label> <input type="text"
+												class="form-control transparenttxtbox" placeholder="Name"
+												id="goalName" readonly>
+										</div>
+									</div>
+									<div class="col-md-12">
+										<div class="form-group">
+											<label>Expected Results</label> <input type="text"
+												class="form-control transparenttxtbox"
+												placeholder="Expected Results.." id="expectedResults"
+												readonly>
+										</div>
+									</div>
+
+									<div class="col-md-12">
+										<div class="form-group">
+											<label>Weightage</label> <input type="text"
+												class="form-control transparenttxtbox"
+												placeholder="Weightage..." id="weightage" readonly>
+										</div>
+									</div>
+									<div class="col-md-12">
+										<div class="form-group">
+											<label>Self Review</label>
+											<textarea class="form-control transparenttxtbox"
+												placeholder="Self Review..." id="selfReview"></textarea> <input
+												type="hidden" id="goalId">
+										</div>
+									</div>
+
+								</div>
+
+							</div>
+						</div>
+						<div id="myModalEducation" class="modal fade show"
+							aria-modal="true">
+							<div class="modal-dialog modal-confirm">
+								<div class="modal-content-md">
+									<div class="modal-header flex-column"></div>
+									<div class="modal-footer justify-content-center"
+										style="margin-top: -30px;">
+
+										<div class="chartbtnsec">
+											<div align="right">
+												<button class="btn4" id="cancelModalBtn1"
+													onclick="closeNav()">CANCEL</button>
+
+												<button class="btn1" id="submitedu" onclick="closeNav()">SAVE</button>
+											</div>
+										</div>
+									</div>
+
+
+									<div class="row">
+										<div class="col-md-12 ">
+											<div class="form-group">
+												<label>Self Review</label>
+												<Textarea class="form-control transparenttxtbox"
+													placeholder="Self Review..." id="Self Review">
+												1.Completed My All Task
+												2.Submited to Hod
+												3.From my side i did the best.</Textarea>
+											</div>
+										</div>
+									</div>
+								</div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+</body>
+</html>

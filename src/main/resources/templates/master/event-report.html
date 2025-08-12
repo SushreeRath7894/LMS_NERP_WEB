@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+
+.btn1 {
+	margin-right: 7px;
+}
+
+.select {
+    position: relative;
+    display: block;
+    background-color: #fff;
+    overflow: hidden;
+    border-radius: .25em;
+    height:30px;
+}
+.calendar_box > .form-control{
+    background-color: #ffffff!important;
+    opacity: 1;
+    border-radius: 4px;
+    padding: 0px 8px;
+}
+.select  .form-control{
+  height:30px;
+}
+.select::after {
+    content: '\e64b';
+    font-family: 'themify';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    bottom: 0;
+    padding: 0;
+    pointer-events: none;
+    height: 30px !important;
+    -webkit-transition: .25s all ease;
+    -o-transition: .25s all ease;
+    transition: .25s all ease;
+}
+.input-style{
+ width:300px!important;
+}
+
+.searchicon {
+    float: right;
+    width: 52px;
+    text-align: right;
+}
+</style>
+
+<script type="text/javascript">
+
+$(document).ready(function() {
+	var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+	var dateFormat = localStorage.getItem("dateFormat");
+	$("#fromDateCalender").datetimepicker({
+		format : dateFormat,
+		closeOnDateSelect : true,
+		timepicker : false,
+	}).on("change", function() {
+		$('#filterFromDate').val($(this).val());
+	})
+
+	$('#filterFromDate').blur(function() {
+		$("#fromDateCalender").val($(this).val());
+	})
+
+	$("#toDateCalendar").datetimepicker({
+		format : dateFormat,
+		closeOnDateSelect : true,
+		timepicker : false,
+	}).on("change", function() {
+		$('#filterToDate').val($(this).val());
+	})
+
+	$('#filterToDate').blur(function() {
+		$("#toDateCalendar").val($(this).val());
+	})
+	//Get 1st date of current Month
+	let currentDate = new Date();
+    let firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    let formattedDate = ("0" + firstDay.getDate()).slice(-2) + "-" + 
+                        ("0" + (firstDay.getMonth() + 1)).slice(-2) + "-" + 
+                        firstDay.getFullYear();
+    $("#filterFromDate").val(formattedDate);
+    
+  //Get last date of current Month
+ 	let lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    
+    // Format the date to dd-mm-yyyy
+    let formattedToDate = ("0" + lastDay.getDate()).slice(-2) + "-" + 
+                        ("0" + (lastDay.getMonth() + 1)).slice(-2) + "-" + 
+                        lastDay.getFullYear();
+    $("#filterToDate").val(formattedToDate); 
+	var fromDate=$("#filterFromDate").val();
+	var toDate=$("#filterToDate").val();
+	$('.loader').show();
+	gridOptions.api.setRowData();
+	 agGrid.simpleHttpRequest({
+		url : 'event-manage-report-view?fromDate='+fromDate +"&toDate="+toDate
+	}).then(function(data) {
+		var jsonData = JSON.parse(data.body);
+		var allData = jsonData;
+		if(allData==null){
+			var len=0;
+			$('#totalTraining').find('span').html(len);
+			gridOptions.api.setRowData([]);
+		}else{
+			var len=allData.length;
+			$('#totalTraining').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+			onSelectionChanged();
+		}
+	
+	
+	});
+	$('.loader').hide(); 
+	
+	
+	 $("#closeKey").click(function(){
+	    	var rowLength = gridOptions.api.getDisplayedRowCount();
+	    	$("#totalTraining").find('span').html(rowLength);
+	    })
+
+	
+});
+	
+	
+
+	function filter(){
+		var fromDate=$("#filterFromDate").val();
+		var toDate=$("#filterToDate").val();
+		$('.loader').show();
+		gridOptions.api.setRowData();
+		 agGrid.simpleHttpRequest({
+			url : 'event-manage-report-view?fromDate='+fromDate +"&toDate="+toDate
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData = jsonData;
+			console.log('allData',allData)
+			if(allData==null){
+				var len=0;
+				$('#totalTraining').find('span').html(len);
+				gridOptions.api.setRowData([]);
+				onQuickFilterChanged();
+			}else{
+				var len=allData.length;
+				$('#totalTraining').find('span').html(len);
+				gridOptions.api.setRowData(allData);
+				onSelectionChanged();
+				onQuickFilterChanged();
+			}
+		
+		});
+		$('.loader').hide(); 
+	}
+	
+	/* -------------------search bar for mygrid----------------------- */
+
+/* 	function onQuickFilterChanged() {
+		gridOptions.api.setQuickFilter(document.getElementById('quickFilter').value);
+		var totalRowCount = gridOptions.api.getModel().getRowCount();
+		$('#totalTraining').find('span').html(gridOptions.api.getModel().getRowCount());
+	}
+ */
+	
+	
+	function onQuickFilterChanged() {
+	gridOptions.api.setQuickFilter(document.getElementById('quickFilter').value);
+	var displayedRowCount = gridOptions.api.getDisplayedRowCount();	  
+    var len = displayedRowCount;
+	$('#totalTraining').find('span').html(len);
+	}
+	
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	
+	
+	var columnDefs = [
+	/* 	{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			pinned : 'left',
+
+		}, */
+		{
+			headerName : 'Event Id',
+			field : "eventId",
+			pinned : 'left',
+			width :100
+
+		}/* ,
+		{
+			headerName : 'Training Id',
+			field : "trainingId",
+			pinned : 'left',
+			width :150
+
+		} */, {
+			headerName : 'Event Type',
+			field : "type",
+			width :150
+			
+		}, {
+			headerName : 'Training Name',
+			field : "trainingName",
+			width :300
+			
+		}, {
+			headerName : 'PDF',
+			field : "designation",
+			width :200,
+			cellStyle : {
+				textAlign : 'center'
+			},cellRenderer : function(params) {
+
+					return '<a onclick=trainingPdf("'
+					+params.data.eventId+ '","'+params.data.trainingId+ '","'+params.data.type+'","'+params.data.startDate+'") href="javascript:void(0)">'
+					+ '<i class="bi bi-file-earmark-pdf-fill"> PDF</i>' + '</a>';
+				
+				
+
+			}
+			
+		}, {
+			headerName : 'Start Date',
+			field : "startDate",
+			width :200
+			
+		}, {
+			headerName : 'End Date',
+			field : "endDate",
+			width :200
+			
+		}, {
+			headerName : 'Start Time',
+			field : "startTime",
+			width :150
+			
+		}, {
+			headerName : 'End Time',
+			field : "endTime",
+			width :150
+			
+		}];
+
+// let the grid know which columns and what data to use
+var gridOptions = {
+	columnDefs : columnDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 150
+	},
+	onSelectionChanged : onSelectionChanged,
+};
+
+//function for row select parents
+
+function onSelectionChanged() {
+	var selectedNodes = gridOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+	if (rowCount > 0) {
+			
+		
+	
+	}else {
+		
+	}
+}
+
+	function getFileExtension(filename) {
+	    return filename.split('.').pop();
+	}
+
+	function trainingPdf(id1,id2,id3,id4){
+		if(id3=='Meeting'){
+			 window.open("/master/event-meeting-pdf?eventId="+window.btoa(id1) +"&trainingId="+window.btoa(id2) +"&startDate="+window.btoa(id4), '_blank')
+		}
+		else{
+			window.open("/master/event-training-pdf?eventId="+window.btoa(id1) +"&trainingId="+window.btoa(id2), '_blank')
+		}
+	}
+
+//function for download
+function downloadDetails() {
+	var params = {
+		fileName: 'Event_Training_Report.csv', // Specify your custom filename here
+	};
+	gridOptions.api.exportDataAsCsv(params);
+}
+
+	
+</script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+			<div class="d-flex justify-content-between align-items-center" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalTraining">
+									Event Training Report(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalTraining').find('span').html(gridOptions.api.getModel().getRowCount());"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="button-right">
+							
+								<div>
+
+								</div>
+								<div id="dateDiv1" class="d-flex form-group gap-2 align-items-center">
+									<label>From Dt:</label>
+									<div class="form-group calendar_box" id='fdate'
+										style="margin-right: 8px;width: 115px;margin-bottom: 5px">
+										<input type="text" id="filterFromDate" value=""
+											class="form-control" placeholder="from date.."
+											th:attr="onkeyup=|formatDate('filterFromDate','${session.DATEFORMAT_JS}')|"
+											readonly> <i class="ti-calendar picker_calendar"
+											id="fromDateCalender" style="top: 9px;"></i>
+									</div>
+								</div>
+								<div id="dateDiv2" class="d-flex form-group gap-2 align-items-center">
+									<label >To Dt:</label>
+									<div class="form-group calendar_box" id="tdate"
+										style="margin-right: 8px;width: 115px;margin-bottom: 5px">
+										<input type="text" id="filterToDate" value=""
+											class="form-control" placeholder="to date.."
+											th:attr="onkeyup=|formatDate('filterToDate','${session.DATEFORMAT_JS}')|"
+											readonly> <i class="ti-calendar picker_calendar"
+											id="toDateCalendar" style="top: 9px;"></i>
+									</div>
+								</div>
+
+								<div class="buttonsec btn-hs" id="ttbtn">
+									<button class="new-btn" id="filterBtn" onclick="filter()">
+										<i class="bi bi-search"></i> Search
+									</button>
+								</div>
+								<div class="buttonsec btn-hs" id="ttbtn">
+									<button class="download-btn" id="download"
+										onclick="downloadDetails()">Download</button>
+								</div>
+
+							</div>
+
+						</div>
+
+						
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+					</div>
+				</div>
+
+
+			
+
+		
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>

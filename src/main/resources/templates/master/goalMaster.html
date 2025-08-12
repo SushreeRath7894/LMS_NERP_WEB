@@ -1,0 +1,475 @@
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<script>
+	$(document).ready(function() {
+
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		//Goal Other View
+		agGrid.simpleHttpRequest({
+			url : "view-goal-master"
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+			gridOptions.api.setRowData(data);
+		});
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#fromDate').val($(this).val());
+		})
+		$('#fromDate').blur(function() {
+			$("#fromDateCalendar").val($(this).val());
+		})
+
+		$("#endDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#toDate').val($(this).val());
+		})
+		$('#toDate').blur(function() {
+			$("#endDateCalendar").val($(this).val());
+		})
+
+		$('#delete').attr("disabled", true);
+	})
+		/* -------------------search bar for mygrid1------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	var columnDefs = [
+			{
+				headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+			{
+				headerName : "Goal Id",
+				field : "goalId",
+				width : 150,
+				cellRenderer : function(params) {
+					return '<a id="" onclick=editId("' + params.data.goalId
+							+ '") href="javascript:void(0)">'
+							+ params.data.goalId + '</a>';
+				}
+
+			}, {
+				headerName : "Goal Name",
+				field : "goalName",
+				cellStyle : {
+					textAlign : 'left'
+				},
+				width : 492,
+			}, {
+				headerName : "Expected Results",
+				field : "goalDesc",
+				cellStyle : {
+					textAlign : 'left'
+				},
+				width : 450,
+			}, {
+				headerName : "Weightage",
+				field : "weightage",
+				width : 200, 
+				cellStyle : {
+					textAlign : 'center'
+				},				
+				cellRenderer : function(params) {
+						if (params.data.weightage!=""|| params.data.weightage!="null") {
+							return '<div>'+params.data.weightage+"%"+'</div>';
+						}else{
+							return '<div>'+params.data.weightage+'</div>';
+						}
+				},
+			}
+
+	];
+
+	const gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 251,
+			height : 10
+		},
+		rowSelection : 'single',
+		onSelectionChanged : deleteDetails,
+		suppressRowClickSelection : true,
+	/* suppressRowClickSelection : true,
+	getRowNodeId : function(data) {
+		return data.goalId;
+	} */
+	};
+
+	var listItem = [];
+
+	function saveGoal() {
+
+		obj = {};
+		obj.goalId = $("#goalId").val();
+		obj.goalName = $("#goalNames").val();
+		obj.goalDesc = $("#goalDesc").val();
+		obj.weightage = $("#weightages").val();
+
+		console.log(obj.weightage)
+		var validation = true;
+
+		if (obj.goalName == null || obj.goalName == "") {
+			validation = validationUpdated("Goal Name Required", "goalNames");
+		}
+		if (obj.goalDesc == null || obj.goalDesc == "") {
+			validation = validationUpdated("Expected Results Required",
+					"goalDesc");
+		}
+		if (obj.weightage == null || obj.weightage == "") {
+			validation = validationUpdated("Weightage Required", "weightages");
+		}
+
+		if (validation) {
+			$.ajax({
+				type : "POST",
+				url : "view-goal-master-add",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "success") {
+
+						$("#messageParagraph").text("Data Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$("#activityone").show();
+						//$("#activity").show();
+						$("#add").show();
+						$("#myGrid").show();
+						$("#cancel").hide();
+						$("#save").hide();
+						$("#form").hide();
+						$("#new").hide();
+
+						agGrid.simpleHttpRequest({
+							url : "view-goal-master"
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+
+						closeNav();
+ 
+					}
+				},
+				error : function(data) {
+				}
+			})
+		}
+	}
+
+	function editId(id) {
+
+		$("#add").hide();
+		//$("#myGrid").show();
+		$("#delete").hide();
+		$("#add").hide();
+		$("#download").hide();
+
+		$.ajax({
+			type : "GET",
+			url : "view-goal-edit?Id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+
+					console.log("edit" + response.body)
+
+					$("#goalId").val(response.body.goalId);
+					$("#goalNames").val(response.body.goalName);
+					$("#goalDesc").val(response.body.goalDesc);
+					$("#weightages").val(response.body.weightage);
+
+					openNav();
+				}
+			},
+
+			error : function(data) {
+				console.log(data)
+
+				$("#goalId").val();
+				$("#goalNames").val();
+				$("#goalDesc").val();
+				$("#weightages").val();
+
+			}
+		});
+
+	}
+
+	function goalCSV() {
+		var dataset = [];
+		gridOptions.api.getSelectedRows();
+		gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			var item = rowNode.data;
+			item.goalId = item.goalId;
+			dataset.push(item);
+		});
+		gridOptions.api.exportDataAsCsv(dataset);
+	}
+	function openNav() {
+
+		$('#goalName').val("");
+		$('#expectedResult').val("");
+		$('#weightage').val("");
+
+		document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:20px;";
+
+		document.getElementById("main_content").style.width = "75%";
+
+		$("#add").hide();
+		$("#delete").hide();
+		$("#download").hide();
+		$("#searchRowDiv").hide();
+
+	}
+
+	function closeNav() {
+
+		agGrid.simpleHttpRequest({
+			url : "view-goal-master"
+		}).then(function(data) {
+			gridOptions.api.setRowData(data);
+		});
+		/* document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main_content").style.width = "100%"; */
+		//location.reload();
+
+		$("#goalId").val("");
+		$("#goalNames").val("");
+		$("#goalDesc").val("");
+		$("#weightages").val("");
+		$("#add").show();
+		$("#delete").show();
+		$("#download").show();
+		$("#searchRowDiv").show();
+
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main_content").style.width = "100%";
+
+	}
+
+	var deleteId = "";
+	function deleteDetails() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+
+		deleteId = "";
+		for (var i = 0; i < selectedRows.length; i++) {
+			deleteId = deleteId + '"' + selectedRows[i].goalId + '",';
+
+		}
+		deleteId = deleteId.substring(0, deleteId.length - 1);
+
+		var rowCount = 0;
+		selectedRows.forEach(function() {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#delete').attr("disabled", false);
+			$('#add').hide();
+			if (rowCount == 1) {
+				$('#add').hide();
+			}
+		} else {
+			$('#delete').attr("disabled", true);
+			$('#add').show();
+
+		}
+
+	}
+
+	function checkWeight(fieldId) {
+		//var tempVal = $("#" + fieldId).val().replace(/[^0-9 ]/g, '');
+		 var myField = document.getElementById("weightages")
+		 var reg = /^\d{0,3}?$/;  
+		 var wt=$("#weightages").val();
+			if(wt=="0"){
+				$("#" + fieldId).val(null);
+			}else if (reg.test(myField.value))
+			 {  
+				if (wt<=100) {
+					$("#" + fieldId).val();
+				}else{
+					$("#" + fieldId).val(null);
+				}
+			 }else{        
+				 $("#" + fieldId).val(null);    
+			 }
+
+	}
+	function check(fieldId) {
+		var tempVal = $("#" + fieldId).val().replace(/[^0-9 ]/g, '');
+		$("#" + fieldId).val(tempVal);
+	}
+
+	//Delete 
+	function deleteFun() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var id = selectedRows[0].goalId;
+		$.ajax({
+			type : "POST",
+			url : "view-goal-delete?id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+
+					agGrid.simpleHttpRequest({
+						url : "view-goal-master"
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+					});
+					location.reload();
+
+					closeNav()
+				}
+			},
+			error : function(data) {
+				console.log(data);
+			}
+		})
+	}
+</script>
+
+
+</head>
+
+<body>
+
+	<div layout:fragment="content">
+		<div class="content-wrap">
+			<div class="container-fluid">
+				<div class="maincontent">
+					<div class="row">
+
+						<div class="maincontentsec">
+							<div class="content_padding">
+
+								<div id="main_content">
+
+									<div class="panel-body">
+
+										<div class="d-flex justify-content-between">
+											<div class="btn-hs">
+												<div class="font-design" id="totalReq">
+													Goal Lists(<span></span>)
+												</div>
+											</div>
+											<div id="searchRowDiv">
+												<div class="input-style">
+													<input type="text" placeholder="Search.." name="search"
+														class="searchboxinput" onkeyup="cancelBar()"
+														oninput="onQuickFilterChanged()" id="quickFilter"
+														autocomplete="off">
+													<div class="searchicon">
+														<a href="javascript:void(0)"><span
+															style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+															id="closeKey"
+															onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+															class="close_i"><i class="ti-close srchicon"></i></span></a><a
+															href="javascript:void(0)"><i
+															class="ti-search srchicon"></i></a>
+													</div>
+												</div>
+											</div>
+											<div class="buttonsec btn-hs" id="btndiv">
+												<button id="download" class="download-btn" onclick="goalCSV()">Download</button>
+												<button id="add" class="new-btn" onclick="openNav()">New</button>
+												<button class="delete-btn" id="delete" onclick="deleteFun()">DELETE</button>
+											</div>
+										</div>
+										<div class="row">
+											<div id="myGrid" style="width: 100%; height: 300px;"
+												class="ag-theme-alpine"></div>
+
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div id="mySidenav" class="sidenav">
+						<div class="slidebox">
+							<div class="d-flex justify-content-between">
+
+								<div class="edit">Goal Details</div>
+
+								<div class="arrow">
+									<a href="javascript:void(0)" class="closebtn"
+										onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+								</div>
+
+							</div>
+
+							<div class="row">
+								<div class="col-md-12 buttonsec btn-hs">
+									<button class="cancel-btn" onclick="closeNav()">CANCEL</button>
+									<button class="save-btn" onclick="saveGoal()">SAVE</button>
+								</div>
+							</div>
+
+							<input type="hidden" id="goalId">
+							<div class="col-md-12">
+								<div class="form-group">
+									<label>Goal Name</label> <input type="text"
+										class="form-control" id="goalNames"
+										onblur="removeValid(event)" autocomplete="off">
+								</div>
+							</div>
+							<div class="col-md-12">
+								<div class="form-group">
+									<label>Expected Results</label> <input type="text"
+										class="form-control" id="goalDesc" onblur="removeValid(event)"
+										autocomplete="off">
+								</div>
+							</div>
+
+							<div class="col-md-12">
+								<div class="form-group">
+									<label>Weightage</label> <input type="text"
+										class="form-control" id="weightages"
+										onblur="removeValid(event)" maxLength="3" 
+										onkeyup="checkWeight('weightages')" autocomplete="off">
+								</div>
+							</div>
+
+						</div>
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</html>

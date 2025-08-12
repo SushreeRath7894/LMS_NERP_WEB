@@ -1,0 +1,1465 @@
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+
+.pendingStatus{
+color: #413e3e;
+    font-weight: 600;
+    font-size: 13px;
+    font-family: math;
+}
+
+.approveStatus{
+color: #0727fa;
+    font-weight: 600;
+    font-size: 13px;
+    font-family: math;
+
+}
+.confirmation_modal_header{
+padding: 10px 8px;
+    background: linear-gradient(45deg, #011749, #0c40b6, #5885de) !important;
+
+}
+
+#confirmYes,
+#cancelButton{
+
+transition:all 0.2s ease-in;
+margin-left: 15px;
+}
+#confirmYes:hover,
+#cancelButton:hover{
+transform:scale(1.2);
+color:white;
+margin-left: 15px;
+}
+
+.myBtn{
+ width: 119px;
+ height: 40px;
+background: linear-gradient(45deg, #011749, #0c40b6, #5885de) !important;
+ color: white;
+ font-weight: 700;
+}
+
+
+</style>
+
+
+<script>
+	$(document).ready(function() {
+		$("#download").attr("disabled", true);
+
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		gridOptions.api.hideOverlay();
+
+		var gridDiv1 = document.querySelector('#myGrid1');
+		new agGrid.Grid(gridDiv1, gridOptions1);
+		
+		var gridDiv2 = document.querySelector('#categoryGrid');
+		new agGrid.Grid(gridDiv2, gridOptions2);
+		
+		var gridDiv3 = document.querySelector('#employeeListGrid');
+		new agGrid.Grid(gridDiv3, employeeGridOptions);
+		
+		var rowData = [];
+		gridOptions1.api.setRowData(rowData);
+		$("#categoryidPara").hide();
+		$("#mySidenav1").hide();
+		$("#deleteFactor").attr("disabled",true);		
+		$("#assignId").attr("disabled", true);
+		$("#approveBtn").attr("disabled",true);
+		 $("#employeeListModal").modal('hide');
+		 $("#confirmModal").modal('hide');
+		 $("#successMOdal").modal('hide');
+
+		var responseData = [];
+		fetchData();
+		
+		
+		var curDate = new Date();
+	    var curYear = curDate.getFullYear();
+	    var financialYearStart = curYear;
+	    var financialYearEnd = curYear + 1;
+	    
+	    if (curDate.getMonth() < 3) {
+	        financialYearStart -= 1; // If the current month is before April, start year is last year
+	        financialYearEnd -= 1; // If the current month is before April, end year is this year
+	    }
+	    var financialYear = financialYearStart + '-' + financialYearEnd;
+	    $("#attndyear").val(financialYear);
+	    changeMonthYear();
+		
+		
+		var dateFormat = localStorage.getItem("dateFormat");
+		var today = new Date();
+		$("#applyStartCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			maxDate:today,
+			timepicker : false,
+		}).on("change", function() {
+			$('#fromDate').val($(this).val());
+			handelDates(document.getElementById("fromDate"));
+		})
+		
+		$('#fromDate').blur(function(){
+			$("#applyStartCalendar").val($(this).val());
+			handelDates(document.getElementById("fromDate"));
+		});
+		
+		
+		
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#toDatePicker").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			maxDate:today,
+			timepicker : false,
+		}).on("change", function() {
+			$('#toDate').val($(this).val());
+			handelDates(document.getElementById("toDate"));
+		})
+		
+		$('#toDate').blur(function(){
+			$("#toDatePicker").val($(this).val());
+			handelDates(document.getElementById("toDate"));
+		})
+		
+		
+		
+	})
+	
+	function downloadEmpDetails() { 
+	  var dataset = [];
+	  gridOptions1.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+	        dataset.push(rowNode.data);
+	        
+	    });
+	  gridOptions1.api.exportDataAsCsv(dataset);
+	}
+	
+	
+	
+	function fetchData() {
+	    $(".loader").show();
+
+	    const promise1 = agGrid.simpleHttpRequest({
+	        url: 'appraisal-keyfactor-view'
+	    }).then(function (data) {
+	        const responseData = JSON.parse(data.body);
+
+	        if (!responseData || !responseData.appraisalData || responseData.appraisalData.length === 0) {
+	            gridOptions.api.setRowData([]);  
+	            return; 
+	        }
+
+	        var length = responseData.appraisalData.length;
+	        $("#totalReq").find('span').html(length);
+	        gridOptions.api.setRowData(responseData.appraisalData);
+	    });
+
+	    /* const promise2 = agGrid.simpleHttpRequest({
+	        url: 'appraisal-keyfactor-assignView'
+	    }).then(function (data) {
+	        const responseData = JSON.parse(data.body);
+
+	        if (!responseData || !responseData.appraisalData || responseData.appraisalData.length === 0) {
+	        	gridOptions1.api.setRowData([]);
+	            return; 
+	        }
+
+	        var length = responseData.appraisalData.length;
+	        $("#totalReq2").find('span').html(length);
+	        gridOptions1.api.setRowData(responseData.appraisalData);
+	    });
+ */
+	    Promise.all([promise1])
+	        .then(function () {
+	            $(".loader").hide(); 
+	        })
+	        .catch(function (error) {
+	            $(".loader").hide(); 
+	        });
+	}
+
+	var data1={};
+	var columnDefs = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true
+		},
+	{
+		headerName : "Factor id",
+		field : "categoryid",
+		width : 120,
+		cellRenderer : function(params) {
+			if (params.data.categoryid && params.data.approvalStatus == "0") {
+
+				return '<a onclick=editAppraisal("'+ params.data.categoryid +'") href="javascript:void(0)">'
+						+ params.data.categoryid + '<i class="bi bi-pencil-square"></i></a>';
+			} else if (params.data.categoryid && params.data.approvalStatus == "1"){
+				return '<a  onclick = editAppraisal("'+ params.data.categoryid +'") href="javascript:void(0)">'
+						+ params.data.categoryid + '<i class="bi bi-view-list"></i></a>';
+			}
+		}
+
+	}, {
+		headerName : "Factor Name",
+		field : "categoryName",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 150,
+	},
+	{
+		headerName : "Financial Year",
+		field : "fincialyear",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 150,
+	},{
+		headerName : "From Date",
+		field : "fromDate",
+		width : 100,
+	},
+	{
+		headerName : "To Date",
+		field : "toDate",
+		width : 100,
+	},
+	{
+		headerName : "Approval Status",
+		field : "approvalStatus",
+		width : 100,
+		cellRenderer : function(params) {
+			if (params.data.approvalStatus == "0" ) {
+
+				return '<span class="pendingStatus">Pending</span>'
+			} else {
+				return '<span class="approveStatus">Approved</span>'			}
+		}
+	},
+	
+	{
+		headerName : "Created By",
+		field : "createdBy",
+		width : 120,
+	}];
+
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 410,
+			height : 20
+		},
+		rowSelection : 'single',
+		onSelectionChanged : onSelectExpoler,
+		overlayNoRowsTemplate: '<span>No rows to show</span>',
+	};
+	
+	var gridApi;
+	var columnDefs2 = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true
+		},
+	{
+		headerName : "Sl No",
+		field : "slno",
+		width : 120,
+	/* 	cellRenderer : function(params) {
+			if (params.data.goalAssignid) {
+
+				return '<a href="javascript:void(0)">'
+						+ params.data.goalAssignid + '</a>';
+			} else {
+				return '<a  href="javascript:void(0)">'
+						+ params.data.goalAssignid + '</a>';
+			}
+		} */
+
+	}, {
+		headerName : "Factors",
+		field : "factors",
+		 editable: true,
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 860,
+	}, {
+		headerName : "Max Mark",
+		field : "maxmark",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 300,
+	},
+	{
+		headerName : "Reporting Officer Assessment",
+		field : "assementMark",
+		editable:true,
+		hide:true,
+		cellStyle: function (params) {
+	        const api = params.api || params.node.gridOptions.api;
+	        const isPinnedRow = params.node.rowPinned;
+	        if (isPinnedRow) {
+	            return null; 
+	        }
+
+	        return { textAlign: 'left', background: '#eae7fa8f !important' }; 
+	    },
+		width : 200,
+		  valueParser: function(params) {
+		        const numericValue = parseFloat(params.newValue);
+		        if (!isNaN(numericValue)) {
+		            return numericValue;
+		        } else {
+		            return params.oldValue; 
+		        }
+		    }
+	}];
+
+
+	var gridOptions2 = {
+		columnDefs : columnDefs2,
+		suppressRowClickSelection : true,
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 210,
+			height : 10,
+			singleClickEdit : true,
+			stopEditingWhenCellsLoseFocus : true
+		},
+		rowSelection : 'single',
+		onGridReady: function(params) {
+	        updateTotalRow(params.api);
+	        gridApi = params.api;
+	    },
+	    onSelectionChanged: tabelRowModification,
+	    onCellValueChanged: function(event) {
+	        var rowData = event.data;
+	        if (!event.node.rowPinned) {
+	        if(parseInt(rowData.assementMark) > parseInt(rowData.maxmark)){
+	        	
+	        	 rowData[event.colDef.field] = event.oldValue;
+
+		         event.api.applyTransaction({ update: [rowData] });
+	        	
+		         Swal.fire({
+		        	  icon: "error",
+		        	  title: "Oops...",
+		        	  text: "Assessment Mark Cannot Be Greater Than Max Mark!"
+		        	});
+	        }
+	        else{
+	        	
+	        	if(parseInt(rowData.assementMark) > 0) {
+	        		  updateTotalRow(event.api);
+	        	}
+	        }
+	       }
+	        
+	     
+	    },
+	    getRowStyle: function (params) {
+	        const api = params.api || params.node.gridOptions.api;
+
+	        // Ensure the grid API is available
+	        if (!api) {
+	            console.error("Grid API is not available.");
+	            return null;
+	        }
+
+	        const rowCount = api.getDisplayedRowCount();
+	        const isLastRow = params.node.rowIndex === rowCount - 1;
+
+	        // Skip styling for the last row
+	        if (params.node.rowPinned || isLastRow) {
+	            return null; // No style for the last row
+	        }
+
+	        return { background: '#ffffff !important'}; // Style for other rows
+	    },
+	   
+	};
+	
+	
+	function calculateTotal(field, gridApi) {
+	    let total = 0;
+	    gridApi.forEachNode(function(node) {
+	        total += parseFloat(node.data[field]) || 0; 
+	    });
+	    return total;
+	}
+	
+	function updateTotalRow(gridApi) {
+	    const assementMark = calculateTotal('assementMark', gridApi);
+
+	    gridApi.setPinnedBottomRowData([{
+	    	factors: 'Total',
+	    	maxmark:"100",
+	        assementMark: assementMark,
+	        editable: false 
+	    }]);
+	}
+	
+	function onSelectExpoler() {
+		
+		
+		var selectedRows= gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			
+			rowCount = rowCount + 1;
+			
+		});
+		
+		var cateoryId = "";
+	
+		var approveStatus = "" ;
+		var AssignEmpStatus = "";
+		if(rowCount > 0 ){
+			approveStatus = selectedRows[0].approvalStatus;
+			AssignEmpStatus = selectedRows[0].AssignEmpStatus;
+			cateoryId = selectedRows[0].categoryid;
+		}
+		
+		if (rowCount > 0 && approveStatus == "1" && AssignEmpStatus === "1") {
+			$("#assignId").attr("disabled", true);
+			$("#newBtn").attr("disabled",true);
+			$("#approveBtn").attr("disabled",true);
+			fetchAssignData(cateoryId);
+		}
+		else if (rowCount > 0 && approveStatus == "1") {
+			$("#assignId").attr("disabled", false);
+			$("#newBtn").attr("disabled",true);
+			$("#approveBtn").attr("disabled",true);
+			gridOptions1.api.setRowData([]);
+			$("#totalReq2").find('span').html("0")
+			
+		}
+		else if(rowCount >0){
+			$("#newBtn").attr("disabled",true);
+			$("#approveBtn").attr("disabled",false);
+			gridOptions1.api.setRowData([]);
+			$("#totalReq2").find('span').html("0")
+		}
+		else {
+			$("#assignId").attr("disabled", true);
+			$("#newBtn").attr("disabled",false);
+			$("#approveBtn").attr("disabled",true);
+			gridOptions1.api.setRowData([]);
+			$("#totalReq2").find('span').html("0")
+		}
+	}
+	
+	
+	var employeeDef = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true
+		},
+	{
+		headerName : "Employee id",
+		field : "empId",
+		width : 180,
+
+	}, {
+		headerName : "Employee Name",
+		field : "empName",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 400,
+	}, {
+		headerName : "Staff Type",
+		field : "staffType",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 200,
+	},
+	{
+		headerName : "Designation",
+		field : "designation",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 200
+	},
+	{
+		headerName : "Joining Date",
+		field : "joiningDate",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 200
+	}];
+
+
+	var employeeGridOptions = {
+		columnDefs : employeeDef,
+		suppressRowClickSelection : true,
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 210,
+			height : 10,
+			singleClickEdit : true,
+			stopEditingWhenCellsLoseFocus : true
+		},
+		rowSelection : 'multiple'
+	    
+	};
+
+	
+	var data2 = {};
+	var columnDefs1 = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : false,
+			width : 0,
+			hide:true,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			pinned: 'left',
+
+		},
+
+	{
+		headerName : "Assign iD",
+		field : "assignid",
+		width : 180,
+	},
+	{
+		headerName : "Employee id",
+		field : "empId",
+		hide:true,
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 120,
+	},{
+		headerName : "Employee Name",
+		field : "empName",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 280,
+	}, {
+		headerName : "Category Name",
+		field : "categoryName",
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 180,
+	}];
+
+	var gridOptions1 = {
+		columnDefs : columnDefs1,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 410,
+			height : 20
+		},
+		rowSelection : 'multiple',
+		
+	};
+	function newBtn(){
+		$("#demo").show();
+		$(".panel-body").hide();
+		$("#save").attr("disabled",false);
+		$("#addNewFactor").attr("disabled",false);
+		$("#categoryidPara").hide();
+		$("#factorId").val('')
+		$.ajax({
+            type: "GET",
+            url: "appraisal-keyfactor-data",
+            async: false,
+            success: function(response) {
+            	
+            	var responsedata = JSON.parse(response.body);
+            	
+            	gridOptions2.api.setRowData(responsedata.grid1);
+            }
+		});
+		
+		gridApi.setPinnedBottomRowData([{
+	    	factors: 'Total',
+	    	maxmark:"100",
+	    	assementMark:"",
+	    	editable: false 
+	    }]);
+		changeMonthYear();
+		getFinancialYear();
+	}
+	
+	
+	function cancel(){
+		$("#demo").hide();
+		$(".panel-body").show();
+		$("#factorCategory").val('');
+		$("#fromDate").val('');
+		$("#toDate").val('');
+		gridOptions2.api.setRowData([]);
+		 $("#categoryId").val('')
+		 gridOptions.api.deselectAll();
+	}
+	
+	
+	
+	function fetchAppraisalData(callback) {
+	    agGrid.simpleHttpRequest({
+	        url: 'appraisal-keyfactor-view'
+	    }).then(function(data) {
+	        var responseData = JSON.parse(data.body);
+	        callback(responseData);
+	    });
+	}
+	
+	
+	function appraisalSaveData(){
+		gridOptions2.api.stopEditing(); // stop editing when the save button is click
+		var obj = {};
+		var allValid = true;
+		var datas = [];
+		
+		obj.factorCategory = $("#factorCategory").val();
+		obj.fromDate = $("#fromDate").val();
+		obj.toDate = $("#toDate").val();
+		obj.categoryId =  $("#categoryId").val();
+		obj.financialyear = $("#attndyear").val();
+		
+		
+		if(obj.factorCategory == null || obj.factorCategory == ""){
+			allValid = validationUpdated("Factor Category Required","factorCategory");
+		}
+		if(obj.fromDate == null || obj.fromDate == ""){
+			allValid = validationUpdated("From Date Required","fromDate");
+		}
+		if(obj.toDate == null || obj.toDate == ""){
+			allValid = validationUpdated("To Date Required","toDate");
+		}
+		
+		
+		 var dataOfGrid1 = [];
+		 
+		 gridOptions2.api.forEachNode(function(rowNode, index) {
+			 dataOfGrid1.push(rowNode.data);
+			  });
+		
+		 
+		 dataOfGrid1.forEach(item => {
+			    item.factors = item.factors.replace(/'/g, '=#').replace(/"/g, '=$');
+			});
+		 
+		 obj.grid1List = dataOfGrid1;
+		 
+		 if(allValid){
+			 datas.push(obj);
+			 $('.loader').show();
+			 
+			 $.ajax({
+					type : "POST",
+					url : "appraisal-keyfactor-add",
+					async: true,
+					dataType : "json",
+					contentType : "application/json",
+					data : JSON.stringify(datas),
+					success : function(response) {
+						
+
+						if(response.code == "201"){
+				            fetchAppraisalData(function(responseData) {
+					            gridOptions.api.setRowData(responseData.appraisalData);
+					            var length = responseData.appraisalData.length;
+					            $("#messageParagraph").text("Appraisal Factor Create Successfully");
+					            $("#msgOkModal").removeClass("btn3");
+					            $("#msgOkModal").addClass("btn1");
+					            $("#msgModal").modal('show');
+					            cancel();
+				            $('.loader').hide();
+					        });
+						}
+						
+						else if(response.code == "200"){
+							    fetchAppraisalData(function(responseData) {
+						            gridOptions.api.setRowData(responseData.appraisalData);
+						            var length = responseData.appraisalData.length;
+						            $("#messageParagraph").text("Appraisal Factor  modified  Successfully");
+								    $("#msgOkModal").removeClass("btn3");
+								    $("#msgOkModal").addClass("btn1");
+								    $("#msgModal").modal('show');
+						            cancel();
+						            $('.loader').hide();
+						        });
+							 
+						
+					}
+						else if(response.code == "1062" || message == "Duplicate entry 'x' for  'tbl_appraisalKeyFactor_master.unique__factor'"){
+							$("#messageParagraph").text("You cannot create multiple appraisal factors with the same factor name in a single year.");
+							$("#msgOkModal").removeClass("btn3");
+							    $("#msgOkModal").addClass("btn1");
+							    $("#msgModal").modal('show');
+							    $('.loader').hide();
+							    cancel();
+						}
+						
+						
+					},
+					error : function(data) {
+						$('.loader').hide();
+					}
+				})
+		 }
+	}
+	
+	
+	 function handelDropDown(element){
+		 
+		 var elementValue = $(element).val();
+		 
+		 if(elementValue != ""){
+			    $(element).siblings(".formValidation").hide(); 
+		 }
+		 else {
+			    $(element).siblings(".formValidation").show(); 
+
+		 }
+	 }
+	 
+	 function handelDates(event){
+		 var elementValue = $(event).val();
+		    if(elementValue != ""){	    	
+		    $(event).siblings(".formValidation").hide(); 
+		    }
+		    else{
+		    	 $(event).siblings(".formValidation").show(); 
+		    }
+	 }
+
+	 
+	 function editAppraisal(id){
+		 $("#categoryId").val(id);
+		 
+		 $('.loader').show();
+		 
+			$.ajax({
+	            type: "GET",
+	            url: "appraisal-keyfactor-edit?id=" + id,
+	            async: false,
+	            success: function(response) {
+	            	
+	            	if(response.code == "200"){
+	            		
+	            	$("#demo").show();
+	        		$(".panel-body").hide();
+	        		
+	        		
+	            	
+	            	var responsedata = JSON.parse(response.body);
+	            	var appraisalReponseData = responsedata.appraisalEditData;
+	            	$("#factorCategory").val(appraisalReponseData[0].categoryName);
+	            	$("#fromDate").val(appraisalReponseData[0].fromDate);
+	            	$("#toDate").val(appraisalReponseData[0].toDate);
+	            	$("#attndyear").val(appraisalReponseData[0].fincialyear);
+	            	$("#categoryidPara").show();
+	            	$("#factorId").text(appraisalReponseData[0].categoryid);
+	            	if(appraisalReponseData[0].AssignStatus === "1"){
+	            		$("#save").attr("disabled",true);
+	            		$("#addNewFactor").attr("disabled",true);
+	            	}
+	            	else{
+	            		$("#save").attr("disabled",false);
+	            		$("#addNewFactor").attr("disabled",false);
+	            	}
+	            	
+	            	
+	            	var gridData = appraisalReponseData[0].grid1;
+	            	let assesementMark = 0;
+	            	let totalmark = 0
+	            	gridData.forEach((item)=>{
+	            		item.factors = item.factors.replace(/=#/g, "'").replace(/=\$/g, '"');
+	            		assesementMark += parseInt(item.assementMark || 0, 10);
+	            		totalmark += parseInt(item.maxmark || 0, 10);
+	            		
+
+	            	})
+	            	gridOptions2.api.setRowData(gridData);
+	            	gridApi.setPinnedBottomRowData([{
+	        	    	factors: 'Total',
+	        	    	maxmark:totalmark,
+	        	    	assementMark:assesementMark,
+	        	    	editable: false 
+	        	    }]);
+	            	$('.loader').hide();
+	            }
+	            }
+			});
+	 }
+	 
+	 
+	 
+	 function approveBtn() {
+		    var selectedRows = gridOptions.api.getSelectedRows();
+		    var categoryId = selectedRows[0].categoryid;
+		    
+		    // Show the loader
+		    $('.loader').show();
+
+		    $.ajax({
+		        type: "GET",
+		        url: "appraisal-keyfactor-approve?id=" + categoryId,
+		        success: function(response) {
+		            agGrid.simpleHttpRequest({
+		                url: 'appraisal-keyfactor-view'
+		            }).then(function(data) {
+		                responseData = JSON.parse(data.body);
+		                gridOptions.api.setRowData(responseData.appraisalData);
+
+		                $("#assignId").attr("disabled", true);
+		                $("#newBtn").attr("disabled", false);
+		                $("#approveBtn").attr("disabled", true);
+
+		                $("#messageParagraph").text("Appraisal Factor Approved Successfully");
+		                $("#msgOkModal").removeClass("btn3").addClass("btn1");
+		                $("#msgModal").modal('show');
+		                
+		                $('.loader').hide();
+		            });
+		        },
+		        error: function() {
+		            $('.loader').hide();
+		        }
+		    });
+		}
+
+	 
+	 
+	 
+	 function assignEmployee(id){
+		 $('.loader').show();
+		 
+			$.ajax({
+	            type: "GET",
+	            url: "appraisal-keyfactor-assignEmployeeList?id=" + id,
+	            async: false,
+	            success: function(response) {
+	            	var responseData = JSON.parse(response.body);	            	
+	            	var parseData = responseData.employeelist;
+	            	employeeGridOptions.api.setRowData(parseData);
+	            	$('.loader').hide();
+	            }
+			
+			});
+	 }
+	 
+	 
+	 function requestForAssign(categoryName){
+		 $("#employeeListModal").modal('show');
+		 assignEmployee(categoryName);
+	 }
+	 
+	 function closeEmployeeeList(){
+		 $("#employeeListModal").modal('hide');
+		 $("#newBtn").attr("disabled",false);
+		 //fetchData();
+	 }
+	 
+	 function EmployeeAssign(){
+		 
+		 var assignValue = [];
+		 
+		 /* var employeeId = []; */
+		 
+		  var selectedRows= gridOptions.api.getSelectedRows();
+		 var categoryId = selectedRows[0].categoryid;
+		 var staffId  = selectedRows[0].factorid;
+		 
+		 
+		 //var employeeGridRows= employeeGridOptions.api.getSelectedRows();
+		 
+		/*  employeeGridRows.forEach((element)=>{
+			 employeeId.push(element.empId);
+		 }); */
+		 
+		// assignValue.push(employeeId);
+		assignValue.push(staffId);
+		 assignValue.push(categoryId);
+		 
+		 
+		 console.log("assignValue-->",JSON.stringify(assignValue));
+		 
+		 
+			$.ajax({
+	            type: "POST",
+	            url: "appraisal-keyfactor-employeeAssign",
+	            async: false,
+	            contentType: "application/json",     
+	            dataType: "json",                   
+	            data: JSON.stringify(assignValue),  
+	            success: function(response) {
+	            	
+	            	
+	            	if (categoryId) {
+	            	    async function handleCategoryData() {
+	            	        try {
+	            	            await fetchAssignData(categoryId);
+	            	            closeEmployeeeList();
+	            	            $("#newBtn").attr("disabled", false);
+	            	            $("#confirmModal").modal('hide');
+	            	            $("#successMOdal").modal('show');
+	            	            
+	            	        } catch (error) {
+	            	            console.error('Error fetching assign data:', error);
+	            	        }
+	            	    }
+
+	            	    handleCategoryData();
+	            	    gridOptions.api.refreshCells({ force: true });
+	            	} else {
+	            	    console.error('categoryId is undefined or null');
+	            	}
+	            }
+			});
+	 }
+	 
+	 function changeMonthYear() {
+		    var selectedYear = parseInt($("#attndyear").val());
+
+		    console.log("Selected Year:", selectedYear);
+		    
+		    var fromDate = new Date(selectedYear, 4 - 1, 1); // Set to April 1st
+	        console.log("From Date:", fromDate);
+	        var toDate = new Date(selectedYear + 1, 3 - 1, 31); // Set to March 31st of the next year
+	        console.log("To Date:", toDate);
+	        $("#fromDate").val(formatDate(fromDate));
+	        $("#toDate").val(formatDate(toDate));
+		   
+		}
+	 
+	 function getFinancialYear() {
+		    const currentYear = new Date().getFullYear();
+		    const nextYear = currentYear + 1;
+		    //return `${currentYear}-${nextYear}`;
+		    var financialYear = `${currentYear}-${nextYear}`;
+		    $("#attndyear").val(financialYear);
+		}
+	 
+	 function formatDate(date) {
+		    var day = date.getDate();
+		    var month = date.getMonth() + 1; // Months are zero-indexed
+		    var year = date.getFullYear();
+
+		    return (day < 10 ? '0' : '') + day + '-' + (month < 10 ? '0' : '') + month + '-' + year;
+		}
+	 
+	
+	 
+	 
+	 function tabelRowModification(){
+			$("#deleteFactor").attr("disabled",false);
+			$("#addNewFactor").attr("disabled",true);
+		 
+	 }
+	 function deleteFactorFunc(){
+		 
+		 var selectedRows = gridOptions2.api.getSelectedRows();
+			var selectedRowsString = '';
+			
+			  let allRowData = [];
+			  let totalMark = 0;
+			    gridOptions2.api.forEachNode((node) => {
+			        allRowData.push(node.data);
+			    });
+			    
+			   
+			    const updatedData = allRowData.filter(row => !selectedRows.includes(row));
+
+			    updatedData.forEach((row, index) => {
+			        row.slno = index + 1;  
+			        totalMark += parseInt(row.maxmark);
+			    });
+			    
+			    console.log("y",updatedData);
+			    gridApi.setPinnedBottomRowData([{
+			    	factors: 'Total',
+			    	maxmark:totalMark,
+			        editable: false 
+			    }]);
+			    
+			gridOptions2.api.setRowData(updatedData);
+			
+			$("#main").show();
+			$("#messageParagraph").text('Factor Delete  Successfully'); 
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			
+			$("#deleteFactor").attr("disabled",true);
+			$("#addNewFactor").attr("disabled",false);
+		 
+	 }
+	 
+	 function openNav1() {
+		 $("#addNewFactor").attr("disabled",true);
+		 $("#deleteFactor").attr("disabled",true);
+		 $("#mySidenav1").show();
+			document.getElementById("mySidenav1").style.cssText = "width: 25%; position: absolute;top: 18.7rem; right:-10px; overflow: hidden; height:auto;";
+			document.getElementById("categoryGrid").style.width = "75%";
+		}
+	 
+		function closeNav1() {
+			 $("#addNewFactor").attr("disabled",false);
+			 $("#deleteFactor").attr("disabled",true);
+			document.getElementById("mySidenav1").style.width = "0";
+			document.getElementById("categoryGrid").style.width = "100%";
+			$("#factorName").val('');
+			$("#maxmark").val('');
+		}
+		
+		function saveFactor(){
+			
+		let allRowData = [];
+		gridOptions2.api.forEachNode((node) => {
+	        allRowData.push(node.data);
+	    });
+		
+		 const newSlno = allRowData.length + 1;
+		  const newRow = {
+			        slno: newSlno,
+			        factors: $("#factorName").val(),
+			        maxmark: $("#maxmark").val()
+			    };
+		  allRowData.push(newRow);
+		  let totalMark = 0;
+		  allRowData.forEach((row, index) => {
+		        totalMark += parseInt(row.maxmark);
+		    });
+		  gridApi.setPinnedBottomRowData([{
+		    	factors: 'Total',
+		    	maxmark:totalMark,
+		        editable: false 
+		    }]);
+		    
+		  gridOptions2.api.setRowData(allRowData);
+		  
+		  $("#main").show();
+			$("#messageParagraph").text('Factor Create Successfully'); 
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+		  closeNav1();
+		}
+		
+		
+		
+		function requestForAssign(){
+			$("#assignId").attr("disabled", true);
+			$("#newBtn").attr("disabled",false);
+			$("#approveBtn").attr("disabled",true);
+			 $("#confirmModal").modal('show');
+		}
+		function savePatientDetails(){
+			$("#assignId").attr("disabled", true);
+			$("#newBtn").attr("disabled",false);
+			$("#approveBtn").attr("disabled",true);
+			EmployeeAssign();
+		}
+		
+		function fetchAssignData(id) {
+		    $(".loader").show();
+		    console.log("inside the function")
+
+		    const promise2 = agGrid.simpleHttpRequest({
+		        url: 'appraisal-keyfactor-assignView?id=' +id
+		    }).then(function (data) {
+		        const responseData = JSON.parse(data.body);
+
+		        if (!responseData || !responseData.appraisalData || responseData.appraisalData.length === 0) {
+		        	gridOptions1.api.setRowData([]);
+		            return; 
+		        }
+
+		        var length = responseData.appraisalData.length;
+		        $("#totalReq2").find('span').html(length);
+		        gridOptions1.api.setRowData(responseData.appraisalData);
+		    });
+
+		    Promise.all([promise2])
+		        .then(function () {
+		            $(".loader").hide(); 
+		        })
+		        .catch(function (error) {
+		            $(".loader").hide(); 
+		        });
+		}
+		
+		function closeSuccessModal(){
+			
+			$("#successMOdal").modal('hide');
+		}
+
+</script>
+
+
+</head>
+
+<body>
+
+	<div layout:fragment="content">
+		<div class="content-wrap">
+			<div class="container-fluid">
+				<div class="maincontent">
+					<div class="row">
+
+						<div class="maincontentsec">
+							<div class="content_padding">
+
+								<div id="main_content">
+
+									<div class="panel-body">
+
+										<div class="row mt-4">
+											<div class="col-md-6">
+												<div
+													class="d-flex justify-content-center align-items-center">
+													<div class="col-md-4" id="totalReq">FACTOR LIST  (<span>0</span>)
+													</div>
+													<input type="hidden" id="selectAssign">
+													<div class="col-md-8 butttonsec">
+														<button class="btn2" id="assignId"
+															onclick="requestForAssign()">Assign</button>
+														<button class="btn2" id="approveBtn" onclick="approveBtn()">Approve</button>
+														<button class="btn2" id="newBtn" onclick="newBtn()">New</button>
+													</div>
+												</div>
+
+												<div class="box_reference">
+													<div id="myGrid" style="width: 100%; height: 300px;"
+														class="ag-theme-alpine"></div>
+												</div>
+
+											</div>
+											<div class="col-md-6" style="margin-top: 14px;">
+												<div
+													class="d-flex justify-content-center align-items-center">
+
+													<div class="col-md-4" id="totalReq2" style="font-size: 15px;">ASSIGNED EMPLOYEE LIST  (<span>0</span>)</div>
+													<div class="col-md-8 butttonsec">
+														<!-- <button class="btn4" id="download"
+															onclick="downloadEmpDetails()">Download</button> -->
+													</div>
+												</div>
+
+
+												<div class="box_reference">
+													<div id="myGrid1" style="width: 100%; height: 300px;"
+														class="ag-theme-alpine"></div>
+												</div>
+											</div>
+										</div>
+									</div>
+
+									<div class="collapse" id="demo">
+										<div class="innercontent">
+											<div class="innerstickybg">
+												<div class="row">
+
+													<div class="col-md-6">
+														<p id="categoryidPara">Factor ID: <span id="factorId"></span></p>
+													</div>
+
+													<div class="col-md-6" align="right">
+														<button class="cancel-btn" id="cancelBtn"
+															onclick="cancel()">Cancel</button>
+														<button class="approve-btn" id="save"
+															onclick="appraisalSaveData()">Save</button>
+													</div>
+												</div>
+
+											</div>
+											<div class="row innersticky_contentgap">
+												<input type="hidden" id="planid">
+
+											</div>
+
+											<div class="row">
+
+												<div class="col-md-3">
+													<label>Factor Category</label>
+													<div class="select">
+														<select id="factorCategory"
+															onchange="handelDropDown(this)">
+															<option value="">Select Category</option>
+															<option value="STF0001">STAFF</option>
+															<option value="STF0002">WORKMEN</option>
+														</select>
+														<input type = "hidden" id="categoryId">
+													</div>
+
+												</div>
+												
+												
+												<div class="col-md-3">
+												<div class="form-group" id="finYearData">
+													<label>Year</label>
+													<div class="select">
+														<select id="attndyear" class="form-control"
+															onchange="changeMonthYear()">
+															<option th:each="c,iter:${yearList}" th:value="${c.name}"
+																th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+												</div>
+
+												<div class="col-md-3">
+													<div class="form-group calendar_box">
+														<label>From Date</label><input type="text"
+															class="form-control" id="fromDate"
+															th:attr="onkeyup=|formatDate('applyStartDate','${session.DATEFORMAT_JS}')|"
+															onchange="handelDates(this)" readonly> 
+													</div>
+
+												</div>
+
+												<div class="col-md-3">
+													<div class="form-group calendar_box">
+														<label>To Date</label><input type="text"
+															class="form-control" id="toDate"
+															th:attr="onkeyup=|formatDate('applyStartDate','${session.DATEFORMAT_JS}')|"
+															onchange="handelDates(this)" readonly> 
+													</div>
+
+												</div>
+												
+											
+												
+												<div class = "col-md-12" style="margin-top: 20px;">
+													<div class="col-md-12">
+
+															<button class="new-btn" id="addNewFactor"
+																onclick="openNav1();">NEW</button>
+
+															<button class="delete-btn" id="deleteFactor"
+																onclick="deleteFactorFunc()">DELETE</button>
+
+
+
+														</div>
+												<div id="categoryGrid" style="width: 100%; height: 249px;  margin-top: 40px;"
+														class="ag-theme-alpine"></div>
+												
+												</div>
+
+											</div>
+
+										</div>
+										
+							
+									</div>
+									
+												<!-- ASSIGN EMPLOYEE LIST  MODAL START  -->
+
+				<!-- <div id="employeeListModal" class="modal fade" role="dialog"
+					data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+					aria-labelledby="staticBackdropLabel" aria-hidden="true">
+					<div class="modal-dialog modal-lg">
+						Modal content
+						<div class="modal-content">
+							<div
+								class="modal-header flex justify-content-between payment-Modal-Header">
+								<h4 class="modalheading">Employee List</h4>
+								<button type="button" class="close" data-dismiss="modal"
+									aria-hidden="true" onclick="closeEmployeeeList();">
+									<i class="ti-close modal-close"></i>
+								</button>
+							</div>
+							<div class="modal-body">
+								<div id="employeeListGrid" style="width: 100%; height: 300px;"
+									class="ag-theme-alpine"></div>
+								<div class="modal-footer">
+									<button type="button" class="cancel-btn btn3"
+										onclick="closeEmployeeeList()" data-bs-dismiss="modal">Close</button>
+									<button type="button" class="btn4 approve-btn"
+										onclick="EmployeeAssign()">Assign Employee</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div> -->
+
+				<!-- ASSIGN EMPLOYE LIST MODAL END -->
+				
+				<!-- ASSIGN WARNIGN MODAL START -->
+				
+				<div class="modal fade" tabindex="-1" id="confirmModal"
+					aria-labelledby="confirmModalLabel" aria-hidden="true">
+					<div class="modal-dialog modal-dialog-centered modal-md">
+						<div class="modal-content"
+							style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); padding: 0px !important">
+							<div class="modal-header bg-primary text-white confirmation_modal_header"
+								style="padding: 10px 8px;">
+								<h5 class="modal-title" id="confirmModalLabel"
+									style="padding-left: 15px; flex-grow: 1;">Confirmation
+									Required</h5>
+								<i class="bi bi-x" style="font-size: 27px"
+									data-bs-dismiss="modal" aria-label="Close"></i>
+							</div>
+							<div class="modal-body text-center">
+								<p class="mandatory fw-bold"
+									style="font-size: 1.1em; color: #333;">Are you sure you want to assign the employee? Once approved, this action cannot be reverted.</p>
+							</div>
+							<div class="modal-footer justify-content-center">
+								<button type="button" class="btn reject-btn" id="cancelButton"
+									data-bs-dismiss="modal">
+									<i class="bi bi-x-circle"></i> No
+								</button>
+								<button type="button" class="btn btn2" id="confirmYes"
+									onclick="savePatientDetails();">
+									<i class="bi bi-check-circle"></i> Yes
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<!-- ASSIGN WARNIGN MODAL END -->
+				
+				<!-- Success  MODAL START -->
+
+									<div class="modal fade" tabindex="-1" id="successMOdal"
+										aria-labelledby="succesModaLabel" aria-hidden="true">
+										<div class="modal-dialog modal-dialog-centered modal-md"
+											style="max-width: 350px !important">
+											<div class="modal-content"
+												style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); padding: 0px !important">
+												<div class="modal-header"
+													style="padding: 10px 8px; display: flex; justify-content: end;">
+													<i class="bi bi-x" style="font-size: 27px;cursor:pointer;"
+														data-bs-dismiss="modal" aria-label="Close"></i>
+												</div>
+												<div class="modal-body text-center">
+													<i class="bi  bi-check-circle-fill"
+														style="font-size: 50px; color: #10df10"></i>
+													<p class="mandatory fw-bold"
+														style="font-size: 1.1em; color: #333;">Appraisal Factors Assigned to Employees Successfully!</p>
+												</div>
+												<div class="modal-footer justify-content-center">
+													<button type="button" class="btn myBtn" id="successOKBtn"
+														onclick="closeSuccessModal();">
+													 OK
+													</button>
+												</div>
+											</div>
+										</div>
+									</div>
+									<!-- Success MODAL END -->
+				
+				
+				<!-- SIDE BAR NAVIGATION STARTS -->
+										<div id="mySidenav1" class="sidenav">
+											<div class="slidebox">
+												<div class="row">
+													<div class="col-md-10">
+														<div class="edit" id="heading">Appraisal Factors</div>
+													</div>
+													<div class="col-md-2">
+														<div class="arrow">
+															<a href="javascript:void(0)" class="closebtn"
+																onclick="closeNav1()"><i class="ti-arrow-right"></i></a>
+														</div>
+													</div>
+
+													<div class="chartbtnsec1">
+														<div align="right">
+
+															<button class="btn1" onclick="saveFactor()">SAVE</button>
+															<button class="btn3" onclick="closeNav1()">CANCEL</button>
+
+														</div>
+													</div>
+
+
+													<div class="col-md-12 mt-15">
+														<div class="form-group">
+															<input type="hidden" id="workExperineceId"> <label>Factor Name</label>
+															<textarea id="factorName" placeholder = "Please Enter Factors" onblur="removeValid(event)"></textarea>
+
+														</div>
+													</div>
+
+													<div class="col-md-12 mt-15">
+														<div class="form-group">
+
+															<label>Max Mark</label> <input type="text"
+																placeholder="Max Mark" class="form-control"
+																id="maxmark" onblur="removeValid(event)">
+
+														</div>
+													</div>
+												</div>
+
+											</div>
+										</div>
+
+										<!-- SIDE BAR NAVIGATION ENDS -->
+										
+										
+								</div>
+
+
+
+							</div>
+
+						</div>
+					</div>
+
+				</div>
+			</div>
+		</div>
+	</div>
+	</div>
+</body>
+</html>
