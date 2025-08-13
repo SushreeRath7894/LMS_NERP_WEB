@@ -87,13 +87,13 @@ function proceedToCheckOut() {
     const city = $("#city").val();
     const zip = $("#zip").val();
 
-	const cardInfo ={};
-    if (paymentMethod === "creditCard") {
-        cardInfo = {
-            cardNumber: $("#cardNumber").val(),
-            expiryDate: $("#expiryDate").val(),
-            cvv: $("#cvv").val()
-        };
+	let cardInfo = {};
+	if (paymentMethod === "creditCard") {
+	    cardInfo = {
+	        cardNumber: $("#cardNumber").val(),
+	        expiryDate: $("#expiryDate").val(),
+	        cvv: $("#cvv").val()
+	    };
     }
 	const paymentData = {
 		 productIds,
@@ -104,6 +104,8 @@ function proceedToCheckOut() {
 		 zip,
 		 cardInfo
 	};
+	console.log('dd',paymentData);
+	
 	saveEnrollmentData(paymentData)
 }
 
@@ -118,14 +120,16 @@ function proceedToCheckOut() {
 		success: function(response) {
 			console.log("Server Response:", response);
 			if (response.code === "success") {
-				window.location.href = '/my-profile'; 
+			//	window.location.href = '/my-profile'; 
+			localStorage.setItem("activity", "ACT0891");
+				window.location.href = 'student/dashboard';
 			} else {
 				console.error("Registration failed:", response.message);
 			}
 		}
 	});
-}*/
-
+}
+*/
 function saveEnrollmentData(data) {
     console.log("Final Payment Data:", data);
     $.ajax({
@@ -146,7 +150,9 @@ function saveEnrollmentData(data) {
                     confirmButtonText: 'OK'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        window.location.href = '/my-profile';
+                      //  window.location.href = '/my-profile';
+					  localStorage.setItem("activity", "ACT0891");
+					  	window.location.href = 'student/dashboard';
                     }
                 });
             } else {

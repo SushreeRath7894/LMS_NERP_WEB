@@ -41,6 +41,66 @@ public class lmsCommonController {
 		return "lms/student-dashboard";
 	}
 	
+	@SuppressWarnings("unchecked")
+	@GetMapping("dashboard-getAllHeadCount")
+	public @ResponseBody Object getAllHeadCount(HttpSession session) {
+
+		logger.info("Method :getAllHeadCount starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String userId = "";
+		String org = "";
+		String orgDiv = "";
+		try {
+			userId = (String) session.getAttribute("USER_ID");
+			org = (String) session.getAttribute("ORGANIZATION");
+			orgDiv = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		} catch (Exception e) {
+
+		}
+		try {
+			String url = env.getHisUrl()+ "rest-getAllHeadCount?orgName=" + org + "&orgDivision=" + orgDiv
+					+ "&userId=" + userId;
+			resp = restTemplate.getForObject(url, JsonResponse.class);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		logger.info("Method :getAllHeadCount ends" + resp);
+
+		return resp;
+	}
+	
+	
+	@SuppressWarnings("unchecked")
+	@GetMapping("dashboard-getAllOperationalRecord")
+	public @ResponseBody Object getAllOperationalRecord(HttpSession session,@RequestParam String id) {
+
+		logger.info("Method :getAllOperationalRecord starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String userId = "";
+		String org = "";
+		String orgDiv = "";
+		try {
+			userId = (String) session.getAttribute("USER_ID");
+			org = (String) session.getAttribute("ORGANIZATION");
+			orgDiv = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		} catch (Exception e) {
+
+		}
+		try {
+			String url = env.getHisUrl()+ "rest-getAllOperationalRecord?orgName=" + org + "&orgDivision=" + orgDiv
+					+ "&userId=" + userId + "&id=" + id;
+			resp = restTemplate.getForObject(url, JsonResponse.class);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		logger.info("Method :getAllOperationalRecord ends" + resp);
+
+		return resp;
+	}
+	
+	
 	@GetMapping("classes")
 	public String studentClasses(Model model, HttpSession session) {
 		logger.info("Mothod:view student classes page started...");
