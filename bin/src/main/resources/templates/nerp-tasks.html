@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:fragment="my-tasks">
+<head>
+<style>
+.fc-h-event .fc-event-main {
+	color: #18191b !important;
+}
+.out-box .go-btn {
+     height: auto!important;
+}
+
+</style>
+<script>
+let calendar = '';
+$(document).ready(()=>{
+	var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+	gridOptions.api.setRowData([]);
+	getAllTaskDetails();
+	toggleList();
+	let dataset = []
+	var calendarEl = document.getElementById('calendar');
+	calendar = new FullCalendar.Calendar(calendarEl, {
+	    height: '100%',
+	    expandRows: true,
+	    slotMinTime: '06:00',
+	    slotMaxTime: '22:00',
+	    headerToolbar: {
+	        left: 'prev,next today',
+	        center: 'title',
+	        right: 'multiMonthYear,dayGridMonth,timeGridWeek,timeGridDay,listWeek,nextTwoDays'
+	    },
+	    initialView: 'dayGridMonth',
+	    editable: true,
+	    selectable: true,
+	    nowIndicator: true,
+	    dayMaxEvents: 0,
+	    eventTimeFormat: {
+	        hour: 'numeric', // Hour in numeric format
+	        minute: '2-digit', // Minute in 2-digit format
+	        meridiem: 'short' // Disable default meridiem formatting
+	    },
+	    eventContent: function(arg) {
+	       /*  let time = arg.timeText; // The default time text
+	        if (time) {
+	            time = time.replace(/(am|pm)$/i, ' $1').toUpperCase(); // Add space before AM/PM
+	        } */
+	        return {
+	            html: `${arg.event.title}`
+	        }; // Customize event content
+	    },
+	    navLinks: true,
+	    customButtons: {
+	        nextTwoDays: {
+	            text: 'Next 2 Days',
+	            click: function() {
+	                var today = new Date();
+	                calendar.changeView('customTwoDay', today);
+	            }
+	        }
+	    },
+	    views: {
+	        customTwoDay: {
+	            type: 'timeGrid',
+	            duration: {
+	                days: 2
+	            },
+	            buttonText: '2 day',
+	            slotDuration: '01:00:00'
+	        }
+	    },
+	    events: dataset,
+	    dateClick: function(info) {
+	        cancelModal();
+	        $('#allDay').prop('checked', false);
+	        $("#eventEndTime").attr("disabled", false);
+	        $("#eventStartTime").attr("disabled", false);
+
+	        let currentTime = new Date();
+	        currentTime.setMinutes(currentTime.getMinutes() + 1);
+
+	        let startHours = String(currentTime.getHours()).padStart(2, '0');
+	        let startMinutes = String(currentTime.getMinutes()).padStart(2, '0');
+	        let endHours = String(currentTime.getHours() + 1).padStart(2, '0');
+
+
+	        let currentDate = new Date();
+	        let clickedDate = new Date(info.dateStr);
+
+
+	        if (clickedDate < currentDate.setHours(0, 0, 0, 0)) {
+	            getValidationModal('Cannot add meetings to past dates.')
+	            return;
+	        }
+
+
+	        // Open modal for new event
+	        openEventModal('', '', info.dateStr, startHours + ":" + startMinutes, false, '');
+	    },
+	    eventClick: function(info) {
+	        
+	    },
+	    datesSet: function(info) {
+	        
+	    },
+	    eventDrop: function(info) {
+
+	        let eventStart = info.event.start;
+	        let currentDateTime = new Date();
+
+	        if (eventStart < currentDateTime) {
+	            getValidationModal('Cannot set event to a past time.');
+	            info.revert();
+	        } else {
+	            // Proceed with the update if the new time is valid
+	            updateEventLocally(info.event);
+	        }
+	    },
+	    eventResize: function(info) {
+	        let eventEnd = info.event.end;
+	        let currentDateTime = new Date();
+
+	        if (eventEnd < currentDateTime) {
+	            getValidationModal('Cannot extend event to a past time.');
+	            info.revert(); // Revert to the original size
+	        } else {
+	            updateEventLocally(info.event);
+	        }
+	    },
+	});
+
+	calendar.render();
+})
+function toggleCal() {
+	$("#showMeetingList").hide();
+	$("#showCalendar").show();
+	$("#calendar-container").hide();
+	$("#myGrid").show();
+} 
+
+function toggleList() {
+	$("#showMeetingList").show();
+	$("#showCalendar").hide();
+	$("#calendar-container").show();
+	$("#myGrid").hide();
+}
+function getAllTaskDetails() {
+
+    agGrid.simpleHttpRequest({
+        url: "all-tasks-view"
+    }).then(function(data) {
+        var jsonData = JSON.parse(data.body);
+        var allData = jsonData.viewAllTasks;
+        if(allData && allData.length > 0) {
+        	allData = allData.sort((a, b) => new Date(b.createdDate) - new Date(a.createdDate));
+        	setCalendarEvents(allData);
+            gridOptions.api.setRowData(allData);
+            var firstRowNode = gridOptions.api.getDisplayedRowAtIndex(0);
+            if (firstRowNode) {
+                firstRowNode.setSelected(true);
+            }
+        } else {
+        	gridOptions.api.setRowData([]);
+        }
+    });
+}
+function setCalendarEvents(events) {
+    if (calendar) {
+        calendar.removeAllEvents(); 
+        calendar.addEventSource(events); 
+    } else {
+        console.error('Calendar is not initialized.');
+    }
+}
+var columnDefs = [{
+    headerCheckboxSelection: false,
+    headerCheckboxSelectionFilteredOnly: false,
+    checkboxSelection: true,
+    width: 10,
+    sortable: false,
+    filter: false,
+    resizable: true,
+    pinned: 'left',
+
+	},
+	{
+	    headerName: 'Task ID',
+	    field: "taskId",
+	    pinned: 'left',
+	    cellRenderer : function(params) {
+			return '<strong>'
+					+ params.data.taskId + '</strong>';
+		},
+		flex: 1
+	}, {
+	    headerName: 'Task Description',
+	    field: "taskDesc",
+	    flex: 2
+	
+	}, {
+	    headerName: 'Assigned Date',
+	    field: "assignDate",
+	    width: 120,
+	    flex: 1
+	}, {
+	    headerName: 'Status',
+	    field: "status",
+	    flex: 1
+	}, {
+	    headerName: 'Type',
+	    field: "type",
+	    flex: 1,
+	    cellRenderer : params => {
+	    	if (params.data.type == 'VISITORS') {
+				return '<strong style="color: var(--mainColor)">' + params.data.type + '</strong>';
+	    	} else if (params.data.type == 'MEETING - MOM') {
+	    		return '<strong style="color: orange">' + params.data.type + '</strong>';
+	    	} else {
+	    		return '<strong style="color: blue">' + params.data.type + '</strong>';
+	    	}
+		},
+	    width: 120,
+	}
+];
+
+var gridOptions = {
+	columnDefs: columnDefs,
+	rowSelection: 'single',
+	//groupSelectsChildren: true,
+	suppressRowClickSelection: true,
+	suppressAggFuncInHeader: true,
+	pagination: true,
+	paginationPageSize: 15,
+	defaultColDef: {
+	    sortable: true,
+	    filter: true,
+	    resizable: true,
+	    width: 90,
+	},
+};
+function onQuickFilterChanged() {
+	gridOptions.api.setQuickFilter(document.getElementById('quickFilter').value);
+	var firstRowNode = gridOptions.api.getDisplayedRowAtIndex(0);
+    if (firstRowNode) {
+        firstRowNode.setSelected(true);
+    }
+}
+function reset() {
+	$("#quickFilter").val('');
+	gridOptions.api.setQuickFilter('');
+}
+</script>
+</head>
+<body>
+	<div class="container-fluid">
+		<div class="d-flex p-1">
+			<div class="maincontentsec">
+				<!--Tabbination 1 Start-->
+				<div id="tab1" class="tab-pane" role="tabpanel">
+					<div class="d-flex flex-column flex-lg-row">
+						<!--Left Sec Start-->
+						<div class="box-sec" id="collapseWidthR1">
+							<div class="out-box">
+								<div class="h-100 d-flex flex-column">
+									<div class="d-flex justify-content-between p-2 gap-3 bdr-line">
+										<div class="col-md-8 col-12">
+											<div class="d-flex search-sec">
+												<input class="form-control me-2" type="text"
+													placeholder="Search" id="quickFilter" onkeyup="cancelBar()">
+												<button class="btn go-btn" type="button"
+													onclick="onQuickFilterChanged()">Go</button>
+												&nbsp;
+												<button class="btn go-btn w-auto" type="button"
+													onclick="reset()">Reset</button>
+											</div>
+										</div>
+										<div class="col-md-2 gap-2 d-flex justify-content-end">
+											<button class="btn btn-primary go-btn" id="showMeetingList"
+												type="button" onclick="toggleCal()">
+												<i class="fa-solid fa-list"></i>
+											</button>
+											<button class="btn btn-primary go-btn" onclick="toggleList()"
+												id="showCalendar" type="button" style="padding: 8px 12px;">
+												<i class="fa-solid fa-calendar"></i>
+											</button>
+											<button class="btn btn-primary max-btn" id="collapseButtonR1"
+												onclick="triggerExpansionR(1)" data-bs-toggle="tooltip"
+												data-bs-placement="top" title="Expand">
+												<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+													class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+											</button>
+										</div>
+									</div>
+									<div class="card p-2 m-2">
+										<div class="requisition-tbl11 table-responsive h-100">
+											<div id="calendar-container">
+												<div id="calendar"></div>
+											</div>
+											<div id="myGrid" style="height: 80vh;"
+												class="ag-theme-alpine"></div>
+										</div>
+									</div>
+
+								</div>
+							</div>
+						</div>
+						<div class="box-sec" id="collapseWidthL1">
+							<div class="out-box" id="rightSideDiv">
+								<div
+									class="d-flex justify-content-between flex-row-reverse align-items-center p-2 bdr-line">
+									<button class="btn btn-primary max-btn" id="collapseButtonL1"
+										type="button" onclick="triggerExpansionL(1)"
+										data-bs-toggle="tooltip" data-bs-placement="top"
+										title="Expand">
+										<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+											class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+									</button>
+
+
+
+									<!--Right Inner Tab Start-->
+									<div class="d-flex gap-2">
+										<ul class="nav nav-pills newtab" role="tablist">
+											<li class="nav-item" role="presentation" id="taskInfLiId"><a
+												class="nav-link active" data-bs-toggle="pill"
+												href="#taskinformation" aria-selected="true" role="tab">Information</a></li>
+										</ul>
+									</div>
+								</div>
+
+								<!-- Tab panes -->
+								<div class="tab-content h-100">
+									<div id="taskinformation"
+										class="tab-pane p-2 active show h-100" role="tabpanel">
+
+										<div class="requisition-tbl d-flex flex-column h-100 ">
+
+											<div class="mb-2">
+												<table class="table table-bordered mb-0" width="100%">
+													<tbody>
+														<tr valign="middle">
+															<td width="50%"><strong id="vendorIdHead"></strong>
+																- <strong id="vendorIdHeadName"></strong></td>
+															<td>
+																<div class="d-flex justify-content-end">
+																	<span th:text="${action_list}"></span>
+																	<div class="mr-2">
+																		<button class="btn btn-primary  edit-btn "
+																			type="button" onclick="newVendor()">Add</button>
+																	</div>
+																	<div class="mr-2">
+																		<!-- th:if="${session.action_name_list.contains('Edit')}" -->
+																		<button class="btn btn-primary edit-btn "
+																			type="button" onclick="enableField()">Edit</button>
+																	</div>
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn" type="button"
+																			onclick="nextTab('vendorAddressLiId')">Next</button>
+																	</div>
+																</div>
+
+															</td>
+														</tr>
+													</tbody>
+												</table>
+											</div>
+
+											<div class="card p-2">
+												<div class="collapse" id="demo">
+													<div class="innercontent">
+
+														<div class="innercontent">
+
+															<!-- <div class="row"> -->
+															<div class="row">
+
+																<div class="col-lg-4" style="display: none">
+																	<div class="form-group">
+																		<label>Salutation</label>
+																		<div class="select">
+																			<select id="salutation" onblur="removeValid(event)">
+																				<option value="">Select</option>
+																				<option th:each="c,iter:${SalutationLists}"
+																					th:value="${c.key}" th:text="${c.name}"></option>
+																			</select>
+																		</div>
+																	</div>
+
+																</div>
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>Vendor Id</label> <input type="text"
+																			onblur="removeValid(event)" class="form-control"
+																			id="vendorId">
+																	</div>
+																</div>
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>Vendor Name</label> <input type="text"
+																			onblur="removeValid(event)" class="form-control"
+																			id="vendorName" placeholder="Vendor Name">
+
+																	</div>
+																</div>
+
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>Company Name</label><span class="mandatory">*</span>
+																		<input type="text" class="form-control"
+																			id="companyName" onblur="removeValid(event)"
+																			placeholder="Company Name" onchange="showDisplay()"
+																			onkeyup="showBeneficiaryName()">
+																	</div>
+																</div>
+
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>Company Display Name</label> <input type="text"
+																			onblur="removeValid(event)" class="form-control"
+																			id="vendorDisplayName"
+																			placeholder="Vendor Display Name" disabled>
+																	</div>
+																</div>
+
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>Vendor Category</label>
+																		<div class="select">
+																			<select id="vendorCategory"
+																				onblur="removeValid(event)">
+																				<option value="">Select</option>
+																				<option th:each="c,iter:${CategoryList}"
+																					th:value="${c.key}" th:text="${c.name}"></option>
+																			</select>
+																		</div>
+																	</div>
+
+																</div>
+
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>Vendor Email</label> <input type="text"
+																			onblur="removeValid(event)" autocomplete="off"
+																			name="personalmail" value=""
+																			placeholder="Vendor Email" class="form-control"
+																			id="vendorEmail" onkeyup="pmailVal();"> <span
+																			id="error3" class="formValidation1"
+																			style="color: red;"></span>
+																	</div>
+																</div>
+
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>Vendor Mobile</label> <input type="text"
+																			class="form-control" id="vendorMobile"
+																			placeholder="Mobile" onblur="removeValid(event)"
+																			onkeyup="check1('vendorMobile')" maxLength="10">
+																	</div>
+																</div>
+
+
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>Vendor Phone</label> <input type="text"
+																			onblur="removeValid(event)" class="form-control"
+																			id="vendorPhone" placeholder="Phone"
+																			onkeyup="check1('vendorPhone')" maxLength="10">
+																	</div>
+																</div>
+
+																<div class="col-md-4" style="display: none">
+																	<div class="form-group">
+																		<label>Vendor Skype</label> <input type="text"
+																			class="form-control" id="vendorSkype"
+																			placeholder="Vendor Skype"
+																			onblur="removeValid(event)">
+																	</div>
+																</div>
+
+																<div class="col-md-4" style="display: none">
+																	<div class="form-group">
+																		<label>Vendor Designation</label> <input type="text"
+																			onblur="removeValid(event)" class="form-control"
+																			id="vendorDesignation"
+																			placeholder="Vendor Designation">
+																	</div>
+																</div>
+
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>Website</label> <input type="text"
+																			onblur="removeValid(event)" class="form-control"
+																			id="webSite" placeholder="Website">
+																	</div>
+																</div>
+															</div>
+
+															<div class="row">
+																<div class="col-md-4">
+																	<h5 class="sub-header-new">Other Details</h5>
+																</div>
+															</div>
+
+															<div class="row">
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>PAN</label><span class="mandatory">*</span> <input
+																			type="text" autocomplete="off"
+																			onblur="removeValid(event)" name="panno" value=""
+																			placeholder="PAN" class="form-control" id="pan"
+																			maxLength="11" onkeyup="pancardVal();"> <span
+																			id="error4" class="formValidation1"
+																			style="color: red;"></span>
+
+																	</div>
+																</div>
+
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>Currency</label>
+																		<div class="select">
+																			<select id="currency">
+																				<option value="">Select</option>
+																				<option value="INR RUPPEE">INR RUPEE</option>
+
+																			</select>
+																		</div>
+																	</div>
+																</div>
+
+
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>Opening Balance</label> <input type="text"
+																			onblur="removeValid(event)" class="form-control"
+																			id="openingBalance" placeholder="Opening Balance">
+																	</div>
+																</div>
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>Payment Term(Days)</label> <input type="text"
+																			id="paymentTerms"
+																			onkeyup="checkNumeric('paymentTerms');"
+																			class="form-control">
+
+																	</div>
+
+																</div>
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>TDS(%)</label> <input type="text"
+																			class="form-control" onblur="removeValid(event)"
+																			id="tds" placeholder="TDS"
+																			oninput="validateTds(this)">
+																	</div>
+																</div>
+
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>GST No.</label><span class="mandatory">*</span>
+																		<input type="text" onblur="removeValid(event)"
+																			class="form-control" onkeyup="ValidateGSTNumber()"
+																			id="gstNumber" placeholder="GST Number"
+																			maxlength="15"> <span id="error5"
+																			class="formValidation1"></span>
+																	</div>
+																</div>
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>CIN No</label> <input type="text"
+																			onblur="removeValid(event)" class="form-control"
+																			id="cinno" placeholder="CIN Number">
+																	</div>
+																</div>
+																<input type="hidden" id="whatsAppNo"> <input
+																	type="hidden" id="tanNo"> <input type="hidden"
+																	id="faceBook"> <input type="hidden"
+																	id="twitter">
+															</div>
+														</div>
+													</div>
+
+												</div>
+											</div>
+										</div>
+									</div>
+
+								</div>
+
+								<!--Right Inner Tab End-->
+							</div>
+						</div>
+						<!--Right Sec End-->
+					</div>
+				</div>
+				<!--Tabbination 1 End-->
+
+			</div>
+		</div>
+	</div>
+</body>
+</html>

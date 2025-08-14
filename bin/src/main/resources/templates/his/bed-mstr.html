@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+	
+<head>
+<style></style>
+<script type="text/javascript">
+       
+	$(document).ready(function() {
+
+		$('#delete').attr('disabled', true);
+
+		// AG-GRID Table Load 
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		//gridOptions.api.setRowData([]);
+
+		// View
+		agGrid.simpleHttpRequest({
+			url : "bed-mstr-view"
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalMstr').find('span').html(len);
+			gridOptions.api.setRowData(data);
+		}); 
+	});
+
+	var columnDefs = [
+
+	{
+		headerName : "Bed Id",
+		field : "bedId",
+		width : 100,
+		cellRenderer : function(params) {
+			return '<a id="" onclick=editId("' + params.data.bedId
+					+ '") href="javascript:void(0)">'
+					+ params.data.bedId + '</a>';
+		}
+		//hide : true
+	}, {
+		headerName : "Bed Category",
+		field : "bedName",
+		width : 200
+	}, {
+		headerName : "Property Floor Type",
+		field : "propertyFloorType",
+		width : 230
+	}, {
+		headerName : "Ward",
+		field : "ward",
+		width : 200
+	}, {
+		headerName : "Bed Charge",
+		field : "bedCharge",
+		width : 200
+	}, {
+		headerName : "Bed Description",
+		field : "bedDescription",
+		width : 200
+	}, {
+		headerName : "Status",
+		field : "status",
+		width : 200
+	} ];
+	
+	var gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 195,
+			height : 10
+		},
+		rowSelection : 'single',
+	//onSelectionChanged: onSelectionChangedBed
+
+	};
+	
+	function onSelectionChangedBed(){
+   	 $('#delete').attr('disabled', false);
+
+    }
+
+	function openNav() {
+
+		document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:110px;";
+		document.getElementById("main_content").style.width = "75%";
+	}
+
+	function closeNav() {
+
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main_content").style.width = "100%";
+		
+		$("#bedId").val("");
+		$("#bedName").val("");
+		$("#propertyFloorType").val("");
+		$("#ward").val("");
+		$("#bedCharge").val("");
+		$("#bedDescription").val("");
+		$("#status").val("");
+	}
+
+	//wardList
+
+	function getWardList() {
+
+		var fname = $('#propertyFloorType').val();
+		alert(fname)
+		if (fname) {
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");			
+			$.ajax({
+				type : "GET",
+				url : "bed-mstr-ward-list?wid=" + fname,
+				success : function(response) {
+					if (response.message == "success") {
+						$("#ward").empty();
+						var option = $("<option></option>");
+						$(option).val(null);
+						$(option).html("Select");
+						$("#ward").append(option);
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#ward").append(option);
+						}
+					}
+				},
+				error : function(e) {
+				}
+			});
+		} else {
+			$("#ward").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#ward").append(option);
+		}
+	} 	
+	
+	// save
+	
+	function saveNav() {
+		var obj = {};
+		obj.bedId = $("#bedId").val();
+		obj.bedName = $("#bedName").val();
+		obj.propertyFloorType = $("#propertyFloorType").val();
+		obj.ward = $("#ward").val();
+		obj.bedCharge = $("#bedCharge").val();
+		obj.bedDescription = $("#bedDescription").val();
+		obj.status = $("#status").val();
+
+		console.log("Sava Data",obj);
+
+		var validation = true;
+
+		/*  if (obj.bedName == null || obj.bedName == "") {
+		 validation = validationUpdated("Bed Category Type Required", "bedName");
+		 }
+		 if (obj.propertyFloorType == null || obj.propertyFloorType == "") {
+		 validation = validationUpdated("Required", "propertyFloorType");
+		 }
+		 if (obj.status == null || obj.status == "") {
+		 validation = validationUpdated("Status Required", "status");
+		 } */
+
+		if (validation) {
+			$.ajax({
+				type : "POST",
+				url : "bed-mstr-add",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "success") {
+
+						$("#messageParagraph").text("Data Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$("#add").show();
+						$("#myGrid").show();
+						$("#cancel").hide();
+						$("#save").hide();
+						$("#form").hide();
+						$("#new").hide();
+
+						agGrid.simpleHttpRequest({
+							url : "bed-mstr-view"
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+
+						closeNav();
+						$("#bedId").val("");
+						$("#bedName").val("");
+						$("#propertyFloorType").val("");
+						$("#ward").val("");
+						$("#bedCharge").val("");
+						$("#bedDescription").val("");
+						$("#status").val("");
+						
+					}
+				},
+
+				error : function(data) {
+				}
+			})
+		}
+
+	}
+	
+	
+	// edit
+	
+	function editId(id) {
+
+		$("#add").hide();
+		//$("#myGrid").show();
+		$("#delete").hide();
+		$("#add").hide();
+
+		$.ajax({
+			type : "GET",
+			url : "bed-mstr-edit?id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+					openNav();
+					
+					console.log("edit" + response.body);
+					$("#bedId").val(response.body.bedId);
+					$("#bedName").val(response.body.bedName);
+					$("#propertyFloorType").val(response.body.propertyFloorType);
+					$("#ward").val(response.body.ward);
+					$("#bedCharge").val(response.body.bedCharge);
+					$("#bedDescription").val(response.body.bedDescription);
+					$("#status").val(response.body.status);
+
+				}
+			},
+
+			error : function(data) {
+				console.log(data)
+
+				$("#bedId").val();
+				$("#bedName").val();
+				$("#propertyFloorType").val();
+				$("#ward").val();
+				$("#bedCharge").val();
+				$("#bedDescription").val();
+				$("#status").val();
+
+			}
+		});
+
+	}
+</script>
+</head>
+
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div id="main_content">
+							<div class="panel-body">
+								<div class="d-flex justify-content-between">
+									<div class="btn-hs">
+										<div class="font-design" id="totalMstr">
+											Master (<span></span>)
+										</div>
+									</div>
+									<div class="buttonsec btn-hs" id="btndiv">
+										<button id="add" class="new-btn" onclick="openNav()">New</button>
+										<button class="delete-btn" id="delete"
+											onclick="deleteModalfun()">DELETE</button>
+									</div>
+								</div>
+
+								<div id="myGrid" style="width: 100%; height: 400px;"
+									class="ag-theme-alpine"></div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+				<div id="mySidenav" class="sidenav">
+					<div class="slidebox">
+						<div class="d-flex justify-content-between">
+							<div class="edit">Master Details</div>
+							<div class="arrow">
+								<a href="javascript:void(0)" class="closebtn"
+									onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-md-12 buttonsec btn-hs">
+								<button class="cancel-btn" onclick="closeNav()">CANCEL</button>
+								<button class="save-btn" onclick="saveNav()">SAVE</button>
+							</div>
+						</div>
+						<input type="hidden" id="bedId">
+
+						<div class="col-md-12">
+							<div class="form-group">
+								<label>Bed Category</label>
+								<div class="select">
+									<select id="bedName" onblur="removeValid(event)">
+										<option th:value="NULL">Select</option>
+										<option th:each="c,iter:${bedList}" th:value="${c.key}"
+											th:text="${c.name}"></option>
+									</select>
+								</div>
+							</div>
+						</div>
+
+						<div class="col-md-12">
+							<div class="form-group">
+								<label>Property Floor Type</label>
+								<div class="select">
+									<select id="propertyFloorType" onchange="getWardList()"
+										onblur="removeValid(event)">
+										<option th:value="NULL">Select</option>
+										<option th:each="c,iter:${floorList}" th:value="${c.key}"
+											th:text="${c.name}"></option>
+									</select>
+								</div>
+							</div>
+						</div>
+						<div class="col-md-12">
+							<div class="form-group">
+								<label>Ward</label>
+								<div class="select">
+									<select id="ward" onblur="removeValid(event)">
+										<option th:value="NULL">Select</option>
+									</select>
+								</div>
+							</div>
+						</div>
+						<div class="col-md-12">
+							<div class="form-group">
+								<label>Bed Charge</label> <input type="text"
+									class="form-control" id="bedCharge" onblur="removeValid(event)"
+									autocomplete="off">
+							</div>
+						</div>
+						<div class="col-md-12">
+							<div class="form-group">
+								<label>Bed Description</label>
+								<textarea class="form-control" id="bedDescription"
+									onblur="removeValid(event)" autocomplete="off"></textarea>
+							</div>
+						</div>
+
+						<div class="col-md-12">
+							<div class="form-group">
+								<label>Status</label>
+								<div class="select">
+									<select id="status" class="form-control">
+										<option value="">Select</option>
+										<option value="1">Active</option>
+										<option value="0">Inactive</option>
+									</select>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- delete modal start -->
+			<div class="modal fade" id="deleteModal">
+				<div class="modal-dialog modal-confirm">
+					<div class="modal-content">
+						<div class="modal-header flex-column"></div>
+						<div class="modal-body">
+							<p>Do you really want to delete these records? This process
+								cannot be undone.</p>
+						</div>
+						<div class="modal-footer justify-content-center">
+							<button type="button" class="btn1" data-dismiss="modal"
+								aria-hidden="true" onclick="closeModal()">Cancel</button>
+							<button type="button" class="btn3" id="deleteModalBtn"
+								onclick="deleteFun()">Delete</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

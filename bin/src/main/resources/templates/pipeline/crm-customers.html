@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+
+.hvrbox .hvrbox-layer_top {
+	opacity: 0;
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	width: 25%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.3);
+	color: #fff;
+	padding: 15px;
+}
+
+.btn1 {
+    border: none;
+    border-radius: 4px;
+    font-size: 10px;
+    background-color: #5784c4;
+    color: #fff!important;
+    margin-left: 5px;
+    margin-bottom: 8px;
+    width: 105px;
+    height: 28px;
+    line-height: 12px;
+    float: right;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.taskInfo{
+	padding-left: 10px;
+    color: #0c63e4;
+}
+
+.rating {
+	float: left;
+}
+
+.rating:not(:checked)>input {
+	position: absolute;
+	top: -9999px;
+	clip: rect(0, 0, 0, 0);
+}
+
+.rating:not(:checked)>label {
+	float: right;
+	width: 1em;
+	padding: 0 .1em;
+	overflow: hidden;
+	white-space: nowrap;
+	cursor: pointer;
+	font-size: 200%;
+	line-height: 1.2;
+	color: rgba(0, 0, 0, 0.6);
+	/*  text-shadow:1px 1px #bbb, 2px 2px #666, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating:not(:checked)>label:before {
+	content: '★ ';
+}
+
+.rating>input:checked ~ label {
+	color: #ea0;
+	/*  text-shadow:1px 1px #c60, 2px 2px #940, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating:not(:checked)>label:hover, .rating:not(:checked)>label:hover ~
+	label {
+	color: black;
+	/*  text-shadow:1px 1px goldenrod, 2px 2px #B57340, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating>input:checked+label:hover, .rating>input:checked+label:hover ~
+	label, .rating>input:checked ~ label:hover, .rating>input:checked ~
+	label:hover ~ label, .rating>label:hover ~ input:checked ~ label {
+	color: #ea0;
+	/*  text-shadow:1px 1px goldenrod, 2px 2px #B57340, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating>label:active {
+	position: relative;
+	top: 2px;
+	left: 2px;
+}
+
+.btn-outline-primary {
+	color: #007bff;
+	background-color: rgb(240 243 241/ 90%);
+	background-image: none;
+	border-color: #007bff;
+	cursor: pointer;
+}
+.picker_calendar5 {
+ cursor: pointer;
+    position: absolute;
+    bottom: 361px;
+    left: 742px;
+}
+.picker_calendar6 {
+    cursor: pointer;
+    position: absolute;
+    bottom: 361px;
+    left: 1132px;
+}
+</style>
+<script>
+	
+	$(function() {
+		
+		 $("input[name=ReminderYesOrNo]:radio").click(function () {
+		        if ($('input[name=ReminderYesOrNo]:checked').val() == "Yes") {
+		            $('.reminderBtn').show();
+
+		        } else if ($('input[name=ReminderYesOrNo]:checked').val() == "No") {
+		            $('.reminderBtn').hide();
+		            $('#reminderDateid').val("");
+		            $('#reminderTime').val("");
+		            $('#taskAlertBy').val("");
+
+		        }
+		    });
+		
+		
+		var dateFormat = localStorage.getItem("dateFormat");								
+		$("#startDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#startDate').val($(this).val());
+		})
+		
+		$('#startDate').blur(function(){
+			$("#startDateCalendar").val($(this).val());
+		})
+		
+		
+		$("#endDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#endDate').val($(this).val());
+		})
+		
+		$('#endDate').blur(function(){
+			$("#endDateCalendar").val($(this).val());
+		})
+	
+	
+	
+	
+	 $("#toDateCalendarTime").datetimepicker({
+		format : 'H:i',
+		closeOnDateSelect : false,
+		timepicker : true,
+		datepicker : false,
+		step : 15
+	}).on("change", function() {
+		$('#reminderTime').val($(this).val());
+	})
+
+	$('#reminderTime').blur(function() {
+		$("#toDateCalendarTime").val($(this).val());
+	}) 
+	});
+	
+	$(function() {
+
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		agGrid.simpleHttpRequest({
+			url : "view-crm-customers-throughAjax"
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+
+			gridOptions.api.setRowData(data);
+
+		});
+		$("#myGrid").show();
+		$("#delete").attr("disabled", true);
+	});
+
+	$(function() {
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+	})
+	//search bar
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+
+	$('input,textarea').focus(
+			function() {
+				$(this).data('placeholder', $(this).attr('placeholder')).attr(
+						'placeholder', '');
+			}).blur(function() {
+		$(this).attr('placeholder', $(this).data('placeholder'));
+	});
+
+	var count = 0;
+	function allCheck() {
+		count++;
+
+		if (count == 1) {
+			$('.checkCls').prop("checked", true);
+		} else {
+			count = 0;
+			$('.checkCls').prop("checked", false);
+		}
+	}
+
+	var txtLen = 0;
+	function textCount(event) {
+
+		var id = event.target.id;
+		var pId = $('#' + id).next().attr("id");
+		$('#' + pId + ' span').empty();
+		txtLen = $('#' + id).val().length;
+		$('#' + pId + ' span').append(txtLen);
+	}
+	// column Defs
+	const columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				checkboxSelection : true,
+				width : 8,
+				sortable : false,
+				filter : false,
+				resizable : true
+
+			},{
+				headerName : 'Customer Id',
+				field : "customerId",
+				cellRenderer : function(params) {
+					return '<a onclick=editPage("' + params.data.customerId
+							+ ',' + '0' + '") href="javascript:void(0)">'
+							+ params.data.customerId + '</a>';
+				}
+			},
+			
+			
+			 {
+				headerName : "Customer Name",
+				field : "customerName",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			},{
+				headerName : "Executive",
+				field : "executive",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			},{
+				headerName : "Phone",
+				field : "customerPhone",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			},{
+				headerName : "Created Date",
+				field : "createdDate",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			},
+			   {
+				headerName : "Created Time",
+				field : "createdTime",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			} ];
+
+	const gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 187,
+			height :10
+		},
+		rowSelection : 'multiple',
+		suppressRowClickSelection : true,
+		onSelectionChanged : rowSelect,
+		getRowNodeId : function(data) {
+			return data.customerId;
+		}
+	};
+	
+	var deleteId = "";
+	function rowSelect() {
+		//alert('hello select');
+		var selectedRows = gridOptions.api.getSelectedRows();
+		deleteId = "";
+
+		for (var i = 0; i < selectedRows.length; i++) {
+			deleteId = deleteId + '"' + selectedRows[i].customerId + '",';
+			 // deleteId = deleteId  + selectedRows[i].customerId + ',';
+		}
+		deleteId = deleteId.substring(0, deleteId.length - 1);
+		console.log(deleteId)
+		var rowCount = 0;
+
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			$('#delete').attr("disabled", false);
+
+		} else {
+			$('#delete').attr("disabled", true);
+		}
+	}
+	// for new button
+	function newBtn() { 
+	//	alert('hello');
+		$("#add").hide();
+		$("#copy").hide();
+		$("#delete").hide();
+		$("#myGrid").hide();
+		$("#searchRowDiv").hide();
+		$("#totalReq").hide();
+		$("#statusDiv").hide();
+		$("#idDiv").hide();
+		$("#collapseFour").hide();
+		$("#headingFour").hide();
+		$("#myGridActivity").hide();
+
+		$("#demo").show();
+
+	}
+	// for cancel button
+	function cancelBtn() {
+		$("#add").show();
+		$("#copy").show();
+		$("#delete").show();
+		$("#totalReq").show();
+		$("#myGrid").show();
+		$("#searchRowDiv").show();
+		$("#demo").hide();
+
+		$("#executive").val("");
+		$("#customerName").val("");
+		$("#companyName").val("");
+		$("#companyOwner").val("");
+		$("#customerMail").val("");
+		$("#customerPhone").val("");
+		$("#designation").val("");
+		
+		$("#companyGst").val("");
+		$("#companyPAN").val("");
+		$('#referenceContact').val("");
+		$('#leadSource').val("");
+		$('#leadStatus').val("");
+		$('#industry').val("");
+		
+		$("#decisionMaker1").val("");
+		$("#email1").val("");
+		$('#phone1').val("");
+		$('#designation1').val("");
+		$('#dob1').val("");
+		$('#marriageAnniversary1').val("");
+		
+		$("#decisionMaker2").val("");
+		$("#email2").val("");
+		$('#phone2').val("");
+		$('#designation2').val("");
+		$('#dob2').val("");
+		$('#marriageAnniversary2').val("");
+		
+		$("#decisionMaker3").val("");
+		$("#email3").val("");
+		$('#phone3').val("");
+		$('#designation3').val("");
+		$('#dob3').val("");
+		$('#marriageAnniversary3').val("");
+		
+		$("#country").val("");
+		$("#states").val("");
+		//getStateDataOnEdit(response.body[0].states);
+		$('#city').val("");
+		$('#addressStreet').val("");
+		$('#zip').val("");
+
+		agGrid.simpleHttpRequest({
+			url : "view-crm-customers-throughAjax"
+		}).then(function(data) {
+			gridOptions.api.setRowData(data);
+		});
+	}
+
+	$(document).ready(function() {
+		$("#date").datetimepicker({
+			format : "d-m-Y",
+			closeOnDateSelect : true,
+			minDate : new Date(),
+			timepicker : false,
+		});
+		$("#customerId").val("");
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#fromDate').val($(this).val());
+		})
+
+		$('#fromDate').blur(function() {
+			$("#fromDateCalendar").val($(this).val());
+		})
+
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#toDate').val($(this).val());
+		})
+
+		$('#toDate').blur(function() {
+			$("#toDateCalendar").val($(this).val());
+		})
+
+		$("#fromTime").datetimepicker({
+			format : 'H:i',
+			closeOnDateSelect : false,
+			timepicker : true,
+			datepicker : false,
+			step : 15
+		})
+
+		$("#toTime").datetimepicker({
+			format : "H:i",
+			closeOnDateSelect : false,
+			timepicker : true,
+			datepicker : false,
+			step : 15
+		})
+
+	});
+	
+	
+	// Edit & stage change 
+	function editPage(id) {
+		//alert(id);
+		var editId = id.split(",");
+		
+		var customerId = editId[0];
+		
+		var modal = editId[1];
+		//alert('customerId------'+customerId);
+		$("#demo").show();
+
+		$.ajax({
+			type : "GET",
+			url : "view-crm-customers-edit?id=" + customerId,
+			async : false,
+			success : function(response) {
+				console.log("response for edit------"+JSON.stringify(response));
+				if (response.code == "Success") {
+					
+					$("#add").hide();
+					$("#copy").hide();
+					$("#delete").hide();
+					$("#myGrid").hide();
+					$("#searchRowDiv").hide();
+					$("#totalReq").hide();
+					$("#statusDiv").hide();
+					$("#idDiv").hide();
+					$("#collapseFour").hide();
+					$("#headingFour").hide();
+					$("#myGridActivity").hide();
+
+					$("#demo").show();
+					
+					$(".container").hide();
+										
+					var dob1 = response.body[0].dob1;
+					dob1 = dob1.split(' ')[0];
+					
+					var dob2 = response.body[0].dob2;
+					dob2 = dob2.split(' ')[0];
+					
+					var dob3 = response.body[0].dob3;
+					dob3 = dob3.split(' ')[0];
+					
+					var marriageAnniversary1 = response.body[0].marriageAnniversary1;
+					marriageAnniversary1 = marriageAnniversary1.split(' ')[0];
+										
+					var marriageAnniversary2 = response.body[0].marriageAnniversary2;
+					marriageAnniversary2 = marriageAnniversary2.split(' ')[0];
+					
+					var marriageAnniversary3 = response.body[0].marriageAnniversary3;
+					marriageAnniversary3 = marriageAnniversary3.split(' ')[0];
+					
+					
+					var customerId=$("#customerId").text(response.body[0].customerId);
+									
+					$("#executive").val(response.body[0].executive);
+					$("#customerName").val(response.body[0].customerName);
+					$("#companyName").val(response.body[0].companyName);
+					$("#companyOwner").val(response.body[0].companyOwner);
+					$("#customerMail").val(response.body[0].customerMail);
+					$("#customerPhone").val(response.body[0].customerPhone);
+					$("#designation").val(response.body[0].designation);
+					
+					$("#companyGst").val(response.body[0].companyGst);
+					$("#companyPAN").val(response.body[0].companyPAN);
+					$('#referenceContact').val(response.body[0].referenceContact);
+					$('#leadSource').val(response.body[0].leadSource);
+					$('#leadStatus').val(response.body[0].leadStatus);
+					$('#industry').val(response.body[0].industry);
+					
+					$("#decisionMaker1").val(response.body[0].decisionMaker1);
+					$("#email1").val(response.body[0].email1);
+					$('#phone1').val(response.body[0].phone1);
+					$('#designation1').val(response.body[0].designation1);
+					$('#dob1').val(dob1);
+					$('#marriageAnniversary1').val(marriageAnniversary1);
+					
+					$("#decisionMaker2").val(response.body[0].decisionMaker2);
+					$("#email2").val(response.body[0].email2);
+					$('#phone2').val(response.body[0].phone2);
+					$('#designation2').val(response.body[0].designation2);
+					$('#dob2').val(dob2);
+					$('#marriageAnniversary2').val(marriageAnniversary2);
+					
+					$("#decisionMaker3").val(response.body[0].decisionMaker3);
+					$("#email3").val(response.body[0].email3);
+					$('#phone3').val(response.body[0].phone3);
+					$('#designation3').val(response.body[0].designation3);
+					$('#dob3').val(dob3);
+					$('#marriageAnniversary3').val(marriageAnniversary3);
+					
+					$("#country").val(response.body[0].country);
+					//$("#states").val(response.body[0].states);
+					getStateDataOnEdit(response.body[0].states);
+					$('#city').val(response.body[0].city);
+					$('#addressStreet').val(response.body[0].addressStreet);
+					$('#zip').val(response.body[0].zip);
+					$('#description').val(response.body[0].description);
+					
+				
+					
+				/*	$('#imgLoc').attr('src', '');
+					if(response.body[0].imageName!=null && response.body[0].imageName!="") { 
+						$('#imgLoc').attr('src', response.body[0].imageName);
+					} else {
+						$('#imgLoc').attr('src', '../assets/images/noimage.jpg');
+					}*/
+					
+				}
+			}
+		})
+	}
+
+</script>
+<script>
+	//addVendorInfo
+	
+	function addCustomerInfo() { 
+		//alert('hello');return false;
+		var obj = {};
+		
+		obj.customerId = $('#customerId').text();
+		obj.executive = $('#executive').val();
+		obj.customerName = $('#customerName').val();
+		obj.companyName = $('#companyName').val();
+		obj.companyOwner = $('#companyOwner').val();
+		obj.customerMail = $('#customerMail').val();
+		obj.customerPhone = $('#customerPhone').val();
+		obj.designation = $('#designation').val();
+		obj.companyGst = $('#companyGst').val();
+		obj.companyPAN = $('#companyPAN').val();
+		obj.referenceContact = $('#referenceContact').val();
+		obj.leadSource = $('#leadSource').val();
+		obj.leadStatus = $('#leadStatus').val();
+		obj.industry = $('#industry').val();
+		
+		obj.decisionMaker1 = $('#decisionMaker1').val();
+		obj.email1 = $('#email1').val();
+		obj.phone1 = $('#phone1').val();
+		obj.designation1 = $('#designation1').val();
+		obj.dob1 = $('#dob1').val();
+		obj.marriageAnniversary1 = $('#marriageAnniversary1').val();
+		
+		obj.decisionMaker2 = $('#decisionMaker2').val();
+		obj.email2 = $('#email2').val();
+		obj.phone2 = $('#phone2').val();
+		obj.designation2 = $('#designation2').val();
+		obj.dob2 = $('#dob2').val();
+		obj.marriageAnniversary2 = $('#marriageAnniversary2').val();
+		
+		
+		obj.decisionMaker3 = $('#decisionMaker3').val();
+		obj.email3 = $('#email3').val();
+		obj.phone3 = $('#phone3').val();
+		obj.designation3 = $('#designation3').val();
+		obj.dob3 = $('#dob3').val();
+		obj.marriageAnniversary3 = $('#marriageAnniversary3').val();
+		
+		obj.country = $('#country').val();
+		obj.states = $('#states').val();
+		obj.city = $('#city').val();
+		obj.addressStreet = $('#addressStreet').val();
+		obj.zip = $('#zip').val();
+		obj.description = $('#description').val();
+		
+		
+		
+		console.log("object on add-----------"+JSON.stringify(obj));
+		//return false;
+
+		/* FORM VALIDATION STARTS*/
+
+		var validation = true;
+
+	   /* if (obj.leadOwner == null || obj.leadOwner == "") {
+			validation = validationUpdated("Lead Executive Required",
+					"leadOwner");
+		}
+ 	
+	    if (obj.company == null || obj.company == "") {
+			validation = validationUpdated("Lead company Required",
+					"company");
+		}
+	    
+	    
+	    if (obj.firstName == null || obj.firstName == "") {
+			validation = validationUpdated("First Name Required",
+					"firstName");
+		}
+	    
+	    
+	    if (obj.lastName == null || obj.lastName == "") {
+			validation = validationUpdated("Last Name Required",
+					"lastName");
+		}
+	    
+	    if (obj.title == null || obj.title == "") {
+			validation = validationUpdated("Title Required",
+					"title");
+		}
+	    
+	    if (obj.phone == null || obj.phone == "") {
+			validation = validationUpdated("Phone Required",
+					"phone");
+		}
+	    
+	    if (obj.email == null || obj.email == "") {
+			validation = validationUpdated("Email Required",
+					"email");
+		}
+	    
+	    if (obj.mobile == null || obj.mobile == "") {
+			validation = validationUpdated("Mobile Required",
+					"mobile");
+		}
+	    
+	    if (obj.leadSource == null || obj.leadSource == "") {
+			validation = validationUpdated("Lead Source Required",
+					"leadSource");
+		}
+	    
+	    
+	    if (obj.leadStatus == null || obj.leadStatus == "") {
+			validation = validationUpdated("Lead Status Required",
+					"leadStatus");
+		}
+	    
+	    if (obj.industry == null || obj.industry == "") {
+			validation = validationUpdated("Lead Industry Required",
+					"industry");
+		}
+	    
+	    
+	    if (obj.noOfEmp == null || obj.noOfEmp == "") {
+			validation = validationUpdated("Number Of Emp Required",
+					"noOfEmp");
+		}
+	    
+	    if (obj.country == null || obj.country == "") {
+			validation = validationUpdated("Country Required",
+					"country");
+		}
+	    
+	    if (obj.states == null || obj.states == "") {
+			validation = validationUpdated("State Required",
+					"states");
+		}
+	    
+	    
+	    if (obj.city == null || obj.city == "") {
+			validation = validationUpdated("City Required",
+					"city");
+		}
+	    
+	    if (obj.addressStreet == null || obj.addressStreet == "") {
+			validation = validationUpdated("Address Street Required",
+					"addressStreet");
+		}
+	    
+	    if (obj.zip == null || obj.zip == "") {
+			validation = validationUpdated("Zip Street Required",
+					"zip");
+		}
+	    */
+ 
+	    
+		/* FORM VALIDATION ENDS*/
+
+		if (validation) {
+			$.ajax({
+				type : "POST",
+				url : "view-crm-customers-add",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.code == "Success") {
+						console.log(response);
+						/* viewDetails();
+						$("#add").show();
+						$("#copy").show();
+						$("#delete").show();
+						$("#totalReq").show();
+						$(".container").show();
+						$("#searchRowDiv").show();
+						$("#demo").hide();
+						$("#demoSetReminder").hide();
+						$("#demoMassUpdate").hide();
+						$("#demoAddCampaign").hide();
+						$("#demoUpdateResponse").hide();
+						$("#demoPrintMailingLabels").hide();
+						$("#demoMassConvert").hide();*/
+					//	location.reload();
+						
+						$("#add").show();
+						$("#copy").show();
+						$("#delete").show();
+						$("#totalReq").show();
+						$("#myGrid").show();
+						$("#searchRowDiv").show();
+						$("#demo").hide();
+						
+						agGrid.simpleHttpRequest({
+							url : "view-crm-customers-throughAjax"
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+
+						
+					}
+				},
+				error : function(data) {
+
+					//console.log(data);
+				}
+			})
+		}
+
+	}
+	
+
+	
+	function deleteCustomer(){
+		//console.log("delete ids--------------"+deleteId);
+		
+		$.ajax({
+			type : "GET",
+			url : "view-crm-customers-delete-id?id=" + deleteId,
+			success : function(response) {
+				if (response.code == "Success") {
+					cancelBtn();
+					agGrid.simpleHttpRequest({
+						url : "view-crm-customers-throughAjax"
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+					});
+
+				}
+			}
+
+		});
+		
+		$('#delete').attr("disabled", true);
+	}
+	
+	
+	
+	function saveFile() {
+		var uFile = $('#fileUpload')[0].files[0];
+		var fileName = $('#fileUpload').val();
+
+		var lastIndex = fileName.lastIndexOf("\\");
+		if (lastIndex >= 0) {
+			fileName = fileName.substring(lastIndex + 1);
+		}
+		var iURL = URL.createObjectURL(uFile);
+
+		$('#imgLoc').attr('src', '');
+		$('#imgLoc').attr('src', iURL);
+
+		var fileData = new FormData();
+		fileData.append('file', uFile);
+		fileData.append('path', 'none');
+
+		$.ajax({
+			type : "POST",
+			url : "view-crm-vendors-upload-file",
+			enctype : "multipart/form-data",
+			contentType : false,
+			data : fileData,
+			processData : false,
+			cache : false,
+			success : function(response) {
+
+			},
+			error : function(e) {
+
+			}
+		});
+	}
+
+	function deleteFile() {
+
+		$('#imgLoc').attr('src', '');
+		$('#imgLoc').attr('src', '../assets/images/noimage.jpg');
+
+		var fileData = new FormData();
+
+		fileData.append('file', 'none');
+		fileData.append('path', 'none');
+
+		$.ajax({
+			type : "POST",
+			url : "view-crm-vendors-delete-file",
+			enctype : "multipart/form-data",
+			contentType : false,
+			/* data        : fileData, */
+			processData : false,
+			cache : false,
+			success : function(response) {
+			},
+			error : function(e) {
+
+			}
+		});
+	}
+
+	
+	function getStateDetails(){
+		
+		var cname = $('#country').val();
+		if (cname) { 
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+			$.ajax({type : "GET",
+				url : "view-crm-leads-stateList?id="+ cname,
+						success : function(response) {
+							if (response.message == "success") {
+								$("#states").empty();
+								var option = $("<option></option>");
+								$(option).val(null);
+								$(option).html("Select");
+								$("#states").append(option);
+								for (var i = 0; i < response.body.length; i++) {
+									var option = $("<option></option>");
+									$(option).val(response.body[i].key);
+									$(option).html(response.body[i].name);
+									$("#states").append(option);
+								}
+							}
+						},
+						error : function(e) { 
+						}
+					});
+		} else {
+			$("#states").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#states").append(option);
+			$("#states").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+		}
+	}
+
+	function getStateDataOnEdit(stateId) {
+		var country = $("#country").val();
+		if (country) { 
+			$.ajax({
+				type : "GET",
+				url : "view-crm-leads-stateList?id=" + country,
+				success : function(response) {
+					if (response.message == "success") {
+						$("#states").empty();
+						var option = $("<option></option>");
+						$(option).val(null);
+						$(option).html("Select");
+						$("#states").append(option);
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#states").append(option);
+						}
+						$("#states").val(stateId);
+					}
+				},
+				error : function(e) { 
+				}
+			});
+		} else {
+			$("#states").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#states").append(option);
+		}
+	}
+	
+</script>
+</head>
+
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+
+						<div class="d-flex justify-content-between">
+							<div class="col-md-4  btn-hs">
+								<div class="font-design" id="totalReq">
+									ALL CUSTOMERS (<span></span>)
+								</div>
+							</div>
+							<div class="col-md-4  btn-hs" id="searchRowDiv">
+							<div class="input-style">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter">
+								<div class="searchicon">
+									<a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+
+						</div>
+					<div class="buttonsec btn-hs">
+								<input type="button" class="btn3" onclick="deleteCustomer()" id="delete" value="DELETE"
+									data-toggle="modal" data-target="#delete" readonly> 
+									<!-- <input type="button" class="btn2" id="action" value="Action"
+									 readonly> -->
+									
+									<input type="button" class="btn1" id="add" value="Create customer"
+									onclick="newBtn()" readonly>
+							</div>
+						</div>
+						
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innercontent">
+								<div class="innerstickybg">
+									<div class="d-flex justify-content-between" id="main">
+										<div class="col-md-3" id="idDiv">
+											Vendor ID: <span id="customerId"></span>
+										</div>
+										<div><span class="taskInfo">Customer Information</span></div>
+
+
+										<div class="col-md-3 padding-0" align="right">
+											<button class="btn4" id="cancel" onclick="cancelBtn()">CANCEL</button>
+											<button class="btn1" id="save" onclick="addCustomerInfo()">SAVE</button>
+										</div>
+									</div>
+								</div>
+								<div class="innercontent">
+
+									<!-- <div class="row"> -->
+									<div class="row">
+									
+									<!-- <div class="hvrbox">
+										<img src="../assets/images/noimage.jpg" id="imgLoc"
+											alt="Location" class="hvrbox-layer_bottom img-fluid"
+											style="height: 203px; width: 241px;">
+										<div class="hvrbox-layer_top">
+											<div class="hvrbox-text">
+												<input type="file" id="fileUpload" onchange="saveFile();" />
+												<span><label for="fileUpload"><i
+														class="ti-files" style="cursor: pointer;"></i> </label></span> <span><i
+													class="fa fa-trash red" onclick="deleteFile();"></i></span>
+											</div>
+										</div>
+									</div> -->
+										<div class="col-md-4">
+					                      <div class="form-group">
+					                        <label>Customer Executive</label>
+					                        <div class="select">
+												<select id="executive">
+														<option value="">Select Executive</option>
+															<option th:each="c,iter:${ownerList}"
+																th:value="${c.key}" th:text="${c.name}"></option>
+																		
+												</select>
+											</div>
+					                      </div>
+					                    </div>
+					                    
+					                    
+					                    <div class="col-md-4">
+											<div class="form-group">
+												<label>Customer Name</label>
+												<input type="text" class="form-control"
+													id="customerName" placeholder="Customer Name">
+											</div>
+										</div>
+										
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Company Name</label>
+												<input type="text" class="form-control"
+													id="companyName" placeholder="Company Name">
+											</div>
+										</div>
+										
+										
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Company Owner</label>
+												<input type="text" class="form-control"
+													id="companyOwner" placeholder="Company Owner">
+											</div>
+										</div>
+										
+										
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Mail Id</label>
+												<input type="text" class="form-control"
+													id="customerMail" placeholder="Customer Email">
+											</div>
+										</div>
+										
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Phone</label>
+												<input type="text" class="form-control"
+													id="customerPhone" placeholder="Customer Phone">
+											</div>
+										</div>
+										
+										
+					                    
+					                  <div class="col-md-4">  
+					                     <div class="form-group">
+					                        <label>Designation</label>
+					                        <input type="text" class="form-control"
+													id="designation" placeholder="Designation">
+					                       
+					                      </div>
+					                    </div>
+					                    
+					                    
+					                       
+					                  <div class="col-md-4">  
+					                     <div class="form-group">
+					                        <label>Company GST</label>
+					                        <input type="text" class="form-control"
+													id="companyGst" placeholder="Company GST">
+					                       
+					                      </div>
+					                    </div>
+					                    
+					                    
+					                    <div class="col-md-4">  
+					                     <div class="form-group">
+					                        <label>Company PAN</label>
+					                        <input type="text" class="form-control"
+													id="companyPAN" placeholder="Company PAN">
+					                       
+					                      </div>
+					                    </div>
+					                    
+					                    
+					                     <div class="col-md-4">
+										<div class="form-group">
+											<label>Reference Contact Name</label> <input type="text"
+												class="form-control" id="referenceContact" placeholder="Reference Contact Name">
+										</div>
+									</div>
+									
+
+									<div class="col-md-4">
+										<div class="form-group">
+											<label>Lead Source</label>
+											<div class="select">
+												<select id="leadSource">
+													<option value="">Select LeadSource</option>
+													<option th:each="c,iter:${leadList}" th:value="${c.key}"
+														th:text="${c.name}"></option>
+												</select>
+											</div>
+										</div>
+									</div>
+
+									<div class="col-md-4">
+										<div class="form-group">
+											<label>Lead Status</label>
+											<div class="select">
+												<select id="leadStatus">
+													<option value="">Select Status</option>
+													<option th:each="c,iter:${statusList}" th:value="${c.key}"
+														th:text="${c.name}"></option>
+
+												</select>
+											</div>
+										</div>
+									</div>
+
+									<div class="col-md-4">
+										<div class="form-group">
+											<label>Industry</label>
+											<div class="select">
+												<select id="industry">
+													<option value="">Select Industry</option>
+													<option th:each="c,iter:${industryList}"
+														th:value="${c.key}" th:text="${c.name}"></option>
+												</select>
+											</div>
+										</div>
+									</div>
+
+					                    
+										     							
+									</div>
+									
+										<div id="main">
+											<div class="accordion-item">
+												<h2 class="accordion-header" id="headingOne">
+													<button class="accordion-button" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapseOne"
+														aria-expanded="false" aria-controls="collapseOne">
+														Decision Maker Details 1</button>
+												</h2>
+												<div id="collapseOne"
+													class="accordion-collapse collapse show"
+													aria-labelledby="headingOne"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+													<div class="row">
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Decision Maker 1</label>
+																<input type="text" class="form-control"
+																	id="decisionMaker1" placeholder="Decision Maker 1">
+															</div>
+														</div>
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Email</label>
+																<input type="text" class="form-control"
+																	id="email1" placeholder="Email">
+															</div>
+														</div>
+														
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Phone</label>
+																<input type="text" class="form-control"
+																	id="phone1" placeholder="Phone">
+															</div>
+														</div>
+														
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Designation</label>
+																<input type="text" class="form-control"
+																	id="designation1" placeholder="Designation">
+															</div>
+														</div>
+														
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>DOB</label>
+																<input type="date" class="form-control"
+																	id="dob1">
+															</div>
+														</div>
+														
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Marriage Anniversary </label>
+																<input type="date" class="form-control"
+																	id="marriageAnniversary1">
+															</div>
+														</div>
+													
+
+													
+													</div>
+			
+													</div>
+												</div>
+											</div>
+								</div>
+									
+								<!-- 	main div start here -->
+								
+								<div id="main">
+											<div class="accordion-item">
+												<h2 class="accordion-header" id="headingOne">
+													<button class="accordion-button" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapseOne"
+														aria-expanded="false" aria-controls="collapseOne">
+														Decision Maker Details 2</button>
+												</h2>
+												<div id="collapseOne"
+													class="accordion-collapse collapse show"
+													aria-labelledby="headingOne"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+													<div class="row">
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Decision Maker 2</label>
+																<input type="text" class="form-control"
+																	id="decisionMaker2" placeholder="Decision Maker 2">
+															</div>
+														</div>
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Email</label>
+																<input type="text" class="form-control"
+																	id="email2" placeholder="Email">
+															</div>
+														</div>
+														
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Phone</label>
+																<input type="text" class="form-control"
+																	id="phone2" placeholder="Phone">
+															</div>
+														</div>
+														
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Designation</label>
+																<input type="text" class="form-control"
+																	id="designation2" placeholder="Designation">
+															</div>
+														</div>
+														
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>DOB</label>
+																<input type="date" class="form-control"
+																	id="dob2">
+															</div>
+														</div>
+														
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Marriage Anniversary </label>
+																<input type="date" class="form-control"
+																	id="marriageAnniversary2">
+															</div>
+														</div>
+													
+
+													
+													</div>
+			
+													</div>
+												</div>
+											</div>
+								</div>
+									
+								<!-- 	main div start here -->
+								
+								
+								<div id="main">
+											<div class="accordion-item">
+												<h2 class="accordion-header" id="headingOne">
+													<button class="accordion-button" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapseOne"
+														aria-expanded="false" aria-controls="collapseOne">
+														Decision Maker Details 3</button>
+												</h2>
+												<div id="collapseOne"
+													class="accordion-collapse collapse show"
+													aria-labelledby="headingOne"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+													<div class="row">
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Decision Maker 3</label>
+																<input type="text" class="form-control"
+																	id="decisionMaker3" placeholder="Decision Maker 3">
+															</div>
+														</div>
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Email</label>
+																<input type="text" class="form-control"
+																	id="email3" placeholder="Email">
+															</div>
+														</div>
+														
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Phone</label>
+																<input type="text" class="form-control"
+																	id="phone3" placeholder="Phone">
+															</div>
+														</div>
+														
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Designation</label>
+																<input type="text" class="form-control"
+																	id="designation3" placeholder="Designation">
+															</div>
+														</div>
+														
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>DOB</label>
+																<input type="date" class="form-control"
+																	id="dob3">
+															</div>
+														</div>
+														
+														
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Marriage Anniversary </label>
+																<input type="date" class="form-control"
+																	id="marriageAnniversary3">
+															</div>
+														</div>
+													
+
+													
+													</div>
+			
+													</div>
+												</div>
+											</div>
+								</div>
+									
+								<!-- 	main div start here -->
+								
+								
+								<div id="main">
+											<div class="accordion-item">
+												<h2 class="accordion-header" id="headingOne">
+													<button class="accordion-button" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapseOne"
+														aria-expanded="false" aria-controls="collapseOne">
+														Address Information</button>
+												</h2>
+												<div id="collapseOne"
+													class="accordion-collapse collapse show"
+													aria-labelledby="headingOne"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+													<div class="row">
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Country</label>
+															<div class="select">
+																<select id="country" onchange="getStateDetails()">
+																	<option th:value="NULL">Select Country</option>
+																	<option th:each="c,iter:${countryList}"
+																		th:value="${c.key}" th:text="${c.name}"></option>
+																</select>
+															</div>
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>State</label>
+															<div class="select">
+																<select id="states">
+																	<option th:value="NULL">Select State</option>
+																	<option th:each="c,iter:${statesList}"
+																		th:value="${c.key}" th:text="${c.name}"></option>
+																</select>
+															</div>
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>City</label> <input type="text"
+																class="form-control" id="city" placeholder="city name ">
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Street</label> <input type="text"
+																class="form-control" id="addressStreet"
+																placeholder="Street... ">
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>ZIP Code</label> <input type="text"
+																class="form-control numberonly" id="zip" placeholder="zip code... ">
+														</div>
+													</div>
+
+
+
+												</div>
+			
+													</div>
+												</div>
+											</div>
+								</div>
+								
+								
+								
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingTwo">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseTwo"
+												aria-expanded="true" aria-controls="collapseTwo">
+												Description Information</button>
+										</h2>
+										<div id="collapseTwo" class="accordion-collapse collapse show"
+											aria-labelledby="headingTwo"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+
+												<div class="row">
+													<div class="col-md-8">
+														<div class="modal-inrheading">Description</div>
+														<div class="position-text">
+															<textarea rows="4" cols="100" id="description"
+																onkeyup="textCount(event)"></textarea>
+															<div id="charNumSN" class="txtcounter" align="right">
+																<span>0</span> characters
+															</div>
+														</div>
+													</div>
+
+
+												</div>
+
+											</div>
+										</div>
+									</div>
+								
+									
+								
+						</div>
+					</div>
+
+
+
+
+					<!-- The Modal For Delete-->
+					<div class="modal fade" id="delete">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-dismiss="modal"
+										aria-hidden="true">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p>Do you really want to delete these records? This process
+										cannot be undone.</p>
+								</div>
+								<div class="modal-footer justify-content-center">
+									<button type="button" class="btn1" data-dismiss="modal"
+										aria-hidden="true">Cancel</button>
+									<button type="button" class="btn3" id="deleteModalBtn"
+										onclick="deleteReq()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+
+					<!-- The Modal For Validation-->
+					<div class="modal fade" id="reqValid">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-dismiss="modal"
+										aria-hidden="true">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p id="modalMsg"></p>
+								</div>
+								<div class="modal-footer justify-content-center">
+									<button type="button" class="btn1" data-dismiss="modal"
+										aria-hidden="true">Ok</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+						<!-- ------------------Mark Lost modal------------------------- -->
+
+					<div id="markLostModal" class="modal fade">
+						<div class="modal-dialog">
+							<!-- Modal content-->
+							<div class="modal-content">
+								<div class="modal-header">
+									<h4 class="modal-title">Lost Reason</h4>
+									<button type="button" class="close" data-dismiss="modal"
+										aria-label="Close">
+										<i class="ti-close"></i>
+									</button>
+
+								</div>
+								<div class="modal-body">
+									<!-- text input -->
+									<div class="row">
+										<div class="col-md-12">
+											<div class="form-group">
+												<label>Comment</label> <input class="form-control"
+													type="text" id="comment">
+											</div>
+										</div>
+
+									</div>
+								</div>
+								<div class="modal-footer justify-content-left">
+									<button type="button" class="btn1" data-dismiss="modal"
+										aria-hidden="true" id="SubmitBtn"
+										onclick="rejectLeave()">Submit</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+					
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>

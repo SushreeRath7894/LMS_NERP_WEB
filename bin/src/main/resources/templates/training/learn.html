@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<link rel="stylesheet"
+	href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.1/css/fontawesome.min.css"
+	integrity="sha384-QYIZto+st3yW+o8+5OHfT6S482Zsvz2WfOzpFSXMF9zqeLcFV0/wlZpMtyFcZALm"
+	crossorigin="anonymous">
+<style type="text/css">
+#contentView {
+	width: 100%;
+	/*    height: 100%;
+   overflow: auto; */
+}
+
+.section-body {
+	height: 414px;
+	background-color: #f8f9fa;
+	padding: 10px;
+	overflow-y: scroll;
+	margin-bottom: 20px;
+}
+
+@media screen and (max-device-width:1368px) {
+	.section-body {
+		height: 270px;
+	}
+}
+</style>
+
+<!-- Bootstrap core JS-->
+<script
+	src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Core theme JS-->
+<script src="js/scripts.js"></script>
+
+<script>
+	var remain;
+	//Define the function for getting a URL parameter using jQuery
+	$.urlParam = function(name) {
+		var results = new RegExp('[\?&]' + name + '=([^&#]*)')
+				.exec(window.location.href);
+		if (results == null) {
+			return null;
+		}
+		return decodeURIComponent(results[1].replace(/\+/g, ' '));
+	};
+
+	// Get the value of a specific parameter
+	var myParamValue = $.urlParam('id');
+	
+	// Get the value of a specific parameter
+	var myParamValue1 = $.urlParam('sId');
+    
+	$(document)
+			.ready(
+					function() {
+						$("#navbar").hide();
+						$("#closeBtn").hide();
+						
+						//ajax call to get the category item details
+						$.ajax({url : 'your-trainings-category-details?id='
+													+ myParamValue
+										})
+								.then(
+										function(data) {
+											var resp = JSON.parse(data.body);
+											window.counter = resp[0].remainingCounter;
+											arr = counter.split(':');
+											window.hour = parseInt(arr[0]);
+											window.min = parseInt(arr[1]);
+											window.sec = parseInt(arr[2]);
+											
+											window.todate=resp[0].todateRaw;
+											$("#courceHeading").html(resp[0].courcename);
+											$("#navbarHead").html(resp[0].courcename);
+											$("#courceDesc1").html(
+													resp[0].courcedesc);
+											
+											var qry = '<li class="list-group-item bg-transparent"><b>Mentor :</b> '
+													+ resp[0].mentor
+													+ '</li><li class="list-group-item bg-transparent"><b>Start Date :</b> '
+													+ resp[0].fromdate
+													+ '</li><li class="list-group-item bg-transparent"><b>End Date :</b> '
+													+ resp[0].todate
+													+ '</li><li class="list-group-item bg-transparent"><b>Total Hours :</b> '
+													+ resp[0].hours + '</li>'
+													+ '</li><li class="list-group-item bg-transparent"><b>Remaining Time:</b> '
+													+ resp[0].remainingCounter + '</li>';
+													
+											$("#courceDesc2").html(qry);
+											window.state=resp[0].state;
+											if(resp[0].state==1){
+												$("#getInBtn").html("Resume");
+											}
+											remain=resp[0].remainingCounter;
+										});
+
+						 window.addEventListener("beforeunload", function(e){
+							 console.log('insideee');
+							 e.preventDefault();
+							 console.log("remain",remain);
+							 	saveRemainingCount(remain);
+								// Google Chrome requires returnValue to be set.
+					            event.returnValue = '';	
+														
+							}); 
+						 
+				
+						/* 
+						 // Disable right-click context menu
+						  console.log('inside')
+					        window.addEventListener('contextmenu', function (e) {
+					            e.preventDefault();
+					        }, false);
+					        
+					        // Disable F12 key
+					        window.addEventListener('keydown', function (e) {
+					            if (e.key === 'F12') {
+					                e.preventDefault();
+					            }
+					        }, false); */
+					});
+	
+	function initStartData(){
+		 $.ajax({
+		url : 'your-trainings-save-start?id=' + myParamValue
+	});
+	}
+	//This function is to save the initial data(time) when user starts training
+	function saveStartTraining() {
+		if(window.state==0){
+			initStartData();
+		}
+		
+		$.ajax({
+			url : 'your-trainings-category-items?id=' + myParamValue
+		}).then(function(data) {
+			var resp = JSON.parse(data.body);
+			for(i=0;i<resp.length;i++){
+				if(resp[i].format=='Pdf'){
+					var qry='<div class="col-lg-6 col-xxl-4 mb-5"><div class="card bg-light border-0 h-100"><div class="card-body text-center p-4 p-lg-5 pt-0 pt-lg-4"><div class="feature bg-primary bg-gradient text-white rounded-3 mb-4 mt-n6"><i class="bi bi-file-earmark-text"></i></div><h2 class="fs-4 fw-bold text-truncate" style="max-width: 230px";>'+resp[i].docName+'</h2><p class="mb-0">Uploaded On : '+resp[i].update+'</p><br><button type="button" class="btn btn-outline-secondary btn-sm" onclick=extractFileName("'+resp[i].path+'")>View</button></div></div></div>';
+					$("#catItems").append(qry);
+				}else if(resp[i].format=='Video'){
+					var qry='<div class="col-lg-6 col-xxl-4 mb-5"><div class="card bg-light border-0 h-100"><div class="card-body text-center p-4 p-lg-5 pt-0 pt-lg-4"><div class="feature bg-primary bg-gradient text-white rounded-3 mb-4 mt-n6"><i class="bi bi-file-earmark-play"></i></div><h2 class="fs-4 fw-bold text-truncate" style="max-width: 230px";>'+resp[i].docName+'</h2><p class="mb-0">Uploaded On : '+resp[i].update+'</p><br><button type="button" class="btn btn-outline-secondary btn-sm" onclick=extractFileName("'+resp[i].path+'")>View</button></div></div></div>';
+					$("#catItems").append(qry);
+				}else if(resp[i].format=='Audio'){
+					var qry='<div class="col-lg-6 col-xxl-4 mb-5"><div class="card bg-light border-0 h-100"><div class="card-body text-center p-4 p-lg-5 pt-0 pt-lg-4"><div class="feature bg-primary bg-gradient text-white rounded-3 mb-4 mt-n6"><i class="bi bi-file-earmark-music"></i></div><h2 class="fs-4 fw-bold text-truncate" style="max-width: 230px";>'+resp[i].docName+'</h2><p class="mb-0">Uploaded On : '+resp[i].update+'</p><br><button type="button" class="btn btn-outline-secondary btn-sm" onclick=extractFileName("'+resp[i].path+'")>View</button></div></div></div>';
+					$("#catItems").append(qry);
+				}else if(resp[i].format=='Text'){
+					var qry='<div class="col-lg-6 col-xxl-4 mb-5"><div class="card bg-light border-0 h-100"><div class="card-body text-center p-4 p-lg-5 pt-0 pt-lg-4"><div class="feature bg-primary bg-gradient text-white rounded-3 mb-4 mt-n6"><i class="bi bi-file-text"></i></div><h2 class="fs-4 fw-bold text-truncate" style="max-width: 230px";>'+resp[i].textheading+'</h2><p class="mb-0">Uploaded On : '+resp[i].update+'</p><br><button type="button" class="btn btn-outline-secondary btn-sm" onclick=showText("'+window.btoa(resp[i].textcontent)+'")>View</button></div></div></div>';
+					$("#catItems").append(qry);
+				}
+
+			}
+			$("#navbar").slideDown("slow");
+			$("#header").slideUp("slow");
+			
+			var res=calculateRemainingTime(window.todate);
+			if(res.hours<window.hours){
+				startCountdown(res.hours, res.minutes, res.seconds);
+			}else{
+				startCountdown(window.hour,window.min,window.sec);
+			}
+		});
+	}
+	
+	function startCountdown(hours, minutes, seconds) {
+		  // Calculate the total number of seconds in the input time
+		  var totalSeconds = (hours * 60 * 60) + (minutes * 60) + seconds;
+		  // Get the countdown container element from the HTML page
+		  var countdownEl = document.getElementById("countdown");
+
+		  // Update the countdown every second
+		  var countdownInterval = setInterval(() => {
+		    // Calculate the remaining hours, minutes, and seconds
+		    var remainingHours = Math.floor(totalSeconds / (60 * 60));
+		    var remainingMinutes = Math.floor((totalSeconds / 60) % 60);
+		    var remainingSeconds = Math.floor(totalSeconds % 60);
+		    // Update the countdown display on the HTML page
+		    
+		    countdownEl.textContent = `${remainingHours.toString().padStart(2, "0")}:${remainingMinutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
+		    remain =countdownEl.textContent;
+		    // Decrement the total number of seconds
+		     
+		    totalSeconds--;
+
+		    // If the countdown has finished, stop the countdown interval
+		    if (totalSeconds < 0) {
+		      clearInterval(countdownInterval);
+		      countdownEl.textContent = "Countdown finished!";
+		      finishTraining();
+		      
+		    }
+		  }, 1000);
+		}
+
+	function finishTraining(){
+	var schId=myParamValue1;
+	$.ajax({
+		type : "GET",
+		url : "your-trainings-finish-training?schId="+schId,
+		dataType : 'json',
+		contentType : 'application/json',
+		success : function(response) {
+			if (response.message == "Success") {
+				$("#finishModal").modal('show');
+			}
+		},
+		error : function(data) {
+			console.log(data)
+		}
+	});
+	}
+	
+	function calculateRemainingTime(dateString) {
+		  // Convert the input date string into a Date object
+		  const targetDate = new Date(dateString);
+
+		  // Get the current time in milliseconds since the Unix epoch
+		  const currentTime = Date.now();
+
+		  // Calculate the time difference between the target date and the current time
+		  const timeDiff = targetDate - currentTime;
+
+		  // Convert the time difference from milliseconds to hours, minutes, and seconds
+		  const hoursDiff = Math.floor(timeDiff / (1000 * 60 * 60));
+		  const minutesDiff = Math.floor((timeDiff / (1000 * 60)) % 60);
+		  const secondsDiff = Math.floor((timeDiff / 1000) % 60);
+
+		  // Return an object containing the remaining hours, minutes, and seconds
+		  return {
+		    hours: hoursDiff,
+		    minutes: minutesDiff,
+		    seconds: secondsDiff
+		  };
+		}
+	
+	
+	 function extractFileName(url) {
+		//this function extract the file name from the url
+		  const parts = url.split('/');
+		  const fileName = parts.pop();
+		  dloadFile(fileName);
+		} 
+	 
+	  function dloadFile(f){
+			var x = '/document/training/';
+			let url = x + f;
+			let fileName = f; 
+			getFileViewLink(url,fileName);
+		}
+		
+		function getFileViewLink(url, fileName){
+			//this function create the blob url and place a ifrma ein the page for view purpose
+		$("#contentView").show();
+		
+	    var xhr = new XMLHttpRequest();
+	    xhr.open("GET", url, true);
+	    xhr.responseType = "blob";
+	    xhr.onload = function(){
+	        var urlCreator = window.URL || window.webkitURL;
+	        var imageUrl = urlCreator.createObjectURL(this.response);
+	        var ext = '';
+	        if(imageUrl) {
+	        	ext = url.split(".").pop();
+	        }
+		     var qr='<iframe  id="myFrame" src="'+imageUrl+'#toolbar=0&scrollbar=0" frameBorder="0" scrolling="auto" height="450px" width="100%"></iframe>';
+			$("#contentView").html(qr);
+			$("#catItems").slideUp("slow"); 
+			restrictOptions(ext);
+			$("#closeBtn").show();
+			$("#contentView").show();
+					
+	    }
+	    xhr.send();
+	}
+		function restrictOptions(ext){
+			 var iframe = document.getElementById("myFrame");
+			 setTimeout(()=>{
+				 var iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+				  iframeDocument.addEventListener('contextmenu', function (event) {
+				    event.preventDefault();
+				  });
+				  if(ext === 'mp4' || ext === 'MP4') {
+					  var video = iframeDocument.getElementsByTagName('video')[0];
+						 video.setAttribute('controlsList','nodownload')
+						 
+						  video.addEventListener('contextmenu', (event) => {
+						    event.preventDefault();
+						  });
+
+						  video.addEventListener('click', (event) => {
+						    event.preventDefault();
+						  });
+				  }else{
+					  
+					  var iframe = document.getElementById('myFrame').contentWindow.document;
+			            
+			            iframe.addEventListener('contextmenu', function (event) {
+			                event.preventDefault();
+			                event.stopPropagation();
+			            });
+				  }
+				 
+			 },1000)
+			 
+		}
+		
+		function showText(text){
+			//this is for textual data to be view in the dom in a separate div
+			var t='<div class="section-body" ><div >'+window.atob(text)+'</div></div>';
+			$("#closeBtn").show();
+			
+			/* t=t+'<button type="button" class="btn btn-outline-dark" onclick=closeContent()>Close</button>'; */
+			var qr=t;
+			$("#contentView").html(qr);
+			$("#contentView").show();
+			$("#catItems").slideUp("slow");
+		}
+		
+		function closeContent(){
+			//this function is to close the div when a file opened foe view
+			$("#catItems").slideDown("slow");
+			$("#contentView").empty();
+			$("#contentView").hide();
+			$("#closeBtn").hide();
+			
+		}
+
+		function backToContent(){
+			console.log("inner remain",remain);
+			/* window.open("/training/your-trainings") */
+			window.location.href = "/training/your-trainings" 
+			saveRemainingCount(remain)
+		}
+		
+		function saveRemainingCount(remainCount){
+			$.ajax({
+				type : "GET",
+				url : "your-trainings-count-save?count=" + remainCount +"&sId="+myParamValue1,
+				dataType : 'json',
+				contentType : 'application/json',
+				success : function(response) {
+					if (response.message == "Success") {
+					}
+				},
+				error : function(data) {
+					console.log(data)
+				}
+			});
+		}
+		function restrictOptions(ext){
+			 var iframe = document.getElementById("myFrame");
+			 setTimeout(()=>{
+				 var iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+				  iframeDocument.addEventListener('contextmenu', function (event) {
+				    event.preventDefault();
+				  });
+				  if(ext === 'mp4' || ext === 'MP4') {
+					  var video = iframeDocument.getElementsByTagName('video')[0];
+						 video.setAttribute('controlsList','nodownload')
+						 
+						  video.addEventListener('contextmenu', (event) => {
+						    event.preventDefault();
+						  });
+
+						  video.addEventListener('click', (event) => {
+						    event.preventDefault();
+						  });
+				  }else{
+					  
+					  iframeDocument.addEventListener('contextmenu', function (e) {
+				            e.preventDefault();
+				        }, false);
+				        
+				        // Disable F12 key
+				        iframeDocument.addEventListener('keydown', function (e) {
+				            if (e.key === 'F12') {
+				                e.preventDefault();
+				            }
+				        }, false);
+				  }
+				  
+			 },1000)
+			 }
+function refreshPage(){
+	$("#finishModal").modal('hide');
+	window.location.href = "/training/your-trainings" 
+}
+
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<!-- 	Category Screen     -->
+						<nav class="navbar navbar-expand-lg navbar-dark bg-light "
+							id="navbar">
+							<div class="container px-lg-5">
+								<a class="navbar-brand text-dark" href="#!" id="navbarHead">Start
+									Bootstrap</a>
+								<button class="navbar-toggler" type="button"
+									data-bs-toggle="collapse"
+									data-bs-target="#navbarSupportedContent"
+									aria-controls="navbarSupportedContent" aria-expanded="false"
+									aria-label="Toggle navigation">
+									<span class="navbar-toggler-icon"></span>
+								</button>
+								<div class="collapse navbar-collapse"
+									id="navbarSupportedContent">
+
+									<ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+										<li class="nav-item bg-light"><a
+											class="nav-link text-dark" href="#!">
+												<div id="countdown"></div>
+										</a></li>
+									</ul>
+									<button id="backBtn" type="button" class="btn1"
+										onclick=backToContent()>Back</button>
+								</div>
+							</div>
+						</nav>
+						<!-- Header-->
+						<header class="py-5" id="header">
+							<div class="container px-lg-5">
+								<div class="p-4 p-lg-2 bg-light rounded-3 text-center">
+									<div class="m-4 m-lg-5">
+										<h1 class="display-5 fw-bold" id="courceHeading"></h1>
+										<p class="fs-4" id="courceDesc1"></p>
+										<ul class="list-group list-group-flush " id="courceDesc2">
+										</ul>
+										<br> <a class="btn btn-lg btn-outline-secondary"
+											href="#!" id="backButton" onclick="backToContent()">Back</a>
+										<a class="btn btn-primary btn-lg" href="#!" id="getInBtn"
+											onclick="saveStartTraining()">Let's Start</a>
+
+									</div>
+								</div>
+							</div>
+						</header>
+						<section class="pt-4">
+							<div class="container px-lg-5">
+
+								<div class="row gx-lg-5" id="catItems"></div>
+							</div>
+						</section>
+						<!-- class="section-body" -->
+						<div id="contentView"></div>
+						<div align="right">
+							<button id="closeBtn" type="button" class="btn btn-outline-dark"
+								onclick=closeContent()>Close</button>
+						</div>
+
+						<div id="finishModal" class="modal fade show" aria-modal="true">
+							<div class="modal-dialog modal-confirm">
+								<div class="modal-content">
+									<div class="modal-header flex-column"></div>
+									<div class="modal-body">
+										<p>Oops !!! you ran out of time.You can't access these
+											materials anymore.</p>
+									</div>
+									<div class="modal-footer justify-content-center">
+										<button type="button" class="btn3" id="okModalBtn"
+											onclick=refreshPage()>OK</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

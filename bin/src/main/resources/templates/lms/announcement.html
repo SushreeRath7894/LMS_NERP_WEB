@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<style type="text/css">
+.ag-theme-alpine {
+	height: calc(100vh - 100px);
+}
+
+.subject-card {
+	background-color: #bf05ff;
+	border-radius: 10px;
+	padding: 15px;
+	margin-bottom: 15px;
+	color: white;
+}
+
+.subject-card p {
+	margin-top: 0;
+	margin-bottom: 0;
+	font-size: 12px;
+	font-weight: 400;
+	color: #ffffff9e;
+}
+
+.subject-card h5 {
+	margin: 0 0 5px;
+	color: white;
+}
+
+.nav-pills {
+	gap: 3px;
+}
+
+.step-line {
+	background: #e0e0e0;
+	height: 2px;
+	width: 35vw;
+	position: absolute;
+	top: 30px;
+	z-index: 1;
+}
+
+.nav-pills.custom li {
+	background: transparent;
+	margin: 0 30px;
+	z-index: 2;
+}
+
+.nav-link.active.custom {
+	background-color: #bf05ff;
+	color: white;
+}
+
+.nav-link.custom {
+	color: inherit;
+	border: 1px solid #bf05ff;
+	width: 93px;
+}
+
+.tab-content.custom {
+	display: flex;
+	justify-content: space-between;
+	gap: 5px;
+}
+
+.tab-content.custom .tab-pane {
+	width: 50vw;
+}
+
+.document-link {
+	color: rgb(191, 5, 255);
+	text-decoration: none;
+	font-weight: bold;
+}
+
+.document-link:hover {
+	color: #9b04d3; /* Slightly darker on hover */
+	text-decoration: underline;
+}
+</style>
+
+<script type="text/javascript">
+src="https://cdn.ckeditor.com/4.16.0/standard/ckeditor.js"
+
+$(document).ready(function() {
+	
+	var dateFormat = localStorage.getItem("dateFormat");
+	$("#toDateCalendar").datetimepicker({
+		format: dateFormat,
+		closeOnDateSelect: true,
+		timepicker: false,
+	}).on("change", function() {
+		$('#startDate').val($(this).val());
+	})
+
+	$('#startDate').blur(function() {
+		$("#toDateCalendar").val($(this).val());
+	})
+	var dateFormat = localStorage.getItem("dateFormat");
+	$("#toDateCalendar1").datetimepicker({
+		format: dateFormat,
+		closeOnDateSelect: true,
+		timepicker: false,
+	}).on("change", function() {
+		$('#endDate').val($(this).val());
+	})
+
+	$('#endDate').blur(function() {
+		$("#toDateCalendar1").val($(this).val());
+	})
+	
+	var gridDivm = document.querySelector('#orgGRid');
+	new agGrid.Grid(gridDivm, gridOptionsCourse);
+	gridOptionsCourse.api.setRowData([]);
+	
+	
+	var gridDivm = document.querySelector('#myGridEmployee');
+	new agGrid.Grid(gridDivm, gridOptionsEmployee);
+	gridOptionsEmployee.api.setRowData([]);
+	
+	var gridDivm = document.querySelector('#myGridStudent');
+	new agGrid.Grid(gridDivm, gridOptionsStudent);
+	gridOptionsStudent.api.setRowData([]);
+	
+	getAnnouncementDetails();
+	getAllEmployeeDetails();
+	getAllStudentDetails();
+});
+
+var columnDefsCourse = [{
+	headerCheckboxSelection: true,
+	headerCheckboxSelectionFilteredOnly: true,
+	checkboxSelection: true,
+	width: 10,
+	sortable: false,
+	filter: false,
+	resizable: true,
+	pinned: 'left',
+}, {
+	headerName: "Announcement ID",
+	field: "announcementId",
+}, {
+	headerName: "Subject",
+	field: "subject",
+},
+{
+	headerName: "Description",
+	field: "description",
+},
+ {
+	headerName: "From Date",
+	field: "startDate",
+	width: 110,
+}, {
+	headerName: "To Date",
+	field: "endDate"
+},
+];
+
+var gridOptionsCourse = {
+	columnDefs: columnDefsCourse,
+	rowSelection: 'single',
+	suppressRowClickSelection: true,
+
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 185,
+		height: 10
+	},
+	pagination: true,
+	paginationPageSize: 15,
+	onGridReady: function(params) {
+		params.api.sizeColumnsToFit();
+		window.gridApi = params.api;
+		window.gridOptionsCourse = params.api;
+		getAnnouncementDetails();
+	},
+	onSelectionChanged: onSelectionChanged,
+};
+var announcementId = "";
+function onSelectionChanged() {
+	var selectedNodes = window.gridApi.getSelectedNodes();
+	var selectedData = selectedNodes.map(node => node.data);
+	announcementId = selectedData.map(node => node.announcementId);
+	employeeList = selectedData.map(node => node.employeeList);
+	studentList = selectedData.map(node => node.studentList);
+	var selectedRows = window.gridApi.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+	if (selectedRows.length > 0) {
+		announcementId = selectedRows[0].announcementId;
+		editAnnouncement(announcementId)
+		//getAllEmployeeDetails(employeeList);
+		//getAllStudentDetails(studentList);
+
+	} else {
+		$("#announcementId").val('');
+		$("#subject").val('');
+		$("#description").val('');
+		$("#startDate").val('');
+		$("#endDate").val('');
+		
+	}
+
+	announcementId = '';
+}
+
+
+var columnDefsEmployee = [{
+	headerCheckboxSelection: true,
+	headerCheckboxSelectionFilteredOnly: true,
+	checkboxSelection: true,
+	width: 10,
+	sortable: false,
+	filter: false,
+	resizable: true,
+	pinned: 'left',
+}, {
+	headerName: "Instructor Id",
+	field: "employeeId",
+	width: 110,
+	pinned: 'left',
+}, {
+	headerName: "Instructor Name",
+	field: "firstName",
+	pinned: 'left',
+	width: 220,
+}, {
+	headerName: "Mobile No",
+	field: "mobileNo",
+	type: "rightAligned",
+	width: 110,
+}, {
+	headerName: "Personal Mail",
+	field: "personalMail",
+	width: 150,
+}
+];
+
+var gridOptionsEmployee = {
+	columnDefs: columnDefsEmployee,
+	rowSelection: 'multiple',
+	groupSelectsChildren: true,
+	suppressRowClickSelection: true,
+	suppressAggFuncInHeader: true,
+	onFirstDataRendered: function(params) {
+		params.api.selectIndex(0, true, true);
+	},
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 185,
+		height: 10
+	},
+	
+	onSelectionChanged: onSelectionChangedEmployee,
+};
+
+function onSelectionChangedEmployee() {
+
+	var selectedNodes = gridOptionsEmployee.api.getSelectedNodes();
+	var selectedData = selectedNodes.map(node => node.data);
+	empid = selectedData.map(node => node.employeeId);
+	var selectedRows = gridOptionsEmployee.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+	
+}
+
+//
+
+var columnDefsStudent = [{
+	headerCheckboxSelection: true,
+	headerCheckboxSelectionFilteredOnly: true,
+	checkboxSelection: true,
+	width: 10,
+	sortable: false,
+	filter: false,
+	resizable: true,
+	pinned: 'left',
+}, {
+	headerName: "Student Id",
+	field: "studentId",
+	width: 110,
+	pinned: 'left',
+}, {
+	headerName: "Student Name",
+	field: "studentName",
+	pinned: 'left',
+	width: 220,
+} 
+];
+
+var gridOptionsStudent = {
+	columnDefs: columnDefsStudent,
+	rowSelection: 'multiple',
+	groupSelectsChildren: true,
+	suppressRowClickSelection: true,
+	suppressAggFuncInHeader: true,
+	onFirstDataRendered: function(params) {
+		params.api.selectIndex(0, true, true);
+	},
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 185,
+		height: 10
+	},
+	
+onSelectionChanged: onSelectionChangedStudent,
+};
+
+function onSelectionChangedStudent() {
+
+	var selectedNodes = gridOptionsStudent.api.getSelectedNodes();
+	var selectedData = selectedNodes.map(node => node.data);
+	studid = selectedData.map(node => node.studentId);
+	var selectedRows = gridOptionsStudent.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+	
+}
+
+
+
+function nextBtnFunction(tablink) {
+	const tabElement = document.querySelector(`a.nav-link[href="#${tablink}"]`);
+
+	if (tabElement) {
+		const tabTrigger = new bootstrap.Tab(tabElement);
+		tabTrigger.show();
+	}
+}
+
+
+function masterSaveCourse() {
+    var valid = true;
+
+    // Create FormData object
+    var formData = new FormData();
+
+    // Append individual form fields for announcement
+    formData.append('announcementId', $("#announcementId").val());
+    formData.append('subject', $("#subject").val());
+    formData.append('description', $("#description").val());
+    formData.append('startDate', $("#startDate").val());
+    formData.append('endDate', $("#endDate").val());
+
+    // Validation
+    if (!formData.get('subject')?.trim()) {
+        toastr.error("Subject Required");
+        return;
+    }
+    if (!formData.get('description')?.trim()) {
+        toastr.error("Description Required");
+        return;
+    }
+    if (!formData.get('startDate')?.trim()) {
+        toastr.error("Start Date Required");
+        return;
+    }
+    if (!formData.get('endDate')?.trim()) {
+        toastr.error("End Date Required");
+        return;
+    }
+
+    // Employee Grid data
+    var selectedEmployeeRows = gridOptionsEmployee.api.getSelectedRows();
+     var selectedEmployee = selectedEmployeeRows.map(row => row.employeeId);
+    if (selectedEmployee.length > 0) {
+        formData.append('employeeList', JSON.stringify(selectedEmployee));
+    } else {
+        toastr.warning("Please select at least one employee.");
+        return;
+    }
+
+    // Student Grid data
+    var selectedStudentRows = gridOptionsStudent.api.getSelectedRows();
+    var selectedStudent = selectedStudentRows.map(row => row.studentId);
+    if (selectedStudent.length > 0) {
+        formData.append('studentList', JSON.stringify(selectedStudent));
+    } else {
+        toastr.warning("Please select at least one student.");
+        return;
+    }
+
+    // Additional fields for student assignment (optional if required)
+    formData.append('assignStudId', $("#assignStudId").val());
+    formData.append('studentId', $("#studentId").val()); // optional field
+
+    console.log("FormData Entries:");
+    for (var pair of formData.entries()) {
+        console.log(pair[0]+ ': ' + pair[1]);
+    }
+
+    if (valid) {
+        saveAnnouncement(formData);
+    }
+}
+
+
+
+
+function saveAnnouncement(formData) {
+    $.ajax({
+        url: 'announcement-add', 
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false, 
+        success: function(response) {
+            toastr.success('Announcement saved successfully');
+            getAnnouncementDetails();
+        },
+       
+        error: function(xhr, status, error) {
+            toastr.error('Error saving course');
+        }
+    });
+}
+
+
+
+function getAnnouncementDetails() {
+
+	agGrid.simpleHttpRequest({
+		url: "announcement-view"
+	}).then(function(response) {
+		if (response.message === "Success") {
+
+			const responseBody = JSON.parse(response.body);
+			const announceData = responseBody.announceData;
+
+			window.gridApi.setRowData(announceData);
+
+			if (announceData && announceData.length > 0) {
+				window.gridApi.forEachNode(function(node) {
+					if (node.rowIndex === 0) {
+						node.setSelected(true);
+					}
+				});
+			}
+
+		} else {
+			console.error("Failed to fetch data");
+		}
+	});
+}
+
+
+function editAnnouncement(announcementId) {
+    $.ajax({
+        type: "GET",
+        url: "announcement-edit?Id=" + announcementId,
+        async: false,
+        success: function(response) {
+            if (response.code === "success") {
+                const announcementDetails = JSON.parse(response.body).announcementDetails;
+                console.log("DATA=============", announcementDetails);
+
+                if (announcementDetails && announcementDetails.length > 0) {
+                    const data = announcementDetails[0];
+
+                    // Populate form fields
+                    $("#announcementId").val(data.announcementId || "");
+                    $("#subject").val(data.subject || "");
+                    $("#description").val(data.description || "");
+                    $("#startDate").val(data.startDate || "");
+                    $("#endDate").val(data.endDate || "");
+
+                    // Employee List from server
+                    const employeeList = data.employeeList || [];
+                    // Student List from server
+                    const studentList = data.studentList || [];
+
+                    // Set selected rows in Employee Grid
+                    gridOptionsEmployee.api.forEachNode(function(node) {
+                        if (employeeList.includes(node.data.employeeId)) {
+                            node.setSelected(true);
+                        }
+                    });
+
+                    // Set selected rows in Student Grid
+                    gridOptionsStudent.api.forEachNode(function(node) {
+                        if (studentList.includes(node.data.studentId)) {
+                            node.setSelected(true);
+                        }
+                    });
+
+                }
+            }
+        },
+        error: function(error) {
+            console.error("Error fetching announcement details:", error);
+        }
+    });
+}
+
+
+
+function addApplication(){
+	if (window.gridApi) {
+		window.gridApi.deselectAll();
+}
+	
+	if (gridOptionsEmployee.api) {
+		gridOptionsEmployee.api.deselectAll();
+}
+	if (gridOptionsStudent.api) {
+		gridOptionsStudent.api.deselectAll();
+}
+	$("#announcementId").val('');
+	$("#subject").val('');
+	$("#description").val('');
+	$("#startDate").val('');
+	$("#endDate").val('');
+}
+
+
+
+function getAllEmployeeDetails(employeeList) {
+    console.log("Employee List:", employeeList);
+
+    const flatEmployeeList = (employeeList || []).flat().filter(emp => emp && emp.employeeId);
+    const selectedEmployeeIds = flatEmployeeList.map(emp => emp.employeeId);
+
+    agGrid.simpleHttpRequest({
+        url: "announcement-employee-view"
+    }).then(function(response) {
+        if (response.message === "Success") {
+            const responseBody = JSON.parse(response.body);
+            const employeeData = responseBody.employeeData;
+
+            gridOptionsEmployee.api.setRowData(employeeData);
+            setTimeout(() => {
+                gridOptionsEmployee.api.forEachNode((node) => {
+                    if (selectedEmployeeIds.includes(node.data.employeeId)) {
+                        node.setSelected(true);
+                    }
+                });
+            }, 0);
+
+        } else {
+            console.error("Failed to fetch data");
+        }
+    });
+}
+function getAllStudentDetails(studentList) {
+    console.log("Student List:", studentList);
+
+   const flatStudentList = (studentList || []).flat().filter(emp => emp && emp.studentId);
+   const selectedStudentIds = flatStudentList.map(emp => emp.studentId);
+
+    agGrid.simpleHttpRequest({
+        url: "announcement-student-view"
+    }).then(function(response) {
+        if (response.message === "Success") {
+            const responseBody = JSON.parse(response.body);
+            const studentData = responseBody.studentData;
+
+            gridOptionsStudent.api.setRowData(studentData);
+            setTimeout(() => {
+            	gridOptionsStudent.api.forEachNode((node) => {
+                    if (selectedStudentIds.includes(node.data.studentId)) {
+                        node.setSelected(true);
+                    }
+                });
+            }, 0);
+
+        } else {
+            console.error("Failed to fetch data");
+        }
+    });
+}
+
+
+
+
+
+
+function onQuickFilterChanged() {
+	
+	if(document.getElementById('quickFilter').value) {
+		window.gridOptionsCourse
+		.setQuickFilter(document.getElementById('quickFilter').value);
+		window.gridOptionsCourse.getDisplayedRowAtIndex(0).setSelected(true);
+	}
+
+}
+function reset(){
+let data = $("#quickFilter").val('');
+if(data!=null && data!=""){
+	$("#quickFilter").val('');
+	window.gridOptionsCourse
+		.setQuickFilter(document.getElementById('quickFilter').value);
+	window.gridOptionsCourse.getDisplayedRowAtIndex(0).setSelected(true);
+}
+}
+
+
+
+</script>
+</head>
+
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<!--Tabbination 1 Start-->
+					<div id="tab1" class="tab-pane" role="tabpanel">
+						<div class="d-flex flex-column flex-lg-row">
+							<!--Left Sec Start-->
+							<div class="box-sec" id="collapseWidthR1">
+								<div class="out-box">
+									<div class="d-flex justify-content-between bdr-line p-2">
+
+										<div class="col-md-8 col-12">
+											<div class="d-flex gap-2 search-sec position-relative">
+												<input class="form-control" type="text"
+													onkeydown="enterToSearch(event)" placeholder="Search"
+													id="quickFilter" autocomplete="off">
+												<button class="btn go-btn" type="button"
+													onclick="onQuickFilterChanged()">Go</button>
+												<button class="btn go-btn" type="button" onclick="reset()">Reset</button>
+											</div>
+										</div>
+
+										<button class="btn btn-primary max-btn" id="collapseButtonR1"
+											onclick="triggerExpansionR(1)" data-bs-toggle="tooltip"
+											data-bs-placement="top" title="Expand">
+											<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+												class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+										</button>
+
+									</div>
+									<div class="card m-2 p-2">
+										<div id="orgGRid" class="ag-theme-alpine"></div>
+									</div>
+								</div>
+							</div>
+							<div class="box-sec" id="collapseWidthL1">
+								<div class="out-box">
+									<div
+										class="d-flex justify-content-between flex-row-reverse align-items-center p-2 bdr-line">
+										<button class="btn btn-primary max-btn" id="collapseButtonL1"
+											type="button" onclick="triggerExpansionL(1)"
+											data-bs-toggle="tooltip" data-bs-placement="top"
+											title="Expand">
+											<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+												class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+										</button>
+
+
+
+										<!--Right Inner Tab Start-->
+										<div class="d-flex gap-2">
+											<ul class="nav nav-pills newtab" role="tablist">
+
+												<li class="nav-item" role="presentation"
+													id="candidateDetails"><a class="nav-link active"
+													data-bs-toggle="pill" href="#course-overview"
+													aria-selected="true" role="tab">Announcement</a></li>
+											
+											</ul>
+										</div>
+									</div>
+
+									<!-- Tab panes -->
+									<div class="tab-content flex-fill">
+										<div id="course-overview"
+											class="tab-pane active show p-2 h-100" role="tabpanel">
+
+											<div class="requisition-tbl d-flex flex-column h-100 ">
+
+												<div class="mb-2">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<td width="80%"><strong id="programNameDisplay"></strong></td>
+																<td>
+																	<div class="d-flex justify-content-end">
+
+																		<div class="ml-3">
+																			<button id="add" class="btn btn-primary edit-btn"
+																				type="button" onclick="addApplication()">Add</button>
+																		</div>
+																		 <div class="ml-3">
+																			<button id="edit" class="btn btn-primary edit-btn"
+																				type="button" onclick="editAnnouncement()">Edit</button>
+																		</div> 
+																		<div class="mr-0">
+																			<button id="save" class="btn  edit-btn"
+																				onclick="masterSaveCourse()" type="button">Save</button>
+
+																		</div>
+																		
+
+																	</div>
+
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+												<div class="card p-2">
+													<div id="studentForm">
+														<div class="row mb-3">
+															<input type="hidden" id="announcementId"> <input
+																type="hidden" id="assignEmpId"><input
+																type="hidden" id="assignStudId">
+															<div class="col-lg-12">
+																<div class="form-group">
+																	<label>Subject</label><span class="mandatory">*</span>
+																	<input type="text" id="subject" class="form-control">
+																</div>
+															</div>
+															<div class="col-lg-12">
+																<div class="form-group">
+																	<label>Description</label><span class="mandatory">*</span>
+																	<input type="text" id="description"
+																		class="form-control">
+																</div>
+															</div>
+														</div>
+
+														<div class="row mb-3">
+															<div class="col-md-6 form-group calendar_box">
+																<label>From Date</label><span class="mandatory">*</span>
+																<div class="position-relative">
+																	<input type="text" id="startDate" class="form-control"
+																		onblur="removeValid(event)"
+																		th:attr="onkeyup=|formatDate('startDate','${session.DATEFORMAT_JS}')|"
+																		readonly> <i
+																		class="ti-calendar picker_calendar"
+																		id="toDateCalendar" onblur="removeValid(event)"></i>
+																</div>
+															</div>
+															<div class="col-md-6 form-group calendar_box">
+																<label>To Date</label><span class="mandatory">*</span>
+																<div class="position-relative">
+																	<input type="text" id="endDate" class="form-control"
+																		onblur="removeValid(event)"
+																		th:attr="onkeyup=|formatDate('endDate','${session.DATEFORMAT_JS}')|"
+																		readonly> <i
+																		class="ti-calendar picker_calendar"
+																		id="toDateCalendar1" onblur="removeValid(event)"></i>
+																</div>
+															</div>
+														</div>
+														
+														<!--  -->
+														<div class="row mb-3">
+														<div class="col-md-6">
+														<div class="mr-0">
+																	<h5>Instructors</h5>
+																</div>
+														<div id="myGridEmployee" style="width: 100%; height: 300px;"
+																class="ag-theme-alpine"></div>
+														</div>
+														<div class="col-md-6">
+														<div class="mr-0">
+																	<h5>Students</h5>
+																</div>
+														<div id="myGridStudent" style="width: 100%; height: 300px;"
+																class="ag-theme-alpine"></div>
+														</div>
+														</div>
+														<!--  -->
+
+													</div>
+												</div>
+											</div>
+										</div>
+
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,4345 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.btn-primarynew {
+	color: #fff !important;
+	background-color: #0d6efd;
+	border-color: #0d6efd;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+.form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+}
+
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+
+.blueClsWT {
+	background: #0076ba;
+	color: #fff;
+}
+
+.blueCls {
+	background: #0076ba;
+	color: #fff;
+}
+
+.blueClsWT::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	padding-right: 7px;
+}
+
+.modal-body table td input[type=checkbox] {
+	width: 0px;
+	margin-right: 16px;
+	position: relative;
+	top: 0px;
+	float: none;
+}
+
+.firstnode {
+	color: #929292;
+	border-top: 1px solid transparent !important;
+	border-left: 1px solid transparent !important;
+	border-bottom: 1px solid transparent !important;
+	width: 320px;
+	font-size: 12px;
+	font-weight: 100;
+}
+
+.simple-tree-table-closed .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'FontAwesome';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+	transform: rotate(90deg);
+}
+
+.simple-tree-table-opened .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'FontAwesome';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+}
+
+.simple-tree-table-icon {
+	display: inline-block;
+	width: 1.5em;
+	line-height: 1.5em;
+	margin: 0.1em;
+	background-color: transparent;
+	text-align: center;
+	cursor: pointer;
+}
+
+.tptCls {
+	background: transparnt;
+}
+
+.mr5 {
+	margin-right: 5px;
+}
+</style>
+<script>
+$(document).ready(function() {
+	
+	$('#deliveryChallanDtls').attr("disabled", true);
+	$("#documentDetails").show();
+	$('#docTbl').on( 'click', '.rmv1', function() { 
+		openDeleteConfirm();
+		var value = $(this).parent("div").attr("id");
+		$("#dltValue").val(value); 
+});
+	
+	var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+
+	var gridDiv = document.querySelector('#item');
+	new agGrid.Grid(gridDiv, itemOptions);
+
+	gridOptions.api.setRowData();
+	itemOptions.api.setRowData();
+
+	$("#tdNo").hide();
+	$("#ckNo").hide();
+
+	$("#paymodeId").on('change', function() {
+		var paymodeId = $(this).val();
+		if (paymodeId == "PMOD001") {
+			$("#tdNo").show();
+			$("#ckNo").hide();
+
+		} else if ((paymodeId == "PMOD003")) {
+			$("#tdNo").hide();
+			$("#ckNo").show();
+
+		} else {
+			$("#tdNo").hide();
+			$("#ckNo").hide();
+		}
+
+	});
+	var dateFormat = localStorage.getItem("dateFormat");
+
+	$("#toDateCalendar").datetimepicker({
+		format : dateFormat,
+		closeOnDateSelect : true,
+		timepicker : false,
+	}).on("change", function() {
+		$('#payDate').val($(this).val());
+	})
+
+	$('#payDate').blur(function() {
+		$("#toDateCalendar").val($(this).val());
+	})
+	
+$("#toDateCalendarInvoice").datetimepicker({
+format : dateFormat,
+closeOnDateSelect : true,
+ timepicker : false,
+  datepicker : true,
+scrollMonth : false,
+//minDate : new Date()
+}).on("change", function() {
+$('#invoiceDate').val($(this).val());
+})
+$('#invoiceDate').blur(function() {
+$("#toDateCalendarInvoice").val($(this).val());
+});
+	
+	
+	$("#woDateCalendar").datetimepicker({
+        format : dateFormat,
+        closeOnDateSelect : true,
+         timepicker : false,
+          datepicker : true,
+        scrollMonth : false,
+        //minDate : new Date()
+       }).on("change", function() {
+      $('#woDate').val($(this).val());
+      })
+      $('#woDate').blur(function() {
+      $("#woDateCalendar").val($(this).val());
+      });
+ 
+
+	$("#Cancel").hide();
+	$("#addData").hide();
+	$("#save").hide();
+	$('#delete').attr("disabled", true);
+	$('#salesInvrtn').attr("disabled", true);
+	$('#paymentDtls').attr("disabled", true);
+	$('#deliveryChallanDtls').attr("disabled", true);
+	
+	$("#igstTR").hide();
+	$("#igstPayTR").hide();
+
+	$("#browseBtnNew").click(function() {
+		$("#myModal").modal('show');
+	})
+	agGrid.simpleHttpRequest({
+		url : "view-invoice-through-ajax"
+	}).then(function(data) {
+		var len = data.length;
+		$('#totalInvoice').find('span').html(len);
+		gridOptions.api.setRowData(data);
+	});
+	/*
+	 sales Invoice page*/
+
+	var ld = localStorage.getItem('ReqInvoiceData');
+	var data = JSON.parse(ld);
+	if (data) {
+
+		$('#hideTbl').hide();
+		$('#searchRowDiv').hide();
+		$('.btn-hs').hide();
+		$("#add").hide();
+		$("#myGrid").hide();
+		$("#save").show();
+		$("#Cancel").show();
+		$("#addData").show();
+		$("#totalInvoice").hide();
+		$("#dwnld").hide();
+		$("#upld").hide();
+		$("#poId").val(data[0].poId);
+		if (data[0].qutActive == "0") {
+			$("#qutActive").prop("checked", false);
+		} else {
+			$("#qutActive").prop("checked", true);
+		}
+		itemOptions.api.setRowData(data);
+		$("#subTotal").val(data[0].subTotal);
+		$("#qIGST").val(data[0].qIGST);
+		$("#qCGST").val(data[0].qCGST);
+		$("#qSGST").val(data[0].qSGST);
+		$("#grandTotal").val(data[0].grandTotal);
+		$("#taxType").val(data[0].taxType);
+		$("#itemIgst").val(data[0].itemIgst);
+		$("#itemCgst").val(data[0].itemCgst);
+		$("#itemSgst").val(data[0].itemSgst);
+		$("#custId").val(data[0].custId);
+		$("#custName").val(data[0].custName);
+		$("#adjustment").val(data[0].adjustment);
+		$("#tcsName").val(data[0].tcs);
+		$("#tcsId").val(data[0].tcsId);
+		$("#tcsAmount").val(data[0].tcsAmount);
+		$("#tcsValue").val(data[0].tcsRate);
+		$("#paymentTermId").val(data[0].paymentTermId);
+		$("#challan").val(data[0].saleDeliveryChallan);
+		$("#challanDate").val(data[0].deliveryChallanDate);
+		$("#wayBill").val(data[0].ebillNo);
+		$("#wayBillDate").val(data[0].ebillDate);
+		$("#totalFreightCharges").val(data[0].freigtCharge);
+		$("#total").val(data[0].total);
+		
+	    console.log('data-------------------------'+JSON.stringify(data[0]));
+		
+		getAddressDetails(data[0].custId);
+		getSalesOrder(data[0].custId,data[0].salesOrder);
+		
+		
+		hideShowS();
+ 
+		var date = (new Date()).toISOString().split('T')[0];
+		var newDate = changeDateFormat(date);
+		$("#invoiceDate").val(newDate);
+		
+		$.ajax({type : "GET",
+			url : "view-invoice-get-insertedid",
+					success : function(response) {
+						if (response.message == "success") {
+						//console.log("Response--------------"+JSON.stringify(response.body[0].name));
+						$("#invoiceReference").val(response.body[0].key);
+						}
+					},
+					error : function(e) { 
+					}
+				});
+ 
+		localStorage.setItem('ReqInvoiceData', null);
+	} else {
+		$("#poId").val('New');
+	}
+});
+	function closeAllNav() {
+		closeNav();
+		closeNav1();
+		closeNav2();
+	}
+	var columnDefs = [
+			{
+				headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true,
+				pinned: 'left',
+			},
+			{
+				headerName : "Sales Invoice Id",
+				field : "saleInvoice",
+				pinned: 'left',
+				width : 150,
+				cellRenderer : function(params) {
+					return '<a onclick=editsalesInvoice("'
+							+ params.data.saleInvoice
+							+ '","'+params.data.poId+'") href="javascript:void(0)">'
+							+ params.data.saleInvoice + '</a>';
+				}
+			}, {
+				headerName : 'Invoice Date',
+				field : "invoiceDate",
+				width:140,
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : 'PO Id',
+				field : "poId",
+				width:150,
+				
+			},{	headerName : 'Customer Name',
+					field : "custName"
+				
+			},{
+				headerName : 'Amount',
+				field : "grandTotal",
+				width:140,
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+			}, {
+				headerName : 'Due Date',
+				field : "dueDate",
+				width:140,
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, { 
+				headerName : 'Payment Term',
+				field : "paymentTermId",
+				width:150,
+			},{
+				headerName : "Invoice",
+				cellStyle : {
+					textAlign : 'center'
+				},
+				cellRenderer : function(params) {
+					var s = "";
+					s = ' <a href="#" class="grn-btn" onclick="invoicePdfDownloadModal(\''+params.data.saleInvoice+'\')"><i class="ti ti-download"></i> Invoice </a>';
+					return s;
+				},
+				width: 140,
+				} , {
+				headerName : 'Created By',
+				field : "qutCreatedBy",
+				width:150,
+			}];
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowSelection : 'single',
+
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 251,
+			height : 10
+		},
+		onSelectionChanged : rowSelect,
+	};
+	function invoicePdfDownloadModal(id) {
+		$('#invoiceModal').modal('show');
+		$('#invHid').val(id);
+	}
+	function invoicePdfDownload() {
+		var invId=$('#invHid').val();
+		var copytype=$('input[name="copyType"]:checked').val();
+		$('#invoiceModal').modal('hide');
+		window.open("/sales/view-invoice-pdf-downloads?invId="+ window.btoa(invId)+"&copytype="+ window.btoa(copytype), '_blank');  
+	}
+	/*
+	 sales Item 
+	 */
+
+		var itemDefs = [
+/* 			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+
+			}, */
+			{
+				headerName : "SlNo",
+				field : "slNo",
+				width : 70,
+/* 				cellRenderer : function(params) {
+					if (params.data.slNo) {
+						return '<a onclick=editProduct("' + params.data.slNo
+								+ '") href="javascript:void(0)">'
+								+ params.data.slNo + '</a>';
+					} else {
+						return '<a onclick=editProduct("' + params.data.slNo
+								+ '") href="javascript:void(0)">'
+								+ params.data.slNo + '</a>';
+					}
+				} */
+			}, {
+				headerName : 'category Id',
+				field : "categoryId",
+				width : 150,
+			}, {
+				headerName : 'Project Id',
+				field : "projectId",
+				width : 150,
+			}, {
+
+				headerName : 'PO/WO Id',
+				field : "poWoId",
+				width : 175,
+			}, {
+
+				headerName : 'Specification',
+				field : "specification",
+				width : 300,
+			
+			}, {
+				headerName : 'Percent',
+				field : "percent",
+				type : 'rightAligned',
+				width : 150,
+				//valueFormatter : currencyFormatter
+			}, {
+				headerName : 'Amount',
+				field : "amount",
+				width : 150,
+			
+	}];
+	var itemOptions = {
+		columnDefs : itemDefs,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 100,
+			height : 10,
+			editable : true,
+		},
+		onSelectionChanged : rowSelectItem,
+		getRowNodeId : function(data) {
+			return data.slNo;
+		},
+		onCellValueChanged : function(param) {
+			var quantity = param.data.quantity;
+			var quantitynew = param.data.quantitynew;
+			var unitPrice = param.data.unitPrice;
+			var discount = param.data.discount;
+			var lineTotal = parseFloat(quantity) * parseFloat(unitPrice)
+					- parseFloat(discount);
+
+			if (parseFloat(quantity) > parseFloat(quantitynew)) {
+				param.data.quantity = quantitynew;
+
+				param.api.refreshCells({
+					columns : [ "quantity" ]
+				});
+				$("#messageParagraph").text(
+						"quantity Can't Be Greater Than real value");
+				$("#msgOkModal").addClass("btn3");
+				$("#msgOkModal").removeClass("btn1");
+				$("#msgModal").modal('show');
+			} else {
+				param.data.quantity = quantity;
+				param.data.lineTotal = lineTotal;
+				param.api.refreshCells({
+					columns : [ "quantitynew", "lineTotal" ]
+				});
+			}
+		}
+
+	};
+ 
+	function add() {
+		$("#documentDetails").show();
+		$('#deleteItem').attr("disabled", true);
+		$("#searchRowDiv").hide();
+		$('#deleteItem').attr("disabled", true);
+		$('#salesInvrtn').hide();
+		$("#delete").hide();
+		$("#paymentDtls").hide();
+		$("#deliveryChallanDtls").hide();
+	
+		$('#hideTbl').hide();
+		$("#add").hide();
+		$("#myGrid").hide();
+		$("#save").show();
+		$("#Cancel").show();
+		$("#addData").show();
+		$("#totalInvoice").hide();
+		$("#dwnld").hide();
+		$("#upld").hide();
+		$("#addre").hide();
+	
+		$("#salesInvoiceheadId").html('');
+		$("#itemId").val('');
+		$("#itemName").val('');
+		$("#hsnCode").val('');
+		$("#quantity").val('');
+		$("#unitPrice").val('');
+		$("#discount").val('');
+		$("#gstRate").val('');
+		$("#lineTotal").val('');
+		$("#subTotal").val('');
+		$("#qIGST").val('');
+		$("#qCGST").val('');
+		$("#qSGST").val('');
+		$("#grandTotal").val('');
+		$("#taxType").val('');
+		$("#sku").val('');
+		$("#poId").val('');
+		$("#qutActive").val('');
+		$("#itemIgst").val();
+		$("#itemCgst").val();
+		$("#itemSgst").val();
+		$("#custId").val();
+		$("#custName").val();
+		$("#paymentTermId").val("");
+		$("#invoiceDate").val("");
+		$("#dueDate").val("");
+		$("#tcsId").val("");
+		$("#tcsAmount").val("");
+		$("#adjustment").val("");
+		$("#totalFreightCharges").val("");
+		$("#total").val("");
+		getChildData();
+		var date = (new Date()).toISOString().split('T')[0];
+		var newDate = changeDateFormat(date);
+		$("#invoiceDate").val(newDate);
+		
+		$.ajax({type : "GET",
+			url : "view-invoice-get-insertedid",
+					success : function(response) {
+						if (response.message == "success") {
+						//console.log("Response--------------"+JSON.stringify(response.body[0].name));
+						$("#invoiceReference").val(response.body[0].key);
+						}
+					},
+					error : function(e) { 
+					}
+				});
+		
+	
+	}
+	
+	function getChildData(){
+		$.ajax({
+			type : "GET",
+			url : "view-invoice-get-childdata",
+			success : function(response) {
+				if (response.code == "success") {
+					var jsonData = JSON.parse(response.body);
+					var allData=jsonData.Data;
+					var len = allData.length;
+					itemOptions.api.setRowData()
+					itemOptions.api.setRowData(allData); 
+					
+				}
+			},
+			error : function(e) {
+			}
+		}); 
+	}
+	function changeDateFormat(inputDate){  // expects Y-m-d
+	    var splitDate = inputDate.split('-');
+	    if(splitDate.count == 0){
+	        return null;
+	    }
+	    var year = splitDate[0];
+	    var month = splitDate[1];
+	    var day = splitDate[2]; 
+
+	    return day + '-' + month + '-' + year;
+	}
+	function Cancel() {
+		$('.formValidation').remove();
+			$("#salesInvrtn").show();
+			$("#delete").show();
+			$("#paymentDtls").show();
+			$("#deliveryChallanDtls").show();
+			
+			$("#add").show();
+			$("#myGrid").show();
+			$("#save").hide();
+			$("#Cancel").hide();
+			$("#addData").hide();
+			$('#hideTbl').show();
+			$("#totalInvoice").show();
+			$("#dwnld").show();
+			$("#upld").show();
+			$("#addPayment").hide();
+ 
+			$("#reqTable").show();
+			$(".btn-hs").show();
+			$("#myGrid").show();
+			$("#addData").hide();
+			 $("#searchRowDiv").show();
+			agGrid.simpleHttpRequest({
+				url : "view-invoice-through-ajax"
+			}).then(function(data) {
+				var len = data.length;
+				$('#totalInvoice').find('span').html(len);
+				gridOptions.api.setRowData(data);
+			});
+			$("#custId").val('');
+			$("#custName").val('');
+			$("#salesInvoiceheadId").html('');
+			$("#itemId").val('');
+			$("#itemName").val('');
+			$("#hsnCode").val('');
+			$("#quantity").val('');
+			$("#unitPrice").val('');
+			$("#discount").val('');
+			$("#gstRate").val('');
+			$("#lineTotal").val('');
+			$("#subTotal").val('');
+			$("#qIGST").val('');
+			$("#qCGST").val('');
+			$("#qSGST").val('');
+			$("#grandTotal").val('');
+			$("#taxType").val('');
+			$("#sku").val('');
+			$("#poId").val('');
+			$("#itemIgst").val();
+			$("#itemCgst").val();
+			$("#itemSgst").val();
+ 
+			itemOptions.api.setRowData();
+
+			$('#delete').attr("disabled", true);
+			$('#salesInvrtn').attr("disabled", true);
+			$('#paymentDtls').attr("disabled", true);
+			$('#deliveryChallanDtls').attr("disabled", true);
+	}
+	function openNav() {
+		$("#sku").val("");
+		$("#itemName").val("");
+		$("#hsnCode").val("");
+		$("#quantity").val("");
+		$("#unitPrice").val("");
+		$("#discount").val(0);
+		$("#gstRate").val(0);
+		$("#lineTotal").val("");
+		$("#editProduct").val("");
+		var custValid = true;
+		if ($("#custName").val() == null || $("#custName").val() == "") {
+			custValid = false;
+		}
+		if(custValid){
+			document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:409px;";
+			document.getElementById("main_content1").style.width = "75%";
+		}else{
+			$("#messageParagraph").text("First Choose Customer Name");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+		}
+	}
+
+	function closeNav() {
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main_content1").style.width = "100%";
+		$('.formValidation').remove();
+		$("#sku").val('');
+		$("#itemId").val('');
+		$("#itemName").val('');
+		$("#hsnCode").val('');
+		$("#unit").val('');
+		$("#quantity").val('');
+		$("#unitPrice").val('');
+		$("#discount").val('');
+		$("#gstRate").val('');
+		$("#lineTotal").val('');
+		$("#editProduct").val(null);
+	}
+ 
+	/*
+	 * taxtype fn
+	 */
+		function hideShowS() {
+			var taxType1 = $("#taxType").val();
+			if (taxType1 == 'true') {
+				$('#igstTR').hide();
+				$('#cgstTR').show();
+				$('#sgstTR').show();
+			} else {
+				$('#igstTR').show();
+				$('#cgstTR').hide();
+				$('#sgstTR').hide();
+			}
+		}
+	/*
+	 * taxtype fn for payment
+	 */
+	function hideShowSPay() {
+		var taxType1 = $("#taxType").val();
+		if (taxType1 == "true") {
+			$('#igstPayTR').show();
+			$('#cgstPayTR').hide();
+			$('#sgstPayTR').hide();
+
+		} else {
+			$('#igstPayTR').hide();
+			$('#cgstPayTR').show();
+			$('#sgstPayTR').show();
+
+		}
+
+	}
+
+	/* //sale Invoice item  table add */
+
+	function saveTableData() {
+		var editProduct = $("#editProduct").val();
+		var item = {};
+		var data = 1;
+		var validation = true;
+
+		if (item.sku == null || item.sku == "") {
+			validation = validationUpdated("Stock Keeping Unit Required", 'sku');
+		}
+		if (item.itemName == null || item.itemName == "") {
+			validation = validationUpdated("Item Name Required", 'itemName');
+		}
+		if (item.quantity == null || item.quantity == "") {
+			validation = validationUpdated("Quantity Required", 'quantity');
+		}
+		if (item.unit == null || item.unit == "") {
+			validation = validationUpdated("Unit Required", 'unit');
+		}
+		if (item.unitPrice == null || item.unitPrice == "") {
+			validation = validationUpdated("UnitPrice Required", 'unitPrice');
+		}
+		if (item.discount == null || item.discount == "") {
+			validation = validationUpdated("Discount Required", 'discount');
+		}
+		if (item.gstRate == null || item.gstRate == "") {
+			validation = validationUpdated("GST Rate Required", 'gstRate');
+		}
+		if (item.lineTotal == null || item.lineTotal == "") {
+			validation = validationUpdated("Line Total Required", 'lineTotal');
+		}
+
+		if (validation) {
+			itemOptions.api.forEachNode(function(rowNode, index) {
+				if (!editProduct) {
+					data = data + 1;
+				}
+			});
+
+			item.itemId = $('#itemId').val();
+			item.sku = $('#sku').val();
+			item.hsnCode = $('#hsnCode').val();
+			item.itemName = $('#itemName').val();
+			item.quantity = $('#quantity').val();
+			item.unit = $('#unit').val();
+			item.unitName = $("#unit option:selected").text();
+			item.unitPrice = $('#unitPrice').val();
+			item.discount = $('#discount').val();
+			item.gstRate = $('#gstRate').val();
+			item.lineTotal = $('#lineTotal').val();
+			var taxType1= $("#taxType").val();
+			if (taxType1 == 'true') {
+				item.itemCgst = (item.lineTotal*item.gstRate)/200;
+				item.itemSgst = (item.lineTotal*item.gstRate)/200;
+				item.itemIgst=0;
+				item.taxableAmt=parseFloat(item.lineTotal)+item.itemCgst+item.itemSgst;
+			}else{
+				item.itemCgst = 0;
+				item.itemSgst = 0;
+				item.itemIgst = (item.lineTotal*item.gstRate)/100;
+				item.taxableAmt=parseFloat(item.lineTotal)+item.itemIgst;
+			}
+			item.slNo = data;
+			var quot = [];
+
+			if (editProduct) {
+				var rowNode = itemOptions.api.getRowNode(editProduct);
+				rowNode.setData(item);
+			} else {
+				itemOptions.api.forEachNode(function(rowNode, index) {
+					quot.push(rowNode.data);
+				});
+				quot.push(item)
+				itemOptions.api.setRowData(quot);
+
+				//calculation GST,IGST,SGST,CGST,SUBTOTAL,GRANDTOTAL
+				var sum = 0.0;
+				var gstRate = 0.0;
+				var qSGST = 0.0;
+				var qCGST = 0.0;
+				var qIGST = 0.0;
+				var itemIgst = 0.0;
+				var itemCgst = 0.0;
+				var itemSgst = 0.0;
+				var len = quot.length;
+				for (var i = 0; i < len; i++) {
+					sum = sum + parseFloat(quot[i].lineTotal);
+					if (taxType1 == 'false') {
+						quot[i].itemIgst = quot[i].lineTotal * quot[i].gstRate
+								/ 100;
+						qIGST = qIGST + quot[i].itemIgst;
+						grandTotal = sum + qIGST;
+					} else {
+						quot[i].itemCgst = quot[i].lineTotal * quot[i].gstRate
+								/ 200;
+						quot[i].itemSgst = quot[i].lineTotal * quot[i].gstRate
+								/ 200;
+
+						qCGST = qCGST + quot[i].itemCgst;
+						qSGST = qSGST + quot[i].itemSgst;
+						grandTotal = sum + qCGST + qSGST;
+					}
+				}
+				$("#subTotal").val(sum);
+				$("#qIGST").val(qIGST);
+				$("#qCGST").val(qCGST);
+				$("#qSGST").val(qSGST);
+				$("#grandTotal").val(grandTotal);
+				tcsBlank();
+			}
+			closeNav();
+			$("#sku").val('');
+			$("#itemId").val('');
+			$("#itemName").val('');
+			$("#quantity").val('');
+			$("#unit").val('');
+			$("#unitPrice").val('');
+			$("#discount").val('');
+			$("#gstRate").val('');
+			$("#lineTotal").val('');
+			$("#editProduct").val(null);
+		}
+
+	}
+ //all saved data
+	function save() {
+		if (validProductData()&& validFormData()) {
+			var datas = [];
+			itemOptions.api.forEachNode(function(rowNode, indrx) {
+				var obj = rowNode.data;
+				obj.saleInvoice = $("#saleInvoice").val();
+				obj.saleInvoice = $("#salesInvoiceheadId").html();
+				obj.poId = $("#poId").val();
+				obj.subTotal = $("#subTotal").val();
+				obj.grandTotal = $("#grandTotal").val();
+				obj.qIGST = $('#qIGST').val();
+				obj.qCGST = $('#qCGST').val();
+				obj.qSGST = $('#qSGST').val();
+				obj.taxType = $('#taxType').val();
+				obj.custId = $('#custId').val();
+				obj.custName = $('#custName').val();
+				obj.adjustment = $("#adjustment").val();
+				obj.tcs = $("#tcsId").val();
+				obj.tcsAmount = $("#tcsAmount").val();
+				obj.paymentTermId = $('#paymentTermId').val();
+				obj.invoiceDate = $("#invoiceDate").val();
+				obj.dueDate = $("#dueDate").val();
+				obj.challanId = $("#challan").val();
+				obj.challanDate = $("#challanDate").val();
+				obj.ebillNo = $("#wayBill").val();
+				obj.ebillDate = $("#wayBillDate").val();
+			     obj.totalFreightCharges = $("#totalFreightCharges").val();
+			     obj.total = $("#total").val();
+				console.log('Object',obj)
+				datas.push(obj);
+			});
+			saveInvoice(datas);
+		}
+	}
+	function saveInvoice(datas) {
+		console.log(JSON.stringify(datas))
+		$.ajax({
+
+					type : "POST",
+					url : "view-invoice-add",
+					contentType : "application/json",
+					data : JSON.stringify(datas),
+					success : function(response) {
+						if (response.message == "Success") {
+							$("#messageParagraph").text(
+									"Data saved successfully");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							Cancel();
+						}
+
+					},
+					error : function(datas) {
+						console.log(datas)
+					}
+				})
+
+	}
+	
+ 
+	
+	
+	//validation
+	function validFormData() {
+		var allValid = true;
+		if (!validationUpdated("PO Id Required",'poId'))
+			allValid = false;
+		if (!validationUpdated("Due Date Required", 'dueDate'))
+			allValid = false;
+		return allValid;
+	}
+
+	function validProductData() {
+		return true;
+	}
+
+	/* 
+	Edit Invoice Item
+	 */
+	function editProduct(slNo) {
+		var saleInvoice = $("#salesInvoiceheadId").html();
+		var rowNode = itemOptions.api.getRowNode(slNo);
+
+		console.log(rowNode)
+		openNav();
+		$("#editProduct").val(slNo);
+		$("#sku").val(rowNode.data.sku);
+		$("#itemId").val(rowNode.data.itemId);
+		$("#itemName").val(rowNode.data.itemName);
+		$("#hsnCode").val(rowNode.data.hsnCode);
+		$("#quantity").val(rowNode.data.quantity);
+		$("#unitPrice").val(rowNode.data.unitPrice);
+		$("#gstRate").val(rowNode.data.gstRate);
+		$("#discount").val(rowNode.data.discount);
+		$("#lineTotal").val(rowNode.data.lineTotal);
+		$("#itemIgst").val(rowNode.data.itemIgst);
+		$("#itemCgst").val(rowNode.data.itemCgst);
+		$("#itemSgst").val(rowNode.data.itemSgst);
+
+	}
+
+	function editsalesInvoice(saleInvoice, poId) {
+		Cancel();
+		$("#searchRowDiv").hide();
+		$('#deleteItem').attr("disabled", true);
+		$("#myGrid").hide();
+		$("#reqTable").hide();
+		$(".btn-hs").hide();
+		$("#addData").show();
+		$("#add").hide();
+		$("#save").show();
+		$("#Cancel").show();
+		$("#totalInvoice").hide();
+		$("#dwnld").hide();
+		$("#upld").hide();
+		$("#documentDetails").show();
+		$("#addre").hide();
+		agGrid.simpleHttpRequest({
+			url : 'view-invoice-edit-new?id=' + saleInvoice
+		}).then(function(data) {
+					console.log("SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS"+data);
+					$("#salesInvoiceheadId").html(data[0].saleInvoice);
+					$("#custId").val(data[0].custId);
+					getAddressDetails(data[0].custId);
+					$("#custName").val(data[0].custName);
+					$("#addre").show();
+					$("#adjustment").val(data[0].adjustment);
+					$("#tcsName").val(data[0].tcs);
+					$("#tcsId").val(data[0].tcsId);
+					$("#tcsAmount").val(data[0].tcsAmount);
+					$("#paymentTermId").val(data[0].paymentTermId);
+					$("#invoiceDate").val(data[0].invoiceDate);
+					$("#dueDate").val(data[0].dueDate);
+					$("#invoiceReference").val(data[0].saleInvoice);
+					$("#poId").val(data[0].poId);
+					$("#grandTotal").val(data[0].grandTotal);
+					$("#qSGST").val(data[0].qSGST);
+					$("#qCGST").val(data[0].qCGST);
+					$("#subTotal").val(data[0].subTotal);
+					$("#grandTotal").val(data[0].grandTotal);
+					$("#taxType").val(data[0].taxType);
+					$("#challan").val(data[0].challanId);
+					$("#challanDate").val(data[0].challanDate);
+					$("#wayBill").val(data[0].ebillNo);
+					$("#wayBillDate").val(data[0].ebillDate);
+					$("#totalFreightCharges").val(data[0].totalFreightCharges);
+					$("#total").val(data[0].total);
+					$("#qIGST").val(data[0].qIGST);
+					$("#qCGST").val(data[0].qCGST);
+					$("#qSGST").val(data[0].qSGST);
+					hideShowS();
+					itemOptions.api.setRowData(data);
+					 //EDIT GST,SUBTOTAL,GRANDTOTAL,SGST,CGST,IGST
+ 				 	/* var sum = 0.0;
+					var gstRate = 0.0;
+					var qSGST = 0.0;
+					var qCGST = 0.0;
+					var qIGST = 0.0;
+					var len = data.length;
+					for (var i = 0; i < len; i++) {
+						sum = sum + data[i].lineTotal;
+						$("#taxtype").val(data[0].taxType);
+						if (data[0].taxType=='false') {
+							data[0].itemIgst = data[i].lineTotal
+									* data[i].gstRate / 100;
+							qIGST = qIGST + data[0].itemIgst;
+
+							grandTotal = sum + qIGST;
+						} else {
+							data[0].itemCgst = data[i].lineTotal
+									* data[i].gstRate / 200;
+							data[0].itemSgst = data[i].lineTotal
+									* data[i].gstRate / 200;
+
+							qCGST = qCGST + data[0].itemCgst;
+							qSGST = qSGST + data[0].itemSgst;
+							grandTotal = sum + qCGST + qSGST;
+						}
+
+					}
+ 
+					$("#itemIgst").val(itemIgst);
+					$("#itemCgst").val(itemCgst);
+					$("#itemSgst").val(itemSgst);
+					$("#subTotal").val(sum);  */
+				
+			});
+
+	}
+	//calculate Amount=(quantity*unitPrice)-Discount
+	var totalLine;
+	function calculateLineTotal() {
+		var price = $("#unitPrice").val();
+		var quantity = $("#quantity").val();
+		var discount = $("#discount").val();
+		var discountAmount = $("#discountAmount").val();
+		if (discountAmount == '1') {
+		if (price && quantity) {
+			var mul = price * quantity;
+
+			if (discount > mul) {
+
+				$("#discount").val("0");
+				totalLine = mul - discount;
+				$("#lineTotal").val((mul).toFixed(2));
+			} else {
+				totalLine = mul - discount;
+				$("#lineTotal").val((totalLine).toFixed(2));
+			}
+
+		} else {
+			var mul = 0;
+			$("#lineTotal").val((mul).toFixed(2));
+
+		}
+		} else {
+			if (price && quantity) {
+				var mul = price * quantity;
+				if (discount > mul) {
+
+					$("#discount").val("0");
+					totalLine1 = (mul / 100) * discount;
+					totalLine = mul - totalLine1;
+					$("#lineTotal").val((mul).toFixed(2));
+				} else {
+					totalLine1 = (mul / 100) * discount;
+					totalLine = mul - totalLine1;
+					$("#lineTotal").val((totalLine).toFixed(2));
+				}
+
+			} else {
+				var mul = 0;
+				$("#lineTotal").val((mul).toFixed(2));
+
+			}
+		}
+	}
+	/* 
+	Delete  
+	 */
+	function deleteQuotation() {
+
+		$('#deleteQuot').modal('show');
+	}
+	function deleteItem() {
+
+		$('#deleteProduct').modal('show');
+	}
+
+	function cancelModalBtn() {
+
+		$("#deleteModalBtn").removeAttr("disabled");
+		$('#deleteQuot').modal('hide');
+		
+	}
+
+	function cancelModalProductBtn() {
+
+		$("#deleteModalBtn").removeAttr("disabled");
+		$('#deleteProduct').modal('hide');
+	}
+
+	function rowSelect() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			$('#delete').attr("disabled", false);
+			$('#salesInvrtn').attr("disabled", false);
+			$('#paymentDtls').attr("disabled", false);
+			$('#deliveryChallanDtls').attr("disabled", false);
+
+		} else {
+			$('#delete').attr("disabled", true);
+			$('#salesInvrtn').attr("disabled", true);
+			$('#paymentDtls').attr("disabled", true);
+			$('#deliveryChallanDtls').attr("disabled", true);
+		}
+
+	}
+	function rowSelectItem() {
+		var selectedRows = itemOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			$('#deleteItem').attr("disabled", false);
+			$('#newItem').attr("disabled", true);
+
+		} else {
+			$('#deleteItem').attr("disabled", true);
+			$('#newItem').attr("disabled", false);
+		}
+
+	}
+
+	// delete salesInvoice 
+
+	function deleteOnclick() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var selectedRowsString = '';
+		selectedRows.forEach(function(selectedRow, index) {
+			if (index > 0) {
+				selectedRowsString += ',';
+			}
+			selectedRowsString += selectedRow.saleInvoice;
+		});
+		if (selectedRowsString) {
+			var item = {};
+			item.saleInvoice = selectedRowsString;
+	
+			$.ajax({
+				type : "POST",
+				url : "view-invoice-delete",
+				dataType : "json",
+				contentType : "application/json",
+				data : JSON.stringify(item),
+				success : function(response) {
+				
+					if (response.message == "Success") {
+						location.reload();
+						$('#deleteQuot').modal('hide');
+						agGrid.simpleHttpRequest({
+							url : 'view-invoice-through-ajax'
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+							console.log(JSON.stringify(data))
+						});
+
+					} else {
+
+					}
+				},
+				error : function(data) {
+					console.log(data)
+				}
+			})
+		} else {
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+	}
+
+	function deleteProductOnclick() {
+		var selectedRows = itemOptions.api.getSelectedRows();
+		itemOptions.api.applyTransaction({
+			remove : selectedRows
+		});
+		cancelModalProductBtn();
+		//DELETE GST,SUBTOTAL,GRANDTOTAL,SGST,CGST,IGST
+		var sum = $("#subTotal").val();
+		var gstRate = $("#gstRate").val();
+		var qCGST = $("#qCGST").val();
+		var qSGST = $("#qSGST").val();
+		var qIGST = $("#qIGST").val();
+		var grandTotal = $("#grandTotal").val();
+/* 		var itemIgst = $("#itemIgst").val();
+		var itemCgst = $("#itemCgst").val();
+		var itemSgst = $("#itemSgst").val(); */
+		var len = selectedRows.length;
+		for (var i = 0; i < len; i++) {
+			sum = sum - selectedRows[i].lineTotal;
+			var taxType1 = $("#taxType").val()
+			if (taxType1 == "false") {
+				selectedRows[i].itemIgst = selectedRows[i].lineTotal
+						* selectedRows[i].gstRate / 100;
+				qIGST = qIGST - selectedRows[i].itemIgst;
+				grandTotal = sum + qIGST;
+			} else {
+				selectedRows[i].itemCgst = selectedRows[i].lineTotal
+						* selectedRows[i].gstRate / 200;
+				selectedRows[i].itemSgst = selectedRows[i].lineTotal
+						* selectedRows[i].gstRate / 200;
+
+				qCGST = qCGST - selectedRows[i].itemCgst;
+				qSGST = qSGST - selectedRows[i].itemSgst;
+				grandTotal = sum + qCGST + qSGST;
+			}
+
+		}
+
+/* 		$("#itemIgst").val(itemIgst);
+		$("#itemCgst").val(itemCgst);
+		$("#itemSgst").val(itemSgst); */
+		$("#subTotal").val(sum);
+		$("#qIGST").val(qIGST);
+		$("#qCGST").val(qCGST);
+		$("#qSGST").val(qSGST);
+		$("#grandTotal").val(grandTotal)
+		tcsCalculation();
+	}
+
+	/*create sales Invoice Return*/
+
+ 	function salesInvrtn() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var selectedRowsString = '';
+		selectedRows.forEach(function(selectedRow, index) {
+			if (index > 0) {
+				selectedRowsString += ',';
+			}
+			selectedRowsString += selectedRow.saleInvoice;
+
+		});
+		if (selectedRowsString) {
+			sessionStorage.setItem('activity', 'ACT0084');
+
+			agGrid.simpleHttpRequest({
+				url : 'view-invoice-edit-new?id=' + selectedRowsString
+			}).then(function(data) {
+				localStorage.setItem('ReqInvoiceReturnData', JSON.stringify(data));
+				itemOptions.api.setRowData(data);
+				window.location.href = "/sales/view-saleInvoicereturn"
+			});
+
+		} else {
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+	} 
+
+	/* Item AutoSearch */
+
+	function getItemQutotationList() {
+		//alert("L")
+		var search = $("#itemName").val();
+		if (search) {
+			//alert(search)
+
+			$
+					.ajax({
+						type : "POST",
+						url : "view-invoice-get-item-list",
+						dataType : 'json',
+						contentType : 'application/json',
+						data : search,
+						success : function(response) {
+							if (response.message == "success") {
+
+								if (response.body.length != 0) {
+									$("#itemName").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1" style="margin-left:-40px; font-weight:100; font-size:14px; color:#ccc;">';
+									for (var i = 0; i < response.body.length; i++) {
+										content += '<li class="autocompletedata cp" onClick="selectAutocompleteValueItem1(\''
+												+ response.body[i].itemId
+												+ '\',\''
+												+ response.body[i].itemName
+												+ '\',\''
+												+ response.body[i].gstRate
+												+ '\',\''
+												+ response.body[i].sku
+												+ '\')">'
+												+ response.body[i].itemName
+												+ '</li>';
+									}
+									content += '</ul>';
+									console.log("content " + content)
+									$("#suggesstion-box_").show();
+									$("#suggesstion-box_").html(content);
+
+								} else {
+									$("#itemName").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1">';
+									content += '<li onClick="selectAutocompleteValueItem()">'
+											+ "No Data Found" + '</li>';
+									content += '</ul>';
+									$("#suggesstion-box_").show();
+									$("#suggesstion-box_").html(content);
+								}
+							}
+						},
+						error : function(data) {
+							console.log(data);
+						}
+					})
+		}
+	}
+	function closeModal1(){
+		$("#myModal").modal('hide');
+	}
+	function selectAutocompleteValueItem1(itemId, itemName, gstRate, sku) {
+
+		if (itemId) {
+
+			$("#itemId").val(itemId);
+			$("#itemName").val(itemName);
+			$("#gstRate").val(gstRate);
+			$("#sku").val(sku);
+			$("#itemName").attr('data-procat', itemId);
+			$("#suggesstion-box_").hide();
+			hideShowS();
+			//checkForDuplicate(key,counter);
+
+		} else {
+
+			$("#itemId").val("");
+			$("#gstRate").val("");
+			$("#sku").val("");
+			$("#itemName").val("");
+			$("#itemName").attr('data-procat', "");
+			$("#suggesstion-box_").hide();
+
+		}
+	}
+	function selectAutocompleteValueItem() {
+
+		$("#itemId").val("");
+		$("#gstRate").val("");
+		$("#sku").val("");
+		$("#itemName").val("");
+		$("#itemName").attr('data-procat', "");
+		$("#suggesstion-box_").hide();
+
+	}
+	
+	function onQuickFilterChanged() {
+		$(".ti-search srchicon").hide();
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+ 
+	//calculate outStdAmt
+	function calculateoutStdAmt() {
+		var totalAmnt = $("#totalAmnt").val();
+		var paidAmnt = $("#paidAmnt").val();
+		var amt = parseFloat(totalAmnt) - parseFloat(paidAmnt)
+		var outStdAmt = $("#outStdAmt").val(amt)
+
+	}
+	
+	//Calculate adjustment
+	function calculateAdjustment() {
+		var adjustment = $("#adjustment").val();
+		if (adjustment == "" || adjustment == null || adjustment == "null") {
+			adjustment = 0;
+			$("#adjustment").val(adjustment);
+		}
+		var tcsAmount = $("#tcsAmount").val();
+		if (tcsAmount == "" || tcsAmount == null || tcsAmount == "null") {
+			tcsAmount = 0;
+			$("#tcsAmount").val(tcsAmount);
+		}
+		var grandTotal = $("#grandTotal").val();
+		if (grandTotal == "" || grandTotal == null || grandTotal == "null") {
+			grandTotal = 0;
+			$("#grandTotal").val(grandTotal);
+		}
+		 var totalFreightCharges = $("#totalFreightCharges").val();
+		if (totalFreightCharges == "" || totalFreightCharges == null || totalFreightCharges == "null") {
+			totalFreightCharges = 0;
+			$("#totalFreightCharges").val(totalFreightCharges);
+		} 
+		var subTotal = $("#subTotal").val();
+		var qSGST = $("#qSGST").val();
+		var qCGST = $("#qCGST").val();
+		var qIGST = $("#qIGST").val();
+		var adjustment = $("#adjustment").val();
+		var total = $("#total").val();
+		var totalFreightCharges = $("#totalFreightCharges").val();
+		var totVal = parseFloat(total) + parseFloat(qSGST)
+				+ parseFloat(qCGST) + parseFloat(qIGST) + parseFloat(tcsAmount);
+		
+		
+		
+		if (adjustment && totVal) {
+			
+			
+			var add = parseFloat(adjustment) + parseFloat(totVal);
+			$("#grandTotal").val((add).toFixed(2));
+		} else {
+			var add = 0;
+			$("#grandTotal").val((totVal).toFixed(2));
+		}
+	}
+	
+
+	//TCS auto search
+
+	function getTCSList () {
+		var search = $("#tcsName").val();
+
+		if (search) {
+
+			$
+					.ajax({
+						type : "POST",
+						url : "view-invoice-get-tcs-list",
+						dataType : 'json',
+						contentType : 'application/json',
+						data : search,
+						success : function(response) {
+							if (response.message == "success") {
+								console.log("response data"
+										+ JSON.stringify(response))
+								if (response.body.length != 0) {
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list3" >';
+									for (var i = 0; i < response.body.length; i++) {
+										content += '<li style="margin-left:-30px; font-weight:100; font-size:14px; color:#ccc;     background-color: #0909e4;" class="autocompletedata cp" onClick="selectAutocompleteValue3(\''
+												+ response.body[i].tcsId
+												+ '\',\''
+												+ response.body[i].taxName
+												+ '\',\''
+												+ response.body[i].rateId
+												+ '\',\''
+												+ response.body[i].taxType
+												+ '\')">'
+												+ response.body[i].taxName
+												+ '</li>';
+									}
+									content += '<li style="margin-left:-30px;"  onclick="AddTCS();"><a class="addCust" href="#">Manage TCS</a>'
+											+ '</li>';
+									content += '</ul>';
+									//console.log("content " + content)
+									$("#suggesstion-box3_").show();
+									$("#suggesstion-box3_").html(content);
+
+								} else {
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list3">';
+									content += '<li style="margin-left:-30px; font-weight:100; font-size:14px; color:#ccc;     background-color: #0909e4;" onClick="selectAutocompleteValuee1()">'
+											+ "No Data Found" + '</li>';
+									content += '<li style="margin-left:-30px;"  onclick="AddTCS();"><a class="addCust" href="#">Manage TCS</a>'
+											+ '</li>';
+									content += '</ul>';
+									$("#suggesstion-box3_").show();
+									$("#suggesstion-box3_").html(content);
+								}
+							}
+						},
+						error : function(data) {
+							console.log(data);
+						}
+					})
+		}
+
+	}
+
+	function selectAutocompleteValuee1() {
+
+		$("#tcsId").val("");
+		$("#tcsName").val("");
+		$("#custGSTNoo1").val("");
+		$("#search").val("");
+		$("#search").attr('data-procat', "");
+		$("#suggesstion-box3_").hide();
+
+	}
+
+	function selectAutocompleteValue3(tcsId, taxName,rateId, taxType) {
+		$("#tcsId").val(tcsId);
+		$("#tcsName").val(taxName);
+		$("#tcsValue").val(rateId);
+			$("#search").val(taxName);
+			$("#search").attr('data-procat', tcsId);
+			$("#suggesstion-box3_").hide();
+	tcsCalculation();
+	//tcsAmountCalculation();
+		
+	}
+	function AddTCS() {
+
+		$('#manageTCsModel').modal('show');
+
+	}
+	function tcscancelBtn() {
+		$('#manageTCsModel').modal('hide');
+		}
+		
+	function addtcsInfo1() {
+		var obj = {};
+		var Id = $("#tcsId").val();
+
+		obj.collection = $("#collection").val();
+		obj.rateId = $("#rateId").val();
+		obj.taxName = $("#taxName").val();
+		
+
+		$.ajax({
+			type : "POST",
+			url : "view-invoice-add-tcs",
+			contentType : "application/json",
+			data : JSON.stringify(obj),
+			success : function(response) {
+				if (response.message == "Success") {
+					//getSalessPersonList();
+					$("#messageParagraph").text("Data saved successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+
+					//$("#myGrid").show();
+					//$("#salespersonDetails").hide();
+					$('#manageTCsModel').modal('hide');
+
+				}
+			},
+			error : function(data) {
+			}
+		})
+
+	}
+	
+	//Calculate Tcs
+			function tcsCalculation(){
+				var tcsValue = $("#tcsValue").val();
+				var subTotal = $("#subTotal").val();
+				var grandTotal2 = $("#grandTotal").val();
+				var qSGST = $("#qSGST").val();
+				if (qSGST == "" || qSGST == null || qSGST == "null") {
+					qSGST = 0;
+					$("#qSGST").val(qSGST);
+				}
+				var qCGST = $("#qCGST").val();
+				if (qCGST == "" || qCGST == null || qCGST == "null") {
+					qCGST = 0;
+					$("#qCGST").val(qCGST);
+				}
+				var qIGST = $("#qIGST").val();
+				if (qIGST == "" || qIGST == null || qIGST == "null") {
+					qIGST = 0;
+					$("#qIGST").val(qIGST);
+				}
+				var adjustment = $("#adjustment").val();
+				 if(adjustment=="" || adjustment==null || adjustment=="null"){
+					 adjustment=0;
+					 $("#adjustment").val(adjustment);
+				 }
+				 var tcsAmount = $("#tcsAmount").val();
+				 if(tcsAmount=="" || tcsAmount==null || tcsAmount=="null"){
+					 tcsAmount=0;
+					 $("#tcsAmount").val(tcsAmount);
+				 }
+				 var grandTotal = $("#grandTotal").val();
+				 if(grandTotal=="" || grandTotal==null || grandTotal=="null"){
+					 grandTotal=0;
+					 $("#grandTotal").val(grandTotal);
+				 }
+				  var totalFreightCharges = $("#totalFreightCharges").val();
+				 if(totalFreightCharges=="" || totalFreightCharges==null || totalFreightCharges=="null"){
+					 totalFreightCharges=0;
+					 $("#totalFreightCharges").val(totalFreightCharges);
+				 } 
+				var totVal = parseFloat(subTotal) + parseFloat(qSGST)+parseFloat(qCGST) + parseFloat(qIGST)+ parseFloat(adjustment)+parseFloat(totalFreightCharges);
+				if (tcsValue) {
+					var tcs = (parseFloat(subTotal) * parseFloat(tcsValue)) / 100;
+					var add = parseFloat(tcs) + parseFloat(totVal);
+					$("#grandTotal").val((add).toFixed(2));
+					$("#tcsAmount").val((tcs).toFixed(2));
+				} else {
+					var add = 0;
+					$("#grandTotal").val((totVal).toFixed(2));
+				}
+			
+		}
+		var tcs=0;
+		function tcsBlank(){
+			var tcsValue=$("#tcsValue").val();
+			var tcsName = $("#tcsName").val();
+			var gt = $("#grandTotal").val();
+			var tcsAmount = $("#tcsAmount").val();
+			if(tcsName == ''){
+				tcsCalculation();
+				$("#tcsAmount").val(tcs);
+				
+			}
+			
+		} 
+		
+		
+		/* customer AutoSearch */
+	function getCustomerList() {
+		var search = $("#custName").val();
+	
+		if (search) {
+			$.ajax({
+						type : "POST",
+						url : "view-invoice-get-customer-list",
+						dataType : 'json',
+						contentType : 'application/json',
+						data : search,
+						success : function(response) {
+							if (response.message == "success") {
+								if (response.body.length != 0) {
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1">';
+									for (var i = 0; i < response.body.length; i++) {
+										content += '<li style="margin-left:-30px; font-weight:100; font-size:14px; color:#ccc;    background-color: #0909e4;" class="autocompletedata cp" onClick="selectAutocompleteValue1(\''
+												+ response.body[i].custId
+												+ '\',\''
+												+ response.body[i].custName
+												+ '\',\''
+												+ response.body[i].custGSTNo
+												+ '\',\''
+												+ response.body[i].taxType
+												+ '\')">'
+												+ response.body[i].custName
+												+ '</li>';
+									}
+									content += '<li style="margin-left:-30px;"  onclick="AddCustomer();"><a class="addCust" href="#">Add New Customer</a>'
+											+ '</li>';
+									content += '</ul>';
+									console.log("content " + content)
+									$("#suggesstion-box1_").show();
+									$("#suggesstion-box1_").html(content);
+
+								} else {
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1">';
+									content += '<li style="margin-left:-30px; font-weight:100; font-size:14px; color:#ccc;     background-color: #0909e4;" onClick="selectAutocompleteValue()">'
+											+ "No Data Found" + '</li>';
+									content += '<li style="margin-left:-30px;"  onclick="AddCustomer();"><a class="addCust" href="#">Add New Customer</a>'
+											+ '</li>';
+
+									content += '</ul>';
+									$("#suggesstion-box1_").show();
+									$("#suggesstion-box1_").html(content);
+								}
+							}
+						},
+						error : function(data) {
+							console.log(data);
+						}
+					})
+		} else {
+			$("#addre").hide();
+			$("#suggesstion-box1_").hide();
+		}
+
+	}
+ 
+		function AddCustomer() {
+
+			$('#addCustomerModel').modal('show');
+			$("#whatsApp").val('');
+			$("#gstNo").val('');
+			$("#customerType").val('');
+			$("#salutation").val('');
+			$("#customerName").val('');
+			$("#companyName").val('');
+			$("#customerDisplayName").val('');
+			$("#cusEmail").val('');
+			$("#custMobile").val('');
+			$("#custSkype").val('');
+			$("#custDesignation").val('');
+			$("#department").val('');
+			$("#webSite").val('');
+			$("#status").val('');
+			$("#pan").val('');
+			$("#currency").val('');
+			$("#openingBalance").val('');
+			$("#paymentTerms").val('');
+			$("#enableDtls").val('');
+			$("#portableLang").val('');
+			$("#faceBook").val('');
+			$("#twitter").val('');
+			$("#country").val('');
+			$("#states").val('');
+			$("#city").val('');
+			$("#street1").val('');
+			$("#street2").val('');
+			$("#zipCode").val('');
+			$("#phone").val('');
+			$("#fax").val('');
+			$("#country1").val('');
+			$("#states1").val('');
+			$("#city1").val('');
+			$("#street11").val('');
+			$("#street21").val('');
+			$("#zipCode1").val('');
+			$("#phone1").val('');
+			$("#fax1").val('');
+			$("#salutation1").val('');
+			$("#street11").val('');
+			$("#street21").val('');
+			$("#zipCode1").val('');
+			$("#phone1").val('');
+			$("#fax1").val('');
+			$("#salutation1").val('');
+			
+			$("#firstName").val('');
+			$("#lastName").val('');
+			$("#emailAdd").val('');
+			$("#mobile").val('');
+			$("#remarks").val('');
+
+		}
+		function cancelBtn1() {
+			$('#addCustomerModel').modal('hide');
+			}
+		function selectAutocompleteValue1(custId, custName, custGSTNo, taxType) {
+			if (custId) {
+				$("#custId").val(custId);
+				$("#custName").val(custName);
+				$("#custGSTNo").val(custGSTNo);
+				$("#taxType").val(taxType);
+				$("#search").val(custName);
+				$("#search").attr('data-procat', custId);
+				$("#suggesstion-box1_").hide();
+				$("#addre").show();
+				hideShowS();
+				  getAddressDetails(custId,"new")
+	            getSalesOrderList(custId,"add","");
+			} else {
+				$("#custId").val("");
+				$("#custName").val("");
+				$("#custGSTNo").val("");
+				$("#taxType").val("");
+				$("#search").val("");
+				$("#search").attr('data-procat', "");
+				$("#suggesstion-box1_").hide();
+			}
+		}
+		function selectAutocompleteValue() {
+			$("#custId").val("");
+			$("#custName").val("");
+			$("#custGSTNo").val("");
+			$("#taxType").val("");
+			$("#search").val("");
+			$("#search").attr('data-procat', "");
+			$("#suggesstion-box1_").hide();
+		}
+		function getAllDataForSalesOrder(){
+			var saleOrderId=$("#salesOrderId").val();
+			agGrid.simpleHttpRequest({
+				url : 'view-invoice-getdataOnSO?id=' + saleOrderId
+			}).then(
+					function(data) {
+						$("#salesInvoiceheadId").html(data[0].saleInvoice);
+						$("#taxtype").val(data[0].taxType);
+						$("#salesOrderId").val(data[0].salesOrder);
+						$("#custId").val(data[0].custId);
+						$("#custName").val(data[0].custName);
+						$("#adjustment").val(data[0].adjustment);
+						$("#tcsName").val(data[0].tcs);
+						$("#tcsId").val(data[0].tcsId);
+						$("#tcsAmount").val(data[0].tcsAmount);
+						$("#paymentTermId").val(data[0].paymentTermId);
+						$("#dueDate").val(data[0].dueDate);
+						itemOptions.api.setRowData(data);
+						hideShowS();
+						//EDIT GST,SUBTOTAL,GRANDTOTAL,SGST,CGST,IGST
+						var sum = 0.0;
+						var gstRate = 0.0;
+						var qSGST = 0.0;
+						var qCGST = 0.0;
+						var qIGST = 0.0;
+						var len = data.length;
+						for (var i = 0; i < len; i++) {
+							sum = sum + data[i].lineTotal;
+							if (data[0].taxType=='false') {
+								data[0].itemIgst = data[i].lineTotal
+										* data[i].gstRate / 100;
+								qIGST = qIGST + data[0].itemIgst;
+								grandTotal = sum + qIGST;
+							} else {
+								data[0].itemCgst = data[i].lineTotal
+										* data[i].gstRate / 200;
+								data[0].itemSgst = data[i].lineTotal
+										* data[i].gstRate / 200;
+
+								qCGST = qCGST + data[0].itemCgst;
+								qSGST = qSGST + data[0].itemSgst;
+								grandTotal = sum + qCGST + qSGST;
+							}
+						}
+
+						$("#itemIgst").val(itemIgst);
+						$("#itemCgst").val(itemCgst);
+						$("#itemSgst").val(itemSgst);
+						$("#subTotal").val(sum);
+						$("#qIGST").val(qIGST);
+						$("#qCGST").val(qCGST);
+						$("#qSGST").val(qSGST);
+						$("#grandTotal").val(grandTotal)
+
+					});
+		}
+		
+		function getAddressDetails(custId,shipId) {
+	   
+		$.ajax({
+			type : "GET",
+			url : "view-invoice-get-address?id=" + custId + "&shipId=" + shipId ,
+
+			async : false,
+			success : function(response) {
+				if (response.message == "Success") {
+					
+					console.log(response.body)
+					$("#con").html(response.body.country);
+					$("#bstate").html(response.body.states);
+					$("#bcity").html(response.body.city);
+					$("#bstreet1").html(response.body.street1);
+					$("#bstreet2").html(response.body.street2);
+					$("#bzipcode").html(response.body.zipCode);
+					$("#bphone").html(response.body.phone);
+					$("#bfax").html(response.body.fax);
+
+					$("#con1").html(response.body.country1);
+					$("#bstate1").html(response.body.states1);
+					$("#bcity1").html(response.body.city1);
+					$("#bstreet11").html(response.body.street11);
+					$("#bstreet21").html(response.body.street21);
+					$("#bzipcode1").html(response.body.zipCode1);
+					$("#bphone1").html(response.body.phone1);
+					$("#bfax1").html(response.body.fax1);
+					$("#shippingHiddenId").val(response.body.shippingId);
+					$("#addre").show();
+					
+
+	                  }
+			}
+		});
+	}
+
+		//add Customer Info
+		
+			function addCustomerInfo() {
+		pmailVal();
+		pancardVal();
+		pmailVal1();
+		mobVal1();
+		mobVal2();
+		mobVal3();
+		mobVal4();
+		mobVal5();
+		mobVal6();
+		zipcodeVal();
+		zipcodeVal1();
+		zipcodeVal2();
+		var obj = {};
+		obj.customerId = $('#customerId').text();
+		obj.customerType = $('#customerType').val();
+		obj.salutation = $('#salutation').val();
+		obj.customerName = $('#customerName').val();
+		obj.companyName = $('#companyName').val();
+		obj.customerDisplayName = $('#customerDisplayName').val();
+		obj.cusEmail = ($('#cusEmail').val()).toLowerCase();
+		obj.custMobile = $('#custMobile').val();
+		obj.custSkype = $('#custSkype').val();
+
+		 obj.custDesignation = $('#custDesignation').val();
+		obj.department = $('#department').val(); 
+		obj.webSite = $('#webSite').val();
+		obj.status = $('#status').val();
+		obj.pan = $('#pan').val();
+		obj.currency = $('#currency').val();
+		obj.openingBalance = $('#openingBalance').val();
+		obj.paymentTerms = $('#paymentTerms').val();
+		//obj.enableDtls = $('#enableDtls').val();
+		obj.portableLang = $('#portableLang').val();
+		obj.gstNo = $('#gstNo').val();
+		obj.whatsApp = $('#whatsApp').val();
+		obj.faceBook = $('#faceBook').val();
+		obj.twitter = $('#twitter').val();
+		obj.country = $('#country').val();
+		obj.states = $('#states').val();
+		obj.city = $('#city').val();
+		obj.street1 = $('#street1').val();
+		obj.street2 = $('#street2').val();
+		obj.zipCode = $('#zipCode').val();
+		obj.phone = $('#phone').val();
+		obj.fax = $('#fax').val();
+
+		obj.country1 = $('#country1').val();
+		obj.states1 = $('#states1').val();
+		obj.city1 = $('#city').val();
+		obj.street11 = $('#street11').val();
+		obj.street21 = $('#street21').val();
+		obj.zipCode1 = $('#zipCode1').val();
+		obj.phone1 = $('#phone1').val();
+		obj.fax1 = $('#fax1').val();
+
+		obj.salutation1 = $('#salutation1').val();
+		obj.firstName = $('#firstName').val();
+		obj.lastName = $('#lastName').val();
+		obj.emailAdd = ($('#emailAdd').val()).toLowerCase();
+		obj.mobile = $('#mobile').val();
+		obj.remarks = $('#remarks').val();
+	
+		//console.log("object on add customer-----------" + JSON.stringify(obj));
+		var validation = true;
+		if (obj.customerType == null || obj.customerType == "") {
+			validation = validationUpdated("Type Required",
+					"customerType");
+		}
+		var ctype = $('#customerType').val();
+		if (ctype == 'Business') {
+			if (obj.companyName == null || obj.companyName == "") {
+				validation = validationUpdated("Company Name Required",
+						"companyName");
+			}
+		} else {
+			if (obj.salutation == null || obj.salutation == "") {
+				validation = validationUpdated("Salutation Required",
+						"salutation");
+			}
+			if (obj.customerName == null || obj.customerName == "") {
+				validation = validationUpdated("Name Required",
+						"customerName");
+			}
+		}
+  
+		if (obj.country == null || obj.country == "") {
+			validation = validationUpdated("Country Required",
+					"country");
+		}
+		if (obj.country1 == null || obj.country1 == "") {
+			validation = validationUpdated("Country Required",
+					"country1");
+		}
+		if (obj.states == null || obj.states == "") {
+			validation = validationUpdated("State Required",
+					"states");
+		}
+		if (obj.states1 == null || obj.states1 == "") {
+			validation = validationUpdated("State Required",
+					"states1");
+		}
+		if (obj.city1 == null || obj.city1 == "") {
+			validation = validationUpdated("City Required",
+					"city1");
+		}
+		if (obj.city == null || obj.city == "") {
+			validation = validationUpdated("City Required",
+					"city");
+		}
+	
+		
+
+		if (validation  && pmailValid && pmailValid1 && mobValid1 && mobValid2 && mobValid3 && mobValid4 && 
+				mobValid5) {
+			$.ajax({
+				type : "POST",
+				url : "view-invoice-adds-customer",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.code == "Success") {
+					
+						console.log(response);
+
+						$("#add").hide();
+						$("#copy").show();
+						$("#delete").hide();
+						$("#totalReq").show();
+						$("#myGrid").hide();
+						$("#searchRowDiv").hide();
+						$("#demo").hide();
+						$("#addCustomerModel").modal('hide');
+
+					}
+				},
+				error : function(data) {
+
+					//console.log(data);
+				}
+			})
+		}
+
+	}
+	
+		function addnewAddress() {
+
+			$('#addAddressModel').modal('show');
+			$("#billingInfo").show();
+			$("#countryb").val('');
+			$("#statesb").val('');
+			$("#cityb").val('');
+			$("#street1b").val('');
+			$("#street2b").val('');
+			$("#zipCodeb").val('');
+			$("#phoneb").val('');
+			$("#faxb").val('');
+		}
+		function addnewAddress1() {
+			$('#changeAddressModel').modal('hide');
+			$('#addAddressModel1').modal('show');
+
+			$("#country1s").val('');
+			$("#states1s").val('');
+			$("#city1s").val('');
+			$("#street11s").val('');
+			$("#street21s").val('');
+			$("#zipCode1s").val('');
+			$("#phone1s").val('');
+			$("#fax1s").val('');
+		}
+		function cancelBtn() {
+			$('#addAddressModel').modal('hide');
+			}
+		function cancelBtn2() {
+			$('#addAddressModel1').modal('hide');
+			}
+		function tcscancelBtn() {
+			$('#manageTCsModel').modal('hide');
+			}
+		
+		
+		function addCustomerInfo2() {
+			var obj = {};
+			var Id = $("#custId").val();
+
+			obj.customerId = $("#custId").val();
+			obj.country = $("#countryb").val();
+			obj.states = $("#statesb").val();
+			obj.city = $("#cityb").val();
+			obj.street1 = $("#street1b").val();
+			obj.street2 = $("#street2b").val();
+			obj.zipCode = $("#zipCodeb").val();
+			obj.phone = $("#phoneb").val();
+			obj.fax = $("#faxb").val();
+
+			$.ajax({
+				type : "POST",
+				url : "view-invoice-add-cust-billingaddress",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "Success") {
+						
+						$("#messageParagraph").text("Data saved successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+
+						//$("#myGrid").show();
+						$("#billingInfo").hide();
+
+					}
+				},
+				error : function(data) {
+				}
+			})
+
+		}
+		
+		function addCustomerInfo1() {
+			var obj = {};
+			var Id = $("#custId").val();
+
+			obj.customerId = $("#custId").val();
+			obj.country1 = $("#country1s").val();
+			obj.states1 = $("#states1s").val();
+			obj.city1 = $("#city1s").val();
+			obj.street11 = $("#street11s").val();
+			obj.street21 = $("#street21s").val();
+			obj.zipCode1 = $("#zipCode1s").val();
+			obj.phone1 = $("#phone1s").val();
+			obj.fax1 = $("#fax1s").val();
+
+			$.ajax({
+				type : "POST",
+				url : "view-invoice-add-cust-shippingaddress",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "Success") {
+						
+						$("#messageParagraph").text("Data saved successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+
+						//$("#myGrid").show();
+						$("#shippingInfo").hide();
+
+					}
+				},
+				error : function(data) {
+				}
+			})
+
+		}	
+		
+		function showDisplay(){
+			var title = $('#salutation').val();
+			var name = $('#customerName').val();
+			var fullName = title + ' ' + name;
+			$('#customerDisplayName').val(fullName);
+		}		
+		
+		function getStateDetails(){
+			
+			var cname = $('#country').val();
+			if (cname) { 
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				//$("#dname").append(option);
+				$.ajax({type : "GET",
+					url : "view-invoice-stateList?id="+ cname,
+							success : function(response) {
+								if (response.message == "success") {
+									$("#states").empty();
+									var option = $("<option></option>");
+									$(option).val(null);
+									$(option).html("Select");
+									$("#states").append(option);
+									for (var i = 0; i < response.body.length; i++) {
+										var option = $("<option></option>");
+										$(option).val(response.body[i].key);
+										$(option).html(response.body[i].name);
+										$("#states").append(option);
+									}
+								}
+							},
+							error : function(e) { 
+							}
+						});
+			} else {
+				$("#states").empty();
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				$("#states").append(option);
+				$("#states").empty();
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				//$("#dname").append(option);
+			}
+		}
+		
+		
+	function getStateDetails1(){
+		
+		var cname = $('#country1').val();
+		if (cname) { 
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+			$.ajax({type : "GET",
+				url : "view-invoice-stateList?id="+ cname,
+						success : function(response) {
+							if (response.message == "success") {
+								$("#states1").empty();
+								var option = $("<option></option>");
+								$(option).val(null);
+								$(option).html("Select");
+								$("#states1").append(option);
+								for (var i = 0; i < response.body.length; i++) {
+									var option = $("<option></option>");
+									$(option).val(response.body[i].key);
+									$(option).html(response.body[i].name);
+									$("#states1").append(option);
+								}
+							}
+						},
+						error : function(e) { 
+						}
+					});
+		} else {
+			$("#states1").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#states1").append(option);
+			$("#states1").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+		}
+	}
+
+	function getStateDetailsb(){
+		
+		var cname = $('#countryb').val();
+		if (cname) { 
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+			$.ajax({type : "GET",
+				url : "view-invoice-stateList?id="+ cname,
+						success : function(response) {
+							if (response.message == "success") {
+								$("#statesb").empty();
+								var option = $("<option></option>");
+								$(option).val(null);
+								$(option).html("Select");
+								$("#statesb").append(option);
+								for (var i = 0; i < response.body.length; i++) {
+									var option = $("<option></option>");
+									$(option).val(response.body[i].key);
+									$(option).html(response.body[i].name);
+									$("#statesb").append(option);
+								}
+							}
+						},
+						error : function(e) { 
+						}
+					});
+		} else {
+			$("#statesb").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#statesb").append(option);
+			$("#statesb").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+		}
+	}
+
+
+	function getStateDetailss(){
+		
+		var cname = $('#country1s').val();
+		if (cname) { 
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+			$.ajax({type : "GET",
+				url : "view-invoice-stateList?id="+ cname,
+						success : function(response) {
+							if (response.message == "success") {
+								$("#states1s").empty();
+								var option = $("<option></option>");
+								$(option).val(null);
+								$(option).html("Select");
+								$("#states1s").append(option);
+								for (var i = 0; i < response.body.length; i++) {
+									var option = $("<option></option>");
+									$(option).val(response.body[i].key);
+									$(option).html(response.body[i].name);
+									$("#states1s").append(option);
+								}
+							}
+						},
+						error : function(e) { 
+						}
+					});
+		} else {
+			$("#states1s").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#states1s").append(option);
+			$("#states1s").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+		}
+	}
+
+
+	function copyAsBillingAdd(){
+		
+		var country = $('#country').val();
+		var states = $('#states').val();
+		var city = $('#city').val();
+		var street1 = $('#street1').val();
+		var street2 = $('#street2').val();
+		var zipCode = $('#zipCode').val();
+		var phone = $('#phone').val();
+		var fax = $('#fax').val();
+		
+		$('#country1').val(country);
+		$('#states1').val(states);
+		getStateDataOnEdit1(states);
+		$('#city1').val(city);
+		$('#street11').val(street1);
+		$('#street21').val(street2);
+		$('#zipCode1').val(zipCode);
+		$('#phone1').val(phone);
+		$('#fax1').val(fax);
+	}
+	
+		
+		
+	function getStateDataOnEdit1(stateId) {
+		var country = $("#country").val();
+		if (country) { 
+			$.ajax({
+				type : "GET",
+				url : "view-invoice-stateList?id=" + country,
+				success : function(response) {
+					if (response.message == "success") {
+						$("#states1").empty();
+						var option = $("<option></option>");
+						$(option).val(null);
+						$(option).html("Select");
+						$("#states1").append(option);
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#states1").append(option);
+						}
+						$("#states1").val(stateId);
+					}
+				},
+				error : function(e) { 
+				}
+			});
+		} else {
+			$("#states1").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#states1").append(option);
+		}
+	}
+		
+		
+function getSalesOrderList(custId,id1,id2){
+		if (custId) { 
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+			$.ajax({type : "GET",
+				url : "view-invoice-salesorderlist?id="+ custId+"&type="+id1,
+						success : function(response) {
+							if (response.message == "success") {
+								console.log("Salesorder===="+JSON.stringify(response.body))
+						
+								$("#salesOrderId").empty();
+								var option = $("<option></option>");
+								$(option).val(null);
+								$(option).html("Select");
+								$("#salesOrderId").append(option);
+								for (var i = 0; i < response.body.length; i++) {
+									var option = $("<option></option>");
+									$(option).val(response.body[i].name);
+									$(option).html(response.body[i].name);
+									$("#salesOrderId").append(option);
+								}
+								
+								if(id2 !=""){
+							 		$("#salesOrderId").val(id2);
+								}
+								
+							}
+						},
+						error : function(e) { 
+						}
+					});
+		} else {
+			$("#salesOrderId").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("salesOrderId");
+			$("#salesOrderId").append(option);
+			$("#salesOrderId").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#salesOrderId").append(option);
+		}
+	}	
+function getSalesOrder(custId,salesOrder){
+	if (custId) { 
+		var option = $("<option></option>");
+		$(option).val(null);
+		$(option).html("Select");
+		$.ajax({type : "GET",
+			url : "view-invoice-salesorderlist?id="+ custId,
+					success : function(response) {
+						if (response.message == "success") {
+							console.log("Salesorder===="+JSON.stringify(response.body))
+							$("#salesOrderId").empty();
+							var option = $("<option></option>");
+							$(option).val(null);
+							$(option).html("Select");
+							$("#salesOrderId").append(option);
+							for (var i = 0; i < response.body.length; i++) {
+								
+								if(response.body[i].name==salesOrder){
+									$(option).val(response.body[i].name);
+									$(option).html(response.body[i].name);
+									$("#salesOrderId").append(option);
+								}
+							}
+							if(salesOrder!="" && salesOrder!=null && salesOrder!="null"){
+						 		$("#salesOrderId").val(salesOrder);
+							}
+						}
+					},
+					error : function(e) { 
+					}
+				});
+		//$("#salesOrderId" ).val(salesOrder);
+	
+	} else {
+		$("#salesOrderId").empty();
+		var option = $("<option></option>");
+		$(option).val(null);
+		$(option).html("salesOrderId");
+		$("#salesOrderId").append(option);
+		$("#salesOrderId").empty();
+		var option = $("<option></option>");
+		$(option).val(null);
+		$(option).html("Select");
+	}
+	
+}	
+		
+function downloadDetails() { 
+	  var dataset = [];
+	  gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+	        dataset.push(rowNode.data);
+	    });
+	  gridOptions.api.exportDataAsCsv(dataset);
+	}	
+		
+//Transportation Mode Function		
+/* function dataClick()
+{
+	var tmodes=$("#tMode").val();
+	if(tmodes=="1"){
+		$("#freigtTaxRateDtls").show();
+		$("#freigtChargeDtlss").show();
+		$("#totalFreightChargesDtls").show();
+	}
+	else{
+		
+		$("#freigtTaxRateDtls").hide();
+		$("#freigtChargeDtlss").hide();
+		$("#totalFreightChargesDtls").hide();
+	
+	}
+	
+} */	
+		
+		
+		
+function changeAddress(){
+	var shippingHiddenId = $("#shippingHiddenId").val();
+	
+$('#changeAddressModel').modal('show');
+var customerId = $("#custId").val();
+
+	$.ajax({
+	type : "GET",
+	/* url : "view-quotation-shipping-address", */
+	 url : "view-invoice-shipping-address?customerId="+ customerId, 
+	success : function(response) {
+		if (response.code == "success") {
+			var jsonData = JSON.parse(response.body);
+			var allData=jsonData.ShippingAddress;
+			var address=``;
+			
+			for (var i=0, n=allData.length;i<n;i++) {
+				if(allData[i].addressId==shippingHiddenId){
+					
+					address=address+`<div class="col-md-12">
+					<div class="radio-align">
+					<span><input type="radio" id="orgDetails" 
+						checked name="checkbox" onclick="selcetOption('${allData[i].addressId}')"></span> <label
+						class="lbl">${allData[i].address}</label>
+				    </div>
+			        </div>`;
+				}else{
+					address=address+`<div class="col-md-12">
+					<div class="radio-align">
+					<span><input type="radio" id="orgDetails" 
+						 name="checkbox" onclick="selcetOption('${allData[i].addressId}')"></span> <label
+						class="lbl">${allData[i].address}</label>
+				    </div>
+			        </div>`;
+				}
+
+				}
+		/* }else{
+			
+		} */	 
+			var len = allData.length;
+		    $("#shipping").html(address);
+		   
+		}
+	},
+	error : function(e) {
+	}
+});
+
+}
+
+function cancelChangeAddressModel(){
+	$('#changeAddressModel').modal('hide');
+	}
+	
+		
+		
+function selcetOption(addressId){
+	$.ajax({
+		type : "GET",
+		url : "view-invoice-shipping-dataedit?addressId="+ addressId,
+		success : function(response) {
+			if (response.code == "success") {
+				$('#changeAddressModel').modal('hide');
+				var jsonData = JSON.parse(response.body);
+				var allData=jsonData.ShippingAddress[0];
+				
+				var len = allData.length;
+				$("#shippingHiddenId").val(addressId);
+			    $("#con1").val(allData.countryName);
+			    $("#bstate1").html(allData.stateName);
+			    $("#bcity1").html(allData.city);
+				$("#bstreet11").html(allData.street1);
+				$("#bstreet21").html(allData.street2);
+				$("#bzipcode1").html(allData.zipCode);
+				$("#bphone1").html(allData.phone);
+				$("#bfax1").html(allData.fax);
+				
+				
+			}
+		},
+		error : function(e) {
+		}
+	}); 
+	
+	 
+}	
+		
+		
+		
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+
+						<div class="d-flex justify-content-between" id="reqTable"
+							style="display: none;">
+
+							<div class="btn-hs">
+								<div class="font-design" id="totalInvoice">
+									INVOICE LIST (<span></span>)
+								</div>
+							</div>
+
+
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+
+							<div class="col-md-5 buttonsec btn-hs">
+								<button onclick="downloadDetails()" class="btn4" id=dwnld>Download</button>
+							    <button onclick="add()" class="btn1" id="add">New</button> 
+								<button onclick="deleteQuotation()" class="btn3" id="delete">delete</button>
+								<!-- <button onclick="salesInvrtn()" class="btn2" style="width: 88px"
+									id="salesInvrtn">salesInvoice Return</button> -->
+								<!-- <button onclick="paymentDtls()" class="btn2" id="paymentDtls">Payment</button>
+								<button onclick="deliveryChallan()" class="btn2"
+									id="deliveryChallanDtls">Delivery Challan</button> -->
+							</div>
+						</div>
+						<div id="myGrid" style="height: 500px; width: 100%;"
+							class="ag-theme-alpine"></div>
+						<div class="collapse" id="addData">
+							<div class="innerstickybg">
+								<div class="row">
+									<div class="col-md-6">
+										Invoice ID: <span id="salesInvoiceheadId"></span>
+									</div>
+
+
+									<div class="col-md-6" align="right">
+										<button class="cancel-btn" id="Cancel" onClick="Cancel()">Cancel</button>
+										<button class="approve-btn" id="save" onclick="save()">Save</button>
+									</div>
+								</div>
+							</div>
+
+							<div class="row innersticky_contentgap">
+								<input type="hidden" id="salesOrder"> <input
+									type="hidden" id="quotationId"> <input type="hidden"
+									id="saleInvoice"> <input type="hidden" id="challan">
+								<input type="hidden" id="challanDate"> <input
+									type="hidden" id="wayBill"> <input type="hidden"
+									id="wayBillDate">
+								<div class="col-lg-4">
+									<div class="form-group">
+										<div class="autocomplete" style="width: 100%;">
+											<label>Customer Name</label> <input type="text" id="custName"
+												placeholder="Customer Name" class="form-control fromtxt"
+												onkeyup='getCustomerList();'><input
+												type="hidden" id="custId"> <input type="hidden"
+												id="custGSTNo"> <input type="hidden" id="taxType">
+										</div>
+										<div id="suggesstion-box1_" class="sugg-cls"></div>
+									</div>
+									<div class="row" id=addre>
+										<div class="col-md-6">
+											<span class="billtxt" id="billingAdd">Billing Address</span>
+											<address class="font-small ember-view">
+												<strong id="addNewAdd1" onclick="addnewAddress()"
+													style="color: blue">Add New Address</strong>
+											</address>
+											<div class="preserve-wrap1">
+												<span id='con'></span><br> <span id='bstate'></span><br>
+												<span id='bcity'></span><br> <span id='bstreet1'></span><br>
+												<span id='bstreet2'></span><br> <span id='bzipcode'></span><br>
+												<span id='bphone'></span><br> <span id='bfax'></span><br>
+											</div>
+										</div>
+											<div class="col-md-6">
+											<span class="billtxt" id="shippingAdd">Shipping
+												Address</span>
+												 <input type=hidden id="shippingHiddenId">  
+											<address class="font-small ember-view">
+												<strong id="changeAddress" onclick="changeAddress()"
+													style="color: blue; cursor: pointer;">Change</strong>
+											</address>
+											<!-- <address class="font-small ember-view">
+												<strong id="addNewAdd" onclick="addnewAddress1()"
+													style="color: blue; cursor: pointer;">Add New
+													Address</strong>
+												<div class="preserve-wrap">Near DAV School</div>
+												BBSR<br> Odisha 748945<br> India<br> Phone:
+												9090868717<br> Fax: 86896869
+											</address> -->
+											<div class="preserve-wrap1">
+											
+												<span id='con1'></span><br> <span id='bstate1'></span><br>
+												<span id='bcity1'></span><br> <span id='bstreet11'></span><br>
+												<span id='bstreet21'></span><br> <span id='bzipcode1'></span><br>
+												<span id='bphone1'></span><br> <span id='bfax1'></span><br>
+
+											</div>
+										</div>
+									</div>
+								</div>
+							
+
+								<div class="col-lg-2">
+									<div class="form-group">
+										<label>Invoice Reference Id#</label><input type="text"
+											id="invoiceReference" class="form-control" readonly>
+									</div>
+								</div>
+
+								<div class="col-lg-2">
+								<div class="form-group">
+									<label>Invoice Date</label> <input type="text" id="invoiceDate"
+										class="form-control" readonly>
+                             </div>
+								</div>
+
+								<div class="col-lg-3">
+								<div class="form-group">
+									<label>W.O No</label> <input type="text" id="woNo"
+										class="form-control">
+                                  </div>
+								</div>
+
+								<div class="col-lg-3">
+									<div class="form-group calendar_box">
+										<label> WO Date</label> <input type="text" id="woDate"
+											class="form-control" onblur="removeValid(event)"
+											th:attr="onkeyup=|formatDate('woDate','${session.DATEFORMAT_JS}')|">
+										<i class="ti-calendar picker_calendar"
+											id="woDateCalendar"></i>
+									</div>
+								</div>
+
+
+                            <div class="col-lg-3">
+                            <div class="form-group">
+									<label>SAC Code</label> <input type="text" id="sacCode"
+										class="form-control">
+                                 </div>
+								</div>
+								
+								<div class="col-lg-3">
+									<div class="form-group">
+										<label>Project No</label><input type="text"
+											id="projectno" class="form-control">
+									</div>
+								</div>
+							</div>
+
+							<div id="main_content1" class="mt-4">
+								<div class="accordion-item">
+									<h2 class="accordion-header" id="headingOne">
+										<button class="accordion-button" type="button"
+											data-bs-toggle="collapse" data-bs-target="#collapseOne"
+											aria-expanded="false" aria-controls="collapseOne">
+											Payment MileStone</button>
+									</h2>
+
+									<div id="collapseOne" class="accordion-collapse collapse show"
+										aria-labelledby="headingOne"
+										data-bs-parent="#accordionExample">
+										<div class="accordion-body">
+
+											<div class="row">
+
+												<div class="col-md-4 btn-hs1">
+													<div class="font-design"></div>
+												</div>
+												<div class="col-md-8 butttonsec">
+													 
+													<button class="new-btn" id="newItem" onclick="openNav()">NEW</button>
+													<button class="delete-btn" id="deleteItem"
+														onclick="deleteItem()">Delete</button>
+
+												</div>
+											</div>
+											<div id="item" style="width: 100%; height: 200px;"
+												class="ag-theme-alpine"></div>
+
+
+										</div>
+
+									</div>
+								</div>
+
+
+								<div id="mySidenav" class="sidenav">
+									<div class="slidebox">
+										<div class="row">
+											<div class="chartbtnsec">
+												<div align="right">
+													<button class="cancel-btn" onclick="closeNav()">CANCEL</button>
+													<button class="approve-btn" id="saveTableData"
+														onclick="saveTableData()">SAVE</button>
+
+												</div>
+											</div>
+
+											<div class="col-lg-6">
+												<div class="form-group">
+													<label>Stock Keeping Unit</label> <input type="text"
+														id="sku" class="form-control" onblur="removeValid(event)">
+													<!-- 	<div id="suggesstion-box_" class="sugg-cls"></div> -->
+												</div>
+											</div>
+											<div class="col-lg-6 mrt_6">
+												<div class="form-group">
+													<button id="browseBtnNew" class="browse-btn">Browse</button>
+												</div>
+											</div>
+											<div class="col-lg-6">
+												<div class="form-group">
+													<div class="autocomplete" style="width: auto">
+														<input type="hidden" id="editProduct"> <input
+															type="hidden" id="itemId"> <label>Item
+															Name</label> <input type="text" id="itemName"
+															onblur="removeValid(event)" class="form-control"
+															onkeyup='getItemQutotationList()'>
+													</div>
+													<div id="suggesstion-box_" class="sugg-cls"></div>
+												</div>
+											</div>
+											<div class="col-lg-6">
+												<div class="form-group">
+													<label>HSN Code</label> <input type="text" id="hsnCode"
+														onblur="removeValid(event)" class="form-control">
+												</div>
+											</div>
+
+											<div class="col-lg-6">
+												<div class="form-group">
+													<label>Quantity</label> <input type="text" id="quantity"
+														onblur="removeValid(event)" class="form-control"
+														onkeyup="calculateLineTotal();getGSTRateCal()">
+												</div>
+											</div>
+											<div class="col-lg-6">
+												<div class="form-group">
+													<label>MOQ</label>
+													<div class="select">
+														<select class="" id="unit" onblur="removeValid(event);">
+															<option value="">Select</option>
+															<option th:each="c,iter:${unitList}" th:value="${c.key}"
+																th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="col-lg-6">
+												<div class="form-group">
+													<label>Unit Price</label><input type="text" id="unitPrice"
+														onblur="removeValid(event)" class="form-control"
+														onkeyup="calculateLineTotal();getGSTRateCal()">
+												</div>
+											</div>
+
+											<div class="col-lg-6">
+												<div class="form-group">
+													<label>Discount</label>
+													<div class="d-flex">
+														<input type="text" id="discount" class="form-control"
+															onkeyup="calculateLineTotal();getGSTRateCal()">
+														<div class="select" style="width: 60px;">
+															<select id="discountAmount" class="form-control"
+																onkeyup="calculateLineTotal();getGSTRateCal()">
+																<option value="0" selected>%</option>
+																<!-- <option value="1">₹</option> -->
+															</select>
+														</div>
+
+													</div>
+												</div>
+											</div>
+
+											<div class="col-lg-6">
+												<div class="form-group">
+													<label>GST Rate</label><input type="text" id="gstRate"
+														class="form-control" onkeyup="getGSTRateCal()">
+												</div>
+											</div>
+											<div class="col-lg-6">
+												<div class="form-group">
+													<label>Line Total</label> <input type="text" id="lineTotal"
+														onblur="removeValid(event)" class="form-control">
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+
+							<div class="row" id=gstCalS>
+								<div class="col-lg-7"></div>
+								<div class="col-lg-5 mt-4">
+									<table style="width: 100%">
+										<tr>
+											<th>
+												<div class="row">
+													<div class="col-lg-4">Sub Total:</div>
+													<div class="col-lg-8">
+														<div class="form-group">
+															<input type="text" id="subTotal" class="form-control"
+																readonly>
+														</div>
+													</div>
+												</div>
+											</th>
+
+										</tr>
+
+										<tr>
+											<th>
+												<div class="row" id="totalFreightChargesDtls">
+													<input type="hidden" id=ftIGST> <input
+														type="hidden" id=ftCGST> <input type="hidden"
+														id=ftSGST>
+													<div class="col-lg-4">Freight Charges:</div>
+													<div class="col-lg-8">
+														<div class="form-group">
+															<input type="text" id="totalFreightCharges"
+																class="form-control" readonly>
+														</div>
+													</div>
+												</div>
+
+											</th>
+										</tr>
+										<tr>
+											<th>
+												<div class="row" id="totalDiv">
+													<div class="col-lg-4">Total:</div>
+													<div class="col-lg-8">
+														<div class="form-group">
+															<input type="text" id="total" class="form-control"
+																readonly>
+														</div>
+													</div>
+												</div>
+
+											</th>
+										</tr>
+										<tr class="tbl-box" id="sgstTR">
+											<th>
+												<div class="row">
+													<div class="col-lg-4">SGST:</div>
+													<div class="col-lg-8">
+														<div class="form-group">
+															<input type="text" id="qSGST" class="form-control"
+																readonly> <input type="hidden" id=itemSgst>
+														</div>
+													</div>
+												</div>
+											</th>
+
+										</tr>
+
+										<tr id="cgstTR">
+											<th>
+
+												<div class="row">
+													<div class="col-lg-4">CGST:</div>
+													<div class="col-lg-8">
+														<div class="form-group">
+															<input type="text" id="qCGST" class="form-control"
+																readonly> <input type="hidden" id=itemCgst>
+														</div>
+													</div>
+												</div>
+											</th>
+
+										</tr>
+
+										<tr class="tbl-box" id="igstTR">
+											<th>
+												<div class="row">
+													<div class="col-lg-4">IGST:</div>
+													<div class="col-lg-8">
+														<div class="form-group">
+															<input type="text" id="qIGST" class="form-control"
+																readonly> <input type="hidden" id=itemIgst>
+														</div>
+													</div>
+												</div>
+											</th>
+										</tr>
+
+										<tr>
+											<th>
+												<div class="row">
+													<div class="col-lg-4">TCS:</div>
+													<div class="col-lg-5">
+														<div class="form-group">
+															<input type="text" class="form-control" id="tcsName"
+																placeholder="TCS" autocomplete="off" readonly> <input
+																type="hidden" id="tcsId">
+														</div>
+														<input type=hidden id="tcsValue">
+														<div id="suggesstion-box3_" class="sugg-cls"></div>
+													</div>
+
+													<div class="col-lg-3">
+														<div class="form-group">
+															<input type="text" class="form-control" id="tcsAmount"
+																onkeyup="getTCSList();" readonly> <input
+																type="hidden" id="tcsId">
+														</div>
+													</div>
+												</div>
+
+											</th>
+
+										</tr>
+										<!-- 	<tr>
+											<th>
+												<div class="row" id="totalFreightChargesDtls">
+													<div class="col-lg-4">Total Freight Charges:</div>
+													<div class="col-lg-8">
+														<div class="form-group">
+															<input type="text" id="totalFreightCharges" class="form-control"
+																readonly>
+														</div>
+													</div>
+												</div>
+
+											</th>
+
+										</tr> -->
+										<tr>
+											<th>
+												<div class="row">
+													<div class="col-lg-4">Adjustment:</div>
+													<div class="col-lg-8">
+														<div class="form-group">
+															<input type="text" id="adjustment" class="form-control"
+																onkeyup="calculateAdjustment();">
+														</div>
+													</div>
+												</div>
+
+											</th>
+
+										</tr>
+
+
+										<tr>
+											<th>
+												<div class="row">
+													<div class="col-lg-4">Grand Total:</div>
+													<div class="col-lg-8">
+														<div class="form-group">
+															<input type="text" id="grandTotal" class="form-control"
+																readonly>
+														</div>
+													</div>
+												</div>
+											</th>
+
+										</tr>
+
+									</table>
+								</div>
+							</div>
+
+
+
+
+
+
+
+						</div>
+					</div>
+					<!-- delete modal start -->
+					<div id="deleteQuot" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<!-- <button type="button" class="close" data-dismiss="modal"
+										aria-hidden="true" onclick="cancelModalBtn()">
+										<i class="ti-close modal-close"></i>
+									</button> -->
+								</div>
+								<div class="modal-body">
+									<p>Do you really want to delete these records? This process
+										cannot be undone.</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: -30px;">
+
+									<button type="button" class="cancel-btn" data-dismiss="modal"
+										onclick="cancelModalBtn()">Cancel</button>
+									<button type="button" class="delete-btn"
+										onclick="deleteOnclick()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<!-- delete item start	 -->
+					<div id="deleteProduct" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-body">
+									<p>Do you really want to delete these records? This process
+										cannot be undone.</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: -30px;">
+
+									<button type="button" class="cancel-btn" data-dismiss="modal"
+										onclick="cancelModalProductBtn();">Cancel</button>
+									<button type="button" class="delete-btn"
+										onclick="deleteProductOnclick()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="modal fade" id="myModal">
+						<div class="modal-dialog modal-lg" style="margin-top: 130px;">
+							<div class="modal-content">
+
+								<!-- Modal Header -->
+								<div class="modal-header">
+									<h4 class="modal-title md-color">Select Product</h4>
+									<button type="button" class="close cp" data-dismiss="modal"
+										onclick="closeModal1()">&times;</button>
+								</div>
+
+								<!-- Modal body -->
+								<div class="modal-body modal-cat">
+									<div class="row">
+
+										<div class="col-md-6" df="0"
+											style="height: 300px; overflow-y: scroll;">
+											<table id="basic">
+												<tbody id="productCategoryCBDiv"></tbody>
+											</table>
+
+
+										</div>
+										<div class="col-md-6" id="productCategorySelectDiv" df="0"
+											style="border-left: 1px solid #ccc;">
+											<div>
+												<div class="productlist">Select Product</div>
+												<div id="select_product"></div>
+												<input type="hidden" id="itemNameTemp" /> <input
+													type="hidden" id="itemIdTemp" /> <input type="hidden"
+													id="brandNameTemp" /> <input type="hidden"
+													id="brandIdTemp" /> <input type="hidden" id="skuTemp" />
+												<input type="hidden" id="hsnCodeTemp" /> <input
+													type="hidden" id="unitTemp" /> <input type="hidden"
+													id="gstRateTemp" /> <input type="hidden"
+													id="prodCatIdTemp" /> <input type="hidden"
+													id="prodCatNameTemp" />
+											</div>
+										</div>
+									</div>
+								</div>
+
+								<!-- Modal footer -->
+								<div class="modal-footer">
+									<div class="chartbtnsec">
+										<button class="approve-btn" onclick="selectProductVal()">SELECT</button>
+										<button class="cancel-btn" data-dismiss="modal"
+											onclick="closeModal1()">CANCEL</button>
+									</div>
+								</div>
+
+							</div>
+						</div>
+					</div>
+					<!-- alert modal start -->
+					<div id="alert" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+
+								<div class="modal-body">
+									<p id="textId"></p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: -30px;">
+
+									<button type="button" class="btn1" data-dismiss="modal">SELECT</button>
+									<!-- <button type="button" class="btn3" onclick="deleteOnclick()">Delete</button> -->
+								</div>
+							</div>
+						</div>
+					</div>
+
+
+					<div id="deleteAttachment" class="modal fade show"
+						aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+
+								<div class="modal-body">
+									<p>Do you really want to delete these records? This process
+										cannot be undone.</p>
+									<input type="hidden" id="dltValue">
+								</div>
+								<div class="modal-footer justify-content-center">
+
+									<button type="button" class="cancel-btn" data-dismiss="modal"
+										onclick="closeDeleteConfirm()">Cancel</button>
+									<button type="button" class="delete-btn"
+										onclick="deletAttachmentRow()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="modal fade" id="manageTCsModel">
+						<div class="modal-dialog modal-lg"
+							style="margin-top: 130px; height: 900px;">
+							<div class="modal-content">
+
+								<!-- Modal body -->
+								<div class="modal-body">
+
+									<div class="col-md-12" id="tcsInfo">
+										<div class="card-title">
+											<h4>Manage TCS</h4>
+										</div>
+										<div class="row">
+											<input type="hidden" id="tcsId">
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Nature Of Collection</label>
+													<div class="select">
+														<select class="form-control" id="collection">
+															<option th:value=null>--Select--</option>
+															<option th:each="c:${collectionList}" th:value="${c.key}"
+																th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Rate(%)</label> <input type="text"
+														class="form-control" id="rateId" placeholder="Rate(%)">
+												</div>
+											</div>
+
+
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<input type="hidden" id="collectionId"> <label>Tax
+														Name</label> <input type="text" class="form-control" id="taxName"
+														placeholder="Tax Name">
+												</div>
+											</div>
+										</div>
+
+										<div class="row mt-4">
+											<div class="form-group">
+
+												<button class="btn4" id="canceltcs" onclick="tcscancelBtn()">CANCEL</button>
+												<button class="btn1" id="saveTcs" onclick="addtcsInfo1()">SAVE</button>
+
+											</div>
+										</div>
+									</div>
+
+
+								</div>
+							</div>
+						</div>
+					</div>
+
+
+					<div class="modal fade" id="addCustomerModel">
+						<div class="modal-dialog modal-lg"
+							style="margin-top: 130px; height: 900px;">
+							<div class="modal-content">
+
+
+								<div class="modal-body">
+									<div class="innerstickybg">
+										<div class="d-flex justify-content-between" id="main">
+											<div class="col-md-3" id="idDiv">
+												Customer ID: <span id="customerId"></span>
+											</div>
+											<div>
+												<span class="taskInfo">Customer Information</span>
+											</div>
+										</div>
+									</div>
+
+									<div class="row">
+										<div class="innercontent">
+
+											<div class="row">
+												<div class="row">
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Customer Type</label>
+
+															<div class="select">
+																<select id="customerType" onchange="customerType();"
+																	onblur="removeValid(event)">
+
+																	<option value="">Select</option>
+																	<option value="Business">Business</option>
+																	<option value="Individual">Individual</option>
+																</select>
+															</div>
+														</div>
+													</div>
+
+
+													<div class="col-md-4" id="salutationDiv">
+														<div class="form-group">
+															<label>Salutation</label>
+															<div class="select">
+																<select id="salutation" onchange="showDisplay()"
+																	onblur="removeValid(event)">
+																	<option value="">Select</option>
+																	<option value="Mr.">Mr.</option>
+																	<option value="Mrs.">Mrs.</option>
+																	<option value="Ms.">Ms.</option>
+																	<option value="Miss.">Miss.</option>
+																	<option value="Dr.">Dr.</option>
+																	<option value="Prof.">Prof.</option>
+																</select>
+															</div>
+														</div>
+													</div>
+
+													<div class="col-md-4" id="customerNameDiv">
+														<div class="form-group">
+															<label>Customer Name</label> <input type="text"
+																class="form-control" id="customerName"
+																placeholder="Customer Name"
+																onkeyup="showDisplay(),checkAlphabet('customerName')"
+																onblur="removeValid(event)" maxLength="50">
+														</div>
+													</div>
+
+													<div class="col-md-4" id="companyNameDiv">
+														<div class="form-group">
+															<label>Customer Name</label> <input type="text"
+																class="form-control" id="companyName"
+																placeholder="Customer Name"
+																onkeyup="showDisplay(),checkAlphabet('companyName')"
+																maxLength="50" onblur="removeValid(event)">
+														</div>
+													</div>
+
+													<div class="col-md-4" id="customerDisplayNameDiv">
+														<div class="form-group">
+															<label>Customer Display Name</label> <input type="text"
+																class="form-control" id="customerDisplayName"
+																placeholder="Customer Display Name" disabled>
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Customer Email</label> <input type="text"
+																class="form-control" id="cusEmail" placeholder="Email"
+																onblur="removeValid(event)" onkeyup="pmailVal();"
+																style="text-transform: lowercase"> <span
+																id="error3" class="formValidation1"></span>
+														</div>
+													</div>
+
+													<div class="col-md-4" id="custMobileDiv">
+														<div class="form-group">
+															<label>Customer Mobile</label> <input type="text"
+																class="form-control" id="custMobile"
+																placeholder="Mobile" maxlength="10"
+																onkeyup="mobVal1();checkNumeric('custMobile');"
+																onblur="removeValid(event)"> <span id="error9"
+																class="formValidation1"></span>
+														</div>
+													</div>
+
+
+													<div class="col-md-4" id="custSkypeDiv">
+														<div class="form-group">
+															<label>Customer Skype</label> <input type="text"
+																class="form-control" id="custSkype"
+																onblur="removeValid(event)" placeholder="Customer Skype">
+														</div>
+													</div>
+
+													<div class="col-md-4" id="custDesignationDiv">
+														<div class="form-group">
+															<label>Customer Designation</label> <input type="text"
+																class="form-control" id="custDesignation"
+																onblur="removeValid(event)"
+																placeholder="Customer Designation">
+														</div>
+													</div>
+
+													<div class="col-md-4" id="departmentDiv">
+														<div class="form-group">
+															<label>Department</label> <input type="text"
+																class="form-control" id="department"
+																onblur="removeValid(event)" placeholder="Department">
+														</div>
+													</div>
+
+
+													<div class="col-md-4" id="webSiteDiv">
+														<div class="form-group">
+															<label>Web Site</label> <input type="text"
+																class="form-control" id="webSite" placeholder="Web Site"
+																onblur="removeValid(event)">
+														</div>
+													</div>
+
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Status</label>
+															<div class="select">
+																<select id="status" onblur="removeValid(event)">
+																	<option value="">Select</option>
+																	<option value="Active">Active</option>
+																	<option value="Inactive">Inactive</option>
+																</select>
+															</div>
+														</div>
+													</div>
+
+
+												</div>
+											</div>
+
+											<div class="accordion-item">
+												<h2 class="accordion-header" id="headingTwo">
+													<button class="accordion-button" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapseTwo"
+														aria-expanded="true" aria-controls="collapseTwo">
+														Other Details</button>
+												</h2>
+												<div id="collapseTwo"
+													class="accordion-collapse collapse show"
+													aria-labelledby="headingTwo"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+
+														<div class="row">
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Pan Card</label> <input type="text"
+																		class="form-control" id="pan" placeholder="Pan Card"
+																		onblur="removeValid(event)" onkeyup="pancardVal();"
+																		maxLength="10"> <span id="error4"
+																		class="formValidation1"></span>
+																</div>
+															</div>
+															<div class="col-md-4">
+																<div class="form-group">
+
+																	<label>GST No.</label>
+																	<div class="d-flex">
+																		<div>
+																			<input type="text" class="form-control" id="gstNo"
+																				placeholder="GST No" onkeyup="ValidateGSTNumber()"
+																				maxlength="15" onblur="removeValid(event)">
+																			<span id="error5" class="formValidation1"></span>
+																		</div>
+
+																		<div style="margin-top: 7px;">
+																			<button class="approve-btn1" id=approveGst
+																				onclick="getGstData()">GST</button>
+																		</div>
+																	</div>
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Currency</label>
+																	<div class="select">
+																		<select id="currency" onblur="removeValid(event)">
+																			<option value="">Select</option>
+																			<option value="INR RUPPEE">INR RUPEE</option>
+																			<option value="AED-UAE Dirham">AED-UAE
+																				Dirham</option>
+																			<option value="AUD-Australian Doller">AUD-Australian
+																				Dollar</option>
+																			<option value="CAD-Canadian Doller">CAD-Canadian
+																				Dollar</option>
+																			<option value="CNY-Yuan Renminbi">CNY-Yuan
+																				Renminbi</option>
+																			<option value="EUR-Euro">EUR-Euro</option>
+																			<option value="GBP-Pound Sterlin">GBP-Pound
+																				Sterlin</option>
+																			<option value="JPY-Japanese Yen">JPY-Japanese
+																				Yen</option>
+																			<option value="SAR-Saudi Riyal">SAR-Saudi
+																				Riyal</option>
+																			<option value="USD-United State Doller">USD-United
+																				State Dollar</option>
+																			<option value="ZAR-South Africa Rand">ZAR-South
+																				Africa Rand</option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Opening Balance</label> <input type="text"
+																		class="form-control" id="openingBalance"
+																		placeholder="Opening Balance"
+																		onblur="removeValid(event)" autocomplete="off"
+																		onkeyup="checkAmount('openingBalance');">
+																</div>
+															</div>
+
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Payment Terms</label>
+																	<input type="number" class="form-control"
+																		id="paymentTerms" placeholder="Payment Terms" 
+																		onkeyUp="checkNumeric('paymentTerms');">	
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Portable Language</label>
+
+																	<div class="select">
+																		<select id="portableLang" onblur="removeValid(event)">
+																			<option value="">Select</option>
+																			<option value="English">English</option>
+																			<option value="HIndi">Hindi</option>
+																			<option value="Bengali">Bengali</option>
+																			<option value="Odia">Odia</option>
+																			<option value="French">French</option>
+																			<option value="Spanish">Spanish</option>
+																			<option value="Bahasa Indonesia">Bahasa
+																				Indonesia</option>
+																			<option value="Italian">Italian</option>
+																			<option value="Dutch">Dutch</option>
+																			<option value="Sanskrit">Sanskrit</option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>WhatsApp No</label> <input type="text"
+																		class="form-control" id="whatsApp"
+																		placeholder="WhatsApp No" maxlength="10"
+																		onkeyup="mobVal2();checkNumeric('whatsApp');"
+																		onblur="removeValid(event)"> <span
+																		id="error10" class="formValidation1"></span>
+																</div>
+															</div>
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Facebook</label> <input type="text"
+																		class="form-control" id="faceBook"
+																		placeholder="Facebook" onblur="removeValid(event)">
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Twitter</label> <input type="text"
+																		class="form-control" id="twitter"
+																		placeholder="Twitter" onblur="removeValid(event)">
+																</div>
+															</div>
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Enable Portals</label><br> <input
+																		type="checkbox" name="isActive" class="form-control"
+																		id="enableDtls" style="margin-top: 8px;" value="on"
+																		placeholder="Enable Details"> <label>Allow
+																		portal acces for this customer</label>
+																</div>
+															</div>
+
+
+														</div>
+
+													</div>
+												</div>
+											</div>
+
+
+											<div class="accordion-item">
+												<h2 class="accordion-header" id="headingTwo2">
+													<button class="accordion-button" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapseTwo2"
+														aria-expanded="true" aria-controls="collapseTwo2">
+														Billing Address Details</button>
+												</h2>
+												<div id="collapseTwo2"
+													class="accordion-collapse collapse show"
+													aria-labelledby="headingTwo2"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+
+
+														<div class="row">
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Country</label>
+																	<div class="select">
+																		<select id="country" onchange="getStateDetails()"
+																			onblur="removeValid(event)">
+																			<option th:value="NULL">Select Country</option>
+																			<option th:each="c,iter:${countryList}"
+																				th:value="${c.key}" th:text="${c.name}"></option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>State</label>
+																	<div class="select">
+																		<select id="states" onblur="removeValid(event)">
+																			<option th:value="NULL">Select State</option>
+																			<option th:each="c,iter:${statesList}"
+																				th:value="${c.key}" th:text="${c.name}"></option>
+																		</select> <span class="focus"></span>
+																	</div>
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>City</label> <input type="text"
+																		class="form-control" id="city" placeholder="City"
+																		onblur="removeValid(event)"
+																		onkeyup="checkAlphabet('city')" maxLength="30">
+																	<span id="error7" class="formValidation1"></span>
+																</div>
+															</div>
+
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Street 1</label> <input type="text"
+																		class="form-control" id="street1"
+																		placeholder="Street 1" onblur="removeValid(event)"
+																		maxLength="300">
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Street 2</label> <input type="text"
+																		class="form-control" id="street2"
+																		placeholder="Street 2" onblur="removeValid(event)"
+																		maxLength="300">
+																</div>
+															</div>
+
+
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Zip Code</label> <input type="text"
+																		class="form-control" id="zipCode" autocomplete="off"
+																		placeholder="Zip Code" maxlength="6"
+																		onkeyup="zipcodeVal();checkNumeric('zipCode');"
+																		onblur="removeValid(event)"> <span
+																		id="error14" class="formValidation1"></span>
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Phone</label> <input type="text"
+																		class="form-control" id="phone" placeholder="Phone"
+																		maxlength="10"
+																		onkeyup="mobVal3();checkNumeric('phone');"
+																		onblur="removeValid(event)"> <span
+																		id="error11" class="formValidation1"></span>
+																</div>
+															</div>
+
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Fax</label> <input type="text"
+																		class="form-control" id="fax" placeholder="Fax"
+																		onblur="removeValid(event)">
+																</div>
+															</div>
+
+														</div>
+
+													</div>
+												</div>
+											</div>
+											<div class="accordion-item">
+												<h2 class="accordion-header" id="headingTwo2">
+													<button class="accordion-button" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapseTwo2"
+														aria-expanded="true" aria-controls="collapseTwo2">
+														Shipping Address Details</button>
+													<div class="btnbill">
+														<button class="btn btn-primarynew"
+															onclick="copyAsBillingAdd()">Copy As Billing
+															Address</button>
+													</div>
+												</h2>
+												<div id="collapseTwo2"
+													class="accordion-collapse collapse show"
+													aria-labelledby="headingTwo2"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+
+														<div class="row">
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Country</label>
+																	<div class="select">
+																		<select id="country1" onchange="getStateDetails1()"
+																			onblur="removeValid(event)">
+																			<option th:value="NULL">Select Country</option>
+																			<option th:each="c,iter:${countryList}"
+																				th:value="${c.key}" th:text="${c.name}"></option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>State</label>
+																	<div class="select">
+																		<select id="states1" onblur="removeValid(event)">
+																			<option th:value="NULL">Select State</option>
+																			<option th:each="c,iter:${statesList}"
+																				th:value="${c.key}" th:text="${c.name}"></option>
+																		</select> <span class="focus"></span>
+																	</div>
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>City</label> <input type="text"
+																		class="form-control" id="city1" placeholder="City"
+																		onblur="removeValid(event)"
+																		onkeyup="checkAlphabet('city')" maxLength="30">
+																</div>
+															</div>
+
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Street 1</label> <input type="text"
+																		class="form-control" id="street11"
+																		placeholder="Street 1" onblur="removeValid(event)"
+																		maxLength="300">
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Street 2</label> <input type="text"
+																		class="form-control" id="street21"
+																		placeholder="Street 2" onblur="removeValid(event)"
+																		maxLength="300">
+																</div>
+															</div>
+
+
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Zip Code</label> <input type="text"
+																		class="form-control" id="zipCode1" autocomplete="off"
+																		placeholder="Zip Code" maxlength="6"
+																		onkeyup="zipcodeVal1();checkNumeric('zipCode1');"
+																		onblur="removeValid(event)"> <span
+																		id="error15" class="formValidation1"></span>
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Phone</label> <input type="text"
+																		class="form-control" id="phone1" placeholder="Phone"
+																		maxlength="10"
+																		onkeyup="mobVal4();checkNumeric('phone1');"
+																		onblur="removeValid(event)"> <span
+																		id="error12" class="formValidation1"></span>
+																</div>
+															</div>
+
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Fax</label> <input type="text"
+																		class="form-control" id="fax1" placeholder="Fax"
+																		onblur="removeValid(event)">
+																</div>
+															</div>
+
+														</div>
+
+													</div>
+												</div>
+											</div>
+
+											<div class="accordion-item">
+												<h2 class="accordion-header" id="headingTwo3">
+													<button class="accordion-button" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapseTwo3"
+														aria-expanded="true" aria-controls="collapseTwo3">
+														Contact Person Details</button>
+												</h2>
+												<div id="collapseTwo3"
+													class="accordion-collapse collapse show"
+													aria-labelledby="headingTwo3"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+
+
+														<div class="row">
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Salutation</label>
+																	<div class="select">
+																		<select id="salutation1" onblur="removeValid(event)">
+																			<option value="">Select</option>
+																			<option value="Mr.">Mr.</option>
+																			<option value="Mrs.">Mrs.</option>
+																			<option value="Ms.">Ms.</option>
+																			<option value="Miss.">Miss.</option>
+																			<option value="Dr.">Dr.</option>
+																			<option value="Prof.">Prof.</option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>First Name</label> <input type="text"
+																		class="form-control" id="firstName"
+																		placeholder="First Name" maxLength="50"
+																		onkeyup="checkAlphabet('firstName');"
+																		onblur="removeValid(event)">
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Last Name</label> <input type="text"
+																		class="form-control" id="lastName"
+																		placeholder="Last Name" maxLength="50"
+																		onkeyup="checkAlphabet('lastName');"
+																		onblur="removeValid(event)">
+																</div>
+															</div>
+
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Email Address</label> <input type="text"
+																		class="form-control" id="emailAdd" placeholder="Email"
+																		onblur="removeValid(event)" onkeyup="pmailVal1()"
+																		style="text-transform: lowercase"> <span
+																		id="error6" class="formValidation1"></span>
+																</div>
+															</div>
+
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Mobile</label> <input type="text"
+																		class="form-control" id="mobile" placeholder="Mobile"
+																		maxlength="10"
+																		onkeyup="mobVal5();checkNumeric('mobile');"
+																		onblur="removeValid(event)"> <span
+																		id="error13" class="formValidation1"></span>
+																</div>
+															</div>
+
+														</div>
+
+													</div>
+												</div>
+											</div>
+
+
+											<div class="accordion-item">
+												<h2 class="accordion-header" id="headingTwo4">
+													<button class="accordion-button" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapseTwo4"
+														aria-expanded="true" aria-controls="collapseTwo4">
+														Remark Details</button>
+												</h2>
+												<div id="collapseTwo4"
+													class="accordion-collapse collapse show"
+													aria-labelledby="headingTwo4"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+
+														<div class="row">
+															<div class="col-md-8">
+																<div class="modal-inrheading">Remarks</div>
+																<div class="position-text">
+																	<textarea rows="4" cols="100" id="remarks"
+																		onkeyup="textCount(event)"></textarea>
+																	<div id="charNumSN" class="txtcounter" align="right">
+																		<span>0</span> characters
+																	</div>
+																</div>
+															</div>
+
+
+														</div>
+
+													</div>
+												</div>
+											</div>
+
+											<div class="row mt-4">
+												<div class="form-group">
+
+													<button class="btn3" id="cancel" onclick="cancelBtn1()">CANCEL</button>
+													<button class="btn1" id="save" onclick="addCustomerInfo()">SAVE</button>
+
+												</div>
+											</div>
+
+										</div>
+
+									</div>
+
+
+								</div>
+							</div>
+						</div>
+					</div>
+				
+
+
+
+					<div class="modal fade" id="addAddressModel">
+						<div class="modal-dialog modal-lg"
+							style="margin-top: 130px; height: 900px;">
+							<div class="modal-content">
+
+								<!-- Modal Header -->
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-dismiss="modal"
+										aria-hidden="true" onclick="cancelModalBtn()">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<!-- 	Modal body -->
+								<div class="modal-body">
+
+									<div class="col-md-12" id="billingInfo">
+										<div class="card-title">
+											<h4>Billing Address</h4>
+										</div>
+										<div class="row">
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Country</label>
+													<div class="select">
+														<select id="countryb" onchange="getStateDetailsb()">
+															<option th:value="NULL">Select Country</option>
+															<option th:each="c,iter:${countryList}"
+																th:value="${c.key}" th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>State</label>
+													<div class="select">
+														<select id="statesb">
+															<option th:value="NULL">Select State</option>
+															<option th:each="c,iter:${statesList}"
+																th:value="${c.key}" th:text="${c.name}"></option>
+														</select> <span class="focus"></span>
+													</div>
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>City</label> <input type="text" class="form-control"
+														id="cityb" placeholder="City">
+												</div>
+											</div>
+
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Street 1</label> <input type="text"
+														class="form-control" id="street1b" placeholder="Street 1">
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Street 2</label> <input type="text"
+														class="form-control" id="street2b" placeholder="Street 2">
+												</div>
+											</div>
+
+
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>ZipCode</label> <input type="text"
+														class="form-control" id="zipCodeb" placeholder="Zip Code">
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Phone</label> <input type="text"
+														class="form-control" id="phoneb" placeholder="Phone">
+												</div>
+											</div>
+
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Fax</label> <input type="text" class="form-control"
+														id="faxb" placeholder="Fax">
+												</div>
+											</div>
+
+										</div>
+
+										<div class="row mt-4">
+											<div class="form-group">
+
+												<button class="btn4" id="cancel" onclick="cancelBtn()">CANCEL</button>
+												<button class="btn1" id="save" onclick="addCustomerInfo2()">SAVE</button>
+
+											</div>
+										</div>
+									</div>
+
+								</div>
+							</div>
+						</div>
+					</div>
+				
+
+
+						<div class="modal fade" id="addAddressModel1">
+						<div class="modal-dialog modal-lg"
+							style="margin-top: 130px; height: 900px;">
+							<div class="modal-content">
+
+								<!-- 	Modal Header -->
+								<div class="modal-header flex-column">
+									<!-- <button type="button" class="close" data-dismiss="modal"
+											aria-hidden="true" onclick="cancelModalBtn()">
+											<i class="ti-close modal-close"></i>
+										</button> -->
+								</div>
+								<!-- Modal body -->
+								<div class="modal-body">
+
+									<div class="col-md-12" id="shippingInfo">
+										<div class="edit">
+											Shipping Address : <span id="shippingId"></span>
+										</div>
+										<div class="row">
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Country</label>
+													<div class="select">
+														<select id="country1s" onchange="getStateDetailss('')"
+															onblur="removeValid(event)">
+															<option th:value="NULL">Select Country</option>
+															<option th:each="c,iter:${countryList}"
+																th:value="${c.key}" th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>State</label>
+													<div class="select">
+														<select id="states1s" onblur="removeValid(event)">
+															<option th:value="NULL">Select State</option>
+															<option th:each="c,iter:${statesList}"
+																th:value="${c.key}" th:text="${c.name}"></option>
+														</select> <span class="focus"></span>
+													</div>
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>City</label> <input type="text" class="form-control"
+														id="city1s" placeholder="City">
+												</div>
+											</div>
+
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Street 1</label> <input type="text"
+														class="form-control" id="street11s" placeholder="Street 1">
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Street 2</label> <input type="text"
+														class="form-control" id="street21s" placeholder="Street 2">
+												</div>
+											</div>
+
+
+
+											<!-- 	<div class="col-md-4">
+												<div class="form-group">
+													<label>Zip Code</label> <input type="text"
+														class="form-control" id="zipCode1s" placeholder="Zip Code"
+														onblur="removeValid(event)" maxlength="6"
+														onkeyup="checkNumeric('zipCode1s');">
+												</div>
+											</div> -->
+
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Zip Code</label> <input type="text"
+														class="form-control" id="zipCode1s" placeholder="Zip Code"
+														onblur="removeValid(event)" maxlength="6"
+														onkeyup="zipcodeVal3(zipCode1s);checkNumeric('zipCode1s');">
+													<span id="error18" class="formValidation1"></span>
+												</div>
+											</div>
+
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Phone</label> <input type="text"
+														class="form-control" id="phone1s" placeholder="Phone"
+														maxlength="10" onkeyup="checkNumeric('phone1s');">
+												</div>
+											</div>
+
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Fax</label> <input type="text" class="form-control"
+														id="fax1s" placeholder="Fax">
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group" style="margin-top: 28px;">
+													<input type="checkbox" name="isDefault"
+														style="margin-top: 8px;" id="addStatus" value="1">
+													<label>Default Address</label>
+												</div>
+											</div>
+
+
+										</div>
+
+										<div class="row mt-4">
+											<div class="form-group">
+
+												<button class="cancel-btn" id="cancel"
+													onclick="cancelBtn2()">CANCEL</button>
+												<button class="btn1" id="save" onclick="addCustomerInfo1()">SAVE</button>
+
+											</div>
+										</div>
+									</div>
+
+
+
+								</div>
+							</div>
+						</div>
+					</div>
+					
+					<div class="modal fade" id="changeAddressModel">
+						<div class="modal-dialog modal-lg"
+							style="margin-top: 130px; height: 900px;">
+							<div class="modal-content">
+
+								<!-- 	Modal Header -->
+								<!-- 	<div class="modal-header">
+							 <button type="button" class="close" data-dismiss="modal"
+											aria-hidden="true" onclick="cancelChangeAddressModel()">
+											<i class="ti-close modal-close"></i>
+										</button> 
+								</div> -->
+								<div class="modal-header">
+									<h4 class="modal-title" style="font-size: 16px">
+										<b>Change Address </b>
+									</h4>
+									<button type="button" class="close" data-bs-dismiss="modal"
+										aria-label="Close" onclick="cancelChangeAddressModel()">
+										<i class="ti-close"></i>
+									</button>
+								</div>
+								<!-- Modal body -->
+								<div class="modal-body">
+
+									<div class="col-md-12" id="shippingData">
+
+										<div class="row">
+											<div class="col-md-12" id="shipping" >
+												
+											</div>
+										</div>
+
+										<div class="row mt-4">
+											<address class="font-small ember-view">
+												<strong id="addNewAdd" onclick="addnewAddress1()"
+													style="color: blue; cursor: pointer;">Add New
+													Address</strong>
+											</address>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<!-- ------------------Invoice modal------------------------- -->
+
+					<div id="invoiceModal" class="modal fade">
+						<div class="modal-dialog">
+							<!-- Modal content-->
+							<div class="modal-content">
+								<div class="modal-header">
+									<h4 class="modal-title">TYPE OF INVOICE COPY</h4>
+									<button type="button" class="close" data-bs-dismiss="modal"
+										aria-label="Close">
+										<i class="ti-close"></i>
+									</button>
+
+								</div>
+								<!-- Modal body -->
+								<div class="modal-body ">
+									<div class="container ">
+										<!-- custom radio button -->
+										<div class="holder">
+											<div class="row mb-1">
+												<div class="col">
+													<label>Choose copy Type</label>
+												</div>
+											</div>
+											<div class="row mb-0">
+												<div class="row justify-content-start">
+													<div class="col-12">
+														<input type="hidden" id="invHid">
+														<div class="d-flex">
+															<input type="radio" name="copyType" id="original"
+																checked class="mr5" value="1"> <label for="original">Original
+																for Recipient</label>
+														</div>
+														<div class="d-flex">
+															<input type="radio" name="copyType" id="duplicate"
+																class="mr5" value="2"> <label for="duplicate">Duplicate
+																for Transporter</label>
+														</div>
+														<div class="d-flex">
+															<input type="radio" name="copyType" id="triplicate"
+																class="mr5" value="3"> <label for="triplicate">Triplicate
+																for Supplier</label>
+														</div>
+													</div>
+												</div>
+											</div>
+
+										</div>
+									</div>
+								</div>
+
+								<div class="modal-footer justify-content-left">
+									<button type="button" class="btn1" data-bs-dismiss="modal"
+										aria-hidden="true" id="invoicePdfDownload"
+										onclick="invoicePdfDownload()">Submit</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

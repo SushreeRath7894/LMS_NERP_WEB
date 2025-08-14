@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<style>
+.innerstickybg {
+	background: none;
+}
+
+#myReq .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff;
+	text-indent: 10px !important;
+}
+
+.blank_row {
+	height: 10px !important; /* overwrites any other rules */
+	background-color: #007bff;
+}
+
+#myReq .ag-row-selected::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 3px;
+	right: 4px;
+}
+</style>
+
+<script>
+	//Multiple Document Upload Ends
+	$(document).ready(function() {	
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#dueDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#dueDate').val($(this).val());
+		})
+		$('#dueDate').blur(function() {
+			$("#dueDateCalendar").val($(this).val());
+		});
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		var gridDiv = document.querySelector('#myGrid1');
+		new agGrid.Grid(gridDiv, gridOptions1);
+		var gridDiv = document.querySelector('#myGrid2');
+		new agGrid.Grid(gridDiv, gridOptions2);
+		viewData();
+		$('#add1').attr('disabled', true);
+		$('#delete').attr('disabled', true);
+		$('#reject').attr('disabled', true);
+		$('#approve').attr('disabled', true);
+		$('#download').attr('disabled', true);
+		$('#delete1').attr('disabled', true);
+		$('#reject1').attr('disabled', true);
+		$('#approve1').attr('disabled', true);
+		$('#download1').attr('disabled', true); 	
+		$('#add2').attr('disabled', true);
+		$('#download2').attr('disabled', true);
+		$('#delete2').attr('disabled', true); 	
+	});
+ function viewData(){	 
+	 agGrid.simpleHttpRequest({
+			url : "safety-planning-view-projects"
+		}).then(function(data) {
+			gridOptions.api.setRowData(data);
+			console.log(data);
+			var firstRowNode = gridOptions.api.getDisplayedRowAtIndex(0); // Get the first row node
+			  if (firstRowNode) {
+			    firstRowNode.setSelected(true); // Set the row as selected
+			  }
+			var id = selectedRows[0].projectId;
+			pId = id;
+			viewdets(id);
+		}) ;
+ }
+ function viewdets(id){
+	 var selectedRows = gridOptions.api.getSelectedRows();
+		pId = selectedRows[0].projectId;
+	 agGrid.simpleHttpRequest({
+			url : "safety-planning-view?id=" +id
+		}).then(function(data) {
+			$('#projectNo').val(selectedRows[0].projectId);
+			$('#projectNo').html(selectedRows[0].projectId);
+			$('#projectName').val(selectedRows[0].projectName);
+			$('#location').val(selectedRows[0].location);
+			gridOptions1.api.setRowData(data);
+			console.log("view >>>>>>>>>>>>>>>>"+data[0].projectId);	
+			var firstRowNode = gridOptions1.api.getDisplayedRowAtIndex(0); // Get the first row node
+			  if (firstRowNode) {
+				  console.log('firstRowNodessss',firstRowNode)
+			    firstRowNode.setSelected(true); // Set the row as selected
+			  }
+			  var selectedRows1 = gridOptions1.api.getSelectedRows();
+				var id = selectedRows1[0].safetyId;
+				var pid = selectedRows1[0].projectId;
+			  viewActions(id,pid);
+		}) ;
+	
+ }
+ function viewActions(id,pid){
+	
+	 agGrid.simpleHttpRequest({
+			url : 'safety-planning-view-action?id=' + id +"&pId=" + pid,
+		}).then(function(data) {
+			gridOptions2.api.setRowData(data);
+		}) ;
+ }
+	var columnDefs = [{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			}, {
+				headerName : "Project Id",
+				field : "projectId",
+				width : 200,
+			},{
+				headerName : "Date",
+				field : "date",
+				width : 200,
+			}, {
+				headerName : "Project Name",
+				field : "projectName",
+				width : 200,
+			}, {
+				headerName : "Location",
+				field : "location",
+				width : 200,
+			}, {
+				headerName : "Site-Incharge",
+				field : "incharge",
+				width : 200,
+			}, {
+				headerName : 'Inspector',
+				field : "inspector",
+				width : 200,
+			}, {
+				headerName : "Date and Time",
+				field : "dateTime",
+				width : 200,
+			}, {
+				headerName : "Status",
+				field : "status",
+				width : 200,
+			}, ];
+	var columnDefs1 = [{
+		headerCheckboxSelection : true,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true
+	},{
+		headerName : "Safety Id",
+		field : "safetyId",
+		width : 150,
+		cellRenderer : function(params) {
+			return '<a onclick=editAction("' + params.data.safetyId
+					+ '") href="javascript:void(0)">'
+					+ params.data.safetyId + '</a>';
+		} 
+	}, {
+		headerName : "ProjectId",
+		field : "projectId",
+		width : 150,
+		hide : true,
+	}, {
+		headerName : "CategoryNo",
+		field : "categoryId",
+		width : 150,
+		hide : true,
+	}, {
+		headerName : "Category Name",
+		field : "categoryName",
+		width : 250,
+	},  {
+		headerName : "Code",
+		field : "categoryCode",
+		width : 150,
+	}, {
+		headerName : "Action Items",
+		field : "actionItem",
+		width : 250,
+	},  {
+		headerName : "Assessed by",
+		field : "assessedBy",
+		width : 200,
+	},  {
+		headerName : "Assessment Date",
+		field : "assessDate",
+		width : 200,
+	},  {
+		headerName : "Assessment Notes",
+		field : "assessNotes",
+		width : 200,
+	}, {
+		headerName : "Required",
+		field : "require",
+		width : 160,
+	},{
+		headerName : "Remarks",
+		field : "remarks",
+		width : 250,
+		
+	}, ];
+	var rowdata=[];
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowData : rowdata,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 200,
+			height : 20
+		},
+		rowSelection : 'single',
+		onSelectionChanged : onSelectionChanged
+	};
+	var rowdata1=[];
+	var gridOptions1 = {
+			columnDefs : columnDefs1,
+			rowData : rowdata1,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 200,
+				height : 20
+			},
+			rowSelection : 'single',
+			onSelectionChanged : onSelectionChanged1
+		};
+	var columnDefs2 = [{
+		headerCheckboxSelection : true,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true
+	},{
+		headerName : "Action Id",
+		field : "actionId",
+		width : 150,
+		cellRenderer : function(params) {
+			return '<a onclick=editId("' + params.data.actionId 
+					+ '") href="javascript:void(0)">'
+					+ params.data.actionId + '</a>';
+		} 
+	},{
+		headerName : "Safety Id",
+		field : "safetyId",
+		width : 150,
+		hide : true,
+	}, {
+		headerName : "ProjectId",
+		field : "projectId",
+		width : 150,
+		hide : true,
+	}, {
+		headerName : "CategoryNo",
+		field : "categoryId",
+		width : 150,
+		hide : true,
+	},  {
+		headerName : "Code",
+		field : "categoryCode",
+		width : 150,
+		hide : true,
+	}, {
+		headerName : "Action Items",
+		field : "actionItem",
+		width : 250,
+	},  {
+		headerName : "Assessment Notes",
+		field : "assessNotes",
+		width : 200,
+	}, {
+		headerName : "Owner",
+		field : "owner",
+		width : 160,
+	},{
+		headerName : "Action Plan",
+		field : "actionPlan",
+		width : 250,
+	}, {
+		headerName : "Due Date",
+		field : "dueDate",
+		width : 200,
+	}, {
+		headerName : "Status",
+		field : "status",
+		width : 160,
+	},{
+		headerName : "Remarks",
+		field : "remark",
+		width : 250,
+	}, ];
+	function viewImage(id){
+		window.open(id,'_blank');
+	}
+	var rowdata2=[];
+	var gridOptions2 = {
+			columnDefs : columnDefs2,
+			rowData : rowdata2,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 200,
+				height : 20
+			},
+			rowSelection : 'single',
+			onSelectionChanged : selectRow,
+		};
+	var pId="";
+	var selectedId=[];
+	function onSelectionChanged() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		pId = selectedRows[0].projectId;
+		viewdets(pId);
+		
+		var selectedRows1 = gridOptions1.api.getSelectedRows();
+		var rowCount1 = 0;
+		selectedId=[];
+		selectedRows1.forEach(function (selectedRow1, index1) {
+	        selectedId.push(selectedRow1.categoryCode);
+	    });
+		console.log(pId+" @@@@@@@ "+selectedId)	
+	}
+	var deleteId="";
+	function onSelectionChanged1(){
+		var rowCount=0;
+		var selectedRows2 = gridOptions1.api.getSelectedRows();
+		selectedRows2.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+			var id = selectedRows2[0].safetyId;
+			var pid = selectedRows2[0].projectId;
+			  viewActions(id,pid);
+	}
+	function selectRow(){
+		var rowCount = 0;
+		 var selectedRows1 = gridOptions2.api.getSelectedRows();
+		 selectedRows1.forEach(function(selectedRow, index) {
+				rowCount = rowCount + 1;
+			});
+		deleteId = selectedRows1[0].actionId;
+		 if (rowCount > 0) {
+			$('#delete2').attr('disabled', false);
+		} else {
+			$('#delete2').attr('disabled', true);
+		} 
+	}
+	function addId() {
+		document.getElementById("mySidenav1").style.cssText = "width: 350px; position: absolute; right:-20px; overflow: hidden; height:auto; top:350px;";
+		document.getElementById("upperOne").style.width = "73%";
+		}
+	function closeNav() {
+		document.getElementById("mySidenav1").style.width = "0";
+		document.getElementById("upperOne").style.width = "100%";
+		$("#add").show();
+		$("#delete").show();
+
+	}
+	function saveTableData(){	
+				var obj={};
+					obj.actionId = $('#actionId').val();
+					
+					obj.safetyId = $('#safetyId').val();
+					obj.projectId = $("#projectId").val();
+					obj.categoryId = $("#categoryId").val();
+					obj.categoryCode = $("#categoryCode").val();
+					obj.owner = $("#ownerId").val();
+					obj.actionPlan = $("#actionPlan").val();
+					obj.dueDate = $("#dueDate").val();
+					obj.status = $("#status").val();
+					obj.remark = $("#remark").val();
+					$('#delete2').attr('disabled', true);
+			console.log("--==>>>   "+JSON.stringify(obj));
+		  $.ajax({
+				type : "POST",
+				url : "safety-planning-add",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "Success") {
+						hideModal();
+						console.log(response);
+						$("#messageParagraph").text("Data Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$("#msgModal").modal('show');
+						viewdets(pId);
+						
+					}
+				},
+				error : function(datas) {
+					console.log(datas)
+				}
+			})  
+	}
+	 function editId(id){
+		 $('#delete2').attr('disabled', true);
+		 var selectedRows2 = gridOptions1.api.getSelectedRows();
+		var data={};
+		data.actionId=id;
+		data.safetyId=selectedRows2[0].safetyId;
+		data.projectId=selectedRows2[0].projectId;
+		$.ajax({
+				type : "POST", 
+						url : "safety-planning-edit",
+						async : false,
+						contentType : "application/json",
+						data : JSON.stringify(data),
+						success : function(response) {
+							console.log("response for edit cus------"
+									+ JSON.stringify(response));
+							if (response.message == "Success") {
+								$("#myModalSelected").modal("show");
+								$('#actionId').val(response.body[0].actionId);
+								$('#safetyId').val(response.body[0].safetyId);
+								$("#projectId").val(response.body[0].projectId);
+								$('#categoryId').val(response.body[0].categoryId);
+								$("#categoryCode").val(response.body[0].categoryCode);
+								$('#actionItem').val(response.body[0].actionItem);
+								$("#assessNotes").val(response.body[0].assessNotes);
+								$("#owner").val(response.body[0].owner);
+								$('#actionPlan').val(response.body[0].actionPlan);
+								$("#dueDate").val(response.body[0].dueDate);
+								$('#status').val(response.body[0].status);
+								$("#remark").val(response.body[0].remark);
+							}
+						}
+					})
+		} 
+	function hideModal(){
+		$('#delete2').attr('disabled', true);
+		$("#myModalSelected").modal("hide");
+	}
+	function editAction(id){
+		
+		var data={};
+		data.safetyId=id;
+		data.projectId=pId;
+		console.log("response for edit cus------"
+				+ JSON.stringify(data));
+		$.ajax({
+				type : "POST", 
+						url : "safety-planning-getData",
+						async : false,
+						contentType : "application/json",
+						data : JSON.stringify(data),
+						success : function(response) {
+							console.log("response for edit cus------"
+									+ JSON.stringify(response));
+							if (response.message == "Success") {
+								//addId();
+								
+								$("#myModalSelected").modal("show");
+								$('#delete2').attr('disabled', true);
+								$('#safetyId').val(response.body[0].safetyId);
+								$("#projectId").val(response.body[0].projectId);
+								$('#categoryId').val(response.body[0].categoryId);
+								$("#categoryCode").val(response.body[0].categoryCode);
+								$('#actionItem').val(response.body[0].actionItem);
+								$("#assessNotes").val(response.body[0].assessNotes);
+							}
+						}
+					})
+	}
+	function deleteModalfun(){
+		$("#deleteModal").modal('show');
+	}
+	function closeModal(){
+		$("#deleteModal").modal('hide');
+		$('#delete2').attr('disabled', true);
+	}
+	function deleteFun(){
+		console.log("delete ids--------------"+deleteId);
+
+		$.ajax({
+			type : "GET",
+			url : "safety-planning-delete?id=" + deleteId,
+			success : function(response) {
+				if (response.code == "Success") {
+					closeModal();
+					viewData();
+					viewdets(pId);
+					$('#delete2').attr('disabled', true);
+				}
+			}
+		});
+
+	}
+	function getOwnerList(){
+		var search = $("#owner").val();
+		console.log("searchhh in getAssignedToAutoSearch"+search)
+		if (search == "") {
+			$("#suggesstion-box1").hide();
+		}
+		if (search) {
+			$.ajax({
+						type : "GET",
+						url : "safety-planning-autosearch-owner?searchValue="
+								+ search,
+						success : function(response) {
+							if (response.message == "success") {
+								console.log(response);
+								if (response.body.length != 0) {
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list" style="color:#ccc;">';
+									for (var i = 0; i < response.body.length; i++) {
+										
+										content += '<li class="autocompletedata cp" onclick="selectAutocompleteValue1(\''
+												+ response.body[i].key
+												+ '\',\''
+												+ response.body[i].name
+												+ '\')">'
+												+ response.body[i].name
+												+ '</li>';
+									}
+									content += '</ul>';
+									$("#suggesstion-box1").show();
+									$("#suggesstion-box1").html(content);
+
+								} else {
+									$("#search").css("background", "#FFF");
+									var content = '<div id="autocomplete-list">';
+									content += '<div onClick="selectAutocompleteValue1()">'
+											+ "No Data Found" + '</div>';
+									content += '</div>';
+									$("#suggesstion-box1").show();
+									$("#suggesstion-box1").html(content);
+
+								}
+							}
+						},
+						error : function(data) {
+							console.log(data);
+						}
+					})
+		}
+
+	}
+	function selectAutocompleteValue1(key,name) {
+		if (key) {
+			$("#ownerId").val(key);
+			$("#owner").val(name);
+			$("#search").val(key);
+			$("#search").attr('data-procat', key);
+			$("#suggesstion-box1").hide();
+
+		} else {
+			$("#indentNo").val("");
+			$("#search").val("");
+			$("#search").attr('data-procat', "");
+			$("#suggesstion-box1").hide();
+
+		}
+	}
+</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="row" id="upperline">
+						
+						<div class="row">
+							<div class="row">
+							<div class="d-flex justify-content-between">
+							<div class="col-md-4  btn-hs">
+								<div class="font-design" >
+									Projects (<span></span>)
+								</div>
+							</div>
+							<div class="col-md-4  btn-hs" id="searchRowDiv">
+							<div class="input-style">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter">
+								<div class="searchicon">
+									<a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+
+						</div>
+						<div class="buttonsec btn-hs col-md-4">
+						<button class="download-btn" id="download" onclick="">Download</button>
+							<button class="approve-btn" id="approve" onclick=""
+								th:if="${hrRole != null}" >Approve</button>
+							<button class="reject-btn" id="reject" onclick=""
+								th:if="${hrRole != null}">Reject</button>
+							<button class="delete-btn" id="delete" onclick="">Delete</button>
+							
+							</div>
+						</div>
+						</div>
+
+							<div id="myGrid" style="width: 100%; height: 200px;"
+								class="ag-theme-alpine"></div>
+								<div  style="width: 100%; height: 15px;"
+								class="ag-theme-alpine"></div>
+						</div>
+						</div>
+							<div class="row"  id="upperOne">
+							<div class="d-flex justify-content-between">
+							<div class="col-md-6  btn-hs">
+								<div class="font-design">
+								<!-- Selected Check-list -->
+								</div>
+							</div>
+							<div class="buttonsec btn-hs col-md-6">
+							<div class="buttonsec">
+									<button class="new-btn" id="add1" onclick="addId()">New</button>
+									<button class="download-btn"  id="download1" onclick="">Download</button>
+							<button class="approve-btn" id="approve1" onclick=""
+								th:if="${hrRole != null}" >Approve</button>
+							<button class="reject-btn" id="reject1" onclick=""
+								th:if="${hrRole != null}">Reject</button>
+							<button class="delete-btn" id="delete1" onclick="">Delete</button>
+								</div>
+							</div>
+						</div>
+						 <div class="col-lg-4">
+									<label> Project No</label> <input type="text"style="width: 100%;"
+										id="projectNo" class="form-control"
+											onblur="removeValid(event)"  readonly>
+											
+							</div> 
+							 <div class="col-lg-4">
+									<label> Project Name</label> <input type="text"style="width: 100%;"
+										id="projectName" class="form-control"
+											onblur="removeValid(event)"  readonly>
+											
+							</div> 
+							 <div class="col-lg-4">
+									<label> Project Location</label> <input type="text"style="width: 100%;"
+										id="location" class="form-control"
+											onblur="removeValid(event)"  readonly>
+											
+							</div> 
+							
+							<div id="myGrid1" style="width: 100%; height: 200px;"
+								class="ag-theme-alpine"></div>
+							</div>
+							<div class="row" >
+							<div class="d-flex justify-content-between">
+							<div class="col-md-6  btn-hs">
+								<div class="font-design">
+								 Action Plan
+								</div>
+							</div>
+							<div class="buttonsec btn-hs col-md-6">
+							<div class="buttonsec">
+									<!-- <button class="new-btn" id="add2" onclick="addId()">New</button> -->
+									<button class="download-btn"  id="download2" onclick="">Download</button>
+							<button class="delete-btn" id="delete2" onclick="deleteModalfun()">Delete</button>
+								</div>
+							</div>
+						</div>
+							
+							<div id="myGrid2" style="width: 100%; height: 300px;"
+								class="ag-theme-alpine"></div>
+							</div>
+							
+							
+					</div>
+							<!-- SIDE BAR NAVIGATION STARTS -->
+									
+								</div>
+								
+							</div>
+
+							<!-- SIDE BAR NAVIGATION ENDS -->
+
+						</div>
+
+						<!-- delete modal start -->
+						<div class="modal fade" id="myModalSelected">
+					<div class="modal-dialog modal-lg" style="margin-top: 130px;">
+						<div class="modal-content">
+
+							<!-- Modal body -->
+
+							<div class="modal-body modal-cat">
+										 
+									<div class="row">
+										<input type="hidden" id="safetyId">
+										<input type="hidden" id="projectId">
+										<input type="hidden" id="categoryId">
+										<input type="hidden" id="categoryCode">
+										<input type="hidden" id="actionId">
+										<div class="col-lg-6">
+											<div class="form-group ">
+												<label> Action Item</label> <input type="text"
+													id="actionItem" class="form-control"
+													onblur="removeValid(event)"  readonly>
+											</div>
+										</div>
+										
+									<div class="col-lg-6">
+										<div class="form-group">
+											<label>Assessment Notes</label>
+												<input type="text"
+													id="assessNotes" class="form-control"
+													onblur="removeValid(event)"  readonly>
+											</div>
+										</div>
+									
+									<div class="col-lg-6">
+									<div class="form-group">
+										<div class="autocomplete" style="width: 100%;">
+											<label>Owner</label> <input type="text" id="owner"
+												placeholder="Search Here.." class="form-control"
+												onkeyup='getOwnerList()'><input type="hidden" id="ownerId">
+										</div>
+										<div id="suggesstion-box1" class="sugg-cls"></div>
+										</div>
+									</div>
+									
+									<div class="col-lg-6">
+										<div class="form-group">
+											<label>Action Plan</label>
+												<input type="text" id="actionPlan" class="form-control"
+												onblur="removeValid(event)" >
+										</div>
+									</div>
+									
+										<div class="col-lg-6">
+										<div class="form-group calendar_box">
+										<label> Due date</label> <input type="text"
+											id="dueDate" class="form-control"
+											onblur="removeValid(event)" 
+											th:attr="onkeyup=|formatDate('dueDate','${session.DATEFORMAT_JS}')|" readonly>
+										<i class="ti-calendar picker_calendar" id="dueDateCalendar"></i>
+									</div>
+									</div>
+									
+									<div class="col-lg-6">
+										<div class="form-group">
+											<label>Status</label>
+												<div class="select">
+												<select class="" id="status" onblur="removeValid(event);" >
+												<option value="NULL">Select</option>
+												<option value="Open">Open</option>
+												<option value="Processing">Processing</option>
+												<option value="Closed">Closed</option>
+													<!--  <option th:each="c,iter:${projectList}"
+															th:value="${c.key}" th:text="${c.name}"></option> -->
+												</select>
+												</div>
+										</div>
+									</div>
+									
+									<div class="col-lg-6">
+										<div class="form-group">
+											<label>Remark</label>
+												<input type="text" id="remark" class="form-control"
+												onblur="removeValid(event)" >
+										</div>
+									</div>
+							</div>
+							</div>
+							<!-- Modal footer -->
+
+							<div class="modal-footer">
+								<div align="right">
+											<button class="cancel-btn" onclick="hideModal()">CANCEL</button>
+											<button class="btn1" id="saveId" onclick="saveTableData()">SAVE</button>
+										</div>
+							</div>
+						</div>
+					</div>
+				</div>
+						
+						<!-- //for excel file upload -->
+						<div class="modal fade"  id="deleteModal">
+							<div class="modal-dialog modal-confirm" >
+								<div class="modal-content">
+									<div class="modal-header flex-column">
+									</div>
+									<div class="modal-body">
+										<p>Do you really want to delete these records? This
+											process cannot be undone.</p>
+									</div>
+									<div class="modal-footer justify-content-center">
+										<button type="button" class="btn1" data-dismiss="modal"
+											aria-hidden="true" onclick="closeModal()">Cancel</button>
+										<button type="button" class="btn3" id="deleteModalBtn"
+											onclick="deleteFun()">Delete</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				
+			</div>
+</body>
+
+</html>

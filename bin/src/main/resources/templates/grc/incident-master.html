@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+   xmlns:th="http://www.thymeleaf.org"
+   xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+   layout:decorate="~{layout/master}">
+   <head>
+      <title>Welcome</title>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style></style>
+      <script type="text/javascript">
+         $(document).ready(function() {
+        	 
+        	 $('#delete').attr('disabled', true);
+         
+         var gridDiv = document.querySelector('#myGrid');
+         new agGrid.Grid(gridDiv, gridOptions);
+     
+         
+         // View
+ 		
+ 		agGrid.simpleHttpRequest({
+ 			url : "incident-master-view"
+ 		}).then(function(data) {
+ 			var len = data.length;
+ 			$('#totalReq').find('span').html(len);
+ 			gridOptions.api.setRowData(data);
+ 		});
+         
+         });
+         
+         
+         //  Ag Grid 
+         
+         var columnDefs = [ {
+        	 headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+			{
+         	headerName : "Incident Code",
+         	field : "incidentCode",
+         	width : 150,
+         	cellRenderer : function(params) {
+				return '<a id="" onclick=editId("' + params.data.incidentCode
+						+ '") href="javascript:void(0)">'
+						+ params.data.incidentCode + '</a>';
+			}
+         
+         }, {
+         	headerName : "Incident Type",
+         	field : "incidentType",
+         	cellStyle : {
+         		textAlign : 'left'
+         	},
+         
+         }, {
+         	headerName : "Incident Description",
+         	field : "incidentDesc",
+         	cellStyle : {
+         		textAlign : 'left'
+         	},
+         
+         }, {
+         	headerName : "Status",
+         	field : "status",
+         	cellStyle : {
+         		textAlign : 'left'
+         	},
+         
+         } ];
+         
+         var gridOptions = {
+         	columnDefs : columnDefs,
+         	defaultColDef : {
+         		sortable : true,
+         		filter : true,
+         		resizable : true,
+         		width : 260,
+         		height : 10
+         	},
+         	//rowSelection : 'multiple',
+         	rowSelection : 'single',
+         	suppressRowClickSelection : true,
+         	onSelectionChanged : deleteModal,
+         };
+         function deleteModal(){
+        	 $('#delete').attr('disabled', false);
+
+         }
+         
+         // Function for ag grid    
+         function openNav() {
+         	$("#incidentCode").val('');
+         	$("#incidentType").val('');
+         	$("#incidentDesc").val('');
+         	$("#status").val('');
+         
+         	document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:20px;";
+         
+         	document.getElementById("main_content").style.width = "75%";
+         	$("#delete").hide();
+         	$("#add").hide();
+         }
+         
+         function closeNav() {
+         	document.getElementById("mySidenav").style.width = "0";
+         	document.getElementById("main_content").style.width = "100%";
+         	$("#incidentCode").val('');
+         	$("#incidentType").val('');
+         	$("#incidentDesc").val('');
+         	$("#status").val('');
+         	
+         	$("#delete").show();
+         	$("#add").show();
+         }
+         
+         // save
+         function saveNav() {
+         	var obj = {};
+         	obj.incidentCode = $("#incidentCode").val();
+         obj.incidentType = $("#incidentType").val();
+         obj.incidentDesc = $("#incidentDesc").val();
+         obj.status = $("#status").val();
+         	
+         
+         	console.log(obj);
+         	
+         	var validation = true;
+         	 
+        /*  if (obj.incidentType == null || obj.incidentType == "") {
+         validation = validationUpdated("Incident Type Required", "incidentType");
+         }
+         if (obj.incidentDesc == null || obj.incidentDesc == "") {
+         validation = validationUpdated("Incident Description Required", "incidentDesc");
+         }
+         if (obj.status == null || obj.status == "") {
+         validation = validationUpdated("Status Required", "status");
+         } */
+          
+         if (validation) {
+ 			$.ajax({
+ 				type : "POST",
+ 				url : "incident-master-add",
+ 				contentType : "application/json",
+ 				data : JSON.stringify(obj),
+ 				success : function(response) {
+ 					if (response.message == "success") {
+
+  						$("#messageParagraph").text("Data Saved Successfully");
+ 						$("#msgOkModal").removeClass("btn3");
+ 						$("#msgOkModal").addClass("btn1");
+ 						$("#msgModal").modal('show');
+ 						$("#activityone").show();
+ 						$("#add").show();
+ 						$("#myGrid").show();
+ 						$("#cancel").hide();
+ 						$("#save").hide();
+ 						$("#form").hide();
+ 						$("#new").hide();
+
+ 						agGrid.simpleHttpRequest({
+ 							url : "incident-master-view"
+ 						}).then(function(data) {
+ 							gridOptions.api.setRowData(data);
+ 						});
+
+ 						closeNav();
+  
+ 					}
+ 				},
+ 			
+ 				error : function(data) {
+ 				}
+ 			})
+ 		}
+                 
+     }
+         // edit
+         //var incCode="";
+     	function editId(id) {
+
+			$("#add").hide();
+			//$("#myGrid").show();
+			$("#delete").hide();
+			$("#add").hide();
+			//$("#download").hide();
+
+			$.ajax({
+				type : "GET",
+				url : "incident-master-edit?Id=" + id,
+				success : function(response) {
+					if (response.message == "Success") {
+						openNav();
+						//incCode=response.body.incidentCode;
+						//alert(incCode)
+						console.log("edit" + response.body);
+						$("#incidentCode").val(response.body.incidentCode);
+						$("#incidentType").val(response.body.incidentType);
+						$("#incidentDesc").val(response.body.incidentDesc);
+						$("#status").val(response.body.status);
+
+					}
+				},
+
+				error : function(data) {
+					console.log(data)
+
+					$("#incidentCode").val();
+					$("#incidentType").val();
+					$("#incidentDesc").val();
+					$("#status").val();
+
+				}
+			});
+
+		}
+     	
+     	//Delete 
+		function deleteFun() {
+			var selectedRows = gridOptions.api.getSelectedRows();
+			var id = selectedRows[0].incidentCode;
+			$('#delete').attr('disabled', true);
+			console.log("id",id);
+			$.ajax({
+				type : "GET",
+				url : "incident-master-delete?id=" + id,
+				success : function(response) {
+					if (response.message == "Success") {
+
+						agGrid.simpleHttpRequest({
+							url : "incident-master-view"
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+						//location.reload();
+
+						closeModal();
+						closeNav();
+						
+					}
+				},
+				error : function(data) {
+					console.log(data);
+				}
+			})
+		}
+     	
+		function deleteModalfun(){
+			$("#deleteModal").modal('show');
+		}
+		function closeModal(){
+			$("#deleteModal").modal('hide');
+		}
+          
+
+      </script>
+   </head>
+   <body>
+      <div layout:fragment="content" class="maincontent">
+         <div class="container-fluid">
+            <div class="row">
+               <div class="maincontentsec">
+                  <div class="content_padding">
+                     <div id="main_content">
+                        <div class="panel-body">
+                           <div class="d-flex justify-content-between">
+                              <div class="btn-hs">
+                                 <div class="font-design" id="totalReq">
+                                    Master (<span></span>)
+                                 </div>
+                              </div>
+                              <div class="buttonsec btn-hs" id="btndiv">
+                                 <button id="download" class="download-btn" onclick="goalCSV()">Download</button>
+                                 <button id="add" class="new-btn" onclick="openNav()">New</button>
+                                 <button class="delete-btn" id="delete" onclick="deleteModalfun()">DELETE</button>
+                              </div>
+                           </div>
+                           <div class="row">
+                              <div id="myGrid" style="width: 100%; height: 400px;"
+                                 class="ag-theme-alpine"></div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <div id="mySidenav" class="sidenav">
+                  <div class="slidebox">
+                     <div class="d-flex justify-content-between">
+                        <div class="edit">Master Details</div>
+                        <div class="arrow">
+                           <a href="javascript:void(0)" class="closebtn"
+                              onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+                        </div>
+                     </div>
+                     <div class="row">
+                        <div class="col-md-12 buttonsec btn-hs">
+                           <button class="cancel-btn" onclick="closeNav()">CANCEL</button>
+                           <button class="save-btn" onclick="saveNav()">SAVE</button>
+                        </div>
+                     </div>
+                     <input type="hidden" id="incidentCode">
+                     <div class="col-md-12">
+                        <div class="form-group">
+                           <label>Incident Type</label> <input type="text"
+                              class="form-control" id="incidentType"
+                              onblur="removeValid(event)" autocomplete="off">
+                        </div>
+                     </div>
+                     <div class="col-md-12">
+                        <div class="form-group">
+                           <label>Incident Description</label> <input type="text"
+                              class="form-control" id="incidentDesc" onblur="removeValid(event)"
+                              autocomplete="off">
+                        </div>
+                     </div>
+                     <div class="col-md-12">
+                        <div class="form-group">
+                           <label>Status</label> <input type="text"
+                              class="form-control" id="status" onblur="removeValid(event)"
+                              autocomplete="off">
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+            <!-- delete modal start -->
+					<div class="modal fade"  id="deleteModal">
+							<div class="modal-dialog modal-confirm" >
+								<div class="modal-content">
+									<div class="modal-header flex-column">
+										
+									</div>
+									<div class="modal-body">
+										<p>Do you really want to delete these records? This
+											process cannot be undone.</p>
+									</div>
+									<div class="modal-footer justify-content-center">
+										<button type="button" class="btn1" data-dismiss="modal"
+											aria-hidden="true" onclick="closeModal()">Cancel</button>
+										<button type="button" class="btn3" id="deleteModalBtn"
+											onclick="deleteFun()">Delete</button>
+									</div>
+								</div>
+							</div>
+						</div>
+         </div>
+      </div>
+   </body>
+</html>

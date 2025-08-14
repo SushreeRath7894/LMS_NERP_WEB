@@ -1,0 +1,3096 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<style type="text/css">
+.disabledCalender {
+	pointer-events: none; /* Prevents any mouse event */
+	opacity: 0.5; /* Makes it appear disabled */
+}
+
+
+/* .autocomplete {
+	position: relative;
+	display: inline-block;
+	width: 100%;
+}
+
+.sugg-cls ul {
+	height: 150px;
+	overflow-x: scroll;
+	position: relative;
+}
+
+ul#autocomplete-list1 {
+	position: absolute;
+	z-index: 999;
+}
+
+ul#autocomplete-list1 li {
+	position: relative;
+	color: #fff;
+	padding-left: 6px;
+	background-color: #c151e7;
+	border-bottom: solid 1px #fff;
+	padding-top: 5px;
+	padding-bottom: 5px;
+} */
+ .picker_calendar{
+	top: 40px;
+ }
+ .bdr-n{border: none !important; margin: 0px 4px;}
+ .radio-btn{font-size: 13px;}
+ .upload-ico-mrg{margin: 8px 5px 0px 0px;}
+ .mrg-0{margin: 0px 0px;}
+</style>
+
+<script type="text/javascript">
+let type = '';
+document.addEventListener('DOMContentLoaded', function() {
+	
+	const urlParams = new URLSearchParams(window.location.search);
+	type = urlParams.get('id');
+	
+	if(type == null || type == 'null') {
+		type = '';
+	}
+	
+	// date format FROM date
+	var dateFormat = localStorage.getItem("dateFormat");
+	$("#fromDateCalendar").datetimepicker({
+		format : dateFormat,
+		closeOnDateSelect : true,
+		timepicker : false,
+		scrollMonth : false
+		//minDate : new Date(),
+	}).on("change", function() {
+		$('#fromDate').val($(this).val());
+		dateChange("fromDate","toDate");
+	})
+
+	$('#fromDate').blur(function() {
+		$("#fromDateCalendar").val($(this).val());
+	})
+	//  date format TO date
+
+	$("#toDateCalendar").datetimepicker({
+		format : dateFormat,
+		closeOnDateSelect : true,
+		timepicker : false,
+		scrollMonth : false
+		//minDate : new Date(),
+	}).on("change", function() {
+		$('#toDate').val($(this).val());
+		dateChange("fromDate","toDate");
+	})
+
+	$('#toDate').blur(function() {
+		$("#toDateCalendar").val($(this).val());
+	})
+	
+
+		// Service Date
+		
+		$("#fromDateCalendarService").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+			scrollMonth : false
+			//minDate : new Date(),
+		}).on("change", function() {
+			$('#fromDateService').val($(this).val());
+			dateChange("fromDateService","toDateService");
+		})
+
+		$('#fromDateService').blur(function() {
+			$("#fromDateCalendarService").val($(this).val());
+		})
+		
+		$("#toDateCalendarService").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+			scrollMonth : false
+			//minDate : new Date(),
+		}).on("change", function() {
+			$('#toDateService').val($(this).val());
+			dateChange("fromDateService","toDateService");
+		})
+
+		$('#toDateService').blur(function() {
+			$("#toDateCalendarService").val($(this).val());
+		})
+		
+		// Time
+		
+		$("#DateCalendarFromTime").datetimepicker({
+			 format: 'h:i A',
+		   	 closeOnDateSelect: false,
+		   	 timepicker: true,
+		   	 datepicker: false,
+		   	 step: 15,
+		   	 formatTime: 'h:i A'
+		}).on("change", function() {
+			$('#fromServiceTime').val($(this).val());
+		})
+
+		$('#fromServiceTime').blur(function() {
+			$("#DateCalendarFromTime").val($(this).val());
+		})
+		
+		$("#DateCalendarToTime").datetimepicker({
+			 format: 'h:i A',
+		   	 closeOnDateSelect: false,
+		   	 timepicker: true,
+		   	 datepicker: false,
+		   	 step: 15,
+		   	 formatTime: 'h:i A'
+		}).on("change", function() {
+			$('#toServiceTime').val($(this).val());
+		})
+
+		$('#toServiceTime').blur(function() {
+			$("#DateCalendarToTime").val($(this).val());
+		})
+		
+
+		// Claim Date
+		
+		$("#fromDateCalendarClaim").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+			scrollMonth : false
+			//minDate : new Date(),
+		}).on("change", function() {
+			$('#fromDateClaim').val($(this).val());
+			dateChange("fromDateClaim","toDateClaim");
+		})
+
+		$('#fromDateClaim').blur(function() {
+			$("#fromDateCalendarClaim").val($(this).val());
+		})
+		
+		$("#toDateCalendarClaim").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+			scrollMonth : false
+			//minDate : new Date(),
+		}).on("change", function() {
+			$('#toDateClaim').val($(this).val());
+			dateChange("fromDateClaim","toDateClaim");
+		})
+
+		$('#toDateClaim').blur(function() {
+			$("#toDateCalendarClaim").val($(this).val());
+		})
+
+		
+
+	var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+	
+	var gridDiv = document.querySelector('#myGridServices');
+	new agGrid.Grid(gridDiv, activityOptions);
+	
+	var gridDiv = document.querySelector('#myGridClaim');
+	new agGrid.Grid(gridDiv, claimOptions);
+	
+	/* var gridDiv = document.querySelector('#myGridClaimView');
+	new agGrid.Grid(gridDiv, claimViewOptions); */
+	
+
+	var userid = $("#sessionId").val();
+	var userrole = $("#sessionRole").val();
+	var roleid = "";
+	for (var i = 6; i <= userrole.length; i = i + 6) {
+		roleid = roleid + '"' + userrole.slice(i - 6, i) + '",';
+	}
+	roleid = roleid.substring(0, roleid.length - 1);
+	$("#rejectLeaveSubmitBtn").hide();
+	 $("#approveLeaveSubmitBtn").hide();
+
+	agGrid.simpleHttpRequest(
+			{
+				url : 'travel-requisition-view-employee?userid='
+						+ userid + "&roleid=" + roleid+"&selftype="+type,
+			}).then(function(data) {
+				console.log("data>>>>>>",data);
+		var len = data.length;
+		$('#totalReq').find('span').html(len);
+
+		gridOptions.api.setRowData(data);
+		
+		if (data && data.length > 0) {
+			let rowId = data[0].travelingReqId;
+			gridOptions.api.getRowNode(rowId).setSelected(true);
+		} else {
+			if(type) {
+				$("#empName").attr("disabled",true);
+				getEmployeeList();
+				$("#editDtls,#cancelTravel,#deleteDtls,#approveReqBtn,#rejectReqBtn").hide();
+				$("#addDtls,#infoNextBtn").show();
+				
+			} else {
+				$("#empName").removeAttr("disabled");
+				newDtls()
+			}
+		//	newDtls()
+			
+		}
+	});
+
+	activityOptions.api.setRowData();
+	
+});
+ 
+ 
+ var activityDefs = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : true,
+			checkboxSelection : true,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			width : 30
+		},
+		{
+			headerName : "Sl No",
+			field : "slnoId",
+			width : 70,
+			cellRenderer : function(params) {
+				return '<b>' + params.data.slnoId + '</b>';
+			}
+		}, {
+			headerName : "Service",
+			field : "serviceId",
+			width : 150,
+			hide : true
+		}, {
+			headerName : "Service Name",
+			field : "serviceName",
+			width : 150,
+			//hide : true
+		}, {
+			headerName : "From Date",
+			field : "date",
+			width : 100,
+			cellStyle : {
+				textAlign : 'center'
+			},
+		},
+
+		{
+			headerName : "From Time",
+			field : "time",
+			width : 100,
+			cellStyle : {
+				textAlign : 'center'
+			},
+		}, {
+			headerName : "To Date",
+			field : "todate",
+			width : 100,
+			cellStyle : {
+				textAlign : 'center'
+			},
+		},{
+			headerName : "To Time",
+			field : "totime",
+			width : 100,
+			cellStyle : {
+				textAlign : 'center'
+			},
+		},{
+			headerName : "Description",
+			field : "description",
+			width : 250,
+			 cellRenderer : function(params) {
+				return (params.data.description && params.data.description!="" && params.data.description !='null') ? window.atob(params.data.description) : null;
+			} 
+		},];
+ 
+
+
+var travelDefs = [
+		 {
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			pinned : 'left'
+
+		}, 
+		{
+			headerName : 'Requisition Id',
+			width : 120,
+			field : "travelingReqId",
+			pinned : 'left',
+			 cellRenderer : function(params) {
+				var sempid = $("#sessionId").val();
+				
+					return params.data.travelingReqId;
+			 }
+
+		}, {
+			headerName : 'Employee Id',
+			width : 110,
+			field : "employeeId",
+			pinned : 'left',
+		}, {
+			headerName : 'Employee Name',
+			width : 180,
+			field : "employeeName",
+			pinned : 'left',
+		}, {
+			headerName : 'Place Name',
+			field : "placeName",
+		}, {
+			headerName : 'Apply Date',
+			field : "createdOn",
+			width : 100,
+			cellStyle : {
+				textAlign : 'center'
+			}
+		},{
+			headerName : 'Status',
+			width : 80,
+			field : "status",
+			cellRenderer : function(params) {
+				if (params.data.status =="Pending") { 
+					return '<div style="color:#a9a9a9">Pending</div>';
+				} else if (params.data.status =="Forwarded") {
+					return '<div style="color:#ffa500">Forwarded</div>';
+				} else if (params.data.status == "Approved") {
+					return '<div style="color:#0642f5">Approved</div>';
+				} else {
+					return '<div style="color:#ff8242">Rejected</div>';
+				}	
+			}
+		},{
+			headerName : 'Claim Status',
+			field : "claimStatus",
+			width : 110,
+			cellRenderer : function(params) {
+				if (params.data.claimStatus =="Pending") {
+					return '<div style="color:#a9a9a9">Pending</div>';
+				} else if (params.data.claimStatus == "completed") {
+					return '<div style="color:#9932CC">Completed</div>';
+				} else {
+					return '<div style="color:#00BFFF">Continue</div>';
+				}
+			}
+		},
+
+];
+	
+
+
+var gridOptions = {
+	    columnDefs: travelDefs,
+	    rowSelection: 'single',
+	    groupSelectsChildren: true,
+	    suppressRowClickSelection: false,
+	    suppressAggFuncInHeader: true,
+	    defaultColDef: {
+	        sortable: true,
+	        filter: true,
+	        resizable: true,
+	        width: 120
+	    },
+		pagination : true,
+		paginationPageSize: 15, 
+	    onSelectionChanged: onSelectionChanged,
+	    getRowNodeId: function (data) {
+			return data.travelingReqId;
+		},
+	   /* onRowDataChanged: function() {
+	        // Select the first row when data is loaded
+	        gridOptions.api.forEachNode(function(node) {
+	            if (node.rowIndex === 0) {
+	                node.setSelected(true);
+	            }
+	        });
+	    }  */
+	};
+
+// for claim table
+
+var claimDefs = [
+		 {
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : true,
+			checkboxSelection : true,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			width : 30
+		}, 
+		{
+		    headerName: "Sl No",
+		    field: "itemId",
+		    width: 70,
+		    cellRenderer: function(params) {
+		        // Check if it's a single row by comparing total row count
+		        var totalRows = params.api.getDisplayedRowCount();
+		        
+		        // If only one row, set itemId as 1, otherwise use row index + 1
+		        var itemId = totalRows === 1 ? 1 : params.node.rowIndex + 1;
+
+		       // return '<div><a onclick=editRowClaim("' + params.data.itemId + '") href="javascript:void(0)">' + itemId + '</a></div>';
+		        return '<div><b>' + itemId + '</b></div>';
+		    }
+		},
+		{
+			headerName : "Service Name",
+			field : "itemName",
+			width : 150,
+		},  {
+			headerName : "From Date",
+			field : "date",
+			width : 100,
+			
+		},{
+			headerName : "To Date",
+			field : "tdate",
+			width : 100,
+		
+		},{
+			headerName : "Amount",
+			field : "amount",
+			width : 120,
+		
+		}, {
+			headerName : "Bill",
+			field : "bill",
+			width : 100,
+			cellStyle: { 'text-align': 'center' },
+			cellRenderer : function(params) {
+				var div = "";
+				if (params.data.docName != null && params.data.docName != "" && params.data.docName != 'null') {
+					var ext = params.data.docName.split(".");
+					if (ext[1] == "pdf") {
+						div = div
+						+ " "
+						+ '<div class ="fas fa-file-pdf" style="cursor: pointer; color: red;" onclick=viewImage("'+ params.data.docName + '")> </div>';
+					}else{
+						div = div
+						+ " "
+						+ '<div class ="fas fa-image" style="cursor: pointer; color: blue;" onclick=viewImage("'+ params.data.docName + '")> </div>';
+					}
+				}
+				return div;
+			}
+		},{
+			headerName : "Description",
+			field : "destination",
+			width : 200,
+			cellRenderer : function(params) {
+			return (params.data.destination && params.data.destination!="" && params.data.destination !='null') ? window.atob(params.data.destination) : null;
+			} 
+			
+		},];
+
+
+var ClaimViewDefs = [
+		{
+		headerName : "Service",
+		field : "item",
+		width : 150
+	},{
+		headerName : "Service Name",
+		field : "itemName",
+		width : 150
+	}, {
+		headerName : "Description",
+		field : "destination",
+		width : 250,
+	}, {
+		headerName : "From Date",
+		field : "fdate",
+		width : 110
+	}, {
+		headerName : "To Date",
+		field : "tdate",
+		width : 110
+	},{
+		headerName : "Amount",
+		field : "amount",
+		width : 118,
+		cellStyle: { 'text-align': 'right' }
+	}, {
+		headerName : "Bill",
+		field : "bill",
+		width : 100,
+		cellRenderer : function(params) {
+			var div = "";
+			if (params.data.docName != null && params.data.docName != "" && params.data.docName != 'null'){
+				var ext = params.data.docName.split(".");
+				if (ext[1] == "pdf") {
+					div = div
+					+ " "
+					+ '<div class ="fas fa-file-pdf" style="cursor: pointer; color: red;" onclick=viewImage("'+ params.data.docName + '")> </div>';
+				}else{
+					div = div
+					+ " "
+					+ '<div class ="fas fa-image" style="cursor: pointer; color: blue;" onclick=viewImage("'+ params.data.docName + '")> </div>';
+				}
+			}
+		return div;
+		}
+	},];
+
+var claimViewOptions = { 
+		columnDefs : ClaimViewDefs,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+		},
+		//onSelectionChanged : onSelectionChangedActivity,
+	};
+
+// let the grid know which columns and what data to use product table
+var activityOptions = {
+	columnDefs : activityDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 200
+	},
+	onSelectionChanged : onSelectionChangeChild,
+	getRowNodeId : function(data) {
+		return data.slnoId;
+	}
+};
+
+var claimOptions = {
+		columnDefs : claimDefs,
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 200
+		},
+		onSelectionChanged : onSelectionChangedClaim,
+		getRowNodeId : function(data) {
+			return data.itemId;
+		}
+	};
+
+
+var deleteid = "";
+function onSelectionChangedClaim() {
+	var selectedRows = claimOptions.api.getSelectedRows();
+	deleteid = "";
+	for (var i = 0; i < selectedRows.length; i++) {
+
+		deleteid = deleteid + '"' + selectedRows[i].itemId + '",';
+		console.log(selectedRows[i].itemId);
+	}
+	deleteid = deleteid.substring(0, deleteid.length - 1);
+
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+
+	});
+
+	if (rowCount > 0) {
+		$('#addClaimBtn').attr('disabled', true);
+		$('#editClaimBtn').attr('disabled', false);
+		$('#deleteClaimBtn').attr('disabled', false);
+
+	}else{
+		$('#addClaimBtn').attr('disabled', false);
+		$('#editClaimBtn').attr('disabled', true);
+		$('#deleteClaimBtn').attr('disabled', true);
+	
+	}
+
+}
+
+var id = "";
+var treq="";
+function onSelectionChanged() {
+	 var selectedNodes = gridOptions.api.getSelectedNodes(); //alert(selectedNodes)
+	 var selectedData = selectedNodes.map(node => node.data);
+	 treq= selectedData.map(node => node.travelingReqId);
+	 var empID= selectedData.map(node => node.employeeId);
+	  
+	var selectedRows = gridOptions.api.getSelectedRows();
+	id = "";
+	for (var i = 0; i < selectedRows.length; i++) {
+
+		id = id + '"' + selectedRows[i].travelingReqId + '",';
+		console.log(selectedRows[i].status);
+		$("#employeeNameTop1").text(selectedRows[0].employeeName);
+		$("#employeeNameTop").text(selectedRows[0].employeeName);
+		$("#employeeNameTop2").text(selectedRows[0].employeeName);
+		$("#cancelTravel").hide();
+	}
+	id = id.substring(0, id.length - 1);
+
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		
+		rowCount = rowCount + 1;
+	});
+	
+	let rowCount1 = rowCount;
+	let approveSts = selectedData.map(node => node.status);
+	let approveStsClaim = selectedData.map(node => node.claimStatus)[0];
+	console.log("approveStsClaim>>>>>" , approveStsClaim);
+	nextTab('travel-tab');
+	if(rowCount1 != 0){
+		disableFields();
+		editTravel(treq);
+		if(approveSts == "Pending"){
+			if (window.location.href.indexOf("self-service") !== -1) {
+				$("#approveReqBtn, #rejectReqBtn").hide();
+		    }else{
+		    	$("#approveReqBtn, #rejectReqBtn").show();
+		    }
+			$(".claim-tab").addClass('d-none');
+			$(".claim-tab").hide();
+			$("#editDtls").show();
+			$("#addDtls").show();
+			$("#masterSaveBtn").show();
+			$("#serviceGridAllBtnDiv").show();
+			$("#deleteDtls").show();
+			$("#nextBtnService").hide();
+		}else{
+			if(approveSts == "Approved"){
+				$(".claim-tab").removeClass('d-none');
+				$(".claim-tab").show();
+				$("#nextBtnService").show();
+				 if(approveStsClaim == "completed"){
+					 $("#claimGridAllBtnDiv").hide();
+					 $("#claimApproveBtn").hide();
+				 }else{
+						if (window.location.href.indexOf("self-service") !== -1) {
+							$("#claimApproveBtn").hide();
+					    }else{
+					    	$("#claimApproveBtn").show();
+					    }
+					 $("#claimGridAllBtnDiv").show();
+				 }
+			}else{
+				$(".claim-tab").addClass('d-none');
+				$(".claim-tab").hide();
+				$("#nextBtnService").hide(); 
+			}
+			$("#rejectReqBtn").hide();
+			$("#editDtls").hide();
+			$("#addDtls").show();
+			$("#approveReqBtn").hide();
+			$("#masterSaveBtn").hide();
+			$("#serviceGridAllBtnDiv").hide();
+			$("#deleteDtls").hide();
+			
+		}
+		
+	}else{
+		switchPage();
+		enableFields();
+		
+		$(".claim-tab").hide();
+		$("#rejectReqBtn").hide();
+		$("#editDtls").hide();
+		$("#approveReqBtn").hide();
+		$("#masterSaveBtn").show();
+		$("#serviceGridAllBtnDiv").show();
+		$("#deleteDtls").hide();
+		$("#nextBtnService").hide();
+		$("#No").prop('checked', true);
+		$("#advanceAmount").val('');
+		$("#amount").hide();
+	}
+ 
+	
+	 var uid=$("#sessionId").val();
+	 var adRole=$("#adRole").val();
+	 var managerRole =$("#managerRole").val();
+	
+	if (rowCount > 0) {
+		
+		if(adRole!=null && adRole!=''){
+			
+			if(selectedData.map(node => node.status) == "Pending"){
+				$("#services-next").addClass('d-none');
+				$("#services-apprv").removeClass('d-none');
+				$("#services-reject").removeClass('d-none');
+				$(".claim-tab").addClass('d-none');
+			}else if(selectedData.map(node => node.status) == "Forwarded"){
+			
+			}else if(selectedData.map(node => node.status) == "Rejected"){
+				$("#services-next").removeClass('d-none');
+				$("#services-apprv").addClass('d-none');
+				$("#services-reject").addClass('d-none');
+				$(".claim-tab").addClass('d-none');
+			}else if(selectedData.map(node => node.status) == "Approved"){
+				$("#services-next").removeClass('d-none');
+				$("#services-apprv").addClass('d-none');
+				$("#services-reject").addClass('d-none');
+				$(".claim-tab").removeClass('d-none');
+				
+				
+			}else{
+				
+			}
+		}else if(managerRole!=null && managerRole!=''){
+			
+			if(empID==uid){
+				
+				if(empID==uid){
+					
+					if(selectedData.map(node => node.status) == "Pending"){
+						
+						$('#reqDltBtn').attr("disabled", false);
+					}else if((selectedData.map(node => node.status) == "Forwarded") || (selectedData.map(node => node.status) == "Approved") || (selectedData.map(node => node.status) == "Rejected")){
+						
+					}else{
+						
+						$('#reqDltBtn').attr("disabled", true);
+					}
+				}
+			}else{
+				
+			if(selectedData.map(node => node.status) == "Pending"){
+				
+				
+			}else if(selectedData.map(node => node.status) == "Forwarded"){
+				
+				
+			}else if((selectedData.map(node => node.status) == "Approved")|| (selectedData.map(node => node.status) == "Rejected")){
+				
+				
+			}else{
+				
+			}
+		  }
+		}else{
+			
+			if(empID==uid){
+				
+				if(selectedData.map(node => node.status) == "Pending"){
+					
+					$('#reqDltBtn').attr("disabled", false);
+				}else{
+					
+					$('#reqDltBtn').attr("disabled", true);
+				}
+			}
+		}
+		
+	} else {
+		document.querySelector('.nav-item a[href="#claim"]').parentElement.style.display = 'none';
+		$("#employeeNameTop,#employeeNameTop1,#employeeNameTop2").text('');
+
+	$('#reqDltBtn').attr("disabled", true);
+	$('#newBtn').attr("disabled", false);
+	//switchPage();
+	
+	if(type) {
+				$("#empName").attr("disabled",true);
+				getEmployeeList()
+			} else {
+				$("#empName").removeAttr("disabled");
+			}
+}
+	
+}
+
+function viewImage(id){
+	window.open("/document/document/"+id,'_blank');
+}
+function viewImageBill(id){
+	window.open(id,'_blank');
+}
+
+function setTravelTabAsDefault() {
+	document.querySelectorAll('#tabMenu .nav-link').forEach((tab) => {
+		console.log("tab",tab);
+		//tab.classList.remove('show');
+		tab.classList.remove('active');
+		console.log("tab",tab);
+	});
+	
+	const travelTab = document.querySelector('#travel-tab .nav-link');
+	travelTab.classList.add('active');
+	travelTab.setAttribute('aria-selected', 'true');
+
+	document.querySelectorAll('.tab-pane').forEach((tab) => {
+		tab.classList.remove('show');
+		tab.classList.remove('active');
+		
+	});
+	
+
+	const travelContent = document.querySelector('#travel');
+	travelContent.classList.add('show', 'active');
+}
+
+function editTravel(travelingReqId){ 
+	
+	$("#myGridClaim").show();
+	$("#myGridClaimView").show();
+	$("#claimdiv").show();
+	$("#claimviewdiv").show();
+	//setTravelTabAsDefault();
+	var sempid=$("#sessionId").val();
+	$('.loader').show();
+	$("body").addClass("overlay");
+	timeout = setTimeout(function() {
+	$.ajax({
+		type : "GET",
+				url : "travel-requisition-edit-employee-trough-ajax?id=" + travelingReqId,
+				async : false,
+				success : function(response) {
+					console.log("response for edit cus------"
+							+ JSON.stringify(response));
+					if (response.code == "Success") {
+						$('.loader').hide();
+						$("body").removeClass("overlay");
+						var selectedNodes = gridOptions.api.getSelectedNodes();
+						var selectedData = selectedNodes.map(node => node.data);
+						var travelStatus = selectedData.map(node => node.status);
+						var claimStatus = selectedData.map(node => node.claimStatus);
+						
+						$("#save").hide();
+						$("#newchild").hide();
+						$("#deleteChild").hide();
+						$("#backBtn").hide();
+						$("#cancelBtn").show();
+						$("#trReqId").val(response.body.travelingReqId);
+						$(".trReqClass").text(response.body.travelingReqId);
+						$("#fromDate").val(response.body.fromDate);
+						$("#toDate").val(response.body.toDate);
+						$("#employeeId").val(response.body.employeeId);
+						$("#placeName").val(response.body.placeName);
+						$("#purpose").val(response.body.purpose);
+						//$("#advanceReq").val(data[0].advanceReq);
+						$("#advanceAmount").val(response.body.advanceAmount);
+						//$("#empName").val(response.body.empName);
+						$("#empName").val(response.body.employeeName);
+						$("#empId").val(response.body.empId);
+						$("#designation").val(response.body.designation);
+						$("#travelFrom").val(response.body.travelFrom);
+						$("#remark").val(response.body.remark);
+						$("#createdById").val(response.body.createdById);
+						if(response.body.advanceReq==1){
+							$("#Yes").prop('checked', true);
+							$("#amount").show();
+						}else{
+							$("#No").prop('checked', true);
+							$("#amount").hide();
+						}
+						console.log("response.body.servicedtls",response.body.servicedtls);
+						activityOptions.api.setRowData(response.body.servicedtls);
+						if (travelStatus== "Approved"){
+							agGrid.simpleHttpRequest({
+								url : '/employee/travel-requisition-claim-view-other?id='+ travelingReqId 
+							}).then(function(data) {
+								console.log(data)
+								var len = data.length;
+								//$('#totalReq').find('span').html(len);
+								claimOptions.api.setRowData(data);
+							})
+						}
+						
+						/* if (travelStatus== "Pending") { 
+							
+							$("#save").show();
+							
+							$("#newchild").show();
+							$("#deleteChild").show();
+							$("#backBtn").hide();
+							$("#cancelBtn").show();
+						$("#trReqId").html(response.body.travelingReqId);
+						$("#fromDate").val(response.body.fromDate);
+						$("#toDate").val(response.body.toDate);
+						$("#employeeId").val(response.body.employeeId);
+						$("#placeName").val(response.body.placeName);
+						$("#purpose").val(response.body.purpose);
+						//$("#advanceReq").val(data[0].advanceReq);
+						$("#advanceAmount").val(response.body.advanceAmount);
+						$("#empName").val(response.body.empName);
+						$("#empId").val(response.body.empId);
+						$("#designation").val(response.body.designation);
+						$("#travelFrom").val(response.body.travelFrom);
+						$("#remark").val(response.body.remark);
+						$("#createdById").val(response.body.createdById);
+						if(response.body.advanceReq==1){
+							$("#Yes").prop('checked', true);
+							$("#amount").show();
+						}else{
+							$("#No").prop('checked', true);
+							$("#amount").hide();
+						}
+						activityOptions.api.setRowData(response.body.servicedtls);
+						
+						}else{ */
+							
+							
+							
+							/*  if (claimStatus== "completed") {
+								 $("#myGridClaim").hide();
+								 $("#claimdiv").hide();
+							agGrid.simpleHttpRequest({
+								url : '/employee/travel-requisition-claim-view-other?id='+ travelingReqId  
+							}).then(function(data) {
+								console.log(data)
+								var len = data.length;
+								$('#totalReq').find('span').html(len);
+								claimViewOptions.api.setRowData(data);
+								console.log("Claim====================",data);
+							})
+						} else if (claimStatus== "Pending"){
+							$("#myGridClaimView").hide();
+							$("#claimviewdiv").hide();
+							agGrid.simpleHttpRequest({
+								url : '/employee/travel-requisition-claim-view-other?id='+ travelingReqId 
+							}).then(function(data) {
+								console.log(data)
+								var len = data.length;
+								//$('#totalReq').find('span').html(len);
+								claimOptions.api.setRowData(data);
+							})
+						}else{
+							$("#myGridClaimView").hide();
+							agGrid.simpleHttpRequest({
+								url : '/employee/travel-requisition-claim-view-other?id='+ travelingReqId 
+							}).then(function(data) {
+								console.log(data)
+								var len = data.length;
+								//$('#totalReq').find('span').html(len);
+								claimOptions.api.setRowData(data);
+							})
+						} */
+						/* } */
+						
+					}else{
+						$('.loader').hide();
+						$("body").removeClass("overlay");
+					}
+					
+				}
+			})
+	}, 500);
+}
+
+// for editing child table of shift 
+function editServiceData() {
+	let selectedData = activityOptions.api.getSelectedRows();
+	let slNo = selectedData[0].slnoId;
+	var rowNode = activityOptions.api.getRowNode(slNo);
+	toggleServiceSection();
+	console.log("rownode---",rowNode.data);
+	console.log("id=--",rowNode.data.serviceId);
+
+	//addIssue();
+
+	$("#rowEdit").val(slNo);
+	$("#serviceName").val(rowNode.data.serviceId);
+	$("#serviceDetailsID").val(slNo)
+	//$("#serviceDetailsID").val()
+	/* $("#serviceName").val(rowNode.data.serviceName); */
+	$("#fromDateService").val(rowNode.data.date);
+	$("#fromServiceTime").val(rowNode.data.time);
+	let description = rowNode.data.description;
+	if(description != null && description != "" && description != 'null'){
+		$("#description").val(window.atob(description));
+	}else{
+		$("#description").val(null);
+	} 
+	
+	$("#toDateService").val(rowNode.data.todate);
+	$("#toServiceTime").val(rowNode.data.totime);
+//	$("#toPlace").val(rowNode.data.toPlace);
+}
+
+// for editing child table of shift 
+function editRowClaim() { 
+	let selectedData = claimOptions.api.getSelectedRows();
+	let itemid = selectedData[0].itemId;
+	//addClaim();
+	
+	agGrid.simpleHttpRequest({
+				url : 'travel-claim-view-other-edit?id='+ itemid
+			}).then(function(data) {
+
+		console.log(data);
+		toggleClaimSection();
+		$("#claimEditId").val(data[0].itemId);
+		$("#claimAmount").val(data[0].amount);
+		$("#fromDateClaim").val(data[0].date);
+		let desc = data[0].destination;
+		if(desc != null && desc != "" && desc != 'null'){
+			$("#claimDescription").val(window.atob(desc));
+		}else{
+			$("#claimDescription").val(null);
+		}
+		
+		$("#claimServiceName").val(data[0].item);
+		$("#toDateClaim").val(data[0].tdate);
+		//$("#fileUpload").val(data[0].bill);
+			var fileName=data[0].bill;
+			console.log("fileName>>>>",fileName);
+				if (fileName != null && fileName != 'null' && fileName != "") {
+					var ext = data[0].bill.split(".");
+					$("#imageName_0").html(fileName);
+
+		           if (ext[1] == "jpg" || ext[1] == "png") {
+						var LightImg = '<div class ="uploadicon position-l bdr-n"><a class="example-image-link" target="_balnk"><i class="bi bi-image" style="color: blue" onclick=viewImage("'
+							+ fileName + '")></i></a> </div>';
+					}else if (ext[1] == "pdf") {
+						var LightImg = '<div class ="uploadicon position-l bdr-n"><a class="example-image-link" target="_balnk"><i class="bi bi-file-pdf" style="color: red" onclick=viewImage("'
+							+ fileName + '")></i></a> </div>';
+					} else {
+						var LightImg = '<div class="uploadicon position-l bdr-n"></div>';
+					}  
+
+					$("#uploadedBillDiv_0").html(LightImg);
+					
+					//Ensure the delete button gets added to the #dltImage_0 div
+					$("#dltImage_0").html(
+					"<button onclick='clearImg()' style='border: none; background: none;'><i class='fa fa-times' style='color: red; margin-left: 5px;'></i></button>"
+					);
+				}else{
+					//clearImg();
+					//$("#uploadDoc_0").val(null);
+					$("#imageName_0").html("");
+					$("#uploadedBillDiv_0").html("");
+					$("#dltImage_0").html("");
+				}
+	});
+}
+
+var id = "";
+var creq="";
+function onSelectionChangeChild() {
+	 var selectedNodes = activityOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	 creq= selectedData.map(node => node.slnoId);
+	 var empID= selectedData.map(node => node.employeeId);
+	 
+	var selectedRows = activityOptions.api.getSelectedRows();
+	id = "";
+	for (var i = 0; i < selectedRows.length; i++) {
+
+		id = id + '"' + selectedRows[i].travelingReqId + '",';
+		console.log(selectedRows[i].status);
+	}
+	id = id.substring(0, id.length - 1);
+
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+	if (rowCount > 0) {
+		$('#addServiceBtn').attr('disabled', true);
+		$('#editServiceBtn').attr('disabled', false);
+		$('#deleteServiceBtn').attr('disabled', false);
+
+}else{
+	$('#addServiceBtn').attr('disabled', false);
+	$('#editServiceBtn').attr('disabled', true);
+	$('#deleteServiceBtn').attr('disabled', true);
+	
+}
+}
+
+function enterToSearch(event){
+	console.log(event.keyCode);
+	if(event.keyCode == 13){
+		let filterData = $("#quickFilter").val();
+		if(filterData){
+			onQuickFilterChanged();
+		}
+	}
+	
+}
+
+function onQuickFilterChanged() {
+	gridOptions.api
+			.setQuickFilter(document.getElementById('quickFilter').value);
+	gridOptions.api.getDisplayedRowAtIndex(0).setSelected(true);
+	/* var displayedRowCount = gridOptions.api.getDisplayedRowCount();
+	var len = displayedRowCount;
+	$('#totalReq').find('span').html(len); */
+}
+function reset(){
+	let data = $("#quickFilter").val('');
+	if(data!=null && data!=""){
+		$("#quickFilter").val('');
+		onQuickFilterChanged();
+	}
+}
+/* function cancelBar() {
+	var id = document.getElementById("closeKey");
+	id.style.display = "block";
+
+	if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+		id.style.display = "none";
+	}
+} */
+
+/* save claim other services */
+function saveClaimTableData(){ 
+	
+	//$("#save").show();
+	
+	var validation = true;
+	var obj = {};
+	obj.itemId = $("#claimEditId").val();
+	obj.travelingReqId = $("#trReqId").val();
+	obj.item=$("#claimServiceName").val();
+	let desc = $("#claimDescription").val();
+	if(desc != null && desc != "" && desc != 'null'){
+		obj.destination=window.btoa(desc);
+	}else{
+		obj.destination=null;
+	}
+	
+	obj.date=$("#fromDateClaim").val();
+	obj.amount=$("#claimAmount").val();
+	obj.docName = $("#imageName_0").html();
+	obj.tdate=$("#toDateClaim").val();
+
+		 if (obj.item == null || obj.item == "") {
+			//validation = validationUpdated("Service Name Required","item");
+			toastr.error("Service Name Required.");
+			return;
+		}
+		
+		if (obj.date == null || obj.date == "") {
+			//validation = validationUpdated("Date  Required","date");
+			toastr.error("From Date Required.");
+			return;
+		} 
+		if (obj.tdate == null || obj.tdate == "") {
+			//validation = validationUpdated("Date  Required","tdate");
+			toastr.error("To Date Required.");
+			return;
+		} 
+		if (obj.amount == null || obj.amount == "") {
+			//validation = validationUpdated("Amount Required","amountId");
+			toastr.error("Amount Required.");
+			return;
+		} 
+		/* if (obj.documentName == null || obj.documentName == "") {
+			validation = validationUpdated("Please upload bill","validationDiv");
+		} */ 
+		
+		console.log(obj);
+		//validation = false;
+	if(validation){
+		$(".loader").show();
+	 $.ajax({
+		type : "POST",
+		url : "/employee/travel-claim-other-add",
+		contentType : "application/json",
+		data : JSON.stringify(obj),
+
+		success : function(response) {
+			if (response.message == "Success") {
+				$(".loader").hide();
+				//closeClaimNav();
+				//showSnackbar("Other Service Added Successfully")
+				
+				
+				cancelClaimSection()
+				toastr.success(response.code);
+				var travelingReqId = $("#trReqId").val();
+				agGrid.simpleHttpRequest({
+					url : '/employee/travel-requisition-claim-view-other?id='+ travelingReqId
+				}).then(function(data) {
+					
+					console.log('data',data)
+					var len = data.length;
+					$('#totalReq').find('span').html(len);
+					claimOptions.api.setRowData(data);
+					if(type == 'self-service') {
+						$("#claimApproveBtn").hide()
+					   }else{
+						$("#claimApproveBtn").show()
+					   }
+				});
+			}else{
+				$(".loader").hide();
+			}
+			
+		},
+		error : function(data) {
+			$(".loader").hide();
+			console.log(data);
+			console.log(obj);
+		}
+	}) 
+	}
+}
+
+function closeClaimNav() {
+	$(".formValidation").remove();
+	$("#new").show();
+	$("#myGridClaim").show();
+	$("#myClaimnav").hide();
+}
+
+function saveTableData() {
+	$("#save").show();
+	$("#deleteChild").show();
+    var item = {};
+	var valid = true;
+	//item.serviceId = $("#serviceId").val();
+        item.serviceId = $("#serviceName").val();
+        item.serviceName = $("#serviceName option:selected").text();
+        item.date = $("#fromDateService").val();
+        item.time = $("#fromServiceTime").val();
+        let description = $("#description").val();
+        if(description != null && description!= "" && description!='null'){
+        	 item.description = window.btoa(description);
+        }else{
+        	 item.description = null;
+        }
+       // item.description = $("#description").val();
+        item.todate = $("#toDateService").val();
+        item.totime = $("#toServiceTime").val();
+        
+
+		 if (item.serviceId == null || item.serviceId == "") {
+            toastr.error("Service Name is Required.");
+            valid = false;
+            return;
+        }
+        if (item.date == null || item.date == "") {
+            toastr.error("From Date Required.");
+            valid = false;
+            return;
+        }
+        
+        if (item.todate == null || item.todate == "") {
+            toastr.error("To Date Required.");
+            valid = false;
+            return;
+        }
+        if (item.time == null || item.time == "") {
+            toastr.error("From Time Required.");
+            valid = false;
+            return;
+        }
+       
+        if (item.totime == null || item.totime == "") {
+            toastr.error("To Time Required.");
+            valid = false;
+            return;
+        }
+        /* if (item.description == null || item.description == "") {
+            valid = validationUpdated("Description Required", "description");
+            
+        } */ 
+
+		var editid = $("#serviceDetailsID").val();
+
+		var maxSlNo = getMaxEventSlNo();
+
+		if (valid) {
+            //closeNav();
+
+            if (editid) {
+                // Update only the edited fields in the existing row
+                var rowNode = activityOptions.api.getRowNode(editid);
+				if (rowNode) {
+					item.slnoId = rowNode.data.slnoId;
+					rowNode.setData(item);
+					$("#serviceDetailsID").val("");
+				}
+				else{
+					item.slnoId = maxSlNo+1;
+					var newData = [item];
+					activityOptions.api.updateRowData({add : newData});
+				}
+            } 
+			else{
+				item.slnoId = maxSlNo+1;
+				var newData = [item];
+				activityOptions.api.updateRowData({add : newData});
+			}
+			//closeNav();
+			cancelToggleSection();
+		}
+		
+		/* $("#myGridServices").show();
+		$("#mySidenav").hide(); */
+
+}
+
+// save data in aggrid table sidenav save
+function getMaxEventSlNo() {
+		var maxSlNo = 0;
+		activityOptions.api.forEachNode(function (node) {
+			maxSlNo = Math.max(maxSlNo, node.data.slnoId);
+		});
+		return maxSlNo;
+	}
+
+function closeNav() {
+	$(".formValidation").remove();
+	$("#serviceId").val('');
+	$("#date").val('');
+	$("#time").val('');
+	$("#totime").val('');
+	$("#description").val('');
+	$("#todate").val('');
+	$("#myGridServices").show();
+	$("#mySidenav").hide();
+	//$("#toPlace").val('');
+	//$("#rowEdit").val(null);
+}
+
+//master save data
+
+ 
+function masterSaveData() {
+	$(".formValidation").remove();
+	var valid= true;
+	var datas = [];
+	var item = {};
+
+	 
+	item.travelingReqId = $("#trReqId").val();
+	item.fromDate = $("#fromDate").val();
+	item.toDate = $("#toDate").val();
+	//item.employeeId = $("#employeeId").val();
+	item.placeName = $("#placeName").val();
+	item.purpose = $("#purpose").val();
+	
+	var emp = $("#empName").val();
+	var eId = $("#empId").val();
+	var desig = $("#designation").val();
+	var emplid = $("#sessionId").val();
+	item.empName = emp;
+	item.empId = eId;
+	item.designation = desig;
+	item.travelFrom = $("#travelFrom").val();
+	item.remark = $("#remark").val();
+	item.employee = emplid;
+
+	
+	item.advanceReq = $("input[type='radio'][name='advanceReq']:checked").val();
+	console.log(item);
+
+       if (item.advanceReq == 1) {
+			item.advanceReq = "1";
+			item.advanceAmount = $("#advanceAmount").val();
+			/* if (item.advanceAmount == null || item.advanceAmount == "") {
+				valid = validationUpdated("Advance Amount is Required", "advanceAmount");
+			} */
+
+		} else {
+			item.advanceReq = "0";
+			item.advanceAmount = "";
+		}
+       
+       if (item.empName == null || item.empName == "") {
+			toastr.error('Employee Name is Required.');
+			nextTab('travel-tab');
+			valid=false;
+			return;
+	   	 }
+   		if (item.travelFrom == null || item.travelFrom == "") {
+   			toastr.error('Travel From Place is Required.');
+			nextTab('travel-tab');
+			valid=false;
+			return;
+   	 	}
+   		if (item.placeName == null || item.placeName == "") {
+   			toastr.error('Travel To is Required.');
+			nextTab('travel-tab');
+			valid=false;
+			return;
+   		 }
+       	if (item.fromDate == null || item.fromDate == "") {
+			toastr.error('From Date is Required.');
+			nextTab('travel-tab');
+			valid=false;
+			return;
+	   	 }
+	   	if (item.toDate == null || item.toDate == "") {
+	   		toastr.error('To Date is Required.');
+			nextTab('travel-tab');
+			valid=false;
+			return;
+	   	 }
+	   	if (item.purpose == null || item.purpose == "") {
+	   		toastr.error('Purpose is Required.');
+			nextTab('travel-tab');
+			valid=false;
+			return;
+	   	 } 
+	   	if (item.advanceReq == 1) {
+			if (item.advanceAmount == null || item.advanceAmount == "") {
+				toastr.error('Advance Amount is Required.');
+				nextTab('travel-tab');
+				valid=false;
+				return;
+			}
+		} 
+	 var dataOfGrid1 = [];
+	 const rowCount = activityOptions.api.getDisplayedRowCount();
+	 if(rowCount > 0){
+		 activityOptions.api.forEachNode(function(rowNode, index) {
+			 dataOfGrid1.push(rowNode.data);
+			  });
+	 }else{
+		 toastr.error('Add Atleast One Service.');
+			valid=false;
+			return;
+	 }
+	 
+	 item.servicedtls = dataOfGrid1;
+
+	if (valid) {
+		//datas.push(item);
+		console.log("111111111111",item);
+		saveTravelRequisition(item);
+		}
+}	
+
+//master save claim data
+function masterSaveClaimData(){ 
+	var obj = {};
+	obj.itemId = $("#claimEditId").val();
+    var rowCount = claimOptions.api.getDisplayedRowCount(); // Get the number of displayed rows
+console.log("ROWCOUNT----",rowCount);
+    if (rowCount < 1) { // If row count is 1 or less, show validation message
+    	//showSnackbar("Please Add Atleast One Service.")
+    	toastr.error('Please Add Atleast One Service To Claim.');
+        return; // Stop the function execution if the condition is not met
+    }
+    else if(obj.itemId !=null || obj.itemId != ""){
+		//obj.claimStatus = $("#claimStatus").val();
+		obj.claimStatus = "4";
+		obj.travelingReqId=$("#trReqId").val();
+		$(".loader").show();
+		$.ajax({
+		type : "POST",
+		url : "travel-claim-status-add",
+		contentType : "application/json",
+		data : JSON.stringify(obj),
+
+		success : function(response) {
+			if (response.message != "Status changed successfully") {
+				$(".loader").hide();
+				//cancelClaimview();
+				cancel($("#trReqId").val());
+			//	editTravel(obj.travelingReqId);
+				//showSnackbar("Claim Added Successfully")
+				toastr.success('Claim Approved Successfully');
+				$("#cancelTravel").hide();
+				
+			}else{
+				$(".loader").hide();
+			}
+			
+		},
+		error : function(data) {
+			$(".loader").hide();
+			console.log(data);
+		}
+	})
+	}else{
+		
+	}
+}
+
+function saveTravelRequisition(datas) { 
+	$('.loader').show();
+	//$("body").addClass("overlay");
+	
+	$.ajax({
+		type : "POST",
+		url : "/employee/travel-requisition-add-travel-details",
+		dataType : "json",
+		contentType : "application/json",
+		data : JSON.stringify(datas),
+		success : function(response) {
+			$('.loader').hide();
+			$("#advanceAmount").val("");
+			if (response.code == "success") {
+				cancel($("#trReqId").val());
+				nextTab('travel-tab');
+				//showSnackbar(response.message);
+				toastr.success(response.message);
+				//closeNav();
+			} else {
+				$('.loader').hide();
+				//showSnackbar(response.message);
+				toastr.error(response.message);
+			}
+			$("#placeName").val('');
+			$("#fromDate").val('');
+			$("#toDate").val('');
+			$("#purpose").val('');
+			
+			 activityOptions.api.setRowData([]); 
+		},
+		error : function(data) {
+			$('.loader').hide();
+		}
+	}) //ajax ends
+	
+}
+
+function cancelClaim() {
+	 $(".formValidation").remove();
+		$("#reqTable").show();
+		$("#searchRowDiv").show();
+		$(".btn-hs").show();
+		$("#myGridClaim").show();
+		$("#demo").hide();
+		$("#totalReq").show();
+		var userid = $("#sessionId").val();
+		var userrole = $("#sessionRole").val();
+		var roleid = "";
+		for(var i = 6; i <= userrole.length; i=i+6){  
+		    roleid = roleid + '"' +userrole.slice(i-6, i)+ '",';
+		}
+		roleid = roleid.substring(0, roleid.length - 1); 
+		
+		agGrid.simpleHttpRequest({
+			url : '/employee/travel-requisition-view-employee?userid=' + userid+"&roleid="+roleid+"&selftype="+type,
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+
+			claimOptions.api.setRowData(data);
+		});
+		$("#employeeId").val('');
+		$("#fromDate").val('');
+		$("#toDate").val('');
+		$("#serviceId").val('');
+		$("#date").val('');
+		$("#time").val('');
+		$("#totime").val('');
+		$("#description").val('');
+		
+		$("input[type='radio'][name='advanceReq']").prop('checked', false); // Uncheck all radio buttons
+		$("#advanceAmount").val(""); // Clear the value of an input field
+		$("#No").prop('checked', true);
+		$("#advanceAmount").val('');
+		$("#rowEdit").val(null);
+		location.reload();
+	};
+
+	</script>
+<script type="text/javascript">
+
+/////////////////////// Right Tabs Start ////////////////////////////
+//Your getId function
+function getId(){
+var empNameDropdown = document.getElementById("empName");
+var selectedEmpKey = empNameDropdown.options[empNameDropdown.selectedIndex].value;
+document.getElementById("empId").value = selectedEmpKey;
+
+var selectedOption = empNameDropdown.options[empNameDropdown.selectedIndex];
+var designation = selectedOption.getAttribute("data-code");
+document.getElementById("designation").value = designation;
+}
+
+$(function() {
+$("input[name='advanceReq']").click(function() {
+	console.log("Okkkkk>>>")
+	if ($("#No").is(":checked")) {
+		$("#amount").hide();
+		$("#advanceAmount").val("");
+		
+	} else {
+		$("#amount").show();
+	}
+});
+});
+
+//Call the function on page load
+window.onload = function() {
+disableDropdownIfSingleOption();
+};
+
+//Function to disable the dropdown if it contains only one option
+function disableDropdownIfSingleOption() {
+var empNameDropdown = document.getElementById("empName");
+var totalOptions = empNameDropdown.options?.length;
+
+// If there's only 1 option besides the 'Select', disable the dropdown
+if (totalOptions === 2) { // 1 option + 'Select'
+    empNameDropdown.disabled = true;
+} else {
+    empNameDropdown.disabled = false; // Ensure it stays enabled if more options are present
+}
+}
+ 
+
+function toggleSection() {
+const toggleSection = document.getElementById("toggleSection");
+if (toggleSection.style.display === "none" || toggleSection.style.display === "") {
+    toggleSection.style.display = "block"; // Show the section
+} else {
+    toggleSection.style.display = "none"; // Hide the section
+}
+}
+
+function addIssue(){
+$("#myGridServices").hide();
+$("#mySidenav").show();
+   
+}
+function addClaim(){
+$("#myGridClaim").hide();
+$("#myClaimnav").show();
+$(".formValidation").remove();
+$("#new").hide();
+$("#item").val('');
+$("#claimEditId").val('');
+$("#cdate").val('');
+$("#amountId").val('');
+$("#desricption").val('');
+$("#imageName_0").html('');
+$("#uploadedBillDiv_0").html('');
+$("#tdate").val('');
+   
+}
+
+function cancelClaimview() {
+ 
+$("#reqTable").show();
+$(".btn-hs").show();
+$("#myGrid").show();
+$("#demo").hide();
+$('#searchRowDiv').show();
+$('#download').show();
+$('#viewClaimDetails').show();
+$('#totalReq').show();
+$("#employeeId").val('');
+$("#fromDate").val('');
+$("#toDate").val('');
+$("#serviceId").val('');
+$("#date").val('');
+$("#time").val('');
+$("#fromPlace").val('');
+$("#toPlace").val('');
+$("#rowEdit").val(null);
+//viewClaimDetailAgGrid()
+};
+
+//delete selected record from ag grid 
+function deleteDetailsOnclick() {
+//$('.modal').hide();
+var selectedRows = activityOptions.api.getSelectedRows();
+activityOptions.api.applyTransaction({
+	remove : selectedRows
+});
+//$('#newchild').show();
+//$('#deletechild').hide;
+//cancelModalProductBtn();
+
+}
+
+function deleteClaimDetailsOnclick(){
+	var selectedRows = claimOptions.api.getSelectedRows();
+	let deleteid = "";
+	for (var i = 0; i < selectedRows.length; i++) {
+
+		deleteid = deleteid + '"' + selectedRows[i].itemId + '",';
+		console.log(selectedRows[i].itemId);
+	}
+	deleteid = deleteid.substring(0, deleteid.length - 1);
+$.ajax({
+	type : "GET",
+	url : "travel-claim-other-delete?id=" + deleteid,
+	async : false,
+	success : function(response) {
+		if (response.message == "Success") {
+			var travelingReqId = $("#trReqId").val();
+			agGrid.simpleHttpRequest({
+				url : '/employee/travel-requisition-claim-view-other?id='+ travelingReqId
+			}).then(function(data) {
+				
+				claimOptions.api.setRowData(data);
+			});
+			cancelClaimSection();
+			toastr.success('Claim Deleted Successfully');
+			/* $('#deleteId').attr("disabled", true);
+			$('#new').attr("disabled", false); */
+		}
+	},
+	error : function(data) {
+	}
+
+});
+}
+
+/* save document file */
+function saveFile() {
+var uFile = $(uploadDoc_0)[0].files[0];
+var fileName = event.currentTarget.value;
+var lastIndex = fileName.lastIndexOf("\\");
+if (lastIndex >= 0) {
+fileName = fileName.substring(lastIndex + 1);
+}
+var extension = fileName.split(".");
+var iURL = URL.createObjectURL(uFile);
+$("#uploadedBillDiv_0").html("");
+
+var LightImg = "";
+if (extension[1] == "jpg" || extension[1] == "png" || extension[1] == "jpeg") {
+LightImg = "<div class='uploadicon position-l bdr-n'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_blank'><i class='bi bi-image' style='color: blue'></i></a></div>";
+} else if (extension[1] == "pdf") {
+LightImg = "<div class='uploadicon position-l bdr-n'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_blank'><i class='bi bi-file-pdf' style='color: red'></i></a></div>";
+}
+
+$("#uploadedBillDiv_0").html(LightImg);
+$("#imageName_0").html(fileName);
+
+//Ensure the delete button gets added to the #dltImage_0 div
+$("#dltImage_0").html(
+"<button  class='custom-file-upload' onclick='clearImg()' style='border: none; background: none;'><i class='fa fa-times' style='color: red;'></i></button>"
+);
+
+var fileData = new FormData();
+fileData.append('file', uFile);
+fileData.append('path', 'none');
+
+$.ajax({
+type: "POST",
+url: "/employee/travel-claim-upload-file",
+enctype: "multipart/form-data",
+contentType: false,
+data: fileData,
+processData: false,
+cache: false,
+success: function(response) {
+    // Handle successful upload
+},
+error: function(e) {
+    // Handle upload error
+}
+});
+}
+
+
+//Function to delete the uploaded image
+function clearImg() {
+$("#uploadDoc_0").val(null);  // Clear file input
+$("#uploadedBillDiv_0").html('');  // Clear image preview
+$("#imageName_0").html('');  // Clear image name
+$("#dltImage_0").html('');   // Clear the delete button
+// remove from session
+$.ajax({
+	type: "GET",
+	url: "/employee/travel-claim-remove-file",
+	enctype: "multipart/form-data",
+	contentType: false,
+	data: null,
+	processData: false,
+	cache: false,
+	success: function(response) {
+	    // Handle successful upload
+	},
+	error: function(e) {
+	    // Handle upload error
+	}
+	});
+}
+
+function checkAmt(fieldId) {   
+var myField = document.getElementById("amountId")
+ var reg = /^\d{0,6}(\.\d{0,2})?$/;   
+ if (reg.test(myField.value))
+ {       
+	 $("#" + fieldId).val();
+	 reg = '';  
+ }else{        
+	 $("#" + fieldId).val(null);    
+	 }
+ } 
+ 
+/* -------------------function for add button----------------- */	 
+function switchPage() {
+
+
+ $("#trReqId").val('');
+ $(".trReqClass").text('');
+$("#date").val('');
+$("#empName").val('');
+$("#empId").val('');
+$("#designation").val('');
+ $("#time").val('');
+ $("#totime").val('');
+ $("#description").val('');
+ //$("#toPlace").val('');
+ $("#rowEdit").val(null);
+ $("#fromDate").val('');
+ $("#toDate").val('');
+ $("#employeeId").val();
+ $("#placeName").val('');
+$("#purpose").val('');
+$("#advanceReq").val('');
+$("#advanceAmount").val('');
+
+$("#travelFrom").val('');
+$("#remark").val('');
+//
+
+var emptydata = [];
+ activityOptions.api.setRowData(emptydata); 
+
+/* var selectedRows = gridOptions.api.getSelectedRows();
+var selectedRowsString = '';
+selectedRows.forEach(function(selectedRow, index) {
+	if (index > 0) {
+		selectedRowsString += ',';
+	}
+	selectedRowsString += selectedRow.itemId;
+});
+$('.loader').show();
+$("body").addClass("overlay");
+$('.loader').hide();
+$("#save").show();
+$("#save1").show();
+$("#newchild").show();
+$("#deleteChild").show();
+$("#backBtn").hide();
+$("#cancelBtn").show();
+$("body").removeClass("overlay");
+$("#deleteChild").attr('disabled', true);
+$("#newchild").attr('disabled', false);
+$('#save').attr('disabled', false);
+//
+//var role = $("#sessionRole").val();
+
+var id = $("#sessionId").val();
+	$.ajax({
+	type : "GET",
+	url : "travel-requisition-getEmpData?id="+id,
+	contentType : 'application/json',
+	success : function(response) {
+		console.log(response)
+		if (response.message == "Success") {
+			console.log("aaaaaaaaa",response.body)
+			$("#empId").val(response.body.name);
+			$("#empName").val(response.body.name);
+			$("#designation").val(response.body.code);
+			}
+	}
+});   */
+
+}
+ 
+/* -------------------function for approve button----------------- */
+var empid = "";
+var empname = "";
+function approveRequisition() {
+	$(".loader").show();
+empid = $("#sessionId").val();
+empname = $("#sessionName").val();
+comment = $("#comment").val();
+var userrole = $("#sessionRole").val();
+var userid = $("#sessionId").val();
+
+var roleID = "";
+for(var i = 6; i <= userrole.length; i=i+6){  
+	roleID = roleID + '"' +userrole.slice(i-6, i)+ '",';
+}
+roleID = roleID.substring(0, roleID.length - 1); 
+
+$.ajax({
+	type : "GET",
+	url : "travel-requisition-approve?approveId=" + treq + "&name=" + empid+"&comment="+comment+"&roleid="+roleID,
+	async : false,
+	success : function(response) {
+
+		if (response.message == "Success") {
+			$(".loader").hide();
+			cancel(treq);
+			//showSnackbar(" Travel approved successfully");
+			toastr.success('Travel approved successfully');
+			 
+			//gridOptions.api.deselectAll();
+			
+			$('#approve').attr('disabled', true);
+			$('#reqDltBtn').attr('disabled', true);
+			$('#reject').attr('disabled', true);
+			$('#newBtn').attr('disabled', false);
+			$("#comment").val(null);
+			$('.claim-tab').removeClass('d-none');
+			
+		}else{
+			$(".loader").hide();
+			toastr.error('Something Went Wrong!');
+		}
+
+	},
+	error : function(data) {
+		$(".loader").hide();
+	}
+});
+}
+
+/*-----------------------function for reject button------------------- */
+var rejempid = "";
+var rejempname = "";
+function rejectRequsition() {
+rejempid = $("#sessionId").val();
+rejempname = $("#sessionName").val();
+comment = $("#comment").val();
+var userrole = $("#sessionRole").val();
+var userid = $("#sessionId").val();
+
+var roleid = "";
+for(var i = 6; i <= userrole.length; i=i+6){  
+	roleid = roleid + '"' +userrole.slice(i-6, i)+ '",';
+}
+roleid = roleid.substring(0, roleid.length - 1); 
+$.ajax({
+	type : "GET",
+	url : "travel-requisition-reject?rejectId=" + treq + "&name=" + rejempid+"&comment="+comment+"&roleid="+roleid,
+	async : false,
+	success : function(response) {
+
+		if (response.message == "Success") {
+			cancel($("#trReqId").val());
+			//showSnackbar("Travel Rejected successfully")
+			toastr.success('Travel Rejected successfully');
+			 
+			
+			$('#approve').attr('disabled', true);
+			$('#reqDltBtn').attr('disabled', true);
+			$('#reject').attr('disabled', true);
+			$('#newBtn').attr('disabled', false);
+			$("#comment").val(null);
+		}
+
+	},
+	error : function(data) {
+	}
+});
+}
+
+function cancel(id) {
+ /* $(".formValidation").remove();
+	$("#reqTable").show();
+	$("#searchRowDiv").show();
+	$(".btn-hs").show();
+	$("#myGrid").show();
+	$("#totalReq").show(); */
+	var userid = $("#sessionId").val();
+	var userrole = $("#sessionRole").val();
+	var roleid = "";
+	for(var i = 6; i <= userrole.length; i=i+6){  
+	    roleid = roleid + '"' +userrole.slice(i-6, i)+ '",';
+	}
+	roleid = roleid.substring(0, roleid.length - 1); 
+	
+	console.log("id>>>>>",id);
+	
+	
+	agGrid.simpleHttpRequest({
+		url : 'travel-requisition-view-employee?userid=' + userid+"&roleid="+roleid+"&selftype="+type,
+	}).then(function(data) {
+		var len = data.length;
+		$('#totalReq').find('span').html(len);
+
+		activityOptions.api.setRowData(data);
+		gridOptions.api.setRowData(data);
+		
+		if (data && data.length > 0) {
+			if(id){
+				//let rowId = data[0].invoiceId;
+				gridOptions.api.getRowNode(id).setSelected(true);
+			}else{
+				gridOptions.api.getDisplayedRowAtIndex(0).setSelected(true);
+			}
+			
+		}
+	});
+	
+	/* $("#employeeId").val('');
+	$("#fromDate").val('');
+	$("#toDate").val('');
+	$("#serviceId").val('');
+	$("#date").val('');
+	$("#time").val('');
+	$("#totime").val('');
+	$("#description").val(''); */
+	
+	/* $("input[type='radio'][name='advanceReq']").prop('checked', false); // Uncheck all radio buttons
+	$("#advanceAmount").val(""); // Clear the value of an input field
+	$("#No").prop('checked', true);
+	$("#advanceAmount").val(''); */
+	$("#rowEdit").val(null);
+};
+
+/*-----------------------function for Snackbar message------------------- */
+/* function showSnackbar(message) {
+  const snackbar = document.getElementById("snackbar");
+  snackbar.textContent = message;
+  snackbar.className = "snackbar show";
+  setTimeout(() => {
+    snackbar.className = snackbar.className.replace("show", "");
+  }, 3000);  
+} */
+
+function nextBtnFunction(tablink) {
+	const tabElement = document.querySelector(`a.nav-link[href="#${tablink}"]`);
+
+	console.log("Element-->", tabElement);
+	if (tabElement) {
+		const tabTrigger = new bootstrap.Tab(tabElement);
+		console.log("tabTrigger-->", tabTrigger);
+		tabTrigger.show();
+	}
+}
+
+//document.getElementById('fromDate').setAttribute('min', new Date().toISOString().split('T')[0]);
+
+function updateToDateMin() {
+    let fromDate = document.getElementById('fromDate').value;
+    let toDate = document.getElementById('toDate');
+    
+    let fromDateclm = document.getElementById('cdate').value;
+    let toDateclm = document.getElementById('tdate');
+
+    if (fromDate) {
+        toDate.setAttribute('min', fromDate);
+    }
+    
+    if (fromDateclm) {
+    	toDateclm.setAttribute('min', fromDateclm);
+    }
+}
+
+function validateDates() {
+    let fromDate = document.getElementById('fromDate').value;
+    let toDate = document.getElementById('toDate').value;
+    
+    let fromDateclm = document.getElementById('cdate').value;
+    let toDateclm = document.getElementById('tdate').value;
+
+    if (fromDate && toDate && fromDate >= toDate) {
+        //alert("To Date must be greater than From Date!");
+        document.getElementById('toDate').value = "";
+    }
+    if (fromDateclm && toDateclm && fromDateclm >= toDateclm) {
+        //alert("To Date must be greater than From Date!");
+        document.getElementById('toDateclm').value = "";
+    }
+}
+
+//delete
+
+/* function deleteOnclick() {
+  var selectedRows = gridOptions.api.getSelectedRows();
+  var selectedRowsString = '';
+  let rowIndex=0;
+  selectedRows.forEach(function (selectedRow, index) {
+    if (index > 0) {
+      selectedRowsString += ',';
+    }
+    selectedRowsString += selectedRow.travelingReqId;
+    
+  });
+  rowIndex = gridOptions.api.getSelectedNodes()[0].rowIndex;
+
+  if (selectedRowsString) {
+    var item = {};
+    item.travelingReqId = selectedRowsString;
+    $.ajax({
+      type: "POST",
+      url: "travel-requisition-delete-th-ajax",
+      dataType: "json",
+      contentType: "application/json",
+      data: JSON.stringify(item),
+      success: function (response) {
+        if (response.message == "Success") {
+          //cancel();
+        	viewAllData();
+
+        	  toastr.success('Travel Deleted Successfully');
+        } else {
+         
+        }
+      },
+      error: function (data) {
+        console.log(data)
+      }
+    })
+  }
+
+} */
+
+function deleteOnclick() {
+	  var selectedRows = gridOptions.api.getSelectedRows();
+	  if (selectedRows.length === 0) {
+	    toastr.warning('Please select a row to delete.');
+	    return;
+	  }
+
+	  var selectedRowsString = selectedRows.map(row => row.travelingReqId).join(',');
+
+	  if (selectedRowsString) {
+	    var item = { travelingReqId: selectedRowsString };
+
+	    $.ajax({
+	      type: "POST",
+	      url: "travel-requisition-delete-th-ajax",
+	      dataType: "json",
+	      contentType: "application/json",
+	      data: JSON.stringify(item),
+	      success: function (response) {
+	        if (response.message == "Success") {
+	          gridOptions.api.applyTransaction({ remove: selectedRows });
+	          gridOptions.api.deselectAll();
+	          viewAllData(); 
+	          toastr.success('Travel Deleted Successfully');
+
+	          if (type == 'self-service') {
+	            setTimeout(() => {
+	              $("#cancelTravel").hide();
+	              $("#addDtls").show();
+	            }, 100);
+	          }
+	        } else {
+	          toastr.error('Failed to delete travel request');
+	        }
+	      },
+	      error: function (data) {
+	        console.log(data);
+	        toastr.error('An error occurred while deleting');
+	      }
+	    });
+	  }
+	}
+
+function viewAllData(){
+	var userid = $("#sessionId").val();
+	var userrole = $("#sessionRole").val();
+	var roleid = "";
+	for(var i = 6; i <= userrole.length; i=i+6){  
+	    roleid = roleid + '"' +userrole.slice(i-6, i)+ '",';
+	}
+	roleid = roleid.substring(0, roleid.length - 1); 
+
+	agGrid.simpleHttpRequest({
+		url : 'travel-requisition-view-employee?userid=' + userid+"&roleid="+roleid+"&selftype="+type,
+	}).then(function(data) {
+		var len = data.length;
+		$('#totalReq').find('span').html(len);
+
+		activityOptions.api.setRowData(data);
+		gridOptions.api.setRowData(data);/* 
+		var rowIndex = 0;
+		rowIndex = gridOptions.api.getSelectedNodes()[0].rowIndex; */
+		
+		if (data && data.length > 0) {
+			gridOptions.api.getDisplayedRowAtIndex(0).setSelected(true);
+		}
+	});
+}
+function toggleServiceSection(){
+	$("#serviceGridDiv").hide();
+	$("#serviveDtlsDiv").removeClass("d-none");
+	$("#serviceName").val("");
+	$("#fromDateService").val("");
+	$("#fromServiceTime").val("");
+	$("#toDateService").val("");
+	$("#toServiceTime").val("");
+	$("#description").val("");
+	
+	$("#masterSaveBtn").hide();
+	$("#prevBtnService").hide();
+}
+
+function cancelToggleSection(){
+	$("#serviceGridDiv").show();
+	$("#serviveDtlsDiv").addClass("d-none");
+	$("#serviceName").val("");
+	$("#fromDateService").val("");
+	$("#fromServiceTime").val("");
+	$("#toDateService").val("");
+	$("#toServiceTime").val("");
+	$("#description").val("");
+	activityOptions.api.deselectAll();
+	
+	$("#masterSaveBtn").show();
+	$("#prevBtnService").show();
+}
+
+function nextTab(id) {
+	const tabElement = document.querySelector('#' + id + ' a');
+    const tab = new bootstrap.Tab(tabElement);
+    tab.show();
+   // cancelPocDetails();
+}
+
+function newDtls(){
+	gridOptions.api.deselectAll();
+	$("#addDtls").hide();
+	$("#cancelTravel").show();
+	
+}
+
+function disableFields(){
+	$('#empName').attr("disabled", true);
+	$('#travelFrom').attr("disabled", true);
+	$('#placeName').attr("disabled", true);
+	$('#purpose').attr("disabled", true);
+	$('#advanceAmount').attr("disabled", true);
+	$('#remark').attr("disabled", true);
+	$('#fromDateCalendar').addClass("disabledCalender");
+	$('#toDateCalendar').addClass("disabledCalender");
+	
+	$('input[type=radio][name=advanceReq]').prop('disabled', true);
+}
+
+function enableFields(){
+	$('#empName').attr("disabled", false);
+	$('#travelFrom').attr("disabled", false);
+	$('#placeName').attr("disabled", false);
+	$('#purpose').attr("disabled", false);
+	$('#advanceAmount').attr("disabled", false);
+	$('#remark').attr("disabled", false);
+	$('#fromDateCalendar').removeClass("disabledCalender");
+	$('#toDateCalendar').removeClass("disabledCalender");
+	$("#addDtls,#editDtls,#deleteDtls,#editDtls,#approveReqBtn,#rejectReqBtn").hide();
+	$("#cancelTravel").show();
+	
+	
+	$('input[type=radio][name=advanceReq]').prop('disabled', false);
+	
+}
+
+function toggleClaimSection(){
+	$("#claimGridDiv").hide();
+	$("#claimDtlsDiv").removeClass("d-none");
+	$("#claimServiceName").val("");
+	$("#fromDateClaim").val("");
+	$("#toDateClaim").val("");
+	$("#claimAmount").val("");
+	$("#claimDescription").val("");
+	//$("#claimEditId").val('');
+	$("#claimApproveBtn").hide();
+	$("#claimPrevBtn").hide();
+	clearImg();
+}
+
+function cancelClaimSection(){
+	$("#claimGridDiv").show();
+	$("#claimDtlsDiv").addClass("d-none");
+	$("#claimServiceName").val("");
+	$("#fromDateClaim").val("");
+	$("#toDateClaim").val("");
+	$("#claimAmount").val("");
+	$("#claimDescription").val("");
+	$("#claimEditId").val('');
+	claimOptions.api.deselectAll();
+	$("#claimApproveBtn").show();
+	$("#claimPrevBtn").show();
+	
+	clearImg();
+}
+
+function checkAmount(event) {
+	
+	// Allow: backspace, delete, tab, escape, enter, and the Ctrl+A, Ctrl+C, Ctrl+V shortcuts
+    if (event.key === 'Backspace' || event.key === 'Delete' || event.key === 'Tab' || event.key === 'Escape' || event.key === 'Enter' ||
+        (event.ctrlKey && (event.key === 'a' || event.key === 'c' || event.key === 'v'))) {
+        return; // Allow these key actions
+    }
+
+    // Check if the key is a number
+    if (event.key < '0' || event.key > '9') {
+        event.preventDefault(); // Prevent input if not a number
+    }
+	
+	 }
+
+/* Employee AutoSearch */
+
+function getEmployeeList() {
+	var search = null;
+	if(type) {
+		search = $("#sessionName").val();
+	} else {
+		search = $("#empName").val();
+	}
+	
+	if (search) {
+		$.ajax({
+			type: "POST",
+			url: "travel-requisition-get-employee-list",
+			dataType: 'json',
+			contentType: 'application/json',
+			data: search,
+			success: function (response) {
+				if (response.message == "success") {
+					if (response.body.length != 0) {
+						//$("#empid").val("");
+						
+						if(type == 'self-service') {
+							selectAutocompleteValueItem1(response.body[0].key,window.btoa(response.body[0].name),window.btoa(response.body[0].code))
+						} else {
+							$("#empNameList").css("background", "#FFF");
+							var content = '<ul id="autocomplete-list1" style="margin-left:-40px; font-weight:100; font-size:14px; color:#ccc;max-height: 200px;">';
+							for (var i = 0; i < response.body.length; i++) {
+								content += '<li class="autocompletedata cp" onClick="selectAutocompleteValueItem1(\''
+									+ response.body[i].key
+									+ '\',\''
+									+ window.btoa(response.body[i].name)
+									+ '\',\''
+									+ window.btoa(response.body[i].code)
+									+ '\')">'
+									+ response.body[i].key
+									+ " - "
+									+ response.body[i].name
+									+ '</li>';
+							}
+							content += '</ul>';
+							$("#suggesstion-box_").show();
+							$("#suggesstion-box_").html(content);
+						}
+						
+						
+
+					} else {
+						$("#empNameList").css("background", "#FFF");
+						var content = '<ul id="autocomplete-list1">';
+						content += '<font-weight:100; font-size:14px; color:#ccc; background-color: #0909e4;"li onClick="selectAutocompleteValueItem()">'
+							+ "No Data Found" + '</li>';
+						content += '</ul>';
+						$("#suggesstion-box_").show();
+						$("#suggesstion-box_").html(content);
+					}
+				}
+			},
+			error: function (data) {
+				console.log(data);
+			}
+		})
+	} else {
+		$("#empId").val("");
+		$("#empName").val("");
+		$("#designation").val("");
+		$("#suggesstion-box_").hide();
+	}
+}
+
+function selectAutocompleteValueItem1(empid, empName, designation) {
+	if (empid) {
+		//$("#error1").hide();
+		$("#empName").val(window.atob(empName));
+		$("#empId").val(empid);
+		$("#designation").val(window.atob(designation));
+		$("#empName").attr('data-procat', empid);
+		$("#suggesstion-box_").hide();
+	} else {
+		$("#empId").val("");
+		$("#empName").val("");
+		$("#designation").val("");
+		$("#empName").attr('data-procat', "");
+		$("#suggesstion-box_").hide();
+
+	}
+}
+
+function dateChange(fromDate,toDate) {
+
+	let fromdate = $('#'+ fromDate).val();
+	let todate = $('#' + toDate).val();
+	
+//toastr.error("Please choose less than or equal to your available leave ");
+	if (fromdate !== '' && todate !== '') {
+		let fromDateNmber = fromdate.split("-").map(Number);
+		let toDateNumber = todate.split("-").map(Number);
+
+		let fromDateObj = new Date(fromDateNmber[2], fromDateNmber[1] - 1, fromDateNmber[0]);
+		let toDateObj = new Date(toDateNumber[2], toDateNumber[1] - 1, toDateNumber[0]);
+
+	    if (fromDateObj > toDateObj) {
+	    	
+	    	toastr.error("Please Choose To Date Greater Than Or Equal To From Date.");
+	    	$('#' + fromDate).val("");
+	    	$('#' + toDate).val("");
+	    }
+	    
+	}
+
+}
+
+function setCalenderDate(fieldName,calenderId){
+	console.log("Okkkk");
+	console.log(fieldName,calenderId);
+	let date = $('#'+fieldName).val();
+	console.log("date",date);
+	$("#"+calenderId).val(null);
+	/* setTimeout(function() { */
+	if(date!=null && date!=""){
+		console.log("Inside If");
+		$('#' + calenderId).val(date);
+	}else{
+		console.log("Inside Else");
+		let dateJS = (new Date()).toISOString().split('T')[0];
+		let currDate = changeDateFormat(dateJS);
+		$("#"+calenderId).val(currDate);
+	}
+	/* }, 1000); */
+}
+
+function changeDateFormat(inputDate){  // expects Y-m-d
+    var splitDate = inputDate.split('-');
+    if(splitDate.count == 0){
+        return null;
+    }
+    var year = splitDate[0];
+    var month = splitDate[1];
+    var day = splitDate[2]; 
+
+    return day + '-' + month + '-' + year;
+}
+function cancelTravel(){
+	if (window.location.href.indexOf("self-service") !== -1) {
+		$('#approveReqBtn,#rejectReqBtn,#cancelTravel').hide();
+		$("#addDtls").show();
+    }else{
+	$("#addDtls, #editDtls, #deleteDtls,#approveReqBtn,#rejectReqBtn").show();
+	$("#cancelTravel").hide();
+    }
+	
+	viewAllData();
+
+	
+}
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex ">
+				<div class="maincontentsec">
+					<!--Tabbination 1 Start-->
+					<div id="tab1" class="tab-pane" role="tabpanel">
+						<div class="d-flex flex-column flex-lg-row">
+							<!-- Tab panes -->
+							<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+								type="hidden" id="sessionName" th:value="${userName}" /> <input
+								type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+								type="hidden" id="adRole" th:value="${adRole}" /> <input
+								type="hidden" id="managerRole" th:value="${managerRole}" /> <input
+								type="hidden" id="aprRole" th:value="${aprRole}" />
+							<!--Left Sec Start-->
+							<div class="box-sec" id="collapseWidthR1">
+								<div class="out-box">
+										<div class="d-flex justify-content-between bdr-line p-2">
+
+											<div class="col-md-8 col-12">
+												<div class="d-flex gap-2 search-sec position-relative">
+													<input class="form-control" type="text"
+														onkeydown="enterToSearch(event)" placeholder="Search"
+														id="quickFilter" autocomplete="off">
+													<button class="btn go-btn" type="button"
+														onclick="onQuickFilterChanged()">Go</button>
+                          <button class="btn go-btn" type="button"
+														onclick="reset()">Reset</button>
+												</div>
+											</div>
+
+											<div class="d-flex justify-content-end">
+												<button class="btn btn-primary max-btn"
+													id="collapseButtonR1" onclick="triggerExpansionR(1)"
+													data-bs-toggle="tooltip" data-bs-placement="top"
+													title="Expand">
+													<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+														class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+												</button>
+											</div>
+
+										</div>
+										<div class="card m-2 p-2">
+											<div id="myGrid" style="width: 100%; height: 100vh;"
+												class="ag-theme-alpine"></div>
+										</div>
+									
+
+								</div>
+							</div>
+
+
+							<!-- Right Sec Start -->
+							<div class="box-sec" id="collapseWidthL1">
+								<div class="out-box">
+									<div class="d-flex flex-row-reverse justify-content-between align-items-center p-2 bdr-line">
+										<button class="btn max-btn" id="collapseButtonL1"
+											type="button" onclick="triggerExpansionL(1)"
+											data-bs-toggle="tooltip" data-bs-placement="top"
+											title="Expand">
+											<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+												class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+										</button>
+
+
+
+										<!--Right Inner Tab Start-->
+										<div class="d-flex gap-2">
+											<ul class="nav nav-pills newtab" role="tablist">
+												<li class="nav-item" role="presentation" id="travel-tab"><a
+													class="nav-link active" data-bs-toggle="pill"
+													href="#travel" aria-selected="true" role="tab">Travel
+														Details </a></li>
+												<li class="nav-item" role="presentation" id="services-tab"><a
+													class="nav-link" data-bs-toggle="pill" href="#services"
+													aria-selected="false" role="tab">Other Services</a></li>
+												<li class="nav-item claim-tab d-none" role="presentation"
+													id="claim-tab"><a class="nav-link"
+													data-bs-toggle="pill" href="#claim" aria-selected="false"
+													role="tab">Claim</a></li>
+
+											</ul>
+										</div>
+									</div>
+
+									<!-- Tab panes -->
+									<div class="tab-content flex-fill">
+										<div id="travel" class="tab-pane fade h-100 active show p-2"
+											role="tabpanel">
+
+
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+
+                        <div class="d-flex w-100 flex-column flex-xl-row justify-content-between align-items-start align-items-xl-center gap-2 p-2 border rounded">
+                          <div class="project-name"><span class="head-user-name" id="employeeNameTop1"></span></div>
+                          <div class="d-flex justify-content-end w-100 flex-wrap gap-2 flex-1">
+                            <button class="btn m-0 edit-btn"
+                                    id="addDtls" type="button" onclick="newDtls()">Add</button>
+                            <button class="btn m-0 edit-btn"
+                                    id="editDtls" type="button" onclick="enableFields()">Edit</button>
+                            <button class="btn m-0 edit-btn" type="button"
+                                    id="cancelTravel" onclick="cancelTravel()">Cancel</button>
+                            <button class="btn m-0 edit-btn"
+                                    id="deleteDtls" type="button"
+                                    onclick="deleteOnclick()">Delete</button>
+                            <button class="btn m-0 edit-btn"
+                                    id="approveReqBtn" type="button"
+                                    onclick="approveRequisition()">Approve</button>
+                            <button class="btn m-0 edit-btn"
+                                    id="rejectReqBtn" type="button"
+                                    onclick="rejectRequsition()">Reject</button>
+                            <button class="btn m-0 edit-btn"
+                                    id="infoNextBtn" type="button"
+                                    onclick="nextTab('services-tab')">Next</button>
+                          </div>
+                        </div>
+
+												<div class="card p-2">
+													<div class="mb-2 text-end">
+
+														<div class="mandatory-txt">
+															Note: All fields marked with <span>*</span> are
+															mandatory.
+														</div>
+													</div>
+													<div id="detailsDiv">
+														<input type="hidden" id="travelingReqId"> <input type="hidden" id="trReqId"><input
+															type="hidden" id="createdById">
+														<div class="row">
+															<!-- <div class="col-lg-4">
+																<div class="form-group">
+																	<label>Employee Name<span class="mandatory">*</span></label>
+																	<div class="select">
+																		<select class="form-control" id="empName"
+																			onChange="getId()">
+																			<option value="">Select</option>
+																			<option th:each="c,iter:${getEmployeeList}"
+																				th:value="${c.key}" th:text="${c.name}"
+																				th:attr="data-code=${c.code}"></option>
+																		</select>
+																	</div>
+																</div>
+															</div> -->
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label for="empNameListInput" class="form-label m-0">Employee
+																		Name<span class="mandatory">*</span>
+																	</label>
+																	<div>
+																		<input type="text" class="form-control" id="empName"
+																			autocomplete="off" onkeyup="getEmployeeList()"
+																			onblur="removeValid(event)"
+																			placeholder="Enter Employee Id Or Name" />
+																	</div>
+																	<div id="suggesstion-box_" class="sugg-cls position-absolute z-1"></div>
+																</div>
+															</div>
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Employee Id</label> <input type="text"
+																		class="form-control" autocomplete="off" id="empId"
+																		onblur="removeValid(event)" readonly>
+																</div>
+															</div>
+
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Designation</label> <input type="text"
+																		class="form-control" autocomplete="off"
+																		id="designation" onblur="removeValid(event)" readonly>
+																</div>
+															</div>
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Travel From<span class="mandatory">*</span></label>
+																	<input type="text" class="form-control"
+																		autocomplete="off" id="travelFrom"
+																		onblur="removeValid(event)">
+																</div>
+															</div>
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Travel To<span class="mandatory">*</span></label>
+																	<input type="text" class="form-control"
+																		autocomplete="off" id="placeName"
+																		onblur="removeValid(event)">
+																</div>
+															</div>
+															<div class="col-md-4">
+																<div class="form-group calendar_box">
+																	<label>From Date<span class="mandatory">*</span></label>
+																	<input type="text" id="fromDate" class="form-control"
+																		onblur="removeValid(event)"
+																		th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+																		readonly> <i
+																		class="ti-calendar picker_calendar position-absolute"
+																		style="right: 10px; top: 38px; cursor: pointer;"
+																		id="fromDateCalendar" onclick="setCalenderDate('fromDate','fromDateCalendar')"></i>
+																</div>
+															</div>
+															<div class="col-md-4">
+																<div class="form-group calendar_box">
+																	<label>To Date<span class="mandatory">*</span></label>
+																	<input type="text" id="toDate" class="form-control"
+																		onblur="removeValid(event)"
+																		th:attr="onkeyup=|formatDate('toDate','${session.DATEFORMAT_JS}')|"
+																		readonly> <i
+																		class="ti-calendar picker_calendar"
+																		id="toDateCalendar" onClick="setCalenderDate('toDate','toDateCalendar')"></i>
+																</div>
+															</div>
+															<div class="col-lg-4">
+																<div class="form-group">
+																	<label>Purpose<span class="mandatory">*</span></label>
+                                  <select class="form-select" id="purpose"
+                                          onblur="removeValid(event)">
+                                    <option value="">Select</option>
+                                    <option th:each="c,iter:${getPurposeList}"
+                                            th:value="${c.key}" th:text="${c.name}"></option>
+                                  </select>
+																</div>
+															</div>
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>Advance Required</label>
+																	<div class="d-flex mt-2 radio-btn">
+																		<div style="margin: 0px 25px 0px 10px;">
+																			<input type="radio" id="Yes" value="1"
+																				name="advanceReq" /> Yes
+																		</div>
+																		<div>
+																			<input type="radio" id="No" value="0"
+																				name="advanceReq" checked /> No
+																		</div>
+																	</div>
+																</div>
+															</div>
+
+															<div class="col-md-4" id="amount">
+																<div class="form-group">
+																	<label>Advance Amount<span class="mandatory">*</span></label>
+																	<input type="text" class="form-control"
+																		id="advanceAmount" onkeydown="checkAmount(event)"
+																		onblur="removeValid(event)">
+																</div>
+															</div>
+
+															<div class="col-md-8">
+																<div class="form-group">
+																	<label>Remark</label>
+																	<textarea class="form-control" id="remark"
+																		onblur="removeValid(event)"></textarea>
+																</div>
+															</div>
+
+														</div>
+													</div>
+
+												</div>
+
+											</div>
+
+										</div>
+										<div id="services" class="tab-pane fade h-100 p-2" role="tabpanel">
+
+											<div class="d-flex flex-column h-100 gap-2">
+
+                        <div class="d-flex w-100 flex-column flex-xl-row justify-content-between align-items-start align-items-xl-center gap-2 p-2 border rounded">
+                          <div class="project-name"><span class="head-user-name" id="employeeNameTop"></span></div>
+                          <div class="d-flex justify-content-end w-100 flex-wrap gap-2 flex-1">
+                            <button class="btn m-0 edit-btn"
+                                    id="prevBtnService" type="button"
+                                    onclick="nextTab('travel-tab')">Prev</button>
+                            <button class="btn m-0 edit-btn"
+                                    id="nextBtnService" type="button"
+                                    onclick="nextTab('claim-tab')">Next</button>
+                            <button class="btn m-0 edit-btn"
+                                    id="masterSaveBtn" type="button"
+                                    onclick="masterSaveData()">Save</button>
+                          </div>
+                        </div>
+
+												<!--Start-->
+												<div class="card p-2">
+													<div id="serviceGridDiv" class="grid-parent-container">
+														<div class="d-flex justify-content-between">
+															<div class="row">
+																<div class="col-md-12">
+																	<h5>Service Details</h5>
+																</div>
+															</div>
+															<div class="row">
+																<div class="col-md-12 cnt-sp-end"
+																	id="serviceGridAllBtnDiv">
+																	<div class="d-flex gap-1 task-btn-sec">
+																		<button id="addServiceBtn"
+																			class="border-0 btn-transition btn btn-outline-primary br-m-btn-poc"
+																			title="Add" onclick="toggleServiceSection()">
+																			<i class="fa fa-plus-square" aria-hidden="true"></i>
+																		</button>
+																		<button id="editServiceBtn"
+																			class="border-0 btn-transition btn btn-outline-primary br-dis-poc br-m-btn-poc"
+																			title="Edit" onclick="editServiceData()" disabled>
+																			<i class="fa fa-pencil-square" aria-hidden="true"></i>
+																		</button>
+																		<button id="deleteServiceBtn"
+																			class="border-0 btn-transition btn btn-outline-primary br-dis-poc br-m-btn-poc"
+																			title="Delete" disabled
+																			onclick="deleteDetailsOnclick()">
+																			<i class="fa fa-trash"></i>
+																		</button>
+																	</div>
+																</div>
+															</div>
+														</div>
+														<div class="grid-container br-m-btn-poc">
+                              <div id="myGridServices" class="ag-theme-alpine grid-size"></div>
+                            </div>
+													</div>
+													<div id="serviveDtlsDiv" class="d-none">
+														<div class="d-flex justify-content-between">
+															<div>
+																<h5 class="sub-header-new">Add Service Details</h5>
+															</div>
+															<div>
+
+																<div class="d-flex justify-content-end">
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn br-s-btn-poc"
+																			type="button" onclick="saveTableData()">Save</button>
+																	</div>
+																	<!-- <input type="hidden" id="productEdit"> -->
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn br-s-btn-poc"
+																			type="button" onclick="cancelToggleSection()">Cancel</button>
+																	</div>
+																</div>
+															</div>
+														</div>
+														<div class="row mt-2">
+															<input type="hidden" class="form-control"
+																id="serviceDetailsID">
+
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>Service Name<span class="mandatory">*</span></label>
+																	<div class="select">
+																		<select class="form-control"
+																			onblur="removeValid(event)" id="serviceName">
+																			<option value="">Select</option>
+																			<option th:each="c,iter:${getServiceList}"
+																				th:value="${c.key}" th:text="${c.name}"></option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+															<div class="col-md-6">
+																<div class="form-group calendar_box">
+																	<label>From Date<span class="mandatory">*</span></label>
+																	<input type="text" id="fromDateService"
+																		class="form-control" onblur="removeValid(event)"
+																		th:attr="onkeyup=|formatDate('fromDateService','${session.DATEFORMAT_JS}')|"
+																		readonly> <i
+																		class="ti-calendar picker_calendar"
+																		id="fromDateCalendarService" onClick="setCalenderDate('fromDateService','fromDateCalendarService')"></i>
+																</div>
+															</div>
+
+															<div class="col-md-6">
+																<div class="form-group calendar_box">
+																	<label>To Date<span class="mandatory">*</span></label>
+																	<input type="text" id="toDateService"
+																		class="form-control" onblur="removeValid(event)"
+																		th:attr="onkeyup=|formatDate('toDateService','${session.DATEFORMAT_JS}')|"
+																		readonly> <i
+																		class="ti-calendar picker_calendar"
+																		id="toDateCalendarService" onClick="setCalenderDate('toDateService','toDateCalendarService')"></i>
+																</div>
+															</div>
+
+															<div class="col-md-6">
+																<div class="form-group calendar_box">
+																	<label>From Time<span class="mandatory">*</span></label>
+																	<input type="text" id="fromServiceTime"
+																		class="form-control" onblur="removeValid(event)"
+																		th:attr="onkeyup=|formatDate('fromServiceTime','${session.DATEFORMAT_JS}')|"
+																		readonly> <i class="ti-time picker_calendar"
+																		id="DateCalendarFromTime"></i>
+																</div>
+															</div>
+
+															<div class="col-md-6">
+																<div class="form-group calendar_box">
+																	<label>To Time<span class="mandatory">*</span></label>
+																	<input type="text" id="toServiceTime"
+																		class="form-control" onblur="removeValid(event)"
+																		th:attr="onkeyup=|formatDate('toServiceTime','${session.DATEFORMAT_JS}')|"
+																		readonly> <i class="ti-time picker_calendar"
+																		id="DateCalendarToTime"></i>
+																</div>
+															</div>
+
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>Description</label>
+																	<textarea class="form-control" id="description"
+																		onblur="removeValid(event)"></textarea>
+
+																</div>
+															</div>
+														</div>
+													</div>
+
+												</div>
+												<!--End-->
+
+											</div>
+										</div>
+
+										<div id="claim" class="tab-pane h-100 fade p-2" role="tabpanel">
+											<div class="d-flex flex-column h-100 gap-2">
+
+                        <div class="d-flex w-100 flex-column flex-xl-row justify-content-between align-items-start align-items-xl-center gap-2 p-2 border rounded">
+                          <div class="project-name"><span class="head-user-name" id="employeeNameTop2"></span></div>
+                          <div class="d-flex justify-content-end w-100 flex-wrap gap-2 flex-1">
+                            <button class="btn m-0 edit-btn"
+                                    id="claimApproveBtn" type="button"
+                                    onclick="masterSaveClaimData()">Approve</button>
+                            <button class="btn m-0 edit-btn"
+                                    type="button" id="claimPrevBtn"
+                                    onclick="nextTab('services-tab')">Prev</button>
+                          </div>
+                        </div>
+
+												<div class="card p-2">
+													<div id="claimGridDiv" class="grid-parent-container">
+														<div class="d-flex justify-content-between">
+															<div class="row">
+																<div class="col-md-12">
+																	<h5 class="sub-header-new">Claim Details</h5>
+																</div>
+															</div>
+															<div class="row">
+																<div class="col-md-12 cnt-sp-end"
+																	id="claimGridAllBtnDiv">
+																	<div class="d-flex gap-1 task-btn-sec">
+																		<button id="addClaimBtn"
+																			class="border-0 btn-transition btn btn-outline-primary br-m-btn-poc" data-bs-toggle="tooltip"
+																			title="Add" onclick="toggleClaimSection()">
+																			<i class="fa fa-plus-square" aria-hidden="true"></i>
+																		</button>
+																		<button id="editClaimBtn"
+																			class="border-0 btn-transition btn btn-outline-primary br-dis-poc br-m-btn-poc" data-bs-toggle="tooltip"
+																			title="Edit" onclick="editRowClaim()" disabled>
+																			<i class="fa fa-pencil-square" aria-hidden="true"></i>
+																		</button>
+																		<button id="deleteClaimBtn"
+																			class="border-0 btn-transition btn btn-outline-primary br-dis-poc br-m-btn-poc" data-bs-toggle="tooltip"
+																			title="Delete" disabled
+																			onclick="deleteClaimDetailsOnclick()">
+																			<i class="fa fa-trash"></i>
+																		</button>
+																	</div>
+																</div>
+															</div>
+														</div>
+														<div class="grid-container br-m-btn-poc">
+                              <div id="myGridClaim" class="ag-theme-alpine grid-size"></div>
+                            </div>
+													</div>
+													<div id="claimDtlsDiv" class="d-none">
+														<div class="d-flex justify-content-between">
+															<div>
+																<h5 class="sub-header-new">Add Claim Details</h5>
+															</div>
+															<div>
+
+																<div class="d-flex justify-content-end">
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn br-s-btn-poc"
+																			type="button" onclick="saveClaimTableData()">Save</button>
+																	</div>
+																	<!-- <input type="hidden" id="productEdit"> -->
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn br-s-btn-poc"
+																			type="button" onclick="cancelClaimSection()">Cancel</button>
+																	</div>
+																</div>
+															</div>
+														</div>
+														<div class="row mt-2">
+															<input type="hidden" id="claimEditId" />
+															<!-- <input type="hidden" id="claimStatus" value="4" /> -->
+
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>Service Name<span class="mandatory">*</span></label>
+																	<div class="select">
+																		<select class="form-control"
+																			onblur="removeValid(event)" id="claimServiceName">
+																			<option value="">Select</option>
+																			<option th:each="c,iter:${getServiceList}"
+																				th:value="${c.key}" th:text="${c.name}"></option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+															<div class="col-md-6">
+																<div class="form-group calendar_box">
+																	<label>From Date<span class="mandatory">*</span></label>
+																	<input type="text" id="fromDateClaim"
+																		class="form-control" onblur="removeValid(event)"
+																		th:attr="onkeyup=|formatDate('fromDateService','${session.DATEFORMAT_JS}')|"
+																		readonly> <i
+																		class="ti-calendar picker_calendar"
+																		id="fromDateCalendarClaim" onClick="setCalenderDate('fromDateClaim','fromDateCalendarClaim')"></i>
+																</div>
+															</div>
+
+															<div class="col-md-6">
+																<div class="form-group calendar_box">
+																	<label>To Date<span class="mandatory">*</span></label>
+																	<input type="text" id="toDateClaim"
+																		class="form-control" onblur="removeValid(event)"
+																		th:attr="onkeyup=|formatDate('toDateService','${session.DATEFORMAT_JS}')|"
+																		readonly> <i
+																		class="ti-calendar picker_calendar"
+																		id="toDateCalendarClaim" onClick="setCalenderDate('toDateClaim','toDateCalendarClaim')"></i>
+																</div>
+															</div>
+
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>Amount<span class="mandatory">*</span></label> <input
+																		type="text" class="form-control" id="claimAmount"
+																		onkeydown="checkAmount(event)"
+																		onblur="removeValid(event)">
+																</div>
+															</div>
+
+															<div class="col-md-6" id="upload">
+																<label style="margin-bottom: 10px;">Add Bill</label>
+
+																<div class="control-group position-r">
+																	<label class="custom-file-upload" for="uploadDoc_0"
+																		style="margin-top: 18px;"> <i class="ti-plus"></i>
+																	</label>
+																	<div class="controls">
+																		<input type="file" class="document" id="uploadDoc_0"
+																			accept=".jpeg, .jpg, .png, .pdf" name="userImage"
+																			onchange="saveFile(event)">
+																	</div>
+																</div>
+																<input type="hidden" id="uploadHidden_0"
+																	class="uploadHidCls">
+																<div class="d-flex align-items-center">
+																	<!-- Preview of the uploaded file -->
+																	<div id="uploadedBillDiv_0" align="center"
+																		class="uploadedBillCls upload-ico-mrg"></div>
+
+																	<!-- Filename of the uploaded file -->
+																	<div id="imageName_0" class="imageName mrg-0"></div>
+
+																	<!-- Placeholder for delete button -->
+																	<div id="dltImage_0" class="dltImage"></div>
+																</div>
+															</div>
+
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>Description</label>
+																	<textarea class="form-control" id="claimDescription"
+																		onblur="removeValid(event)"></textarea>
+
+																</div>
+															</div>
+														</div>
+													</div>
+
+												</div>
+											</div>
+
+										</div>
+
+
+									</div>
+
+									<!--Right Inner Tab End-->
+								</div>
+							</div>
+							<!--Right Sec End-->
+						</div>
+					</div>
+					<!--Tabbination 1 End-->
+
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

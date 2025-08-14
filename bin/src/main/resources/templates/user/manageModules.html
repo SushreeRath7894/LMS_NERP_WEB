@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<script>
+function openNav() {
+	$(".formValidation").remove();
+	document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden;";
+	document.getElementById("main").style.width = "75%";
+}
+
+function closeNav() {
+	$("#sliderIdVal").text("");
+	$("#sliderNameVal").text("");
+	$("#displayName").val("");
+	$("#sliderId").val("");
+	$("#sliderValue").val("");
+	document.getElementById("mySidenav").style.width = "0";
+	document.getElementById("main").style.width = "100%";
+}
+
+$(document).ready(function(){
+	
+	showAvlFunction();
+	
+	$("#saveSliderDetails").click(function(){
+		
+		data = {};
+		
+		data.key = $("#sliderId").val();
+		data.name = $("#displayName").val();
+		
+		var status = $("input[name='isActive']:checked").val();
+		
+		if(status == "1") {
+			data.status = true;
+		} else {
+			data.status = false;
+		}
+		
+		data.value = $("#sliderValue").val();
+		
+		$(".formValidation").remove();
+		allPValid = true;
+		if( $("#displayName").val() == null || $("#displayName").val() == ""){
+			allPValid = false;
+			validationModal("Display Name Required","displayName");
+		} 
+		
+		if(allPValid) {
+			updateData(data);
+		}
+		
+	})
+	
+})
+
+function updateData(dataset) {
+	console.log(dataset)
+	$.ajax({
+        type: "POST",
+        url: "manage-modules-update-data",
+        dataType: "json",
+        contentType: "application/json",
+        data: JSON.stringify(dataset),
+        success: function(response) {
+            if (response.message == "Success") {
+            	$("#lbl_"+response.body.key).text(response.body.value);
+            	closeNav();
+            	showAvlFunction();
+            	var value = dataset.value;
+            	if(response.body.status) {
+            		if(value == "1") {
+            			$(".modules_"+response.body.key).prop("checked",true);
+            			$(".components_"+response.body.key).prop("checked",true);
+            			$(".submod_"+response.body.key).prop("checked",true);
+            		}
+            		if(value == "2") {
+            			$("#check_"+response.body.key).prop("checked",true);
+            			$(".comps_"+response.body.key).prop("checked",true);
+            		}
+            		if(value == "3") {
+            			$("."+response.body.key).prop("checked",true);
+            		}
+            	} else {
+					if(value == "1") {
+						$(".modules_"+response.body.key).prop("checked",false);
+						$(".components_"+response.body.key).prop("checked",false);
+						$(".submod_"+response.body.key).prop("checked",false);
+            		}
+            		if(value == "2") {
+            			$("#check_"+response.body.key).prop("checked",false);
+            			$(".comps_"+response.body.key).prop("checked",false);
+            		}
+            		if(value == "3") {
+            			$("."+response.body.key).prop("checked",false);
+            		}
+            	}
+            	
+            	if(value == "2") {
+            		var mod = $("."+response.body.key).attr("data-mod");
+            		var checkboxes = document.getElementsByClassName("components_"+mod);
+            		var chkLength = checkboxes.length;
+            		var c = 0;
+            		$(".components_"+mod+":checkbox:checked").each(function(){
+            			c = c + 1;
+            		});
+            		if(chkLength != c) {
+            			$("#div_"+mod).addClass("checkboxinact");
+            		} else {
+            			$("#div_"+mod).removeClass("checkboxinact");
+            		}
+            	}
+            	
+            	if(value == "3") {
+            		var comp = $("#scomp_"+response.body.key).attr("data-comp");
+            		var mod = $("#scomp_"+response.body.key).attr("data-mod");
+            		
+            		var checkboxes = document.getElementsByClassName("comps_"+comp);
+            		var chkLength = checkboxes.length;
+            		var c = 0;
+            		$(".comps_"+comp+":checkbox:checked").each(function(){
+            			c = c + 1;
+            		});
+            		if(chkLength != c) {
+            			$("#cdiv_"+comp).addClass("checkboxinact");
+            			$("#div_"+mod).addClass("checkboxinact");
+            		} else {
+            			
+            			$("#cdiv_"+comp).removeClass("checkboxinact");
+            			$("#div_"+mod).removeClass("checkboxinact");
+            		}
+            	}
+            }
+        }, error: function(data) {
+        	console.log(data)
+        }
+	});
+}
+
+function showAvlFunction() {
+	$("#main").empty();
+	$.ajax({
+		type : "GET",
+		url : "manage-modules-avl-func-lists",
+		dataType : 'json',
+		contentType : 'application/json',
+		/* data : JSON.stringify(dataset), */
+		success : function(response) {
+			if (response.message == "success") {
+				$("#main").empty();
+				if(response.body.length > 0) {
+					for(var i = 0; i < response.body.length; i++) {
+						var mod = response.body[i].key;
+						var comp = response.body[i].name;
+						var subcomp = response.body[i].value;
+						var value = mod + " -> " + comp + " -> " + subcomp;
+						var data = '<h3 class="mb-6">'+value+'</h3>';
+						
+						var divData = "";
+						if(response.body[i].createdBy != null && response.body[i].createdBy != "") {
+							var avlFuncList = response.body[i].createdBy;
+							
+							var avlFunc = avlFuncList.split(",");
+							
+							if(avlFunc.length > 0) {
+								for(var j = 0; j < avlFunc.length; j++) {
+									divData = divData + "<div class='avlfuncdiv'>-  "+avlFunc[j]+"</div>";
+								}
+							}
+						}
+						
+						
+						data = data + "<div class='mb'>" + divData + "</div>";
+						$("#main").append(data);
+					}
+				}
+			}
+		}, error : function(data) {
+			console.log(data)
+		}
+	});
+}
+
+function checkAllModules(e,id) {
+	
+	var checkboxes = document.getElementsByName(id);
+	var checkboxes1 = document.getElementsByName("subcomps_"+id);
+	
+	if (e.checked) {
+		for (var i = 0; i < checkboxes.length; i++) { 
+	    	checkboxes[i].checked = true;
+	    }
+		for (var i = 0; i < checkboxes1.length; i++) { 
+	    	checkboxes1[i].checked = true;
+	    }
+		updateModule("1",id);
+		$("#div_"+id).removeClass("checkboxinact");
+	} else {
+		for (var i = 0; i < checkboxes.length; i++) {
+	    	checkboxes[i].checked = false;
+	    }
+		for (var i = 0; i < checkboxes1.length; i++) {
+	    	checkboxes1[i].checked = false;
+	    }
+		updateModule("0",id);
+	}
+}
+
+function checkAllComps(e,id,modId) {
+	
+	var checkboxes = document.getElementsByClassName("comps_"+id);
+	
+	if (e.checked) {
+		for (var i = 0; i < checkboxes.length; i++) { 
+	    	checkboxes[i].checked = true;
+	    }
+		updateFunction("1",id);
+		/* $(".modules_"+modId).prop("checked",true); */
+		$("#div_"+modId).removeClass("checkboxinact");
+		$("#cdiv_"+id).removeClass("checkboxinact");
+	} else {
+		for (var i = 0; i < checkboxes.length; i++) {
+	    	checkboxes[i].checked = false;
+	    }
+		updateFunction("0",id);
+		//$("#div_"+modId).addClass("checkboxinact");
+	}
+	
+	var cb = document.getElementsByClassName('components_'+modId);
+	var chkLength = cb.length;
+	var c = 0;
+	$(".components_"+modId+":checkbox:checked").each(function(){
+		c = c + 1;
+	})
+	
+	if(chkLength != c) {
+		$("#div_"+modId).addClass("checkboxinact");
+	} else {
+		$("#div_"+modId).removeClass("checkboxinact");
+	}
+}
+
+function checkAllSubComps(e,id,compId,modId) {
+	
+	var checkboxes = document.getElementsByClassName(id);
+	
+	if (e.checked) {
+		for (var i = 0; i < checkboxes.length; i++) { 
+	    	checkboxes[i].checked = true;
+	    }
+		updateActivity("1",id);
+		$("#div_"+modId).removeClass("checkboxinact");
+		$("#cdiv_"+compId).removeClass("checkboxinact");
+	} else {
+		for (var i = 0; i < checkboxes.length; i++) {
+	    	checkboxes[i].checked = false;
+	    }
+		updateActivity("0",id);
+	}
+	
+	var cb = document.getElementsByClassName('comps_'+compId);
+	var chkLength = cb.length;
+	var c = 0;
+	$(".comps_"+compId+":checkbox:checked").each(function(){
+		c = c + 1;
+	})
+	
+	if(chkLength != c) {
+		$("#cdiv_"+compId).addClass("checkboxinact");
+		$("#div_"+modId).addClass("checkboxinact");
+	} else {
+		$("#cdiv_"+compId).removeClass("checkboxinact");
+		$("#div_"+modId).removeClass("checkboxinact");
+	}
+}
+
+function updateActivity(status,actId) {
+	obj = {};
+	obj.key = actId;
+	obj.name = status;
+	$.ajax({
+        type: "POST",
+        url: "manage-modules-update-activity",
+        dataType: "json",
+        contentType: "application/json",
+        data: JSON.stringify(obj),
+        success: function(response) {
+            if (response.message == "Success") {
+            	showAvlFunction();
+            }
+        }, error: function(data) {
+        	console.log(data)
+        }
+	});
+}
+
+function updateFunction(status,funId) {
+	obj = {};
+	obj.key = funId;
+	obj.name = status;
+	$.ajax({
+        type: "POST",
+        url: "manage-modules-update-function",
+        dataType: "json",
+        contentType: "application/json",
+        data: JSON.stringify(obj),
+        success: function(response) {
+            if (response.message == "Success") {
+            	showAvlFunction();
+            }
+        }, error: function(data) {
+        	console.log(data)
+        }
+	});
+}
+
+function updateModule(status,modId) {
+	obj = {};
+	obj.key = modId;
+	obj.name = status;
+	$.ajax({
+        type: "POST",
+        url: "manage-modules-update-module",
+        dataType: "json",
+        contentType: "application/json",
+        data: JSON.stringify(obj),
+        success: function(response) {
+            if (response.message == "Success") {
+            	showAvlFunction();
+            }
+        }, error: function(data) {
+        	console.log(data)
+        }
+	});
+}
+
+function setModuleCaretActive(id) {
+	var data = $("#modspan_"+id).attr("value");
+	if(data == "1") {
+		$("#modspan_"+id).attr("value","0");
+		$("#modspan_"+id).removeClass("caret-down");
+		$("#funcUl_"+id).removeClass("active");
+	} else {
+		$("#modspan_"+id).attr("value","1");
+		$("#modspan_"+id).addClass("caret-down");
+		$("#funcUl_"+id).addClass("active");
+	}
+}
+
+function setFunctionCaretActive(id) {
+	var data = $("#funspan_"+id).attr("value");
+	if(data == "1") {
+		$("#funspan_"+id).attr("value","0");
+		$("#funspan_"+id).removeClass("caret-down");
+		$("#actUl_"+id).removeClass("active");
+	} else {
+		$("#funspan_"+id).attr("value","1");
+		$("#funspan_"+id).addClass("caret-down");
+		$("#actUl_"+id).addClass("active");
+	}
+}
+
+function editData(id,headId) {
+	openNav();
+	var headerText = "";
+	$("#sliderValue").val("");
+	if(headId == "1") {
+		headerText = "Module";
+		$("#sliderValue").val("1");
+	} else if(headId == "2") {
+		headerText = "Components";
+		$("#sliderValue").val("2");
+	} else if(headId == "3") {
+		headerText = "Sub-Components";
+		$("#sliderValue").val("3");
+	}
+	
+	$("#sliderHeader").text(headerText);
+	
+	$("#sliderIdVal").text("");
+	$("#sliderNameVal").text("");
+	$("#displayName").val("");
+	$("#sliderId").val("");
+	
+	$("#sliderStatus").prop("checked",false);
+	
+	if(id) {
+		
+		obj = {};
+		
+		obj.key = id;
+		obj.name = headId;
+		
+		$.ajax({
+	        type: "POST",
+	        url: "manage-modules-edit-view-slider",
+	        dataType: "json",
+	        contentType: "application/json",
+	        data: JSON.stringify(obj),
+	        success: function(response) {
+	            if (response.message == "Success") {
+	            	//showAvlFunction();
+	            	$("#sliderId").val(response.body.key);
+	            	$("#sliderIdVal").text(response.body.key);
+	            	$("#sliderNameVal").text(response.body.name);
+	            	$("#displayName").val(response.body.value);
+	            	
+	            	if(response.body.status) {
+	            		$("#sliderStatus").prop("checked",true);
+	            	} else {
+	            		$("#sliderStatus").prop("checked",false);
+	            	}
+	            	
+	            }
+	        }, error: function(data) {
+	        	console.log(data)
+	        }
+		});
+	}
+}
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="row">
+							<div class="col-md-4 layout-header">
+								<div class="level_breadcrumb">Modules -> Components ->
+									Sub-Components</div>
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-md-4">
+								<div class="flowsection">
+									<ul id="myUL" class="level">
+										<li th:each="a,iter:${moduleList}"><span th:id="${'modspan_'+a.key}" value="1"
+											class="caret caret-down" th:attr="onclick=|setModuleCaretActive('${a.key}')|"></span>
+											<div th:id="${'div_'+a.key}">
+												<input type="checkbox" th:id="${a.key}"
+													th:class="${'modules_'+a.key}"
+													th:attr="onchange=|checkAllModules(this,'${a.key}')|"
+													checked="checked" th:if="${a.status}"> <input
+													type="checkbox" th:id="${a.key}"
+													th:class="${'modules_'+a.key}"
+													th:attr="onchange=|checkAllModules(this,'${a.key}')|"
+													th:unless="${a.status}">
+											</div> <span th:id="${'lbl_'+a.key}" class="leveltxt"
+											th:text="${a.name}"></span> <label for="check1">&nbsp;&nbsp;<a
+												href="javascript:void(0)"><i title="Edit Modules"
+													class="ti-pencil green-cls" th:attr="onclick=|editData('${a.key}','1')|"></i></a></label>
+											<ul class="nested active" th:id="${'funcUl_'+a.key}">
+												<li th:each="b,itr:${a.dataList}"><span th:id="${'funspan_'+b.key}" value="1"
+													class="caret caret-down" th:attr="onclick=|setFunctionCaretActive('${b.key}')|"></span>
+													<div th:id="${'cdiv_'+b.key}">
+														<input type="checkbox" th:id="${'check_'+b.key}"
+															th:class="${'components_'+a.key+' '+b.key}" th:name="${a.key}"
+															th:attr="onchange=|checkAllComps(this,'${b.key}','${a.key}')|,data-mod=${a.key}"
+															checked="checked" th:if="${b.status}"> 
+														<input type="checkbox" th:id="${'check_'+b.key}"
+															th:class="${'components_'+a.key+' '+b.key}" th:unless="${b.status}"
+															th:name="${a.key}"
+															th:attr="onchange=|checkAllComps(this,'${b.key}','${a.key}')|,data-mod=${a.key}">
+													</div> <span th:id="${'lbl_'+b.key}" class="leveltxt"
+													th:text="${b.name}"></span> <label for="check1">&nbsp;&nbsp;<a
+														href="javascript:void(0)"><i title="Edit Components"
+															class="ti-pencil green-cls" th:attr="onclick=|editData('${b.key}','2')|"></i></a></label>
+													<ul class="nested active" th:id="${'actUl_'+b.key}">
+														<li th:each="c,itr:${b.dataList}">
+															<div id="cbLoc">
+																<input type="checkbox" th:id="${'scomp_'+c.key}"
+																	th:class="${'subcomps comps_'+b.key+' '+c.key+' submod_'+a.key}"
+																	th:name="${'subcomps_'+a.key}" th:value="${c.key}"
+																	checked="checked" th:if="${c.status}"
+																	th:attr="onchange=|checkAllSubComps(this,'${c.key}','${b.key}','${a.key}')|,data-mod=${a.key},data-comp=${b.key}">
+																<input type="checkbox" th:id="${'scomp_'+c.key}"
+																	th:class="${'subcomps comps_'+b.key+' '+c.key+' submod_'+a.key}"
+																	th:name="${'subcomps_'+a.key}" th:unless="${c.status}"
+																	th:attr="onchange=|checkAllSubComps(this,'${c.key}','${b.key}','${a.key}')|,data-mod=${a.key},data-comp=${b.key}">
+															</div> <span th:id="${'lbl_'+c.key}" class="leveltxt"
+															th:text="${c.name}"></span> <label for="check1">&nbsp;&nbsp;<a
+																href="javascript:void(0)"><i title="Edit Sub-Components"
+																	class="ti-pencil green-cls" th:attr="onclick=|editData('${c.key}','3')|"></i></a></label></li>
+													</ul></li>
+											</ul></li>
+									</ul>
+									<!-- code end for second tree -->
+								</div>
+							</div>
+							<div class="col-md-8">
+								<div class="avl-func">Available Functions</div>
+								<div class="roomdetails roomListDiv" id="main"></div>
+								<div class="slidearrow" >
+									<i class="ti-arrow-left"></i>
+								</div>
+								<div id="mySidenav" class="sidenav"
+									style="top: 138px !important;">
+									<div class="slidebox">
+										<div class="row">
+											<div class="col-md-9">
+												<div class="edit" id="sliderHeader">
+													Module
+												</div>
+											</div>
+											<div class="col-md-3">
+												<div class="arrow">
+													<a href="javascript:void(0)" class="closebtn"
+														onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+												</div>
+											</div>
+										</div>
+										<div class="chartbtnsec">
+											<div align="right">
+												<button class="btn4" onclick="closeNav()">CANCEL</button>
+												<button class="btn1" id="saveSliderDetails">SAVE</button>
+											</div>
+										</div>
+										<div class="clearfix"></div>
+										<div class="row">
+											<div class="col-md-12">
+												<div class="form-group">
+													<input type="hidden" id="sliderId">
+													<input type="hidden" id="sliderValue">
+													<span class="slide-span">Id: </span><span
+														id="sliderIdVal" class="slide-span-text">MOD001</span>
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<span class="slide-span">Name: </span><span
+														id="sliderNameVal" class="slide-span-text">HRMS</span>
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Display Name</label>
+													<input type="text" value="" id="displayName"
+														placeholder="" class="form-control" onblur="removeValid(event);">
+												</div>
+											</div>
+											<div class="col-md-6">
+												<div class="form-group">
+												<input type="checkbox" name="isActive"
+															style="margin-top: 8px;" id="sliderStatus" value="1" checked="checked">
+													<label>Active</label> 
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

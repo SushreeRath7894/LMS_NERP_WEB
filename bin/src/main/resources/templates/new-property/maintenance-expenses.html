@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<script type="text/javascript">
+	$(document).ready(function() {
+		var today = new Date();
+		var dd = String(today.getDate()).padStart(2, '0');
+		var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+		var yyyy = today.getFullYear();
+
+		today1 = "01" + '-' + mm + '-' + yyyy;
+
+		today = dd + '-' + mm + '-' + yyyy;
+
+		$('#fromDate').val(today1);
+		$('#toDate').val(today);
+
+		$('#reqDltBtn').attr('disabled', true);
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#fromDate').val($(this).val());
+		})
+
+		$('#fromDate').blur(function() {
+			$("#fromDateCalendar").val($(this).val());
+		})
+
+		//     date format TO date
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#toDate').val($(this).val());
+		})
+
+		$('#toDate').blur(function() {
+			$("#toDateCalendar").val($(this).val());
+		})
+		search();
+	})
+	function search() {
+		var fromDate = $("#fromDate").val();
+		var toDate = $("#toDate").val();
+		var fromDate = fromDate.split('-');
+		var fromDate = fromDate[2] + '-' + fromDate[1] + '-' + fromDate[0];
+		var toDate = toDate.split('-');
+		var toDate = toDate[2] + '-' + toDate[1] + '-' + toDate[0];
+
+		var userid = $("#sessionId").val();
+
+		agGrid.simpleHttpRequest(
+				{
+					url : "maintenance-expenses-view?userid=" + userid
+							+ "&fromDate=" + fromDate + "&toDate=" + toDate,
+				}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+			if (len > 0) {
+				gridOptions.api.setRowData(data);
+			} else {
+				gridOptions.api.setRowData();
+			}
+		});
+
+	}
+
+	var columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				sortable : false,
+				filter : false,
+				resizable : true,
+				width : 30
+			},
+			{
+				headerName : " Maintainance ID ",
+				field : "mainid",
+				width : 170,
+				cellRenderer : function(params) {
+					return '<a onclick=edit("' + params.data.mainid
+							+ '") href="javascript:void(0)">'
+							+ params.data.mainid + '</a>';
+				}
+
+			}, {
+				headerName : "Property No",
+				field : "propno"
+
+			}, {
+				headerName : "Month",
+				field : "month"
+
+			}, {
+				headerName : "Maintainence Description",
+				field : "maintainence"
+
+			}, {
+				headerName : "Amount",
+				field : "amount"
+
+			} ];
+	$("#mainid").click(function() {
+		$("#a").css("display", "block");
+		$("#b").css("display", "block");
+	});
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+
+		rowSelection : 'multiple',
+
+		onSelectionChanged : deleteDetails,
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 400
+		}
+	};
+
+	var deleteId = "";
+	function deleteDetails() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+
+		deleteId = "";
+		for (var i = 0; i < selectedRows.length; i++) {
+			deleteId = deleteId + '"' + selectedRows[i].propNo + '",';
+
+		}
+		deleteId = deleteId.substring(0, deleteId.length - 1);
+
+		var rowCount = 0;
+		selectedRows.forEach(function() {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#delete').attr("disabled", false);
+			$('#add').hide();
+			if (rowCount == 1) {
+				$('#add').hide();
+			}
+		} else {
+			$('#delete').attr("disabled", true);
+			$('#add').show();
+
+		}
+
+	}
+	function add() {
+
+		$("#demo").show();
+		$("#reqTable").hide();
+		$("#myGrid").hide();
+		$(".date1").hide();
+		$(".date2").hide();
+		$("#searchRowDiv").hide();
+		$(".btn-hs").hide();
+
+		$("#propno").val("");
+		$("#month").val("");
+		$("#maintainence").val("");
+		$("#amount").val("");
+
+		$('#delete').attr("disabled", true);
+
+	}
+	function cancelBtn() {
+
+		window.location.reload();
+
+		$("#demo").hide();
+		$("#myGrid").show();
+		$("#reqTable").show();
+		$("#demo").hide();
+		$(".date1").show();
+		$(".date2").show();
+		$(".btn-hs").show();
+	}
+
+	function save() {
+
+		var org = {};
+		org.mainid = $("#mainid").val();
+		org.propno = $("#propId").val();
+		org.month = $("#month").val();
+		org.maintainence = $("#maintainence").val();
+		org.recptno = $("#receiptno").val();
+		org.amount = $("#amount").val();
+		org.createdby = $("#sessionId").val();
+
+		var today = new Date();
+		var dd = String(today.getDate()).padStart(2, '0');
+		var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+		var yyyy = today.getFullYear();
+
+		today = yyyy + '-' + mm + '-' + dd;
+		org.createdOn = today;
+
+		console.log(org);
+
+		var validation = true;
+
+		if (org.propId == null || org.propId == "") {
+			validation = validationUpdated("Property No Required", "propId");
+		}
+
+		if (org.month == null || org.month == "") {
+			validation = validationUpdated("Month Required", "month");
+		}
+
+		if (org.maintainence == null || org.maintainence == "") {
+			validation = validationUpdated("Maintenance Required",
+					"maintainence");
+		}
+
+		if (org.receiptno == null || org.receiptno == "") {
+			validation = validationUpdated("Receipt No Required", "receiptno");
+		}
+
+		if (org.amount == null || org.amount == "") {
+			validation = validationUpdated("Amount Required", "amount");
+		}
+
+		if (validation) {
+
+			$.ajax({
+				type : "POST",
+				url : "maintenance-expenses-description-add",
+				contentType : "application/json",
+				data : JSON.stringify(org),
+				success : function(response) {
+					if (response.message == "Success") {
+						var today = new Date();
+						var dd = String(today.getDate()).padStart(2, '0');
+						var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+						var yyyy = today.getFullYear();
+
+						today = yyyy + '-' + mm + '-' + dd;
+
+						var userid = $("#sessionId").val();
+
+						agGrid.simpleHttpRequest(
+								{
+									url : "maintenance-expenses-view?userid="
+											+ userid + "&fromDate=" + today
+											+ "&toDate=" + today,
+								}).then(function(data) {
+							console.log(data);
+							var len = data.length;
+							$('#totalReq').find('span').html(len);
+
+							gridOptions.api.setRowData(data);
+						});
+
+						cancelBtn();
+					}
+				},
+				error : function(response) {
+					console.log(response);
+				}
+
+			});
+
+		}
+	}
+	function edit(id) {
+		//alert("hii")
+
+		$.ajax({
+
+			type : "GET",
+			url : "maintenance-expenses-description-edit?id=" + id,
+
+			success : function(response) {
+
+				if (response.message == "Success") {
+
+					$("#mainid").val(response.body[0].mainid);
+					$("#propId").val(response.body[0].propno);
+					$("#receiptno").val(response.body[0].recptno);
+					$("#sessionId").val(response.body[0].createdby);
+					$("#month").val(response.body[0].month);
+					$("#maintainence").val(response.body[0].maintainence);
+					$("#amount").val(response.body[0].amount);
+					
+					$("#demo").show();
+					$("#myGrid").hide();
+					$("#reqTable").hide();
+					$(".btn-hs").hide();
+					$(".date1").hide();
+					$(".date2").hide();
+					$("#searchRowDiv").hide();
+					$("#btn-hs1").show();
+
+				}
+			}
+		});
+
+	}
+
+	function deleteDemocategory() {
+
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var id = selectedRows[0].propno;
+
+		$.ajax({
+			type : "GET",
+			url : "maintenance-expenses-description-delete?id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+					location.reload();
+					agGrid.simpleHttpRequest({
+						url : 'maintenance-expenses-view'
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+					});
+
+					Cancel();
+					location.reload();
+				}
+			},
+			error : function(data) {
+				console.log(data);
+			}
+		})
+	}
+
+	function getpropertyTypeList() {
+		var id = $("#propId").val();
+		if (id == "") {
+			$("#suggesstion-box1_").hide();
+		}
+
+		if (id) {
+			$
+					.ajax({
+						type : "POST",
+						url : "maintenance-expenses-autosearch-property",
+						dataType : 'json',
+						contentType : 'application/json',
+						data : id,
+						success : function(response) {
+							if (response.message == "success") {
+								if (response.body.length != 0) {
+									console.log(JSON.stringify(response));
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1" style="margin-left:-40px; font-weight:100; font-size:14px; color:#ccc;">';
+									for (var i = 0; i < response.body.length; i++) {
+										content += '<li class="autocompletedata cp" onClick="selectAutocompleteValue1(\''
+												+ response.body[i].key
+												+ '\',\''
+												+ response.body[i].name
+												+ '\',\''
+												+ response.body[i].key
+												+ '\')">'
+												+ response.body[i].key
+												+ '</li>';
+									}
+									content += '</ul>';
+									$("#suggesstion-box1_").show();
+									$("#suggesstion-box1_").html(content);
+
+								} else {
+									$("#search").css("background", "#FFF");
+									var content = '<div id="autocomplete-list1">';
+									content += '<div onClick="selectAutocompleteValue()">'
+											+ "No Data Found" + '</div>';
+									content += '</div>';
+									$("#suggesstion-box1_").show();
+									$("#suggesstion-box1_").html(content);
+								}
+							}
+						},
+						error : function(data) {
+							console.log(data);
+						}
+					})
+		}
+
+	}
+
+	function selectAutocompleteValue1(key, name) {
+
+		if (key) {
+
+			$("#propId").val(key);
+			$("#search").val(key);
+			$("#search").attr('data-procat', key);
+			$("#suggesstion-box1_").hide();
+
+		} else {
+			$("#propId").val("");
+
+			$("#search").val("");
+			$("#search").attr('data-procat', "");
+			$("#suggesstion-box1_").hide();
+
+		}
+	}
+
+	function selectAutocompleteValue() {
+
+		$("#propno").val("");
+		$("#search").val("");
+		$("#search").attr('data-procat', "");
+		$("#suggesstion-box1_").hide();
+
+	}
+
+	function dateChange() {
+
+		var fromDate = $('#fromDate').val();
+		var toDate = $('#toDate').val();
+		var fd = fromDate.split("-");
+		var td = toDate.split("-");
+
+		if (fromDate != '' && toDate != '') {
+			if (fd[2] <= td[2]) {
+				if (fd[1] == td[1]) {
+					if (fd[0] <= td[0]) {
+
+					} else {
+						setFromToDate();
+					}
+				} else if (fd[1] < td[1]) {
+
+				} else {
+					setFromToDate();
+				}
+
+			} else {
+				setFromToDate();
+			}
+		} else {
+
+		}
+	}
+
+	function setFromToDate() {
+		$("#messageParagraph").text(
+				"Please choose to date greater than or equal to from date ");
+		$("#msgOkModal").removeClass("btn3");
+		$("#msgOkModal").addClass("btn1");
+		$("#msgModal").modal('show');
+		$("#fromDate").val("");
+		$("#toDate").val("");
+	}
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#searchBar').val() == null || $('#searchBar').val() == "") {
+			id.style.display = "none";
+		}
+	}
+function checkAlphabet(fieldId) {
+		
+	    var tempVal = $("#" + fieldId).val().replace(/[^a-zA-Z. ]/g,'');
+	    tempVal=tempVal.replace(/^\w/, c => c.toUpperCase());
+	    
+	    const input = document.getElementById(fieldId);
+	    const position = input.selectionStart;	
+	    if(position == 1 && tempVal.charAt(0) == ' '){
+	    	$("#" + fieldId).empty();
+	    	tempVal = '';
+	   } 
+	   $("#" + fieldId).val(tempVal);
+	} 
+	
+function checkNumeric(fieldId) {
+	
+	 var tempVal = $("#" + fieldId).val().replace(/[^0-9 ]/g, '');
+	    
+	    const input = document.getElementById(fieldId);
+	    const position = input.selectionStart;	
+	    if(tempVal.slice(-1) == ' '){
+	     	$("#" + fieldId).empty();
+	     	tempVal = '';
+	     } 
+	   $("#" + fieldId).val(tempVal);
+	}
+function cancelBar() {
+	var id = document.getElementById("closeKey");
+	id.style.display = "block";
+	if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+		id.style.display = "none";
+	}
+}
+</script>
+<style>
+.form-check-input::before {
+	display: none !important;
+}
+
+.my-menu {
+	text-align: center;
+}
+</style>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="d-flex justify-content-between">
+						<div class="btn-hs">
+							<div class="font-design" id="totalReq">Manage Maintenance
+								Expenses()</div>
+						</div>
+
+						<div id="searchRowDiv">
+							<div class="input-style">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter"
+									autocomplete="off">
+								<div class="searchicon">
+									<a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+						</div>
+
+						<div class="col-md-1 date1">
+							<div class="form-group calendar_box">
+								<label><b>From Date</b></label> <input type="text" id="fromDate"
+									value="" class="form-control" onblur="removeValid(event)"
+									th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+									readonly> <i class="ti-calendar picker_calendar"
+									id="fromDateCalendar" onchange="dateChange()"></i>
+							</div>
+							<input type="hidden" id="sessionId" th:value="${userId}" />
+
+						</div>
+						<div class="col-md-1 date2">
+							<div class="form-group calendar_box">
+								<label><b>To Date</b></label> <input type="text" id="toDate"
+									value="" class="form-control" onblur="removeValid(event)"
+									th:attr="onkeyup=|formatDate('toDate','${session.DATEFORMAT_JS}')|"
+									readonly> <i class="ti-calendar picker_calendar"
+									id="toDateCalendar" onchange="dateChange()"></i>
+							</div>
+						</div>
+
+						<div class="row" id="reqTable">
+
+							<div class="col-md-12" align="right">
+
+								<button class="btn1" id="add" onclick="add()">NEW</button>
+								<button class="btn3" id="delete" onclick=" deleteDemocategory()"
+									disabled="disabled">DELETE</button>
+								<button class="btn2" id="search" onclick=" search()">SEARCH</button>
+							</div>
+
+						</div>
+					</div>
+				</div>
+
+				<div id="myGrid" style="width: 100%; height: 370px;"
+					class="ag-theme-alpine"></div>
+				<div class="collapse" id="demo">
+					<div class=""></div>
+
+					<div class="col-md-12" align="right">
+						<button type="button" class="cancel-btn" onclick="cancelBtn()">Cancel</button>
+						<button class="btn1" onclick="save()">Save</button>
+					</div>
+
+					<div class="row">
+						<input type="hidden" class="form-control" id="sid"
+							autocomplete="off">
+						<div class="col-md-6">
+							<b>MAINTENANCE EXPENSES</b><span id="stdhead"></span>
+						</div>
+
+					</div>
+
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>Property No</label> <input type="text"
+									class="form-control" id="propId"
+									onkeyup='getpropertyTypeList()'>
+								<div id="suggesstion-box1_" class="sugg-cls"></div>
+							</div>
+						</div>
+
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>Month</label>
+								<div class="select">
+									<select class="form-control  countryclss my-menu" id="month"
+										onblur="removeValid(event)">
+										<option value="">Select</option>
+										<option th:each="c,iter:${monthList}" th:value="${c.key}"
+											th:text="${c.name}"></option>
+									</select>
+								</div>
+							</div>
+						</div>
+
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>Maintenance Description</label> <input type="text"
+									class="form-control" id="maintainence"
+									onblur="removeValid(event)"
+									onkeyup="checkAlphabet('maintainence');">
+							</div>
+						</div>
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="mainid" />
+
+						<div class="col-md-6">
+							<div class="form-group">
+								<input type="hidden" autocomplete="off" id="propno"> <label>Receipt
+									No</label> <input type="text" class="form-control" id="receiptno"
+									onblur="removeValid(event)"
+									onkeyup="checkNumeric('receiptno');">
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>Amount</label> <input type="text" class="form-control"
+									id="amount" onblur="removeValid(event)"
+									onkeyup="checkNumeric('amount');"> <input
+									class="form-check-input" type="hidden" id="created_by">
+								<input class="form-check-input" type="hidden" id="createdOn">
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

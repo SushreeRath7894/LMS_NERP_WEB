@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:fragment="department">
+<head>
+<meta charset="UTF-8">
+<script>
+var columnDefsDepartment = [{
+    headerName: "Order",
+    field: "departmentOrder",
+    flex: 1,
+    hide: true
+},
+{
+    headerName: "Department Name",
+    field: "departmentName",
+    flex: 5
+}, {
+    headerName: "Status",
+    field: "departmentStatus",
+    flex: 1,
+    cellRenderer: function(params) {
+        if (params.data.departmentStatus == "Active") {
+            return '<div style="color:green">' + params.data.departmentStatus + '</div>';
+        } else {
+            return '<div>' + params.data.departmentStatus + '</div>';
+        }
+    }
+}
+];
+
+var gridOptionsDepartment = {
+	columnDefs: columnDefsDepartment,
+	defaultColDef: {
+	    sortable: true,
+	    filter: true,
+	    resizable: true,
+	    height: 10
+	},
+	rowSelection: 'single',
+	rowMultiSelectWithClick: true,
+	onSelectionChanged: onSelectionDepartment,
+	onRowClicked: (event) => {
+        const selectedNode = event.node;
+        if (!selectedNode.isSelected()) {
+            selectedNode.setSelected(true);
+        }
+    },
+	getRowNodeId : function(data) {
+		return data.departmentId;
+	}
+
+};
+	$(document).ready(() => {
+		getDeptData();
+	})
+	
+	function getDeptData() {
+		agGrid.simpleHttpRequest({
+	        url: '/configuration/referenceHr-view-department'
+	    }).then(function(data) {
+	        let dataSet = [];
+	        if (data.length > 0) {
+	        	gridOptionsDepartment.api.setRowData(data);
+	        	gridOptionsDepartment.api.getRowNode(data[0].departmentId).setSelected(true);
+	        } else {
+	        	gridOptionsDepartment.api.setRowData(dataSet);
+	        	$("#deleteDeptBtn").attr("disabled",true);
+	        }
+	    });
+		$('#departmentOrder,#departmentName,#departmentStatus').attr('disabled',true);
+	}
+
+	function onSelectionDepartment() {
+
+	    var selectedNodes = gridOptionsDepartment.api.getSelectedNodes();
+	    var selectedData = selectedNodes.map(node => node.data);
+	
+	    if(selectedData && selectedData.length > 0) {
+	    	$('#departmentOrder').val(selectedData.map(node => node.departmentOrder));
+		    $('#departmentName').val(selectedData.map(node => node.departmentName));
+		    $('#departmentId').val(selectedData.map(node => node.departmentId));
+		    if (selectedData.map(node => node.departmentStatus) == "Active") {
+		        $('#departmentStatus').val("1");
+		    } else if(selectedData.map(node => node.departmentStatus) == "") {
+		    	$('#departmentStatus').val("1");
+		    } else {
+		        $('#departmentStatus').val("0");
+		    }
+		    $("#resetDeptBtn").attr("disabled",true);
+		    $("#deleteDeptBtn").attr("disabled",false);
+	    }
+	}
+	function enableFieldsDept() {
+		$('#departmentOrder,#departmentName,#departmentStatus').attr('disabled',false);
+	}
+	function openAddSectionDept() {
+		enableFieldsDept();
+		$('#departmentId,#departmentOrder,#departmentName').val('');
+		$('#departmentStatus').val('1');
+		$("#resetDeptBtn").attr("disabled",false);
+		$("#deleteDeptBtn").attr("disabled",true);
+		gridOptionsDepartment.api.deselectAll();
+	}
+	function resetDept() {
+		if(!$("#departmentId").val()) {
+			$('#departmentId,#departmentOrder,#departmentName').val('');
+			$('#departmentStatus').val('1');
+		}
+	}
+
+	function saveDept() {
+		
+		/* if($("#departmentOrder").val() == null || $("#departmentOrder").val() == '') {
+			toastr.error('Department order required');
+			return;
+		} */
+		if($("#departmentName").val() == null || $("#departmentName").val() == '') {
+			toastr.error('Department name required');
+			return;
+		}
+		if($("#departmentStatus").val() == null || $("#departmentStatus").val() == '') {
+			toastr.error('Department status required');
+			return;
+		}
+
+	    var data19 = {};
+
+	    data19.departmentId = $("#departmentId").val();
+	    data19.departmentOrder = $("#departmentOrder").val();
+	    data19.departmentName = $("#departmentName").val();
+	    data19.departmentStatus = $("#departmentStatus").val();
+
+	    $.ajax({
+	        type: "POST",
+	        url: "/configuration/referenceHr-add-department-master",
+	        dataType: "json",
+	        contentType: "application/json",
+	        data: JSON.stringify(data19),
+	        success: function(response) {
+	            if (response.message == "Success") {
+	            	if($("#departmentId").val() == null || $("#departmentId").val() == "" || $("#departmentId").val() == undefined) {
+	            		toastr.success('Data saved successfully')
+	            	} else {
+	            		toastr.success('Data updated successfully')
+	            	}
+	            	getDeptData();
+	            }
+	        },
+	        error: function(response) {
+	            console.log(response);
+	        }
+	    })
+	}
+	
+	function deleteDept() {
+		
+		Swal.fire({
+	        title: 'Are you sure?',
+	        text: 'Do you want to delete this?',
+	        icon: 'warning',
+	        showCancelButton: true,
+	        confirmButtonText: 'Yes, delete it!',
+	        cancelButtonText: 'No, keep it',
+	        confirmButtonColor: 'var(--mainColor)',
+	    }).then((result) => {
+	        if (result?.value) {
+	        	var id = $('#departmentId').val();
+
+	    	    $.ajax({
+	    	        type: "GET",
+	    	        url: "/configuration/referenceHr-department-delete?id=" + id,
+	    	        dataType: "json",
+	    	        contentType: "application/json",
+	    	        success: function(response) {
+	    	            if (response.message == "Success") {
+	    	            	getDeptData();
+	    	            	toastr.success('Data deleted successfully')
+	    	            } else {
+	    	            	toastr.error(response.message)
+	    	            }
+	    	        },
+	    	        error: function(response) {
+	    	            console.log(response);
+	    	        }
+	    	    })
+	        }
+	    });
+
+	}
+	
+	$(document).ready(() => {
+	    var gridDiv = document.querySelector('#myGrid2');
+	    new agGrid.Grid(gridDiv, gridOptionsDepartment);
+	})
+</script>
+</head>
+<body>
+	<h6>Department List</h6>
+	<div class="mb-2">
+		<table class="table  mb-0" width="100%">
+			<tr valign="middle">
+				<td width="50%"><strong id="pName"></strong></td>
+				<td>
+					<div class="d-flex justify-content-end">
+						<div class="mr-2">
+							<button id="newBtn" class="btn  edit-btn"
+								onclick="openAddSectionDept()" type="button">Add</button>
+						</div>
+						<div class="mr-2">
+							<button id="next" class="btn  edit-btn" type="button"
+								onclick="enableFieldsDept()">Edit</button>
+						</div>
+						<div class="mr-0">
+							<button id="deleteDeptBtn" class="btn  edit-btn"
+								onclick="deleteDept()" type="button">Delete</button>
+						</div>
+					</div>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<div class="box_reference" style="margin-bottom: 10px !important;">
+		<div id="myGrid2" style="width: 100%; height: 190px;"
+			class="ag-theme-alpine"></div>
+	</div>
+	<h6>Add Department</h6>
+	<div class="mb-2">
+		<table class="table  mb-0" width="100%">
+			<tr valign="middle">
+				<td width="50%"><div style="color: red; font-weight: bold;">
+						Note: All fields marked with <span>*</span> are mandatory.
+					</div></td>
+				<td>
+					<div class="d-flex justify-content-end">
+						<div class="mr-2">
+							<button id="newBtn" class="btn  edit-btn"
+								onclick="saveDept()" type="button">Save</button>
+						</div>
+						<div class="mr-0">
+							<button id="resetDeptBtn" class="btn  edit-btn" onclick="resetDept()"
+								type="button">Reset</button>
+						</div>
+					</div>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<div class="row">
+		<div class="col-md-4" style="display: none">
+			<div class="form-group">
+				<label>Order <span class="mandatory">*</span></label> <input type="text"
+					class="form-control transparenttxtbox" placeholder="Order"
+					id="departmentOrder"> <input type="hidden"
+					id="departmentOrder">
+			</div>
+		</div>
+
+		<div class="col-md-6">
+			<div class="form-group">
+				<label>Name <span class="mandatory">*</span></label> <input type="text"
+					class="form-control transparenttxtbox" placeholder="Name"
+					id="departmentName"> <input type="hidden" id="departmentId">
+			</div>
+		</div>
+
+		<div class="col-md-6">
+			<div class="form-group">
+				<label>Status <span class="mandatory">*</span></label>
+				<div class="select">
+					<select id="departmentStatus" class="form-control">
+						<option value="">Select</option>
+						<option value="1">Active</option>
+						<option value="0">Inactive</option>
+					</select>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

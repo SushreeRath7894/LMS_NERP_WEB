@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+/* .form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+} */
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+</style>
+
+<script type="text/javascript">
+
+	$(document).ready(function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		$('.loader').show();
+		var gridDiv = document.querySelector('#activity');
+		gridOptions.api.setRowData("");
+		var functionName=sessionStorage.getItem('funName');
+		agGrid.simpleHttpRequest({
+			url : 'asset-assign-view?id=' + functionName,
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.Asset;
+			var len = allData.length;
+			$('#totalAsset').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+		});
+		$('.loader').hide();
+		$('#activeBtn').attr('disabled', true);
+		$('#deleteChild').attr('disabled', true);
+		$("#emplist").hide();
+    	$("#loclist").hide();
+    	$("#assigndate").hide();
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+		$('.collapse').on('hide.bs.collapse', function() {
+			$(this).siblings('.panel-heading').removeClass('active');
+		});
+		$("#newBtn").click(function() {
+
+		})
+
+		
+		var dateFormat = localStorage.getItem("dateFormat");
+$("#DateCalendarAssign").datetimepicker({
+	format : dateFormat,
+	closeOnDateSelect : true,
+	timepicker : false,
+	minDate: new Date().toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' }),
+}).on("change", function() {
+	$('#asdate').val($(this).val());
+})
+
+$('#asdate').blur(function() {
+	$("#DateCalendarAssign").val($(this).val());
+})		
+		
+		  $('input[name="options"]').on('change', function() {
+			    var selectedValue = $('input[name="options"]:checked').val();
+			    if(selectedValue=="Employee"){
+			    	$("#emplist").show();
+			    	$("#loclist").hide();
+			    	$("#assetlist").hide();
+			    	$("#assetlocation").val("");
+			    	$("#assetAsset").val("");
+			    	$("#assigndate").show();
+			    }else if(selectedValue=="Room"){
+			    	$("#emplist").hide();
+			    	$("#assetlist").hide();
+			    	$("#loclist").show();
+			    	$("#assetemployee").val("");
+			    	$("#assetAsset").val("");
+			    	$("#assigndate").show();
+			    }else if(selectedValue=="Asset"){
+			    	$("#emplist").hide();
+			    	$("#assetlist").show();
+			    	$("#loclist").hide();
+			    	$("#assetemployee").val("");
+			    	$("#assetlocation").val("");
+			    	$("#assigndate").show();
+			    }
+			  });
+
+  
+	});
+	
+	
+	
+	/* -------------------search bar for mygrid------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+		var totalRowCount = gridOptions.api.getModel().getRowCount();
+		$('#totalAsset').find('span').html(totalRowCount);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	var columnDefs = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			pinned : 'left',
+			resizable : true
+
+		},
+		{
+			headerName : 'Assign ID',
+			field : "assignId",
+			pinned : 'left',
+			cellRenderer : function(params) {
+				return '<a id="assetId" onclick=viewAssignModal("'
+				+params.data.assignId
+				+ '") href="javascript:void(0)">'
+				+ params.data.assignId + '</a>';
+
+			}
+
+		},		{
+			headerName : 'Asset Id',
+			field : "assetId",
+
+		},{
+			headerName : 'Asset Name',
+			field : "assetname",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		},{
+			headerName : 'Assign Type',
+			field : "type",
+			cellStyle : {
+				textAlign : 'center'
+			},cellRenderer : function(params) {
+				if(params.data.type=="Room"){
+					return 'Space';
+				}else{
+					return params.data.type;
+				}
+			}
+		}, {
+			headerName : 'Assigned To',
+			field : "assignedname",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		}, {
+			headerName : 'Assigned From',
+			field : "assigndate",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		}, {
+			headerName : 'Status',
+			field : "assignsts",
+			cellStyle : {
+				textAlign : 'center'
+			},cellRenderer : function(params) {
+				if(params.data.assignsts=="Active"){
+					return '<div style="color:#0642f5">Active</div>';
+				}else if(params.data.assignsts=="Dissociated"){
+					return '<div style="color:#D2042D">Dissociated</div>';
+				}else{
+					return '<div style="color:#a9a9a9">Inactive</div>';
+				}
+				
+
+			}
+		},{
+			headerName : 'Dissociate Reason',
+			field : "dreason",
+			cellStyle : {
+				textAlign : 'center'
+			},cellRenderer : function(params) {
+				if(params.data.assignsts=="Dissociated"){
+					return '<div style="color:#0642f5">'+params.data.dreason+'</div>';
+				}else{
+					return '<div style="color:#a9a9a9">NA</div>';
+				}
+				
+
+			}
+		}];
+
+// let the grid know which columns and what data to use
+var gridOptions = {
+	columnDefs : columnDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 170
+	},
+	onSelectionChanged : onSelectionChanged,
+};
+//function for row select parents
+var id = "";
+var apstatus = "";
+function onSelectionChanged() {
+	var selectedNodes = gridOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	 id= selectedData.map(node => node.assignId);
+	 apstatus=selectedData.map(node => node.assignsts);
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+	if (rowCount > 0) {
+		if(apstatus=="Inactive"){
+			$('#activeBtn').attr("disabled", false);
+		}else{
+			$('#activeBtn').attr("disabled", true);
+		}
+	}else{
+		$('#activeBtn').attr("disabled", true);
+	}
+}
+
+
+// function for delete qc  
+function dissociateOnClick() {
+	
+	var dreason = $("#dreason").val();
+	var assignid = $("#assignid").val();
+	var assetid = $("#assetid").val();
+		if (dreason==" " || dreason=="" || dreason==null) {
+			valid = validationUpdated("Reason is Required", "dreason");
+				} else {
+					$('.loader').show();
+					$.ajax({
+						type : "POST",
+						url : "asset-assign-dissociate?assignid="+ assignid +"&assetid="+assetid+"&dreason="+dreason,
+						success : function(response) {
+						 if (response.code == "success") {
+								$("#messageParagraph").text("Asset Dissociated Successfully");
+								$("#msgOkModal").removeClass("btn3");
+								$("#msgOkModal").addClass("btn1");
+								$("#msgModal").modal('show');
+								$('#delete').modal('hide');
+								//cancelModalBtn();
+								var functionName=sessionStorage.getItem('funName');
+								agGrid.simpleHttpRequest({
+									url : 'asset-assign-view?id=' + functionName,
+								}).then(function(data) {
+									var jsonData = JSON.parse(data.body);
+									var allData=jsonData.Asset;
+									var len = allData.length;
+									$('#totalAsset').find('span').html(len);
+									gridOptions.api.setRowData(allData);
+									onSelectionChanged()
+								});
+								$('.loader').hide();
+							} else {
+								$('.loader').hide();
+								$("#messageParagraph").text("Something went to wrong!");
+								$("#msgOkModal").removeClass("btn3");
+								$("#msgOkModal").addClass("btn1");
+								$("#msgModal").modal('show');
+							}
+						},
+						error : function(data) {
+							$('.loader').hide();}
+					})
+
+			
+			//$("#alert").modal('show');
+			//document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+}
+
+//function for approve asset  view-manage-employee-manager-list
+function activeOnClick() {
+		if (id) {
+			$('.loader').show();
+				$.ajax({
+		type : "POST",
+		url : "asset-assign-active?id="+ id,
+		success : function(response) {
+		 if (response.code == "success") {
+			 $('.loader').hide();
+				$("#messageParagraph").text("Assignment Activated Successfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('#approveModal').modal('hide');
+				var functionName=sessionStorage.getItem('funName');
+				agGrid.simpleHttpRequest({
+					url : 'asset-assign-view?id=' + functionName,
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.Asset;
+					var len = allData.length;
+					$('#totalAsset').find('span').html(len);
+					gridOptions.api.setRowData(allData);
+					onSelectionChanged()
+				});
+				
+			} else {
+				$('.loader').hide();
+				$("#messageParagraph").text("Something went to wrong!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+			}
+		},
+		error : function(data) {
+			$('.loader').hide();}
+	})
+		} else {
+			
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+			$('.loader').hide();}
+
+}
+
+	// delete selected record from child ag grid
+	function deleteDetailsOnclick() {
+		$('.modal').hide();
+		var selectedRows = activityOptions.api.getSelectedRows();
+		activityOptions.api.applyTransaction({
+			remove : selectedRows
+		});
+		cancelModalProductBtn();
+	}
+	//for closeing modal box for dlt  product
+	function cancelModalProductBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+		$('#deleteDetails').modal('hide');
+	}
+
+	function deleteFun() {
+		cancelModalBtn();
+		$("#dreason").val("");
+		$('#delete').modal('show');
+	}
+	function approveFun() {
+		$('#approveModal').modal('show');
+	}
+
+	function cancelModalBtn() {
+		$("#dreason").val("");
+		$("#deleteModalBtn").removeAttr("disabled");
+		$("#assignsuccessModal").removeAttr("disabled");
+	}
+
+	
+	// function for delete qc  
+	function editAssignOnclick() {
+	    var selectedValue = $('input[name="options"]:checked').val();
+	    if(selectedValue=="Employee"){
+	    	var assetemp=$("#assetemployee").val();
+	    }else if(selectedValue=="Room"){
+	    	var assetemp=$("#assetlocation").val();
+	    }else if(selectedValue=="Asset"){
+	    	var assetemp=$("#assetlocation").val();
+	    }else if(selectedValue=="Asset"){
+	    	var assetemp=$("#assetAsset").val();
+	    }
+		var assetcat=$('input[name="options"]:checked').val();
+		var assigndate=$("#asdate").val();
+		var assignid=$("#assignid").val();
+			if (assetemp && assigndate) {
+				$('.loader').show();
+					$.ajax({
+			type : "POST",
+			url : "asset-assign-update?id="+ assignid+"&assetcat="+assetcat+"&assetemp="+assetemp+"&assigndate="+assigndate,
+			success : function(response) {
+			 if (response.code == "success") {
+				 $('.loader').hide();
+				 	cancelModalBtn();
+				 	$('#assignmodal').modal('hide');
+					$("#assignsuccessModal").modal('show');
+					$('#delete').modal('hide');
+					var functionName=sessionStorage.getItem('funName');
+					agGrid.simpleHttpRequest({
+						url : 'asset-assign-view?id=' + functionName,
+					}).then(function(data) {
+						var jsonData = JSON.parse(data.body);
+						var allData=jsonData.Asset;
+						var len = allData.length;
+						$('#totalAsset').find('span').html(len);
+						gridOptions.api.setRowData(allData);
+						onSelectionChanged()
+					});
+					
+				} else {
+					$('.loader').hide();
+					$("#messageParagraph").text("Something went to wrong!");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+				}
+			},
+			error : function(data) {
+				$('.loader').hide();}
+		})
+			} else {
+				$('#reasondesc').show();
+				}
+
+	}
+
+	function viewAssignModal(id) {
+		$('.loader').show();
+		$('#reasondesc').hide();
+		agGrid.simpleHttpRequest(
+				{
+					url : 'asset-assign-edit?id='+ id
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.Asset;
+					console.log("ASSET DATA:::",allData);
+					$("#assetid").val(allData[0].assetid);
+					$("#assignid").val(allData[0].assignid);
+					$("#assetidspan").html(allData[0].assetid);
+					$("#assignidspan").html(allData[0].assignid);
+					if(allData[0].assigncat=="Asset"){
+						$("#empSelectDiv").hide();
+						$("#locSelectDiv").hide();
+						$("#assetSelectDiv").show();
+					}else{
+						$("#empSelectDiv").show();
+						$("#locSelectDiv").show();
+						$("#assetSelectDiv").hide();
+					}
+					$('input[type="radio"]').each(function() {
+						  if ($(this).val() === allData[0].assigncat) {
+						    $(this).prop('checked', true);
+						  }
+						});
+					$("#assigndate").show();
+					$("#asdate").val(allData[0].assigndate);
+					if(allData[0].assigncat=="Employee"){
+				    	$("#emplist").show();
+				    	$("#loclist").hide();
+				    	$("#assetlist").hide();
+				    	$("#assetlocation").val("");
+				    	$("#assetAsset").val("");
+				    	$("#assetemployee").val(allData[0].assignto);
+				    }else if(allData[0].assigncat=="Room"){
+				    	$("#emplist").hide();
+				    	$("#loclist").show();
+				    	$("#assetlist").hide();
+				    	$("#assetemployee").val("");
+				    	$("#assetAsset").val("");
+				    	$("#assetlocation").val(allData[0].assignto);
+				    }else if(allData[0].assigncat=="Asset"){
+				    	$("#emplist").hide();
+				    	$("#loclist").hide();
+				    	$("#assetlist").show();
+				    	$("#assetemployee").val("");
+				    	$("#assetlocation").val("");
+				    	$("#assetAsset").val(allData[0].assignto);
+				    }
+					if(allData[0].assignsts==1){
+						$("#assetemployee").attr('disabled', true);
+				    	$("#assetlocation").attr('disabled', true);
+				    	$("#assetAsset").attr('disabled', true);
+				    	$("#asdate").attr('disabled', true);
+				    	$("#DateCalendarAssign").hide();
+				    	$('input[name="options"]').prop('disabled', true);
+				    	$("#savechangebtn").hide();
+				    	$("#dissociatebtn").show();
+				    }else if(allData[0].assignsts==2){
+				    	$("#assetemployee").attr('disabled', true);
+				    	$("#assetlocation").attr('disabled', true);
+				    	$("#assetAsset").attr('disabled', true);
+				    	$("#asdate").attr('disabled', true);
+				    	$('input[name="options"]').prop('disabled', true);
+				    	$("#DateCalendarAssign").hide();
+				    	$("#dissociatebtn").hide();
+				    	$("#savechangebtn").hide();
+				    }else{
+				    	$("#assetemployee").attr('disabled', false);
+				    	$("#assetlocation").attr('disabled', false);
+				    	$("#assetAsset").attr('disabled', false);
+				    	$("#asdate").attr('disabled', false);
+				    	$('input[name="options"]').prop('disabled', false);
+				    	$("#dissociatebtn").hide();
+				    	$("#savechangebtn").show();
+				    	$("#DateCalendarAssign").show();
+				    }
+					$("#myModal").modal('show');
+					$('.loader').hide();
+				});
+		
+		$('.loader').hide();
+	}
+	
+	function cancelModalBtn() {
+		gridOptions.api.setQuickFilter(null);
+		$('#quickFilter').val('');
+		document.getElementById('closeKey').style.display='none';
+		$('#totalAsset').find('span').html(gridOptions.api.getModel().getRowCount());
+		
+		$('#myModal').modal('hide');
+		
+		var functionName=sessionStorage.getItem('funName');
+		agGrid.simpleHttpRequest({
+			url : 'asset-assign-view?id=' + functionName,
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.Asset;
+			var len = allData.length;
+			$('#totalAsset').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+			onSelectionChanged()
+		});
+	}
+	
+	function checkEmptyAssign(){
+		var selectedValue = $('input[name="options"]:checked').val();
+	    if(selectedValue=="Employee"){
+	    	var assetemp=$("#assetemployee").val();
+	    }else if(selectedValue=="Room"){
+	    	var assetemp=$("#assetlocation").val();
+	    }else if(selectedValue=="Asset"){
+	    	var assetemp=$("#assetAsset").val();
+	    }
+		var assetcat=$('input[name="options"]:checked').val();
+		var assigndate=$("#asdate").val();
+		if (assetemp && assigndate) {
+			$('#reasondesc').hide();
+		}
+	}
+
+	function downloadDetails() { 
+		var params = {
+				fileName: 'asset_assign_list.csv', // Specify your custom filename here
+			};
+			gridOptions.api.exportDataAsCsv(params);
+	}
+</script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="d-flex justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalAsset">
+									Assign List(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalAsset').find('span').html(gridOptions.api.getModel().getRowCount());"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+								<button class="download-btn" id="download"
+									onclick="downloadDetails()">Download</button>
+								<button class="new-btn" id="activeBtn" onclick="approveFun()">ACTIVE</button>
+								<!-- <button class="delete-btn" id="reqDltBtn" onclick="deleteFun()">DELETE</button> -->
+							</div>
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" />
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+					</div>
+				</div>
+
+
+				<!-- delete modal start -->
+				<div id="delete" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column"></div>
+							<div class="modal-body">
+								<p>Do you really want to dissociate this asset? This process
+									cannot be undone.</p>
+							</div>
+							<div class="col-md-12">
+										<div class="form-group">
+											<label> Reason </label>
+											<textarea class="form-control" id="dreason"
+												onblur="removeValid(event)"></textarea>
+										</div>
+									</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: 0px;">
+
+								<button type="button" class="cancel-btn" data-bs-dismiss="modal"
+									onclick="cancelModalBtn();">Cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="dissociateOnClick()">Dissociate</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+
+				<!-- approve modal start -->
+				<div id="approveModal" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column"></div>
+							<div class="modal-body">
+								<p>Do you want to approve this asset assign? Once done you will not
+									be able to make further change.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: 0px;">
+
+								<button type="button" class="cancel-btn" data-bs-dismiss="modal"
+									onclick="cancelModalBtn();">Cancel</button>
+								<button type="button" class="new-btn" onclick="activeOnClick()">Activate</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+
+
+				<!-- assign success modal start -->
+				<div id="assignsuccessModal" class="modal fade show"
+					aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column"></div>
+							<div class="modal-body">
+								<p>Modified Successfully</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: 0px;">
+
+								<button type="button" class="new-btn" data-bs-dismiss="modal"
+									onclick="cancelModalBtn();">Okay</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- delete product modal start -->
+				<div id="deleteDetails" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column"></div>
+							<div class="modal-body">
+								<p>Do you really want to delete these data? This process
+									cannot be undone.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: -30px;">
+
+								<button type="button" class="cancel-btn" data-bs-dismiss="modal"
+									onclick="cancelModalBtn();">Cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="deleteDetailsOnclick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<!-- alert modal start -->
+				<div id="alert" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column">
+								<button type="button" class="close" data-bs-dismiss="modal"
+									aria-hidden="true" onclick="cancelModalBtn()">
+									<i class="ti-close modal-close"></i>
+								</button>
+							</div>
+							<div class="modal-body">
+								<p id="textId"></p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: 0px;">
+
+								<button type="button" class="btn1" data-bs-dismiss="modal">SELECT</button>
+								<button type="button" class="btn3" onclick="dissociateOnClick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="modal fade" id="myModal10">
+					<div class="modal-dialog modal-lg" style="max-width: 600px">
+						<div class="modal-content" style="width: 100%">
+							<!-- Modal Header -->
+							<div class="modal-header">
+								<h4 class="modal-title" style="font-size: 16px" id="entry">
+									<b>Quick Response Code: <span></span></b>
+								</h4>
+								<div class="col-md-6" align="right" style="margin-left: 48px">
+									<button class="btn btn-success" id="dloadBtn"
+										onclick="dloadQr()">
+										<i class="bi bi-download"></i>
+									</button>
+								</div>
+
+								<button id="close" type="button" class="btn btn-danger"
+									data-bs-dismiss="modal">
+									<i class="bi bi-x-lg"></i>
+								</button>
+							</div>
+							<!-- Modal body -->
+							<div class="modal-body"
+								style="height: 300px; overflow-y: scroll;">
+								<div class="vertical-line">
+									<div class="row">
+										<div style="text-align: center">
+											<img id="qr" alt="QR" width="50%" height="250px">
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+
+				<!--   Assign training modal start	 -->
+
+				<div class="modal fade" id="myModal">
+					<div class="modal-dialog modal-lg" style="margin-top: 130px;">
+						<div class="modal-content">
+
+							<!-- Modal Header -->
+							<div class="modal-header">
+								<h4 class="modal-title md-color">Asset Assign Details</h4>
+								<button type="button" class="close cp" data-dismiss="modal"
+									onclick="cancelModalBtn()">&times;</button>
+							</div>
+
+							<!-- Modal body -->
+							<div class="modal-body modal-cat">
+							
+								<!-- form radio buttons example -->
+								<div class="col-md-12 d-flex">
+									<label class="btn btn-light col-md-6">ASSIGN ID : <span id="assignidspan"></span><input type="hidden" id="assignid"
+										 readonly> 
+									</label>
+									<label class="btn btn-light col-md-6"> ASSET ID : <span id="assetidspan"></span><input type="hidden" id="assetid"
+										 readonly>
+									</label>
+								</div>
+								
+								<label class="mt-3">Assigned To</label>
+								<form class="form">
+									<div class="btn-group btn-toggle">
+										<label class="btn btn-light " id="empSelectDiv"> <input name="options"
+											value="Employee" type="radio"> Employee
+										</label> <label class="btn btn-light" id="locSelectDiv"> <input name="options"
+											value="Room" type="radio"> Location
+										</label>
+										<label class="btn btn-light" id="assetSelectDiv"> <input name="options"
+											value="Asset" type="radio"> Asset
+										</label>
+									</div>
+								</form>
+								<br>
+
+								<div class="col-md-12 d-flex">
+									<div class="col-md-8" id="emplist">
+										<div class="form-group">
+											<label> Employee List </label>
+											<div class="select">
+												<select id="assetemployee" onchange="checkEmptyAssign()">
+													<option value="">Select</option>
+													<option th:each="c:${empLists}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select> <span class="focus"></span>
+											</div>
+										</div>
+									</div>
+
+									<div class="col-md-8" id="loclist">
+										<div class="form-group">
+											<label> Location List </label>
+											<div class="select">
+												<select id="assetlocation" onchange="checkEmptyAssign()">
+													<option value="">Select</option>
+													<option th:each="c:${locLists}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select> <span class="focus"></span>
+											</div>
+										</div>
+									</div>
+									<div class="col-md-8" id="assetlist">
+										<div class="form-group">
+											<label> Asset List </label>
+											<div class="select">
+												<select id="assetAsset" onchange="checkEmptyAssign()">
+													<option value="">Select</option>
+													<option th:each="c:${assetList}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select> <span class="focus"></span>
+											</div>
+										</div>
+									</div>
+									<div class="col-lg-4" id="assigndate">
+										<div class="form-group calendar_box">
+											<label>Assigned From</label> <input type="text" id="asdate"
+												class="form-control" onblur="removeValid(event)"
+												th:attr="onkeyup=|formatDate('date','${session.DATEFORMAT_JS}')|"
+												readonly> <i class="ti-calendar picker_calendar"
+												id="DateCalendarAssign" onchange="checkEmptyAssign()"></i>
+										</div>
+									</div>
+								</div>
+								<div class="col-lg-12 mt-3 text-danger text-center" id="reasondesc" style="font-size: 13px">
+								Please Fill The Required Info !
+								</div>
+							</div>
+
+							<!-- Modal footer -->
+							<div class="modal-footer">
+								<!-- <div class="chartbtnsec"> -->
+									<button class="delete-btn" id="dissociatebtn" onclick="deleteFun()">DISSOCIATE</button>
+									<button class="btn1" id="savechangebtn" onclick="editAssignOnclick()">SAVE CHANGES</button>
+									<button class="btn4" data-dismiss="modal" onclick="cancelModalBtn()">CANCEL</button>
+								
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>

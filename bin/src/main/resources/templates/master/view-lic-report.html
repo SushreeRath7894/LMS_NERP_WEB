@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+#myReq .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff;
+	text-indent: 10px !important;
+}
+#myReq .ag-row-selected::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 3px;
+	right: 4px;
+}
+.formValidation1 {
+	font-size: 10px;
+	font-weight: 100;
+	color: #f60909f7;
+	background-color: transparent;
+	position: relative;
+	top: -1px;
+	padding: 3px 0px;
+}
+.sugg-cls ul {
+	height: 150px;
+	overflow-x: scroll;
+	position: relative;
+}
+ul#autocomplete-list1 {
+	position: relative;
+	z-index: 999;
+}
+ul#autocomplete-list1 li {
+	position: relative;
+	color: #fff;
+	padding-left: 6px;
+	background-color: #1f57a8;
+	border-bottom: solid 1px #6189c2;
+	padding-top: 5px;
+	padding-bottom: 5px;
+}
+</style>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ag-grid/26.2.0/ag-grid.min.noStyle.js"></script>
+<script>
+
+$(document).ready(function() {
+	var curDate = new Date();
+    var curYear = curDate.getFullYear();
+    var financialYearStart = curYear;
+    var financialYearEnd = curYear + 1;
+    // Check if the current month is April or later
+    if (curDate.getMonth() < 3) {
+        financialYearStart -= 1; // If the current month is before April, start year is last year
+        financialYearEnd -= 1; // If the current month is before April, end year is this year
+    }
+
+    // Set the financial year value dynamically
+    var financialYear = financialYearStart + '-' + financialYearEnd;
+    $("#attndyear").val(financialYear);
+    getCurrentDateMonthYear();
+    var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+	updateGridColumns(curDate.getMonth() ,curDate.getFullYear());
+});
+var sums = {};
+
+function viewReport() {
+    var staff = $("#designation").val();
+    var fromDate = $("#fromDate").val();
+    var toDate = $("#endDate").val();
+    var employedBy = $("#employedBy").val();
+    
+    $('.loader').show();
+    $("body").addClass("overlay");
+    agGrid.simpleHttpRequest({
+        url : "view-lic-report-view?fromDate="
+            + fromDate + "&toDate=" + toDate
+            + "&staff=" + staff+"&employedBy="+employedBy
+    }).then(function(data) {
+        var jsonData = JSON.parse(data.body);
+        var allData = jsonData.reportLic;
+        if(allData == null || allData == 'null'){
+            allData = [];
+        }
+        gridOptions.api.setRowData(allData);
+        var len = allData.length;
+        $('#totalReq').text(len);
+        
+        sums[`tot_lic`] = 0;
+        
+        allData.forEach(function(row) {
+            for (var key in sums) {
+                sums[key] =  parseFloat(parseFloat(sums[key]) + parseFloat(row[key] || 0)).toFixed(0);
+            }
+        });
+
+        // Create total row
+        var totalRow = [{
+            empId: 'Total',
+            ...sums
+        }];
+        gridOptions.api.setPinnedBottomRowData(totalRow);
+        $('.loader').hide();
+        $("body").removeClass("overlay");
+    });
+    
+}
+function getCurrentDateMonthYear() {
+    var curDate = new Date();
+    var selectedYear = $("#attndyear").val();
+    var selectedMonth = $("#attndmonth").val();
+    var startDay = $("#startDayForAtten").val();
+    
+    if (!selectedYear) {
+        selectedYear = curDate.getFullYear();
+    }
+    selectedYear = selectedYear.split("-")[0];
+
+    var fromDate, toDate;
+
+    if (selectedMonth === "0") {
+        fromDate = "01-04-" + selectedYear;
+        toDate = "31-03-" + (parseInt(selectedYear) + 1);
+    } else {
+        var month = parseInt(selectedMonth);
+        if (startDay > 1 && curDate.getDate() > startDay) {
+            month = curDate.getMonth() + 1;
+        }
+        fromDate = startDay + "-" + String(month).padStart(2, '0') + "-" + selectedYear;
+        toDate = startDay + "-" + String(month + 1).padStart(2, '0') + "-" + selectedYear;
+    }
+    $("#fromDate").val(fromDate);
+    $("#fromDateCalendar").val(fromDate);
+    $("#endDate").val(toDate);
+    $("#endDateCalendar").val(toDate);
+}
+var columnDefs = [];
+var rowData = [];
+var lastRow = [ {
+	empId: 'Total'
+},];
+var gridOptions = {
+	columnDefs: columnDefs,
+	rowData: rowData,
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 149,
+		height: 10
+	},/* 
+	rowSelection: 'multiple',
+	suppressRowClickSelection: true, */
+	pinnedBottomRowData: lastRow,
+	rowSelection : 'single',
+	 getRowStyle: function (params) {
+	    // Check if it is the last row
+		if (params.node.rowPinned) {
+	      // Apply your custom styling for the last row
+	      return { background: '#EAE7FA !important', fontWeight: 'bold' };
+	    }
+		    // Return null for other rows
+	    return null;
+  	},
+};
+function formatDate(date) {
+    const day = String(date.getDate()).padStart(2, '0'); // Get day and pad with leading zero if necessary
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Get month and pad with leading zero (months are 0-based)
+    const year = date.getFullYear(); // Get full year
+    return `${day}-${month}-${year}`;
+}
+function changeMonthYear() {
+	var selectedYear = parseInt($("#attndyear").val());
+	var month = parseInt($("#attndmonth").val());
+	var currentDate = new Date();
+	var currentYear = currentDate.getFullYear();
+	var currentMonth = currentDate.getMonth() + 1;
+    if (selectedYear === currentYear && month > currentMonth) {
+    	fromDate = new Date(currentYear, currentMonth - 1, 1);
+        toDate = currentDate; 
+        month=currentMonth;
+        $("#attndmonth").val(currentMonth);
+        $("#fromDate").val(formatDate(fromDate));
+        $("#fromDateCalendar").val(formatDate(fromDate));
+        $("#endDate").val(formatDate(toDate));
+        $("#endDateCalendar").val(formatDate(toDate));
+        $("#messageParagraph").text("Select A Passed Month");
+	    $("#msgOkModal").removeClass("btn3");
+	    $("#msgOkModal").addClass("btn1");
+	    $("#msgModal").modal('show');
+    } else if (month === 0) { // If "All" is selected
+    	var fromDate = new Date(selectedYear, 0, 1); // January 1st
+        var toDate = new Date(selectedYear, 11, 31); // December 31st
+        $("#fromDate").val(formatDate(fromDate));
+        $("#fromDateCalendar").val(formatDate(fromDate));
+        $("#endDate").val(formatDate(toDate));
+        $("#endDateCalendar").val(formatDate(toDate));
+    }else {
+        fromDate = new Date(selectedYear, month - 1, 1);
+        toDate = new Date(selectedYear, month, 0); // Last day of the month
+        $("#fromDate").val(formatDate(fromDate));
+        $("#fromDateCalendar").val(formatDate(fromDate));
+        $("#endDate").val(formatDate(toDate));
+        $("#endDateCalendar").val(formatDate(toDate));
+    }
+    updateGridColumns(month ,selectedYear);
+    
+}
+function getDaysInMonth(month, year) {
+    const today = new Date();
+    if (month === today.getMonth() && year === today.getFullYear()) {
+        return today.getDate();
+    } else {
+        return new Date(year, month, 0).getDate();
+    }
+}
+function updateGridColumns(month, year) {
+     columnDefs = [ {
+            headerName: "Employee ID",
+            field: "empId",
+            pinned: 'left',
+            cellStyle: { textAlign: 'center' },
+            width: 120
+        }, {
+            headerName: "Employee Name",
+            field: "empName",
+            pinned: 'left',
+            cellStyle: { textAlign: 'left' },
+            width: 200
+        },  {
+            headerName: "Designation",
+            field: "desg",
+           // cellStyle: { textAlign: 'center' },
+            width: 150,
+        },{
+    		headerName: "LIC",
+    		headerClass: 'header-center',
+    		children: [] // Will be populated by createMonthCols function
+    	},
+    ];
+    // Get the number of days in the specified month
+    var numberOfDays = getDaysInMonth(month, year);
+    
+    columnDefs[3].children = createMonthColsRec();
+
+    gridOptions.api.refreshClientSideRowModel();
+    columnDefs.push({
+        headerName: "Total LIC",
+        field: "tot_lic",
+   //     pinned: 'right',
+        cellStyle: { textAlign: 'center' },
+        width: 150,
+    });
+    console.log("columnDefs==",columnDefs)
+     gridOptions.api.setColumnDefs(columnDefs);
+     gridOptions.api.refreshClientSideRowModel();
+     viewReport();
+}
+function cancelBar() {
+	var id = document.getElementById("closeKey");
+	id.style.display = "block";
+	if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+		id.style.display = "none";
+	}
+}
+function onQuickFilterChanged() {
+	gridOptions.api.setQuickFilter(document.getElementById('quickFilter').value);
+	var totalRowCount = gridOptions.api.getModel().getRowCount();
+	$('#totalReq').text(totalRowCount);
+	 Object.keys(sums).forEach(function(key) {
+	    	sums[key] = 0;
+	    });
+    gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode) {
+        var row = rowNode.data;
+        for (var key in sums) {
+            sums[key] = parseFloat(sums[key]) + parseFloat(row[key] || 0);
+        }
+    });
+    var totalRow = [{
+        empId: 'Total',
+        ...sums
+    }];
+    gridOptions.api.setPinnedBottomRowData(totalRow);
+}
+function getListForEmp() {
+	gridOptions.api.setQuickFilter(document.getElementById('empSort').value);
+	var totalRowCount = gridOptions.api.getModel().getRowCount();
+
+    $('#totalReq').text(totalRowCount);
+    Object.keys(sums).forEach(function(key) {
+    	sums[key] = 0;
+    });
+    gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode) {
+        var row = rowNode.data;
+        for (var key in sums) {
+            sums[key] = parseFloat(sums[key]) + parseFloat(row[key] || 0);
+        }
+    });
+    var totalRow = [{
+        empId: 'Total',
+        ...sums
+    }];
+    gridOptions.api.setPinnedBottomRowData(totalRow);
+}
+function closekey(){
+	gridOptions.api.setQuickFilter(null);
+	$('#quickFilter').val('');
+	document.getElementById('closeKey').style.display='none';$
+	('#totalEmp').find('span').html(gridOptions.api.getModel().getRowCount());
+	Object.keys(sums).forEach(function(key) {
+    	sums[key] = 0;
+    });
+    gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode) {
+        var row = rowNode.data;
+        for (var key in sums) {
+            sums[key] = parseFloat(sums[key]) + parseFloat(row[key] || 0);
+        }
+    });
+    var totalRow = [{
+        empId: 'Total',
+        ...sums
+    }];
+        gridOptions.api.setPinnedBottomRowData(totalRow);
+}
+//changeStaff
+function changeStaff() {
+	viewReport();
+}
+function createMonthColsRec() {
+    sums = {};
+    var monthColumns = [];
+    var selectedFinancialYear = $("#attndyear").val(); // Example selected year
+    var curDate = new Date();
+    var curMonth = curDate.getMonth(); // Get current month (0 = Jan, 11 = Dec)
+    var curYear = curDate.getFullYear();
+    var selectedMonth = $("#attndmonth").val();
+
+    // Extract the start year and end year from the selected financial year
+    var [startYear, endYear] = selectedFinancialYear.split('-').map(Number);
+
+    // Define the months in order of the financial year (Apr to Mar)
+    var months = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+    var months1 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    // Determine if the selected financial year is the current financial year
+    var isCurrentFinancialYear = (curYear === startYear && curMonth >= 3) || (curYear === endYear && curMonth < 3);
+
+    if (selectedMonth > 0) {
+        // If a specific month is selected, return only that month's column
+        var monthIndex = selectedMonth - 1; // Adjust for zero-based index
+        var monthName = months1[monthIndex];
+        var year = (selectedMonth >= 4 && selectedMonth <= 12) ? startYear : endYear; // Apr to Dec use startYear, Jan to Mar use endYear
+
+        // Add to sums object
+        sums[`${monthName.toLowerCase()}_lic`] = 0;
+        monthColumns = [
+            {
+                headerName: `${monthName}-${year.toString().slice(-2)}`, // Format "mon-yr"
+                field: `${monthName.toLowerCase()}_lic`, // Assumes fields like 'apr_lic', 'may_lic', etc.
+                width: 85,
+            }
+        ];
+    } else if (isCurrentFinancialYear) {
+        // If the selected financial year is the current year, limit columns to the current month
+        var monthLimit;
+        if (curMonth >= 3) {
+            // Current month is April or later
+            monthLimit = curMonth - 3; // Adjust to match index of the months array (Apr = 0)
+        } else {
+            // Current month is Jan, Feb, or Mar
+            monthLimit = 9 + curMonth; // Adjust to include Jan, Feb, Mar in the next financial year
+        }
+
+        // Generate columns up to the current month
+        monthColumns = months.slice(0, monthLimit + 1).map((month, index) => {
+            var year = index <= 8 ? startYear : endYear; // Apr to Dec use startYear, Jan to Mar use endYear
+            var fieldName = `${month.toLowerCase()}_lic`;
+
+            // Add to sums object
+            sums[fieldName] = 0;
+            return {
+                headerName: `${month}-${year.toString().slice(-2)}`, // Format "mon-yr"
+                field: fieldName, // Assumes fields like 'apr_lic', 'may_lic', etc.
+                width: 85,
+            };
+        });
+    } else {
+        // If the selected financial year is a past year, generate columns for all 12 months
+        monthColumns = months.map((month, index) => {
+            var year = index >= 9 ? startYear : endYear; // Apr to Dec use startYear, Jan to Mar use endYear
+            var fieldName = `${month.toLowerCase()}_lic`;
+
+            // Add to sums object
+            sums[fieldName] = 0;
+            return {
+                headerName: `${month}-${year.toString().slice(-2)}`, // Format "mon-yr"
+                field: fieldName, // Assumes fields like 'apr_lic', 'may_lic', etc.
+                width: 85,
+            };
+        });
+    }
+
+    // Ensure the columns are sorted in ascending order of the financial year (Apr to Mar)
+    monthColumns.sort((a, b) => months.indexOf(a.headerName.split('-')[0]) - months.indexOf(b.headerName.split('-')[0]));
+console.log("monthColumns==",monthColumns)
+    return monthColumns;
+}
+
+
+function downloadApproveCSV() {
+    var rowCount = 0;
+    gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+        if (rowNode.data.empId) {
+            rowCount++;
+        }
+    });
+
+    if (rowCount > 0) {
+        var name = "LIC Report-" + $("#attndmonth option:selected").text();
+        var allColumns = gridOptions.columnApi.getAllColumns();
+
+        // Capitalize all headers for CSV
+        allColumns.forEach(col => {
+            if (col.getColDef().headerName) {
+                col.getColDef().headerName = col.getColDef().headerName.toUpperCase();
+            }
+        });
+
+        // Filter visible columns
+        var visibleColumns = allColumns.filter(col => {
+            const headerName = col.getColDef().headerName;
+            const isColumnVisible = !col.getColDef().hide;
+            return headerName !== undefined && headerName !== null && isColumnVisible;
+        });
+
+        // Map visible column IDs for export
+        var visibleColumnIds = visibleColumns.map(col => col.getColId());
+
+        // CSV Export Parameters
+        const params = {
+            skipHeader: false,          // Include header row
+            columnGroups: true,         // Export column groups (parent-child headers)
+            skipFooters: false,         
+            skipGroups: false,          
+            skipPinnedTop: false,       
+            skipPinnedBottom: false,    
+            allColumns: false,          // Export only visible columns
+            onlySelected: false,        
+            suppressQuotes: false,      
+            fileName: name + '.csv',    // File name for CSV
+            sheetName: 'Sheet1',        
+            customHeader: null,         
+            customFooter: null,         
+            columnKeys: visibleColumnIds // Use only the visible column keys
+        };
+
+        // Perform export
+        gridOptions.api.exportDataAsCsv(params);
+    } else {
+        // Display message if no data available
+        $("#messageParagraph").text("NO DATA AVAILABLE FOR DOWNLOAD!");
+        $("#msgOkModal").removeClass("btn3");
+        $("#msgOkModal").addClass("btn1");
+        $("#msgModal").modal('show');
+    }
+}
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<div id="grid">
+						<div class="row">
+							<input type="hidden" id="startDayForAtten" th:value="${startDayForAtten}" />
+							<div class="col-md-2">
+								<div class="form-group" id="type1">
+									<label>Staff Type</label>
+									<div class="select">
+										<select id="designation" class="form-control" onchange="changeStaff()">
+											<option value="All">All</option>
+											<option th:each="c,iter:${staffType}" th:value="${c.key}" th:text="${c.name}"></option>
+										</select>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-2">
+								<div class="form-group">
+									<label>Employed By</label>
+									<div class="select">
+										<select class="form-control bandclssls" id="employedBy" onchange="changeStaff()">
+											<option value="All">All</option>
+											<option th:each="c,iter:${employedByList}" th:value="${c.key}" th:text="${c.name}"></option>
+										</select>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-2">
+								<div class="form-group" id="finYearData">
+									<label>Year</label>
+									<div class="select">
+										<select id="attndyear" class="form-control" onchange="changeMonthYear()">
+											<option th:each="c,iter:${yearList}" th:value="${c.name}" th:text="${c.name}"></option>
+										</select>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-2">
+								<div class="form-group" id="finMonthData">
+									<label>Month Name</label>
+									<div class="select">
+										<select id="attndmonth" class="form-control" onchange="changeMonthYear()">
+											<option value="0">All</option>
+											<option value="4" text="APRIL">APRIL</option>
+											<option value="5" text="MAY">MAY</option>
+											<option value="6" text="JUNE">JUNE</option>
+											<option value="7" text="JULY">JULY</option>
+											<option value="8" text="AUGUST">AUGUST</option>
+											<option value="9" text="SEPTEMBER">SEPTEMBER</option>
+											<option value="10" text="OCTOBER">OCTOBER</option>
+											<option value="11" text="NOVEMBER">NOVEMBER</option>
+											<option value="12" text="DECEMBER">DECEMBER</option>
+											<option value="1" text="JANUARY">JANUARY</option>
+											<option value="2" text="FEBRUARY">FEBRUARY</option>
+											<option value="3" text="MARCH">MARCH</option>
+										</select>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-2">
+								<label>From Date</label>
+								<div class="form-group calendar_box">
+									<input type="text" id="fromDate" value="" class="form-control" th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|" readonly>
+								</div>
+							</div>
+							<div class="col-md-2">
+								<label>To Date</label>
+								<div class="form-group calendar_box">
+									<input type="text" id="endDate" value="" class="form-control" th:attr="onkeyup=|formatDate('endDate','${session.DATEFORMAT_JS}')|" readonly>
+								</div>
+							</div>
+						</div>
+						<div class="d-flex justify-content-between mt-4">
+											<div class="btn-hs">
+								<div class="font-design">LIC Report (<span id="totalReq"></span>)</div>
+							</div>
+											<div class="col-md-3  btn-hs" id="searchDiv">
+												<div class="input-style">
+													<input type="text" placeholder="Search.." name="search"
+														class="searchboxinput" onkeyup="cancelBar()"
+														oninput="onQuickFilterChanged()" id="quickFilter"
+														autocomplete="off">
+													<div class="searchicon">
+														<a href="javascript: void(0)"><span
+															style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+															id="closeKey"
+															onclick="closekey()"
+															class="close_i"><i class="ti-close srchicon"></i></span></a><a
+															href="javascript: void(0)"><i
+															class="ti-search srchicon"></i></a>
+													</div>
+												</div>
+
+											</div>
+											<div class="  btn-hs" id="empList">
+												<div  class="form-group" >
+													<div class="select">
+														<select id="empSort" class="form-control"
+															onchange="getListForEmp()">
+															<option value="">All Employee</option>
+															<option th:each="c,iter:${EmployeeList}" th:value="${c.key}"
+																th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="buttonsec btn-hs" id="btndiv">
+												<button class="btn4" onclick="downloadApproveCSV()">Download</button>
+											</div>
+										</div>
+						<div id="myGrid" style="width: 100%; height: 400px;" class="ag-theme-alpine"></div>
+					</div>
+				</div>
+				
+				
+			</div>
+		</div>
+	</div>
+</body>
+</html>

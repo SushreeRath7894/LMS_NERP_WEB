@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<script type="text/javascript">
+	function citylist() {
+		var state = $("#stateid_").val();
+		alert(state);
+		if (state) {
+			$.ajax({
+				type : "POST",
+				url : "view-bankbranch-city-list",
+				dataType : 'json',
+				contentType : 'application/json',
+				data : state,
+				success : function(response) {
+					if (response.message == "success") {
+						console.log(response);
+						$("#cityid_").empty();
+						$("#cityid_")
+								.append("<option value=''>Select</option>");
+
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#cityid_").append(option);
+						}
+					}
+				},
+				error : function(data) {
+					console.log(data);
+					$("#cityid_").empty();
+					$("#cityid_").append("<option value=''>Select</option>");
+				}
+			})
+		} else {
+			$("#cityid_").empty();
+			$("#cityid_").append("<option value=''>Select</option>");
+		}
+	}
+	function stateshow() {
+		alert();
+		var country = $('#countryid_').val();
+		if (country) {
+			$.ajax({
+				type : "POST",
+				url : "view-bankbranch-state-list",
+				dataType : 'json',
+				contentType : 'application/json',
+				data : country,
+				success : function(response) {
+					if (response.message == "success") {
+						console.log(response);
+						$("#stateid_").empty();
+						$("#stateid_").append(
+								"<option value=''>Select</option>");
+						$("#cityid_").empty();
+						$("#cityid_")
+								.append("<option value=''>Select</option>");
+
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#stateid_").append(option);
+						}
+					}
+				},
+				error : function(data) {
+					console.log(data);
+					$("#stateid_").empty();
+					$("#stateid_").append("<option value=''>Select</option>");
+					$("#cityid_").empty();
+					$("#cityid_").append("<option value=''>Select</option>");
+				}
+			})
+		} else {
+			$("#stateid_").empty();
+			$("#stateid_").append("<option value=''>Select</option>");
+			$("#cityid_").empty();
+			$("#cityid_").append("<option value=''>Select</option>");
+		}
+	}
+
+	$(document).ready(function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		closeNav();
+		$('#delete').attr("disabled", true);
+		$("#save").hide();
+		$("#delete").show();
+		$("#cancel").hide();
+		$("#Cancel").hide();
+		$("#mySidenav").hide();
+
+	});
+
+	const columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+			{
+				headerName : 'Bank Id',
+				field : "bankid",
+				cellRenderer : function(params) {
+					return '<a bankid="editId" onclick=editId("'
+							+ params.data.bankid
+							+ '") href="javascript:void(0)">'
+							+ params.data.bankid + '</a>';
+				}
+			}, {
+				headerName : 'Bank Name',
+				field : "bankname",
+				width : 180
+			}, {
+				headerName : 'Description',
+				field : "description",
+				width : 180
+			}, {
+				headerName : 'Status',
+				field : "status",
+				width : 180
+			} ];
+	$("#bankid").click(function() {
+		$("#a").css("display", "block");
+		$("#b").css("display", "block");
+	});
+	const gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 180,
+			height : 10
+		},
+		rowSelection : 'multiple',
+		onSelectionChanged : deleteShowDetails,
+		suppressRowClickSelection : true,
+		getRowNodeId : function(data) {
+			return data.bankid;
+		}
+	}
+
+	var deleteId = "";
+	function deleteShowDetails() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+
+		deleteId = "";
+		for (var i = 0; i < selectedRows.length; i++) {
+			deleteId = deleteId + '"' + selectedRows[i].bankid + '",';
+
+		}
+		deleteId = deleteId.substring(0, deleteId.length - 1);
+
+		var rowCount = 0;
+		selectedRows.forEach(function() {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#delete').attr("disabled", false);
+			$('#add').attr('disabled', true);
+
+		} else {
+			$('#delete').attr("disabled", true);
+			$('#add').attr('disabled', false);
+
+		}
+
+	}
+
+	function changeDateFormat(inputDate) { // expects Y-m-d
+		var splitDate = inputDate.split('-');
+		if (splitDate.count == 0) {
+			return null;
+		}
+
+		var year = splitDate[0];
+		var month = splitDate[1];
+		var day = splitDate[2];
+
+		return day + '-' + month + '-' + year;
+	}
+
+	function saveData() {
+		var data1 = {};
+		var validation = true;
+
+		data1.branchid = $("#branchid").val();
+		data1.bankname = $("#bankname").val();
+		data1.branchname = $("#branchname").val();
+		data1.cityname = $("#cityname").val();
+		data1.stateid = $("#stateid_").val();
+		data1.countryid = $("#countryid_").val();
+		data1.contactno = $("#contactno").val();
+		data1.cityid = $("#cityid_").val();
+		data1.email = $("#email").val();
+		data1.ifscode = $("#ifscode").val();
+		data1.status = $("#status").val();
+		data1.address = $("#address").val();
+
+		if (data1.bankname == null || data1.bankname == "") {
+			validation = validationUpdated("Bank Name Required", "bankname");
+		}
+		if (data1.branchname == null || data1.branchname == "") {
+			validation = validationUpdated("branch Name Required", "branchname");
+		}
+		if (data1.cityname == null || data1.cityname == "") {
+			validation = validationUpdated("City Name Required", "cityname");
+		}
+		if (data1.stateid == null || data1.stateid == "") {
+			validation = validationUpdated("State Required", "stateid_");
+		}
+		if (data1.countryid == null || data1.countryid == "") {
+			validation = validationUpdated("Country Required", "countryid_");
+		}
+		if (data1.contactno == null || data1.contactno == "") {
+			validation = validationUpdated("Contactno Required", "contactno");
+		}
+		if (data1.cityid == null || data1.cityid == "") {
+			validation = validationUpdated("District Required", "cityid_");
+		}
+		if (data1.email == null || data1.email == "") {
+			validation = validationUpdated("Email Required", "email");
+		}
+		if (data1.ifscode == null || data1.ifscode == "") {
+			validation = validationUpdated("IFSC code Required", "ifscode");
+		}
+		if (data1.status == null || data1.status == "") {
+			validation = validationUpdated("Status Required", "status");
+		}
+		if (data1.address == null || data1.address == "") {
+			validation = validationUpdated("Address Required", "address");
+		}
+		alert(JSON.stringify(data1));
+		if (validation) {
+			$.ajax({
+				type : "POST",
+				url : "view-bankbranch-savedata",
+				dataType : "json",
+				contentType : "application/json",
+				data : JSON.stringify(data1),
+				success : function(response) {
+					if (response.message == "Success") {
+						closeNav();
+						$("#messageParagraph").text("Data saved successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+					}
+				},
+				error : function(response) {
+					console.log(response);
+				}
+			})
+		}
+
+	}
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	function editId(id) {
+
+		$.ajax({
+			type : "GET",
+			url : "viewbank-edit-bankdetails?id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+					openNav();
+					console.log(response);
+					$('#bankid').val(response.body.bankid);
+					$('#bankname').val(response.body.bankname);
+					$('#status').val(response.body.status);
+					$('#description').val(response.body.description);
+
+				}
+
+			},
+			error : function(data) {
+				console.log(data)
+				$("#add").hide();
+				$("#myGrid").show();
+				$("#save").show();
+				$("#Cancel").show();
+				$("#delete").hide();
+			}
+		});
+
+	}
+	function deleteFun() {
+		$('#delete').modal('show');
+	}
+
+	function deleteFun() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var id = selectedRows[0].bankid;
+
+		$.ajax({
+			type : "GET",
+			url : "viewbank-delete-bank?id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+					closeNav();
+					$("#messageParagraph").text("Data Deleted successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+				}
+			},
+			error : function(data) {
+				console.log(data);
+			}
+		})
+	}
+
+	function getName() {
+
+		var empid = $("#empId").val();
+		if (empid) {
+			$.ajax({
+				type : 'GET',
+				url : 'employee-asset-assign-nameDesignation?empid=' + empid,
+				contentType : "application/json",
+				success : function(response) {
+					if (response.message == "success") {
+						console.log(response);
+						for (var i = 0; i < response.body.length; i++) {
+							$("#name").val(response.body[i].key);
+							$("#pdesg").val(response.body[i].name);
+
+						}
+					}
+				},
+				error : function(e) {
+
+				}
+			});
+		} else {
+			$("#name").val("");
+			$("#pdesg").empty();
+
+			var option3 = $("<option></option>");
+			$(option3).val(null);
+			$(option3).html("Select");
+			$("#pdesg").append(option3);
+
+		}
+
+	}
+
+	function closeNav() {
+
+		$("#bankid").val("");
+		$("#bankname").val("");
+		$("#status").val("");
+		$("#description").val("");
+
+		$('#delete').show();
+		$('#add').show();
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main_content").style.width = "100%";
+
+		var userid = $("#sessionId").val();
+		var userrole = $("#sessionRole").val();
+		var roleid = "";
+		for (var i = 6; i <= userrole.length; i = i + 6) {
+			roleid = roleid + '"' + userrole.slice(i - 6, i) + '",';
+		}
+		roleid = roleid.substring(0, roleid.length - 1);
+		gridOptions.api.setRowData();
+
+		agGrid.simpleHttpRequest({
+			url : "viewbank-banklist",
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+			if (len > 0) {
+				gridOptions.api.setRowData(data);
+			} else {
+				gridOptions.api.setRowData();
+			}
+		});
+	}
+	//Open Nav for Exit Management
+	function openNav() {
+
+		document.getElementById("mySidenav").style.cssText = "width: 350px; position: absolute; right:-10px; overflow: hidden; height:auto;";
+		document.getElementById("main_content").style.width = "71%";
+		$("#Cancel").show();
+		$("#save").show();
+		$('#delete').hide();
+
+		var date = (new Date()).toISOString().split('T')[0];
+		var newDate = changeDateFormat(date);
+		$("#leaveApplyDate").val(newDate);
+	}
+	function downloadForCSV() {
+		var dataset = [];
+		gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+		gridOptions.api.exportDataAsCsv(dataset);
+	}
+
+	function getSubDept() {
+		var shiftDeptId = $("#dept").val();
+		if (shiftDeptId) {
+			$
+					.ajax({
+						type : "GET",
+						url : "employee-asset-assign-getSubDepartmentByDept?shiftDeptId="
+								+ shiftDeptId,
+						contentType : false,
+						success : function(response) {
+							console.log(response);
+							if (response.message == "success") {
+
+								$("#subDept").empty();
+								$("#subDept").append(
+										"<option value=''>Select</option>");
+								$("#empId").empty();
+								$("#empId").append(
+										"<option value=''>Select</option>");
+
+								for (var i = 0; i < response.body.length; i++) {
+									var option = $("<option></option>");
+									$(option).val(response.body[i].key);
+									$(option).html(response.body[i].name);
+									$("#subDept").append(option);
+								}
+							}
+						},
+						error : function(data) {
+							console.log(data);
+							$("#subDept").empty();
+							$("#subDept").append(
+									"<option value=''>Select</option>");
+
+						}
+					})
+		} else {
+			$("#subDept").empty();
+			$("#subDept").append("<option value=''>Select</option>");
+		}
+
+	}
+
+	function getEmpId() {
+		var subDeptId = $("#subDept").val();
+		if (subDeptId) {
+			$("#empId").val("");
+			$.ajax({
+				type : "GET",
+				url : "employee-asset-assign-get-employeeid?subDeptId="
+						+ subDeptId,
+				contentType : false,
+				success : function(response) {
+					console.log(response);
+					if (response.message == "success") {
+
+						$("#empId").empty();
+						$("#empId").append("<option value=''>Select</option>");
+
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].name);
+							$(option).html(response.body[i].name);
+							$("#empId").append(option);
+						}
+					}
+				},
+				error : function(data) {
+					console.log(data);
+					$("#empId").empty();
+					$("#empId").append("<option value=''>Select</option>");
+
+				}
+			})
+		} else {
+			$("#empId").empty();
+			$("#empId").append("<option value=''>Select</option>");
+		}
+
+	}
+	function getEmpList(empid) {
+		$.ajax({
+			type : "GET",
+			url : "employee-asset-assign-getEmployeeList",
+			contentType : false,
+			success : function(response) {
+				console.log(response);
+				if (response.message == "success") {
+
+					$("#empId").empty();
+					$("#empId").append("<option value=''>Select</option>");
+
+					for (var i = 0; i < response.body.length; i++) {
+						var option = $("<option></option>");
+						$(option).val(response.body[i].key);
+						$(option).html(response.body[i].key);
+						$("#empId").append(option);
+					}
+					$("#empId").val(empid);
+				}
+			},
+			error : function(data) {
+				console.log(data);
+				$("#empId").empty();
+				$("#empId").append("<option value=''>Select</option>");
+
+			}
+		})
+
+	}
+</script>
+<style type="text/css">
+.ag-header-row:second-child {
+	width: 100px !important
+}
+</style>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div id="main_content">
+							<div class="d-flex">
+								<div class="col-md-4">
+									<div class="btn-hs">
+										<div class="font-design" id="totalReq">
+											Bank List(<span></span>)
+										</div>
+									</div>
+								</div>
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<div id="searchRowDiv">
+											<div class="input-style">
+												<input type="text" placeholder="Search.." name="search"
+													class="searchboxinput" onkeyup="cancelBar()"
+													oninput="onQuickFilterChanged()" id="quickFilter"
+													autocomplete="off">
+												<div class="searchicon">
+													<a href="javascript:void(0)"><span
+														style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+														id="closeKey"
+														onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+														class="close_i"><i class="ti-close srchicon"></i></span></a><a
+														href="javascript:void(0)"><i
+														class="ti-search srchicon"></i></a>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+
+
+								<div class="col-md-4 buttonsec btn-hs">
+									<button onclick="downloadForCSV()" class="download-btn"
+										id="download">Download</button>
+									<button onclick="deleteFun()" class="delete-btn" id="delete">delete</button>
+									<button class="new-btn" id="add" onclick="openNav()">New</button>
+								</div>
+
+							</div>
+
+
+							<div id="mySidenav" class="sidenav">
+								<div class="slidebox">
+									<div class="row">
+										<div class="col-md-10 edit">Employee Asset Assign</div>
+										<input type="hidden" id="sessionId" th:value="${userId}" />
+										<div class="col-md-2">
+											<div class="arrow">
+												<a href="javascript:void(0)" class="closebtn"
+													onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+											</div>
+										</div>
+										<div class="col-md-12 buttonsec btn-hs">
+											<button class="cancel-btn" id="Cancel" onclick="closeNav()">Cancel</button>
+											<button class="approve-btn" type="submit" id="save"
+												value="add" onclick="saveData()">Save</button>
+										</div>
+									</div>
+
+
+									<!-- -------------------------------Travels--------------------------------------------------------- -->
+									<input type="hidden" id="branchid">
+
+
+									<div class="row mt-4">
+										<div class="col-lg-6">
+											<div class="form-group">
+												<label>Bank Name</label>
+												<div class="select">
+													<select class="form-control  countryclss" id="bankname"
+														onblur="removeValid(event)">
+														<option value="">Select</option>
+														<option th:each="c,iter:${bankList}" th:value="${c.key}"
+															th:text="${c.name}"></option>
+													</select>
+												</div>
+											</div>
+										</div>
+										<div class="col-lg-6">
+											<div class="form-group">
+												<label>City Name</label> <input id="cityname"
+													class="form-control" autocomplete="off">
+											</div>
+										</div>
+										<div class="col-lg-6">
+											<div class="form-group">
+												<label>Branch Name</label> <input id="branchname"
+													class="form-control" autocomplete="off">
+											</div>
+										</div>
+										<div class="col-lg-6">
+											<div class="form-group">
+												<label>Country</label>
+												<div class="select">
+													<select class="form-control  countryclss" id="countryid_"
+														onChange="stateshow()" onblur="removeValid(event)">
+														<option value="">Select</option>
+														<option th:each="c,iter:${countryList}"
+															th:value="${c.key}" th:text="${c.name}"></option>
+													</select>
+												</div>
+											</div>
+										</div>
+										<div class="col-lg-6">
+											<div class="form-group">
+												<label>State</label>
+												<div class="select">
+													<select class="form-control stateclss" id="stateid_"
+														onChange="citylist()" onblur="removeValid(event)">
+														<option value="">Select</option>
+														<option th:each="c,iter:${stateList}" th:value="${c.key}"
+															th:text="${c.name}"></option>
+													</select>
+												</div>
+											</div>
+										</div>
+										<div class="col-lg-6">
+											<div class="form-group">
+												<div class="form-group">
+													<label>District</label>
+													<div class="select">
+														<select class="form-control   cityclsss" id="cityid_"
+															onblur="removeValid(event)">
+															<option value="">Select</option>
+															<option th:each="c,iter:${cityList}" th:value="${c.key}"
+																th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+										</div>
+
+										<div class="col-lg-6">
+											<div class="form-group">
+												<label>Contact No.</label> <input id="contactno"
+													class="form-control" autocomplete="off">
+											</div>
+										</div>
+										<div class="col-lg-6">
+											<div class="form-group">
+												<label>Email</label> <input id="email" class="form-control"
+													autocomplete="off">
+											</div>
+										</div>
+										<div class="col-lg-6">
+											<div class="form-group">
+												<label>IFSC Code</label> <input id="ifscode"
+													class="form-control" autocomplete="off">
+											</div>
+										</div>
+										<div class="col-md-6">
+											<div class="form-group">
+												<label>Status</label>
+												<div class="select">
+													<select id="status" class="form-control"
+														onchange="getEmpId();">
+														<option value="">--Select--</option>
+														<option value="1">ACTIVE</option>
+														<option value="0">INACTIVE</option>
+													</select>
+												</div>
+											</div>
+										</div>
+
+									</div>
+									<div class="row">
+										<div class="col-md-12">
+											<div class="form-group">
+												<label> Address</label>
+												<textarea name="" id="address" class="form-control textarea"></textarea>
+
+											</div>
+										</div>
+
+
+
+									</div>
+
+								</div>
+							</div>
+							<div id="myGrid" style="width: 100%; height: 500px;"
+								class="ag-theme-alpine"></div>
+						</div>
+
+					</div>
+					<!-- ------------------------------------------------Modal-------------------------------------------------------------------------- -->
+
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

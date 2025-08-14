@@ -1,0 +1,1654 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+
+.totalHour {
+	border: 1px solid #ddd;
+	border-radius: 2px;
+	background-color: #f5f5f5;
+	padding: 10px;
+	font-size: 12px;
+	color: #333;
+	transition: border-color 0.3s ease-in-out;
+	width: 85px;
+	height: 23px;
+}
+
+.defectDesc {
+	border: 1px solid #ddd;
+	border-radius: 2px;
+	background-color: #f5f5f5;
+	padding: 10px;
+	font-size: 12px;
+	color: #333;
+	transition: border-color 0.3s ease-in-out;
+	width: 671px;
+	height: 22px;
+}
+
+.sample-chk .form-control {
+	border-right: none;
+	border: 1px solid #d5d5d5 !important;
+	border-radius: 5px;
+	background: #fbfbfb;
+}
+</style>
+
+<script type="text/javascript">
+
+	$(document).ready(function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		gridOptions.api.setRowData();
+		
+		
+		agGrid.simpleHttpRequest({
+			url : "horlicks-analysis-record-view"
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			console.log("lllllllll",jsonData);
+			var allData=jsonData.viewData;
+			if(allData!=null){
+				var len = allData.length;
+				$('#totalRmPM').find('span').html(len);
+				gridOptions.api.setRowData(allData);
+			}else{
+				$('#totalRmPM').find('span').html('0');
+				gridOptions.api.setRowData('');
+			}
+			
+		}); 
+		var gridDiv = document.querySelector('#activity');
+		new agGrid.Grid(gridDiv, activityOptions);
+		
+		var gridDiv = document.querySelector('#activity2');
+		new agGrid.Grid(gridDiv, activityOptionstwo);
+		
+		
+		
+		//activityOptions.api.setRowData();
+		$('#myModal10').modal('hide');
+		$('#reqDltBtn').attr('disabled', true);
+		$('#inspectBtn').attr('disabled', true);
+		$('#assignBtn').attr('disabled', true);
+		$('#deleteChild').attr('disabled', true);
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+		$('.collapse').on('hide.bs.collapse', function() {
+			$(this).siblings('.panel-heading').removeClass('active');
+		});
+		$("#newBtn").click(function() {
+
+		})
+		
+		
+
+
+	});
+	
+	
+	
+	/* -------------------search bar for mygrid------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	var columnDefs = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			pinned: 'left',
+
+		},
+		{
+			headerName : 'Id',
+			width : 150,
+			pinned: 'left',
+			field : "horlicksId",
+			
+		
+		cellRenderer : function(params) {
+			return ' <a onclick=editMedia("'
+					+ params.data.horlicksId + '","'
+					 +params.data.approveStatus
+					+ '") href="javascript:void(0)">'
+					+ params.data.horlicksId + '</a>';
+                    }
+
+		}, {
+			
+			headerName : 'Product Type',
+			field : "productTypeField",
+			
+		}, {
+			
+			headerName : 'Ref.No.',
+			field : "refNo",
+			
+		}, {
+			headerName : 'Issue No.',
+			field : "issueNo",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		},  {
+			headerName : 'Issued Date',
+			field : "issuedDate",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		},  {
+			headerName : 'Approve Status',
+			field : "approveStatus",
+			cellRenderer : function(params) {
+				if (params.data.approveStatus =="Approved") { 
+					return '<div style="color:#0642f5">'+params.data.approveStatus+'</div>';
+				}else {
+					return '<div style="color:#a9a9a9">'+params.data.approveStatus+'</div>';
+				}
+			}
+	
+		},{
+			headerName : 'REPORT',
+			field : "downloaddoc",
+			cellStyle : {
+				textAlign : 'center'
+			},cellRenderer : function(params) {
+				return '<a  onclick=reportDownload("'
+				+params.data.horlicksId
+				+ '") href="javascript:void(0)"><i class="bi bi-cloud-download">Download</i></a>';
+				
+			}
+		}];
+
+// let the grid know which columns and what data to use
+var gridOptions = {
+	columnDefs : columnDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 150
+	},
+	onSelectionChanged : onSelectionChanged,
+};
+//function for row select parents
+
+	function onSelectionChanged() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		 var selectedNodes = gridOptions.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			$('#reqDltBtn').attr("disabled", false);
+			
+			 if (selectedData.map(node => node.approveStatus)!="Pending"){
+				
+		        	$('#assignBtn').attr('disabled', true);
+					$('#reqDltBtn').attr("disabled", true);
+					$('#newBtn').attr("disabled", false);
+					
+				 
+			 } else {
+				
+				  $('#assignBtn').attr('disabled', false);
+					$('#reqDltBtn').attr("disabled", false);
+					$('#newBtn').attr("disabled", true);
+		        }
+			
+			
+		} else {
+		
+			$('#reqDltBtn').attr("disabled", true);
+			 $('#assignBtn').attr('disabled', true);
+			 $('#newBtn').attr("disabled", false);
+			
+		}
+
+	}
+
+
+// for activity table
+var activityDefs = [
+	{
+		headerName : 'Composite Analysis',
+		width : 430,
+		
+		children: [
+	        {  
+	        	headerName :" ",
+	        	field: 'ironCont' ,	
+	        	editable:false
+	        },
+	        { headerName : "B.No.",
+	        	field: 'bno1' ,
+	        		
+	        },
+	        { headerName : "To",
+	        	field: 'to1' ,
+	        	
+	        },
+	      ],
+		
+	},
+	{
+        headerName : 'Sieve Analysis',
+        width : 430,
+        children: [
+	        {  
+	        	headerName :"B.No.",
+	        	field: 'bno2' ,	
+	        	editable:false
+	        },
+	        { headerName : " ",
+	        	field: 'spec1' ,
+	        	editable:false
+	        },
+	        { headerName : " ",
+	        	field: 'blank1' ,
+	        	
+	        },
+	      ],
+	},
+	{
+		  headerName : 'Other Analysis',
+		  width : 430,
+	        children: [
+		        {  
+		        	headerName :"Parameter",
+		        	field: 'param' ,
+		        	editable:false
+		        },
+		        { headerName : "B.No.",
+		        	field: 'bno3' ,
+		        		
+		        },
+		        { headerName : "Results",
+		        	field: 'ressult1' ,
+		        	
+		        },
+		      ],
+	
+	 
+    
+		        
+	} ];
+
+
+//let the grid know which columns and what data to use product table
+var activityOptions = {
+	columnDefs : activityDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 180,
+		singleClickEdit: true,
+		editable:true,
+		stopEditingWhenCellsLoseFocus: true,
+	}
+};
+
+
+var activityDefss = [
+	
+	/* {
+		headerName : "Date",
+		field : "date",
+		width : 100,
+		cellRenderer : function(params) {
+			console.log("bbb",params)
+			return '<input type="date" class="totalHour" name="numHour" value="'+params.data.date+
+			'" onkeydown="handleTextFieldKeyDown(event)" id="'+"date_"+params.rowIndex+'">';
+			
+		},
+		editable:false
+	     } */{
+			    headerName: "Date",
+			    field: "date",
+			    width: 150,
+			    cellRenderer: function(params) {
+			        // Get the date of release from params
+			        var date = params.value;
+			        console.log("Date:", date);
+
+			        // Format date to YYYY-MM-DD format
+			        var formattedDate = '';
+			        if (date) {
+			            var parts = date.split('-');
+			            if (parts.length === 3) {
+			                formattedDate = parts[2] + '-' + parts[1] + '-' + parts[0];
+			            }
+			        }
+
+			        // Return HTML with dynamic data
+			        return '<input type="date" class="totalHour" value="' + formattedDate + '" ' +
+			            'onchange="handleDateChange(event, ' + params.rowIndex + ')" id="date_' + params.rowIndex + '">';
+			    },
+			    cellStyle: {'borderRadius': '2px', 'background-color': '#f5f5f5'},
+			    editable: false
+			},
+		    
+		        { headerName : "S.No.",
+		        	field: 'slNo' ,
+		        	width : 150,
+		        	cellStyle: {'borderRadius ':'2px','background-color': '#f5f5f5'}		
+		        },
+		        { headerName : "SKU",
+		        	field: 'sku' ,
+		        	width : 150,
+		        	cellStyle: {'borderRadius ':'2px','background-color': '#f5f5f5'}		
+		        },
+		        { headerName : "Batch No.",
+		        	field: 'signatureOfMicrobiologist' ,
+		        	width : 150,
+		        	cellStyle: {'borderRadius ':'2px','background-color': '#f5f5f5'}		
+		        },
+		    
+			        { headerName : "Appearance",
+			        	field: 'appearance' ,
+			        	width : 150,
+			        	cellStyle: {'borderRadius ':'2px','background-color': '#f5f5f5'}		
+			        },
+				    
+			        { headerName : "Taste & Flavour",
+			        	field: 'tasteFlavour' ,
+			        	width : 150,
+			        	cellStyle: {'borderRadius ':'2px','background-color': '#f5f5f5'}		
+				
+			        },
+				    
+			        { headerName : "Odour-Clean Characteristic malty",
+			        	field: 'odourClean' ,
+			        	width : 150,
+			        	cellStyle: {'borderRadius ':'2px','background-color': '#f5f5f5'}		
+			        },
+				    
+			        { headerName : "Consistency/Texture Free from Lump & Foreign Matter",
+			        	field: 'consistency' ,
+			        	width : 150,
+			        	cellStyle: {'borderRadius ':'2px','background-color': '#f5f5f5'}		
+			        },
+				    
+			        { headerName : "Single/Metal Piece",
+			        	field: 'singleMpiece' ,
+			        	width : 150,
+			        	cellStyle: {'borderRadius ':'2px','background-color': '#f5f5f5'}		
+			        },
+				    
+			        { headerName : "B.D.(in gm/cc Specification GP:0..83-0.960 jar:0.83-0.960)",
+			        	field: 'bdSpecification' ,
+			        	width : 150,
+			        	cellStyle: {'borderRadius ':'2px','background-color': '#f5f5f5'}		
+			        },
+				    
+			        { headerName : "pH-Specification 6.6-7.1",
+			        	field: 'phSpecification' ,
+			        	width : 150,
+			        	cellStyle: {'borderRadius ':'2px','background-color': '#f5f5f5'}		
+                    },
+				    
+			        { headerName : "Total Protin Specification Min. 11.0%",
+			        	field: 'totalProtin' ,
+			        	width : 150,
+			        	cellStyle: {'borderRadius ':'2px','background-color': '#f5f5f5'}		
+                     },
+				    
+			        { headerName : "Moisture Specification Max. 3.0%",
+			        	field: 'moistureSpecification' ,
+			        	width : 150,
+			        	cellStyle: {'borderRadius ':'2px','background-color': '#f5f5f5'}		
+				
+                    },
+				    
+			        { headerName : "Vitamin Results",
+			        	field: 'vitaminResults' ,
+			        	width : 150,
+			        	cellStyle: {'borderRadius ':'2px','background-color': '#f5f5f5'}		
+
+                    },
+				    
+			        { headerName : "Sign",
+			        	field: 'sign' ,
+			        	width : 150,
+			        	cellStyle: {'borderRadius ':'2px','background-color': '#f5f5f5'}	
+	},{
+		headerName : "serial No",
+		field : "serialNo",
+		width : 100,
+		editable:false,
+		hide:true
+	     } ];
+
+
+//let the grid know which columns and what data to use product table
+var activityOptionstwo = {
+	columnDefs : activityDefss,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 80,
+		singleClickEdit: true,
+		editable:true,
+		stopEditingWhenCellsLoseFocus: true,
+	}
+};
+
+
+//parents new plan
+function newPlan() {
+	
+	
+	var productType = $("#productType").val()
+		
+		if(productType == "" || productType == null){
+			
+			
+			$('#productTypeModal').modal('show');
+			$("#productTypeError").html("");
+			$("#productTypeError").html(`<p>*Select product Type.</p>`);
+			
+		}else{
+			$('#productTypeModal').modal('hide');
+
+			 // $("#issuedDate").val("");
+				$("#myGrid").hide();
+				$("#reqTable").hide();
+				$(".btn-hs").show();
+				$("#btndiv").hide();
+				$("#listdiv").hide();
+				$("#totalRmPM").hide();
+				$("#searchRowDiv").hide();
+				$("#ttbtn").hide();
+				$("#demo").show();
+				$("#horlicksAnalysisdId").html("");
+				$("#horlicksId").val("");
+				//$("#refNo").val("");
+				//$("#issueNo").val("");
+				$("#deleteChild").attr('disabled', true);
+				$("#newchild").attr('disabled', false);
+				$("#save").attr('disabled', false);
+				showGridRow();
+				showGridRow2();
+			
+			$("#productTypeField").val(productType.toUpperCase());
+
+		}
+	
+}
+//function for cancel
+function cancel() {
+
+	 $(".formValidation").remove();
+		$("#totalRmPM").show();
+		$("#searchRowDiv").show();
+		$(".btn-hs").show();
+		$("#myGrid").show();
+		$("#demo").hide();
+		$("#reqDltBtn").attr('disabled', true);
+		$("#assignBtn").attr('disabled', true);
+		$("#newBtn").attr('disabled', false);
+		
+		
+		agGrid.simpleHttpRequest({
+			url : "horlicks-analysis-record-view"
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			console.log("lllllllll",jsonData);
+			var allData=jsonData.viewData;
+			if(allData!=null){
+				var len = allData.length;
+				$('#totalRmPM').find('span').html(len);
+				gridOptions.api.setRowData(allData);
+			}else{
+				$('#totalRmPM').find('span').html('0');
+				gridOptions.api.setRowData('');
+			}
+			
+		}); 
+		$("#horlicksAnalysisdId").html("");
+		$("#horlicksId").val("");
+		//$("#issuedDate").val("");
+		//$("#refNo").val("");
+		//$("#issueNo").val("");
+	
+	}
+
+
+/* function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+} */
+//master save data
+/* function masterSaveData(){
+	activityOptions.api.stopEditing();
+		$(".formValidation").remove();
+		var valid= true;
+		var datas = [];
+		var i=-1;
+		var rowCount = activityOptions.api.getDisplayedRowCount();
+		
+		
+		if(rowCount > 0){
+			
+			activityOptions.api.forEachNode(function(rowNode, index) {
+			
+				var item = rowNode.data;
+				item.date=$("#date_"+index).val();
+				
+		
+				if (item.issuedDate == null || item.issuedDate == "") {
+					valid = validationUpdated("Issued Date Required", "issuedDate");
+				 }
+				if (item.refNo == null || item.refNo == "") {
+					valid = validationUpdated("Ref No. Required", "refNo");
+				 }
+				if (item.issueNo == null || item.issueNo == "") {
+					valid = validationUpdated("Issue No. Required", "issueNo");
+				 }
+				
+				   item.type = "1st";   
+				    item.horlicksId = $("#horlicksAnalysisdId").html();
+				    item.horlicksId = $("#horlicksId").val();
+				     item.issuedDate = $("#issuedDate").val();
+				     item.refNo = $("#refNo").val();
+				     item.issueNo = $("#issueNo").val();
+				     
+				     
+				
+		        if(valid){
+		        	datas.push(item);
+		        	
+		         }
+			});
+		
+			
+		
+		if (valid) {
+			saveMediaPmDetails(datas);
+			
+			}
+		} else {
+			$("#messageParagraph").text(
+			"Please Add Atleast One Details");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+		}
+		console.log("data1-----",datas);
+	
+} */
+function masterSaveData() {
+    activityOptions.api.stopEditing();
+    activityOptionstwo.api.stopEditing();
+    $(".formValidation").remove();
+    var valid = true;
+    var datas = [];
+    var i = -1;
+    var rowCount = activityOptions.api.getDisplayedRowCount();
+    var rowCount2 = activityOptionstwo.api.getDisplayedRowCount();
+
+    if (rowCount > 0 && rowCount2 > 0) {
+        // Iterate over activityOptions
+        activityOptions.api.forEachNode(function(rowNode, index) {
+            var item = rowNode.data;
+           // item.date = $("#date_" + index).val();
+
+            if (item.issuedDate == null || item.issuedDate == "") {
+                valid = validationUpdated("Issued Date Required", "issuedDate");
+            }
+            if (item.refNo == null || item.refNo == "") {
+                valid = validationUpdated("Ref No. Required", "refNo");
+            }
+            if (item.issueNo == null || item.issueNo == "") {
+                valid = validationUpdated("Issue No. Required", "issueNo");
+            }
+
+            item.type = "1st";
+            item.horlicksId = $("#horlicksAnalysisdId").html(); // Ensure correct ID assignment
+            item.issuedDate = $("#issuedDate").val(); // Ensure correct ID assignment
+            item.refNo = $("#refNo").val(); // Ensure correct ID assignment
+            item.issueNo = $("#issueNo").val(); // Ensure correct ID assignment
+            item.productTypeField = $("#productTypeField").val(); // Ensure correct ID assignment
+
+            if (valid) {
+                datas.push(item);
+            }
+        });
+
+        // Iterate over activityOptionstwo
+        activityOptionstwo.api.forEachNode(function(rowNode, index) {
+            var item = rowNode.data;
+            item.date = $("#date_" + index).val(); // Adjust as needed based on your actual HTML structure
+
+            if (item.issuedDate == null || item.issuedDate == "") {
+                valid = validationUpdated("Issued Date Required", "issuedDate");
+            }
+            if (item.refNo == null || item.refNo == "") {
+                valid = validationUpdated("Ref No. Required", "refNo");
+            }
+            if (item.issueNo == null || item.issueNo == "") {
+                valid = validationUpdated("Issue No. Required", "issueNo");
+            }
+
+            item.type = "2nd";
+            item.horlicksId = $("#horlicksAnalysisdId").html(); // Ensure correct ID assignment
+            item.issuedDate = $("#issuedDate").val(); // Ensure correct ID assignment
+            item.refNo = $("#refNo").val(); // Ensure correct ID assignment
+            item.issueNo = $("#issueNo").val(); // Ensure correct ID assignment
+
+            if (valid) {
+                datas.push(item);
+            }
+        });
+
+        if (valid) {
+            saveMediaPmDetails(datas);
+        }
+    } else {
+        $("#messageParagraph").text("Please Add Atleast One Details");
+        $("#msgOkModal").removeClass("btn3");
+        $("#msgOkModal").addClass("btn1");
+        $("#msgModal").modal('show');
+    }
+
+    console.log("data1-----", datas);
+}
+
+function saveMediaPmDetails(datas) {
+	$('.loader').show();
+	$.ajax({
+		type : "POST",
+		url : "horlicks-analysis-record-add",
+		dataType : "json",
+		contentType : "application/json",
+		data : JSON.stringify(datas),
+		success : function(response) {
+			$('.loader').hide();
+		//	var itemName = $("#itemname option:selected").text();
+			if (response.code == "success") {
+				cancel()
+				$("#messageParagraph").text(response.message);
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				
+				
+				agGrid.simpleHttpRequest({
+					url : "horlicks-analysis-record-view"
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					console.log("lllllllll",jsonData);
+					var allData=jsonData.viewData;
+					if(allData!=null){
+						var len = allData.length;
+						$('#totalRmPM').find('span').html(len);
+						gridOptions.api.setRowData(allData);
+					}else{
+						$('#totalRmPM').find('span').html('0');
+						gridOptions.api.setRowData('');
+					}
+					
+				}); 
+				
+			} else {
+				$('.loader').hide();
+				$("#messageParagraph").text("Test Parameter For "+itemName+" Already Exist.");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				
+				$("#itemid").val('');
+				$("#itemname").val('');
+				$("#description").val('');
+				activityOptions.api.setRowData();
+				activityOptionstwo.api.setRowData();
+			}
+		},
+		error : function(data) {
+			$('.loader').hide();
+		}
+	})
+
+}
+
+function showGridRow() {
+  var datas = [];
+  var item = {};
+  var dummyRowData = [{
+	  	  
+		  "ironCont": "Iron Contamination<3 Particles(size<1mm)", 
+		  "bno1": "", // Sample value for bno1 column
+		  "to1": "",
+		  "bno2": "Retained on 18 mesh",
+		  "spec1": "Specification Max,0.8%",
+		  "blank1": "",
+		  "bno3": "",
+		  "param": "Fat-Specification Min. 2.0%",
+		  "result1": "",
+		  
+		},
+		{
+			
+			"ironCont": "Iron Contamination<3 Particles(size<1mm)", 
+			  "bno1": "", // Sample value for bno1 column
+			  "to1": "",
+			  "bno2": "Retained on 30 mesh",
+			  "spec1": "Specification Max,20%",
+			  "blank1": "",
+			  "bno3": "",
+			  "param": "Ash(ODB)-Specification 4.0-4.8%",
+			  "result1": "",
+			},
+			{
+				
+				"ironCont": "Iron Contamination<3 Particles(size<1mm)", 
+				  "bno1": "", // Sample value for bno1 column
+				  "to1": "",
+				  "bno2": "Pass through 72mesh",
+				  "spec1": "Specification Max,75%",
+				  "blank1": "",
+				  "bno3": "",
+				  "param": "Calcium Specification Min 741mg/100gm",
+				  "result1": "",
+				}];
+  activityOptions.api.setRowData(dummyRowData);
+
+}
+
+function showGridRow2() {
+	  var datas = [];
+	  var item = {};
+	  var jsonDataForAggrid=[
+		    {
+		    	
+		        "date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "Vit.A-Spec. 870 to 2200mcg/100g",
+		        "sign": "",
+		        "serialNo":"1",
+		        
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"2",
+		        
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"3",
+		       
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "Iron-Spec.Min.26.0mg/100g",
+		        "sign": "",
+		        "serialNo":"4",
+		       
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"5",
+		       
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"6",
+		   
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "Vit.B1-Spec.1.4 to 3.1mg/100g",
+		        "sign": "",
+		        "serialNo":"7",
+		       
+		    },
+		    {
+		    	
+		        "date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"8",
+		        
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"9",
+		        
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "Vit.B2-Spec.3.1 to 6.0mg/100g",
+		        "sign": "",
+		        "serialNo":"10",
+		       
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"11",
+		       
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"12",
+		       
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "Vit.C-Spec.170 to 250mg/100g",
+		        "sign": "",
+		        "serialNo":"13",
+		   
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"14",
+		       
+		    },
+		    {
+		    	
+		        "date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"15",
+		        
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"16",
+		        
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"17",
+		       
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"18",
+		       
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"19",
+		       
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"20",
+		   
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"21",
+		       
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"22",
+		   
+		    },
+		    {
+		    	
+		    	"date": "",
+		        "slNo": "",
+		        "sku": "",
+		        "batchNo": "",
+		        "appearance": "",
+		        "tasteFlavour": "",
+		        "odourClean": "",
+		        "singleMpiece": "",
+		        "bdSpecification": "",
+		        "moistureSpecification": "",
+		        "vitaminResults": "",
+		        "sign": "",
+		        "serialNo":"23",
+		       
+		    }
+
+		];
+	  activityOptionstwo.api.setRowData(jsonDataForAggrid);
+
+	}
+
+	//editing the qc master parent table
+	
+		  
+		function editMedia(horlicksId,approveStatus) {
+			
+			   // $("#issuedDate").val("");
+				$("#myGrid").hide();
+				$("#reqTable").hide();
+				$(".btn-hs").show();
+				$("#btndiv").hide();
+				$("#listdiv").hide();
+				$("#totalRmPM").hide();
+				$("#searchRowDiv").hide();
+				$("#ttbtn").hide();
+				$("#demo").show();
+				$("#horlicksAnalysisdId").html("");
+				$("#horlicksId").val("");
+				//$("#refNo").val("");
+				//$("#issueNo").val("");
+				$("#deleteChild").attr('disabled', true);
+				$("#newchild").attr('disabled', false);
+				$("#save").attr('disabled', false);
+				 if(approveStatus=="Approved"){
+			       	 $("#save").hide(); 
+			        }else{
+			       	 $("#save").show(); 
+			        }
+				 $("#productTypeField").val('');
+			 $.ajax({
+				type : "GET",
+				url : "horlicks-analysis-record-edit?horlicksId="+ horlicksId,
+				success : function(response) {
+					if (response.code == "200") {
+						var jsonData = JSON.parse(response.body);
+						var allData=jsonData.editHorlicksdata;
+						console.log("allData>>>",allData);
+						var len = allData.length;
+						$("#horlicksAnalysisdId").html(allData[0].horlicksId);
+					    $("#horlicksId").val(allData[0].horlicksId);
+						
+						$("#refNo").val(allData[0].refNo);
+						$("#issueNo").val(allData[0].issueNo);
+						$("#issuedDate").val(allData[0].issuedDate);
+						$("#productTypeField").val(allData[0].productTypeField);
+						
+						activityOptions.api.setRowData(allData[0].editHorlicksDetails);
+						activityOptionstwo.api.setRowData(allData[0].editHorlicksDetailss);
+					}
+				},
+				error : function(e) {
+				}
+			}); 
+
+			
+			
+		}
+	
+	
+
+
+	
+
+
+//function for download
+function downloadDetails() { 
+	var dataset = [];
+	gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		dataset.push(rowNode.data);
+	});
+    gridOptions.api.exportDataAsCsv(dataset);
+}
+
+      
+	function approveFun(){
+		$('#approveRequestModel').modal('show');
+	}
+	function cancelApproveRequest() {
+		 $('#approveRequestModel').modal('hide');
+		} 
+	function approveRequestOnclick() {
+		
+		var selectedRows = gridOptions.api.getSelectedRows();
+		 var id=selectedRows[0].horlicksId;
+		 console.log("vvv",id);
+		$.ajax({
+			type : "GET",
+			url : "horlicks-analysis-record-approve?id=" + id,
+			async : false,
+			success : function(response) {
+
+				if (true) {
+					$('#approveRequestModel').modal('hide');
+					$("#messageParagraph").text("Approved Successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+
+
+					agGrid.simpleHttpRequest({
+						url : "horlicks-analysis-record-view"
+					}).then(function(data) {
+						var jsonData = JSON.parse(data.body);
+						console.log("lllllllll",jsonData);
+						var allData=jsonData.viewData;
+						if(allData!=null){
+							var len = allData.length;
+							$('#totalRmPM').find('span').html(len);
+							gridOptions.api.setRowData(allData);
+						}else{
+							$('#totalRmPM').find('span').html('0');
+							gridOptions.api.setRowData('');
+						}
+						
+					});
+					$('#reqDltBtn').attr("disabled", true);
+					$('#assignBtn').attr("disabled", true);
+					$('#newBtn').attr("disabled", false);
+					
+					
+				}
+
+			},
+		});
+	}
+	
+	function deleteFun(){
+		var selectedRows = gridOptions.api.getSelectedRows();
+				 var id=selectedRows[0].horlicksId;
+				$.ajax({
+					type : "GET",
+					url : "horlicks-analysis-record-delete?id=" + id,
+					async : false,
+					success : function(response) {
+                          console.log(response);
+						if (response.code == "200") {
+							
+							$("#messageParagraph").text(
+							"Data Deleted Successfully");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							
+							agGrid.simpleHttpRequest({
+								url : "horlicks-analysis-record-view"
+							}).then(function(data) {
+								var jsonData = JSON.parse(data.body);
+								console.log("lllllllll",jsonData);
+								var allData=jsonData.viewData;
+								if(allData!=null){
+									var len = allData.length;
+									$('#totalRmPM').find('span').html(len);
+									gridOptions.api.setRowData(allData);
+								}else{
+									$('#totalRmPM').find('span').html('0');
+									gridOptions.api.setRowData('');
+								}
+								
+							});
+						
+							$('#reqDltBtn').attr("disabled", true);
+							$('#assignBtn').attr("disabled", true);
+							$('#newBtn').attr("disabled", false);
+							
+							
+						}
+
+					},
+					error : function(data) {
+					}
+				});
+	}
+	
+
+	
+	function productDetails(){
+		var productid=$("#product").val();
+		agGrid.simpleHttpRequest(
+				{
+					url : 'pcro-product_detls_drop?id='+ productid
+				}).then(function(data) {
+					console.log("allDATA",data);
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.edit;
+					console.log(jsonData[0].variant);
+					$("#variant").val(jsonData[0].variant);
+					$("#packsize").val(jsonData[0].packsize);
+					 
+				});
+	};
+	
+	//
+	function reportDownload(id) {
+		window.open("/qa/horlicks-analysis-record-pdf-downloads?id="+window.btoa(id), '_blank');  
+	}
+	
+
+	function newPage(){
+			$('#productTypeModal').modal('show');
+			$("#productType").val("");
+			$("#productTypeError").html("");
+		}
+
+		function cancelModal(){
+			$('#productTypeModal').modal('hide');
+			$("#productType").val("");
+			$("#productTypeError").html("");
+		}
+
+		function productType(){
+			$("#productTypeError").html("");
+		}
+
+	
+	
+	  
+    </script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="d-flex flex-wrap justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalRmPM">
+									HORLICKS ANALYSIS RECORD LIST(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+								<button class="download-btn" id="download"
+									onclick="downloadDetails()">Download</button>
+								<button class="delete-btn" id="reqDltBtn" onclick="deleteFun()">DELETE</button>
+								<button class="new-btn" id="assignBtn" onclick="approveFun()">APPROVE</button>
+								<button class="new-btn" id="newBtn" onclick="newPage()">NEW</button>
+							</div>
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" />
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innercontent">
+								<div class="innerstickybg">
+									<div class="row">
+
+										<div class="col-md-6">
+											HORLICKS ANALYSIS RECORD: <span id="horlicksAnalysisdId"></span>
+										</div>
+
+										<div class="col-md-6" align="right">
+											<button class="cancel-btn" id="cancelBtn" onclick="cancel()">Cancel</button>
+											<button class="approve-btn" id="save"
+												onclick="masterSaveData()">Save</button>
+										</div>
+									</div>
+
+								</div>
+								<div class="row innersticky_contentgap">
+									<input type="hidden" id="horlicksId">
+						
+									
+									<div class="col-md-4">
+										<div class="form-group">
+											<label>Ref. No. :</label> <input type="text"
+												class="form-control" id="refNo" readonly
+												value="OBPL/QA/004/F/08">
+										</div>
+									</div>
+									<div class="col-md-4">
+										<div class="form-group">
+											<label> Issue No.</label> <input type="text" class="form-control"
+												id="issueNo" readonly value="01">
+										</div>
+									</div>
+
+					
+									
+									<div class="col-lg-4">
+									<div class="form-group">
+										<label>Issued Date</label><input type="text"
+											id="issuedDate" class="form-control" readonly value="01-07-2022">
+									</div>
+								</div>
+								
+								<div class="col-md-4">
+										<div class="form-group">
+											<label> Product Type</label> <input type="text" class="form-control"
+												id="productTypeField" readonly>
+										</div>
+									</div>
+									
+								</div>
+								<div id="main" class="mt-4">
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingOne1">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseOne1"
+												aria-expanded="false" aria-controls="collapseOne">Report:-
+											</button>
+										</h2>
+
+										<div id="collapseOne1" class="accordion-collapse collapse show"
+											aria-labelledby="headingOne1"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+
+
+
+
+												<div class="row" style="margin: 0px 15px 0px 0px;">
+													<div id="activity" style="width: 100%; height: 200px; margin: 0px 0px 15px 0px;"
+														class="ag-theme-alpine"></div>
+														
+														<div id="activity2" style="width: 100%; height: 650px;"
+														class="ag-theme-alpine"></div>
+												</div>
+												<!-- <div class="row">
+													<div id="activity2" style="width: 100%; height: 512px;"
+														class="ag-theme-alpine"></div>
+												</div> -->
+											</div>
+											
+										</div>
+									</div>
+								</div>
+								
+									<!-- <div id="main2" class="mt-4">
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingOne2">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseOne2"
+												aria-expanded="false" aria-controls="collapseTwo">
+											</button>
+										</h2>
+
+										<div id="collapseOne2" class="accordion-collapse collapse show"
+											aria-labelledby="headingOne2"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+
+
+
+
+												<div class="row">
+													<div id="activity2" style="width: 100%; height: 512px;"
+														class="ag-theme-alpine"></div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div> -->
+
+							</div>
+						</div>
+
+					</div>
+				</div>
+			</div>
+
+			
+				<div id="approveRequestModel" class="modal fade show"
+						aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column"></div>
+								<div class="modal-body">
+									<p>Do you want to Approve</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: -30px;">
+									<button type="button" class="cancel-btn" data-dismiss="modal"
+										onclick="cancelApproveRequest();">No</button>
+									<button type="button" class="approve-btn"
+										onclick="approveRequestOnclick()">Yes</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+					<div id="productTypeModal" class="modal fade show" aria-modal="true" data-bs-backdrop="static" data-bs-keyboard="false">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column"></div>
+								<div class="modal-body">
+									<p style="font-size: 16px;color:black;font-weight: 500;">Select Product Type</p>
+								</div>
+								<div class="col-md-12" style="margin-bottom: 55px;">
+									<div class="form-group">
+										<div class="select">
+											<select id="productType" onChange="productType()">
+												<option value="">Select</option>
+												<option value="finamul">Finamul</option>
+												<option value="femto">Femto</option>
+												<!-- <option th:each="c:${brandList}" th:value='${c.key}'
+													th:text="${c.name}"></option> -->
+											</select><div id="productTypeError" style="font-size: 12px; color: red;"></div><span class="focus"></span>
+										</div>
+									</div>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: 0px;">
+									<button type="button" class="cancel-btn"
+										onclick="cancelModal()">Cancel</button>
+									<button type="button" class="approve-btn" onclick="newPlan()"
+										>Select</button>
+								</div>
+							</div>
+						</div>
+					</div>
+	
+	
+		</div>
+	</div>
+</body>
+</html>

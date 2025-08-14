@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<link
+	href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote.min.css"
+	rel="stylesheet">
+<link
+	href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+	rel="stylesheet" />
+
+<script
+	src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote.min.js"></script>
+<script
+	src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script
+	src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+
+<style type="text/css">
+.ag-theme-alpine {
+	height: calc(100vh - 100px);
+}
+
+.module-container {
+	border: 1px solid #ddd;
+	border-radius: 5px;
+	margin-bottom: 15px;
+	background: #f9f9f9;
+}
+
+.module-header {
+	background: #e9ecef;
+	padding: 10px 15px;
+	cursor: pointer;
+	border-bottom: 1px solid #ddd;
+	font-weight: bold;
+}
+
+.lesson-item {
+	padding: 10px 15px;
+	border-bottom: 1px solid #eee;
+	background: white;
+}
+
+.lesson-item:hover {
+	background: #f5f5f5;
+}
+
+.quiz-container {
+	background: #f0f7ff;
+	border-left: 3px solid #0d6efd;
+}
+
+.sortable-handle {
+	cursor: move;
+	margin-right: 10px;
+}
+
+.empty-state {
+	text-align: center;
+	padding: 40px;
+	color: #6c757d;
+}
+
+.quiz-question {
+	margin-bottom: 15px;
+	padding: 10px;
+	background: white;
+	border-radius: 5px;
+}
+
+.lesson-header {
+	cursor: pointer;
+	padding: 10px 15px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background: #f8f9fa;
+	border-bottom: 1px solid #eee;
+}
+
+.lesson-content-container {
+	padding: 15px;
+	background: white;
+	border-bottom: 1px solid #eee;
+}
+
+.collapse-icon {
+	transition: transform 0.3s ease;
+	margin-right: 10px;
+}
+
+.collapsed .collapse-icon {
+	transform: rotate(-90deg);
+}
+</style>
+
+<script type="text/javascript">
+        $(document).ready(function() {
+            // Initialize rich text editor
+            $('#lessonContent').summernote({
+                height: 200,
+                toolbar: [
+                    ['style', ['bold', 'italic', 'underline', 'clear']],
+                    ['font', ['strikethrough', 'superscript', 'subscript']],
+                    ['fontsize', ['fontsize']],
+                    ['color', ['color']],
+                    ['para', ['ul', 'ol', 'paragraph']],
+                    ['height', ['height']],
+                    ['insert', ['link', 'picture', 'video', 'table', 'hr']]
+                ]
+            });
+            
+            // Initialize Select2 for external links
+            $('#externalLinks').select2({
+                tags: true,
+                placeholder: "Add external resources",
+                allowClear: true
+            });
+            
+            // Counters and state
+            let moduleCounter = 0;
+            let lessonCounter = 0;
+            let questionCounter = 0;
+            let currentModuleId = null;
+            let currentLessonId = null;
+            let selectedCourseId = null;
+            
+            // AG-Grid configuration
+            const columnDefs = [
+                {
+                    headerCheckboxSelection: true,
+                    headerCheckboxSelectionFilteredOnly: true,
+                    checkboxSelection: true,
+                    width: 50,
+                    sortable: false,
+                    filter: false,
+                    resizable: true,
+                    pinned: 'left'
+                }, 
+                { headerName: "Course Id", field: "courseId", width: 100,hide:true },
+                { headerName: "Course Name", field: "courseTittle", width: 200 },
+                { headerName: "Course Duration", field: "duration", width: 150 },
+                {
+                	headerName: "Start Date",
+                	field: "startDate",
+                }, {
+                	headerName: "End Date",
+                	field: "endDate"
+                },
+                {
+                    headerName: 'Course Image',
+                    field: "documentURL",
+                    cellStyle: {
+                        textAlign: 'center'
+                    },
+                    cellRenderer: function(params) {
+                        if (params.data.documentURL) {
+                            return '<a onclick=openImage("' + window.btoa(params.data.documentURL) +
+                                '") href="javascript:void(0)"><i class="bi bi-file-earmark-medical"> View</i></a>';
+                        } else {
+                            return "Not Available"
+                        }
+
+                    }
+                }
+            ];
+
+            const gridOptions = {
+                columnDefs: columnDefs,
+                rowSelection: 'single',
+                suppressRowClickSelection: true,
+                defaultColDef: {
+                    sortable: true,
+                    filter: true,
+                    resizable: true,
+                    flex: 1
+                },
+                pagination: true,
+                paginationPageSize: 15,
+                onGridReady: function(params) {
+                    window.gridApi = params.api;
+                    getCourses();
+                },
+                onSelectionChanged: function() {
+                    const selectedNodes = window.gridApi.getSelectedNodes();
+                    const selectedData = selectedNodes.map(node => node.data);
+                    if (selectedData.length > 0) {
+                        selectedCourseId = selectedData[0].courseId;
+                        loadCourseData(selectedCourseId);
+                    } else {
+                        selectedCourseId = null;
+                        $('#modulesContainer').html(`
+                            <div class="empty-state">
+                                <i class="fa-solid fa-book-open fa-2x mb-3"></i>
+                                <p>Select a course to build its curriculum</p>
+                            </div>
+                        `);
+                    }
+                }
+            };
+
+            new agGrid.Grid(document.querySelector('#myGrid'), gridOptions);
+
+            /* function getCourses() {
+
+            	
+                $.ajax({
+                    url: "course-view",
+                    success: function(response) {
+                        if (response.message === "Success") {
+                            const courseData = JSON.parse(response.body).courseData;
+                            window.gridApi.setRowData(courseData);
+                        } else {
+                            console.error("Failed to fetch data");
+                        }
+                    },
+                    error: function() {
+                        alert('Failed to load courses');
+                    }
+                });
+            } */
+            
+            function getCourses() {
+
+            	agGrid.simpleHttpRequest({
+            		url: "academic-course-view"
+            	}).then(function(response) {
+            		if (response.message === "Success") {
+
+            			 /* const courseData = JSON.parse(response.body).courseData;
+                         window.gridApi.setRowData(courseData); */
+
+            			const responseBody = JSON.parse(response.body);
+            			const courseData = responseBody.courseData;
+
+            			window.gridApi.setRowData(courseData);
+
+            			if (courseData && courseData.length > 0) {
+            				window.gridApi.forEachNode(function(node) {
+            					if (node.rowIndex === 0) {
+            						node.setSelected(true);
+            					}
+            				});
+            			}
+
+            		} else {
+            			console.error("Failed to fetch data");
+            		}
+            	});
+            }
+
+            function onQuickFilterChanged() {
+                window.gridApi.setQuickFilter(document.getElementById('quickFilter').value);
+            }
+
+            function reset() {
+                document.getElementById('quickFilter').value = '';
+                window.gridApi.setQuickFilter('');
+                window.gridApi.deselectAll();
+            }
+            
+            
+            
+            function loadCourseData(courseId) {
+                $.ajax({
+                    type: "GET",
+                    url: "get-course-details?courseId=" + courseId,
+                    async: true, // Use asynchronous calls for better performance
+                    success: function (response) {
+                        if (response.code === "success") {
+                            try {
+                                // Parse the body string into an array
+                                const bodyArray = JSON.parse(response.body);
+                                if (!bodyArray || !bodyArray[0] || !bodyArray[0].courseContent) {
+                                    throw new Error("Invalid course data structure");
+                                }
+
+                                // Parse the courseContent string to get the actual course data
+                                const courseDetails = JSON.parse(bodyArray[0].courseContent);
+                                console.log(courseDetails); // Log for debugging
+
+                                if (courseDetails && courseDetails.modules) {
+                                    // Set course title (using courseId from courseContent; adjust if you have a title field)
+                                    $('#courseTitle').val(courseDetails.courseId);
+                                    $('#modulesContainer').empty();
+                                    let moduleCounter = 0;
+                                    let lessonCounter = 0;
+                                    let questionCounter = 0;
+
+                                    // Load modules
+                                    courseDetails.modules.forEach(module => {
+                                        moduleCounter++;
+                                        const moduleId = 'module-' + moduleCounter;
+
+                                        const moduleHtml = `
+                                            <div class="module-container" id="${moduleId}" data-module-id="${module.id}">
+                                                <div class="module-header d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <i class="fas fa-grip-vertical sortable-handle"></i>
+                                                        <span class="module-title">${module.title}</span>
+                                                    </div>
+                                                    <div>
+                                                        <button class="btn btn-sm btn-outline-primary add-lesson-btn" data-module-id="${moduleId}">
+                                                            <i class="fa-solid fa-plus me-1"></i> Add Lesson
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-secondary edit-module-btn" data-module-id="${moduleId}">
+                                                            <i class="fa-solid fa-pencil"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger delete-module-btn" data-module-id="${moduleId}">
+                                                            <i class="fa-solid fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="module-body">
+                                                    <div class="module-description p-2 small text-muted">${module.description || 'No description'}</div>
+                                                    <div class="lessons-list">
+                                                        ${module.lessons.length === 0 ? `
+                                                            <div class="empty-state py-3">
+                                                                <i class="fa-solid fa-list-ul fa-lg mb-2"></i>
+                                                                <p>No lessons added yet</p>
+                                                            </div>
+                                                        ` : ''}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `;
+
+                                        $('#modulesContainer').append(moduleHtml);
+
+                                        // Load lessons
+                                        const $lessonsList = $(`#${moduleId} .lessons-list`);
+                                        module.lessons.forEach(lesson => {
+                                            lessonCounter++;
+                                            const lessonId = 'lesson-' + lessonCounter;
+                                            const lessonHtml = `
+                                                <div class="lesson-item" id="${lessonId}" data-lesson-id="${lesson.id}">
+                                                    <div class="lesson-header collapsed" data-bs-toggle="collapse" data-bs-target="#${lessonId}-content">
+                                                        <div>
+                                                            <i class="fas fa-grip-vertical sortable-handle"></i>
+                                                            <span class="lesson-title">${lesson.title}</span>
+                                                            <span class="badge bg-secondary ms-2">${lesson.type}</span>
+                                                        </div>
+                                                        <div>
+                                                            <i class="fas fa-chevron-down collapse-icon"></i>
+                                                            <button class="btn btn-sm btn-outline-secondary edit-lesson-btn" data-lesson-id="${lessonId}">
+                                                                <i class="fa-solid fa-pencil"></i>
+                                                            </button>
+                                                            <button class="btn btn-sm btn-outline-danger delete-lesson-btn" data-lesson-id="${lessonId}">
+                                                                <i class="fa-solid fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div class="collapse" id="${lessonId}-content">
+                                                        <div class="lesson-content-container">
+                                                            <div class="lesson-content">
+                                                                ${lesson.content}
+                                                            </div>
+                                                            ${lesson.quiz && lesson.quiz.questions.length > 0 ? `
+                                                            <div class="quiz-container mt-2 p-2">
+                                                                <h6>Quiz: ${lesson.quiz.title || 'Untitled Quiz'}</h6>
+                                                                <p class="small">${lesson.quiz.description || 'No description'}</p>
+                                                                <p class="small">Passing score: ${lesson.quiz.passingScore}%</p>
+                                                                ${lesson.quiz.questions.map((q, i) => `
+                                                                    <div class="quiz-question">
+                                                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                            <h6 class="mb-0">Question ${i+1}</h6>
+                                                                        </div>
+                                                                        <div class="mb-2">${q.text.trim()}</div>
+                                                                        ${q.type === 'multiple' ? `
+                                                                            <div class="mb-2">
+                                                                                ${q.options.map(opt => `
+                                                                                    <div class="form-check">
+                                                                                        <input class="form-check-input" type="radio" disabled ${opt.isCorrect ? 'checked' : ''}>
+                                                                                        <label class="form-check-label">${opt.text}</label>
+                                                                                    </div>
+                                                                                `).join('')}
+                                                                            </div>
+                                                                        ` : q.type === 'truefalse' ? `
+                                                                            <div class="mb-2">
+                                                                                <div class="form-check">
+                                                                                    <input class="form-check-input" type="radio" disabled ${q.correctAnswer === 'True' ? 'checked' : ''}>
+                                                                                    <label class="form-check-label">True</label>
+                                                                                </div>
+                                                                                <div class="form-check">
+                                                                                    <input class="form-check-input" type="radio" disabled ${q.correctAnswer === 'False' ? 'checked' : ''}>
+                                                                                    <label class="form-check-label">False</label>
+                                                                                </div>
+                                                                            </div>
+                                                                        ` : `
+                                                                            <div class="text-muted">Short answer question</div>
+                                                                        `}
+                                                                        <div class="small text-muted">Points: ${q.points}</div>
+                                                                    </div>
+                                                                `).join('')}
+                                                            </div>
+                                                            ` : ''}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            `;
+                                            $lessonsList.append(lessonHtml);
+
+                                            // Initialize Bootstrap collapse
+                                            const collapseElement = document.getElementById(`${lessonId}-content`);
+                                            new bootstrap.Collapse(collapseElement, {
+                                                toggle: false
+                                            });
+
+                                            // Handle collapse events
+                                            collapseElement.addEventListener('show.bs.collapse', function() {
+                                                $(this).closest('.lesson-item').find('.lesson-header').removeClass('collapsed');
+                                            });
+                                            collapseElement.addEventListener('hide.bs.collapse', function() {
+                                                $(this).closest('.lesson-item').find('.lesson-header').addClass('collapsed');
+                                            });
+
+                                            new Sortable($lessonsList[0], {
+                                                handle: '.sortable-handle',
+                                                animation: 150,
+                                                ghostClass: 'sortable-ghost'
+                                            });
+                                        });
+
+                                        new Sortable(document.getElementById('modulesContainer'), {
+                                            handle: '.sortable-handle',
+                                            animation: 150,
+                                            ghostClass: 'sortable-ghost'
+                                        });
+                                    });
+                                } else {
+                                    toastr.error('Course data not found');
+                                }
+                            } catch (e) {
+                            	 $('#modulesContainer').empty(); 
+                            	 $('#modulesContainer').html(`<div class="empty-state">
+ 										<i class="fa-solid fa-book-open fa-2x mb-3"></i>
+ 										<p>Select a course from the grid to build its curriculum</p>
+ 									</div>`); 
+                            }
+                        } else {
+                            toastr.error('Failed to fetch course data: ' + response.message);
+                        }
+                    },
+                    error: function (error) {
+                        console.error("Error fetching course details:", error);
+                        toastr.error('Failed to load course data');
+                    }
+                });
+            }
+
+          
+            
+            // Show module modal
+            $('#addModuleBtn').click(function() {
+                if (!selectedCourseId) {
+                    alert('Please select a course first');
+                    return;
+                }
+                $('#moduleModal').modal('show');
+            });
+            
+            // Save module
+            $('#saveModuleBtn').click(function() {
+    const title = $('#moduleTitle').val();
+    const description = $('#moduleDescription').val();
+    
+    if (!title) {
+        alert('Module title is required');
+        return;
+    }
+    
+    moduleCounter++;
+    const moduleId = 'module-' + moduleCounter;
+    
+    const moduleHtml = `
+        <div class="module-container" id="${moduleId}" data-module-id="${moduleId}">
+            <div class="module-header d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-grip-vertical sortable-handle"></i>
+                    <span class="module-title">${title}</span>
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-outline-primary add-lesson-btn" data-module-id="${moduleId}">
+                        <i class="fa-solid fa-plus me-1"></i> Add Lesson
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary edit-module-btn" data-module-id="${moduleId}">
+                        <i class="fa-solid fa-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger delete-module-btn" data-module-id="${moduleId}">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="module-body">
+                <div class="module-description p-2 small text-muted">${description || 'No description'}</div>
+                <div class="lessons-list">
+                    <div class="empty-state py-3">
+                        <i class="fa-solid fa-list-ul fa-lg mb-2"></i>
+                        <p>No lessons added yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Only clear the container if it contains the empty state directly (no modules yet)
+    if ($('#modulesContainer > .empty-state').length) {
+        $('#modulesContainer').empty();
+    }
+    
+    $('#modulesContainer').append(moduleHtml);
+    
+    // Initialize Sortable for the new module's lessons list
+    new Sortable($(`#${moduleId} .lessons-list`)[0], {
+        handle: '.sortable-handle',
+        animation: 150,
+        ghostClass: 'sortable-ghost'
+    });
+    
+    // Reinitialize Sortable for the modules container
+    new Sortable(document.getElementById('modulesContainer'), {
+        handle: '.sortable-handle',
+        animation: 150,
+        ghostClass: 'sortable-ghost'
+    });
+    
+    $('#moduleTitle').val('');
+    $('#moduleDescription').val('');
+    $('#moduleModal').modal('hide');
+});
+            
+            // Add lesson button click
+            $(document).on('click', '.add-lesson-btn', function() {
+                currentModuleId = $(this).data('module-id');
+                $('#lessonModal').modal('show');
+            });
+            
+            // Handle lesson type change
+            $('#lessonType').change(function() {
+                $('.lesson-content-type').addClass('d-none');
+                $(`#${$(this).val()}Content`).removeClass('d-none');
+            });
+            
+            // Save lesson
+            $('#saveLessonBtn').click(function() {
+    const title = $('#lessonTitle').val();
+    const type = $('#lessonType').val();
+    
+    if (!title) {
+        alert('Lesson title is required');
+        return;
+    }
+    
+    lessonCounter++;
+    const lessonId = 'lesson-' + lessonCounter;
+    
+    let content = '';
+    if (type === 'text') {
+        content = $('#lessonContent').summernote('code');
+    } else if (type === 'video') {
+        content = $('#videoUrl').val() || 'Uploaded video file';
+    } else if (type === 'pdf') {
+        content = 'PDF document';
+    } else if (type === 'presentation') {
+        content = 'Presentation file';
+    }
+    
+    const lessonHtml = `
+        <div class="lesson-item" id="${lessonId}">
+            <div class="lesson-header collapsed" data-bs-toggle="collapse" data-bs-target="#${lessonId}-content">
+                <div>
+                    <i class="fas fa-grip-vertical sortable-handle"></i>
+                    <span class="lesson-title">${title}</span>
+                    <span class="badge bg-secondary ms-2">${type}</span>
+                </div>
+                <div>
+                    <i class="fas fa-chevron-down collapse-icon"></i>
+                    <button class="btn btn-sm btn-outline-secondary edit-lesson-btn" data-lesson-id="${lessonId}">
+                        <i class="fa-solid fa-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger delete-lesson-btn" data-lesson-id="${lessonId}">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="collapse" id="${lessonId}-content">
+                <div class="lesson-content-container">
+                    <div class="lesson-content">
+                        ${content}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const $lessonsList = $(`#${currentModuleId} .lessons-list`);
+    if ($lessonsList.find('.empty-state').length) {
+        $lessonsList.empty();
+    }
+    
+    $lessonsList.append(lessonHtml);
+    
+    // Initialize Bootstrap collapse for the new lesson
+    const collapseElement = document.getElementById(`${lessonId}-content`);
+    new bootstrap.Collapse(collapseElement, {
+        toggle: false
+    });
+    
+    // Handle collapse events
+    collapseElement.addEventListener('show.bs.collapse', function() {
+        $(this).closest('.lesson-item').find('.lesson-header').removeClass('collapsed');
+    });
+    collapseElement.addEventListener('hide.bs.collapse', function() {
+        $(this).closest('.lesson-item').find('.lesson-header').addClass('collapsed');
+    });
+    
+    new Sortable($lessonsList[0], {
+        handle: '.sortable-handle',
+        animation: 150,
+        ghostClass: 'sortable-ghost'
+    });
+    
+    $('#lessonTitle').val('');
+    $('#videoUrl').val('');
+    $('#lessonContent').summernote('reset');
+    $('#lessonModal').modal('hide');
+});
+           /*  $('#saveLessonBtn').click(function() {
+                const title = $('#lessonTitle').val();
+                const type = $('#lessonType').val();
+                
+                if (!title) {
+                    alert('Lesson title is required');
+                    return;
+                }
+                
+                lessonCounter++;
+                const lessonId = 'lesson-' + lessonCounter;
+                
+                let content = '';
+                if (type === 'text') {
+                    content = $('#lessonContent').summernote('code');
+                } else if (type === 'video') {
+                    content = $('#videoUrl').val() || 'Uploaded video file';
+                } else if (type === 'pdf') {
+                    content = 'PDF document';
+                } else if (type === 'presentation') {
+                    content = 'Presentation file';
+                }
+                
+                const lessonHtml = `
+                    <div class="lesson-item" id="${lessonId}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-grip-vertical sortable-handle"></i>
+                                <span class="lesson-title">${title}</span>
+                                <span class="badge bg-secondary ms-2">${type}</span>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-outline-secondary edit-lesson-btn" data-lesson-id="${lessonId}">
+                                    <i class="fa-solid fa-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger delete-lesson-btn" data-lesson-id="${lessonId}">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="lesson-content d-none">
+                            ${content}
+                        </div>
+                    </div>
+                `;
+                
+                const $lessonsList = $(`#${currentModuleId} .lessons-list`);
+                if ($lessonsList.find('.empty-state').length) {
+                    $lessonsList.empty();
+                }
+                
+                $lessonsList.append(lessonHtml);
+                
+                new Sortable($lessonsList[0], {
+                    handle: '.sortable-handle',
+                    animation: 150,
+                    ghostClass: 'sortable-ghost'
+                });
+                
+                $('#lessonTitle').val('');
+                $('#videoUrl').val('');
+                $('#lessonContent').summernote('reset');
+                $('#lessonModal').modal('hide');
+            }); */
+            
+            // Add question button click
+            $('#addQuestionBtn').click(function() {
+                $('#questionModal').modal('show');
+            });
+            
+            // Handle question type change
+            $('#questionType').change(function() {
+                $('#multipleChoiceOptions, #trueFalseOptions, #shortAnswerOptions').addClass('d-none');
+                const selectedType = $(this).val();
+                $(`#${selectedType}Options`).removeClass('d-none');
+            });
+            
+            // Add option button click
+            $('#addOptionBtn').click(function() {
+                const optionCount = $('.option-item').length;
+                const newOptionHtml = `
+                    <div class="mb-2 option-item">
+                        <div class="input-group">
+                            <div class="input-group-text">
+                                <input class="form-check-input mt-0" type="radio" name="correctOption" value="${optionCount}">
+                            </div>
+                            <input type="text" class="form-control" placeholder="Option ${optionCount + 1}">
+                            <button class="btn btn-outline-danger remove-option" type="button">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                $(this).before(newOptionHtml);
+            });
+            
+            // Remove option button click
+            $(document).on('click', '.remove-option', function() {
+                $(this).closest('.option-item').remove();
+                $('.option-item').each(function(index) {
+                    $(this).find('input[type="radio"]').val(index);
+                    $(this).find('input[type="text"]').attr('placeholder', `Option ${index + 1}`);
+                });
+            });
+            
+            // Save question
+            $('#saveQuestionBtn').click(function() {
+                const questionText = $('#questionText').val();
+                const questionType = $('#questionType').val();
+                const points = $('#questionPoints').val();
+                
+                if (!questionText) {
+                    alert('Question text is required');
+                    return;
+                }
+                
+                questionCounter++;
+                const questionId = 'question-' + questionCounter;
+                
+                let answer = '';
+                let optionsHtml = '';
+                
+                if (questionType === 'multiple') {
+                    const options = [];
+                    $('.option-item').each(function() {
+                        const optionText = $(this).find('input[type="text"]').val();
+                        if (optionText) {
+                            options.push(optionText);
+                        }
+                    });
+                    
+                    if (options.length < 2) {
+                        alert('Multiple choice questions require at least 2 options');
+                        return;
+                    }
+                    
+                    const correctIndex = $('input[name="correctOption"]:checked').val();
+                    if (typeof correctIndex === 'undefined') {
+                        alert('Please select the correct answer');
+                        return;
+                    }
+                    
+                    answer = options[correctIndex];
+                    optionsHtml = options.map((opt, idx) => 
+                        `<div class="form-check">
+                            <input class="form-check-input" type="radio" disabled ${idx == correctIndex ? 'checked' : ''}>
+                            <label class="form-check-label">${opt}</label>
+                        </div>`
+                    ).join('');
+                } else if (questionType === 'truefalse') {
+                    answer = $('input[name="trueFalseAnswer"]:checked').val();
+                    if (!answer) {
+                        alert('Please select the correct answer');
+                        return;
+                    }
+                    optionsHtml = `
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" disabled ${answer === 'true' ? 'checked' : ''}>
+                            <label class="form-check-label">True</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" disabled ${answer === 'false' ? 'checked' : ''}>
+                            <label class="form-check-label">False</label>
+                        </div>
+                    `;
+                } else if (questionType === 'shortanswer') {
+                    answer = $('#expectedAnswer').val();
+                    optionsHtml = '<div class="text-muted">Short answer question</div>';
+                }
+                
+                const questionHtml = `
+                    <div class="quiz-question" id="${questionId}">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">Question ${questionCounter}</h6>
+                            <div>
+                                <button class="btn btn-sm btn-outline-secondary edit-question-btn" data-question-id="${questionId}">
+                                    <i class="fa-solid fa-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger delete-question-btn" data-question-id="${questionId}">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-2">${questionText}</div>
+                        <div class="mb-2">${optionsHtml}</div>
+                        <div class="small text-muted">Points: ${points}</div>
+                    </div>
+                `;
+                
+                const $quizContainer = $('#quizQuestionsContainer');
+                if ($quizContainer.find('.empty-state').length) {
+                    $quizContainer.empty();
+                }
+                
+                $quizContainer.append(questionHtml);
+                
+                $('#questionText').val('');
+                $('#questionPoints').val(1);
+                $('.option-item').remove();
+                $('#addOptionBtn').before(`
+                    <div class="mb-2 option-item">
+                        <div class="input-group">
+                            <div class="input-group-text">
+                                <input class="form-check-input mt-0" type="radio" name="correctOption" value="0">
+                            </div>
+                            <input type="text" class="form-control" placeholder="Option 1">
+                            <button class="btn btn-outline-danger remove-option" type="button">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-2 option-item">
+                        <div class="input-group">
+                            <div class="input-group-text">
+                                <input class="form-check-input mt-0" type="radio" name="correctOption" value="1">
+                            </div>
+                            <input type="text" class="form-control" placeholder="Option 2">
+                            <button class="btn btn-outline-danger remove-option" type="button">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                `);
+                $('#questionModal').modal('hide');
+            });
+            
+            // Add link button click
+            $('#addLinkBtn').click(function() {
+                $('#linkModal').modal('show');
+            });
+            
+            // Save link
+            $('#saveLinkBtn').click(function() {
+                const title = $('#linkTitle').val();
+                const url = $('#linkUrl').val();
+                
+                if (!title || !url) {
+                    alert('Both title and URL are required');
+                    return;
+                }
+                
+                const newOption = new Option(title, url, false, false);
+                $('#externalLinks').append(newOption).trigger('change');
+                
+                $('#linkTitle').val('');
+                $('#linkUrl').val('');
+                $('#linkModal').modal('hide');
+            });
+            
+         // Improved function to escape special characters for JSON and SQL
+            function escapeHtml(text) {
+			    if (!text || typeof text !== 'string') return text;
+			    return text
+			        .replace(/\\/g, '\\\\') // Escape backslashes first
+			        .replace(/'/g, '')      // Remove single quotes
+			        .replace(/"/g, '\\"')   // Escape double quotes
+			        .replace(/\n/g, '\\n')  // Escape newlines
+			        .replace(/\r/g, '\\r')  // Escape carriage returns
+			        .replace(/\t/g, '\\t')  // Escape tabs
+			        .trim();                // Remove leading/trailing whitespace
+			}
+            // Save course
+            $('#saveCourseBtn').click(function() {
+                if (!selectedCourseId) {
+                    alert('Please select a course first');
+                    return;
+                }
+                
+                const courseData = {
+                    courseId: selectedCourseId,
+                    modules: []
+                };
+                
+                $('.module-container').each(function() {
+                    const moduleId = $(this).attr('id');
+                    const moduleData = {
+                        id: $(this).data('module-id') || null,
+                        title: escapeHtml($(this).find('.module-title').text()),
+                        description: escapeHtml($(this).find('.module-description').text()),
+                        lessons: []
+                    };
+                    
+                    $(this).find('.lesson-item').each(function() {
+                        const lessonId = $(this).attr('id');
+                        const lessonData = {
+                            id: $(this).data('lesson-id') || null,
+                            title: escapeHtml($(this).find('.lesson-title').text()),
+                            type: $(this).find('.badge').text().trim(),
+                            content: escapeHtml($(this).find('.lesson-content').html()),
+                            quiz: {
+                                title: escapeHtml($('#quizTitle').val()),
+                                description: escapeHtml($('#quizDescription').val()),
+                                passingScore: escapeHtml($('#passingScore').val()),
+                                questions: []
+                            }
+                        };
+                        
+                        $(this).find('.quiz-question').each(function() {
+                            const questionData = {
+                                id: $(this).attr('id'),
+                                text: escapeHtml($(this).find('.mb-2').first().text()),
+                                type: $(this).find('.form-check').length > 0 ? 'multiple' : 
+                                      $(this).find('.text-muted').text().trim() === 'Short answer question' ? 'shortanswer' : 'truefalse',
+                                points: parseInt($(this).find('.small.text-muted').text().replace('Points: ', '')) || 0,
+                                options: [],
+                                correctAnswer: ''
+                            };
+                            
+                            $(this).find('.form-check').each(function() {
+                                const option = {
+                                    text: escapeHtml($(this).find('.form-check-label').text()),
+                                    isCorrect: $(this).find('.form-check-input').is(':checked')
+                                };
+                                questionData.options.push(option);
+                                if (option.isCorrect) {
+                                    questionData.correctAnswer = escapeHtml(option.text);
+                                }
+                            });
+                            
+                            if (questionData.type === 'shortanswer') {
+                                questionData.correctAnswer = escapeHtml($(this).find('.text-muted').text());
+                            }
+                            
+                            lessonData.quiz.questions.push(questionData);
+                        });
+                        
+                        moduleData.lessons.push(lessonData);
+                    });
+                    
+                    courseData.modules.push(moduleData);
+                });
+                
+                // Log the JSON to verify escaping
+                console.log('Course data to save:', JSON.stringify(courseData, null, 2));
+                
+                $.ajax({
+                    url: `save-course-content?courseId=${selectedCourseId}`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(courseData),
+                    success: function(response) {
+                        toastr.success('Course curriculum saved successfully!');
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error saving course:', error);
+                        toastr.error('Failed to save course curriculum: ' + error);
+                    }
+                });
+            });
+        });
+        
+        function openImage(id) {
+            window.open(window.atob(id), '_blank');
+        }
+        
+        
+        
+    </script>
+</head>
+
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex flex-column flex-lg-row">
+				<!-- Left Side - Course Grid -->
+				<div class="box-sec w-50" id="collapseWidthR1">
+					<div class="out-box">
+						<div class="d-flex justify-content-between bdr-line p-2">
+							<div class="col-md-8 col-12">
+								<div class="d-flex gap-2 search-sec position-relative">
+									<input class="form-control" type="text"
+										onkeydown="if(event.key === 'Enter') onQuickFilterChanged()"
+										placeholder="Search" id="quickFilter" autocomplete="off">
+									<button class="btn go-btn" type="button"
+										onclick="onQuickFilterChanged()">Go</button>
+									<button class="btn go-btn" type="button" onclick="reset()">Reset</button>
+								</div>
+							</div>
+							<button class="btn btn-primary max-btn" id="collapseButtonR1"
+								onclick="triggerExpansionR(1)" data-bs-toggle="tooltip"
+								data-bs-placement="top" title="Expand">
+								<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+									class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+							</button>
+						</div>
+						<div class="card m-2 p-2">
+							<div id="myGrid" class="ag-theme-alpine"></div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Right Side - Course Builder -->
+				<div class="box-sec w-50" id="collapseWidthL1">
+					<div class="out-box">
+						<div
+							class="d-flex justify-content-between align-items-center p-2 bdr-line">
+							<h5 class="mb-0">Create Course Curriculum</h5>
+							<div>
+								<button class="btn btn-primary me-2" id="saveCourseBtn">
+									<i class="fa-solid fa-save me-1"></i> Save Course
+								</button>
+								<button class="btn btn-primary max-btn" id="collapseButtonL1"
+									type="button" onclick="triggerExpansionL(1)"
+									data-bs-toggle="tooltip" data-bs-placement="top" title="Expand">
+									<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+										class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+								</button>
+							</div>
+						</div>
+						<div class="card p-2 m-2">
+							<div class="mb-4">
+								<div
+									class="d-flex justify-content-between align-items-center mb-3">
+									<h4 class="mb-0"></h4>
+									<button class="btn btn-sm btn-primary" id="addModuleBtn">
+										<i class="fa-solid fa-plus me-1"></i> Add Module
+									</button>
+								</div>
+								<div id="modulesContainer">
+									<div class="empty-state">
+										<i class="fa-solid fa-book-open fa-2x mb-3"></i>
+										<p>Select a course from the grid to build its curriculum</p>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Module Modal -->
+		<div class="modal fade" id="moduleModal" tabindex="-1"
+			aria-hidden="true">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Add New Module</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal"
+							aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<div class="mb-3">
+							<label for="moduleTitle" class="form-label">Module Title</label>
+							<input type="text" class="form-control" id="moduleTitle"
+								placeholder="Enter module title">
+						</div>
+						<div class="mb-3">
+							<label for="moduleDescription" class="form-label">Description</label>
+							<textarea class="form-control" id="moduleDescription" rows="3"
+								placeholder="Brief description of the module"></textarea>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary"
+							data-bs-dismiss="modal">Cancel</button>
+						<button type="button" class="btn btn-primary" id="saveModuleBtn">Save
+							Module</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Lesson Modal -->
+		<div class="modal fade" id="lessonModal" tabindex="-1"
+			aria-hidden="true">
+			<div class="modal-dialog modal-lg">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Add New Lesson</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal"
+							aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<ul class="nav nav-tabs" id="lessonTab" role="tablist">
+							<li class="nav-item" role="presentation">
+								<button class="nav-link active" id="content-tab"
+									data-bs-toggle="tab" data-bs-target="#content" type="button"
+									role="tab">Content</button>
+							</li>
+							<li class="nav-item" role="presentation">
+								<button class="nav-link" id="quiz-tab" data-bs-toggle="tab"
+									data-bs-target="#quiz" type="button" role="tab">Quiz</button>
+							</li>
+							<li class="nav-item" role="presentation">
+								<button class="nav-link" id="resources-tab" data-bs-toggle="tab"
+									data-bs-target="#resources" type="button" role="tab">Resources</button>
+							</li>
+						</ul>
+
+						<div class="tab-content p-3 border border-top-0 rounded-bottom"
+							id="lessonTabContent">
+							<div class="tab-pane fade show active" id="content"
+								role="tabpanel">
+								<div class="mb-3">
+									<label for="lessonTitle" class="form-label">Lesson
+										Title</label> <input type="text" class="form-control" id="lessonTitle"
+										placeholder="Enter lesson title">
+								</div>
+								<div class="mb-3">
+									<label for="lessonType" class="form-label">Lesson Type</label>
+									<select class="form-select" id="lessonType">
+										<option value="video">Video</option>
+										<option value="text">Text</option>
+										<option value="pdf">PDF Document</option>
+										<option value="presentation">Presentation</option>
+									</select>
+								</div>
+
+								<div id="videoContent" class="lesson-content-type">
+									<div class="mb-3">
+										<label for="videoUrl" class="form-label">Video URL</label> <input
+											type="text" class="form-control" id="videoUrl"
+											placeholder="Enter video URL or embed code">
+									</div>
+									<div class="mb-3">
+										<label for="videoDuration" class="form-label">Duration
+											(minutes)</label> <input type="number" class="form-control"
+											id="videoDuration" placeholder="Estimated duration">
+									</div>
+								</div>
+
+								<div id="textContent" class="lesson-content-type d-none">
+									<div class="mb-3">
+										<label for="lessonContent" class="form-label">Content</label>
+										<div id="lessonContent"></div>
+									</div>
+								</div>
+
+								<div id="pdfContent" class="lesson-content-type d-none">
+									<div class="mb-3">
+										<label for="pdfFile" class="form-label">PDF File</label> <input
+											type="file" class="form-control" id="pdfFile" accept=".pdf">
+									</div>
+								</div>
+
+								<div id="presentationContent" class="lesson-content-type d-none">
+									<div class="mb-3">
+										<label for="presentationFile" class="form-label">Presentation
+											File</label> <input type="file" class="form-control"
+											id="presentationFile" accept=".ppt,.pptx,.pdf">
+									</div>
+								</div>
+							</div>
+
+							<div class="tab-pane fade" id="quiz" role="tabpanel">
+								<div class="mb-3">
+									<label for="quizTitle" class="form-label">Quiz Title</label> <input
+										type="text" class="form-control" id="quizTitle"
+										placeholder="Enter quiz title">
+								</div>
+								<div class="mb-3">
+									<label for="quizDescription" class="form-label">Description</label>
+									<textarea class="form-control" id="quizDescription" rows="2"
+										placeholder="Brief description of the quiz"></textarea>
+								</div>
+								<div class="mb-3">
+									<label for="passingScore" class="form-label">Passing
+										Score (%)</label> <input type="number" class="form-control"
+										id="passingScore" value="70" min="0" max="100">
+								</div>
+
+								<div
+									class="d-flex justify-content-between align-items-center mb-3">
+									<h6 class="mb-0">Quiz Questions</h6>
+									<button class="btn btn-sm btn-primary" id="addQuestionBtn">
+										<i class="fa-solid fa-plus me-1"></i> Add Question
+									</button>
+								</div>
+
+								<div id="quizQuestionsContainer">
+									<div class="empty-state py-3">
+										<i class="fa-solid fa-question-circle fa-lg mb-2"></i>
+										<p>No questions added yet</p>
+									</div>
+								</div>
+							</div>
+
+							<div class="tab-pane fade" id="resources" role="tabpanel">
+								<div class="mb-3">
+									<label class="form-label">Attachments</label> <input
+										type="file" class="form-control" multiple id="resourceFiles">
+								</div>
+								<div class="mb-3">
+									<label for="externalLinks" class="form-label">External
+										Links</label> <select class="form-select" id="externalLinks" multiple>
+									</select>
+									<div class="mt-2">
+										<button class="btn btn-sm btn-outline-primary" id="addLinkBtn">
+											<i class="fa-solid fa-plus me-1"></i> Add New Link
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary"
+							data-bs-dismiss="modal">Cancel</button>
+						<button type="button" class="btn btn-primary" id="saveLessonBtn">Save
+							Lesson</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Question Modal -->
+		<div class="modal fade" id="questionModal" tabindex="-1"
+			aria-hidden="true">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Add Question</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal"
+							aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<div class="mb-3">
+							<label for="questionText" class="form-label">Question</label>
+							<textarea class="form-control" id="questionText" rows="2"
+								placeholder="Enter the question"></textarea>
+						</div>
+						<div class="mb-3">
+							<label for="questionType" class="form-label">Question
+								Type</label> <select class="form-select" id="questionType">
+								<option value="multiple">Multiple Choice</option>
+								<option value="truefalse">True/False</option>
+								<option value="shortanswer">Short Answer</option>
+							</select>
+						</div>
+
+						<div id="multipleChoiceOptions">
+							<label class="form-label">Options</label>
+							<div class="mb-2 option-item">
+								<div class="input-group">
+									<div class="input-group-text">
+										<input class="form-check-input mt-0" type="radio"
+											name="correctOption" value="0">
+									</div>
+									<input type="text" class="form-control" placeholder="Option 1">
+									<button class="btn btn-outline-danger remove-option"
+										type="button">
+										<i class="fa-solid fa-times"></i>
+									</button>
+								</div>
+							</div>
+							<div class="mb-2 option-item">
+								<div class="input-group">
+									<div class="input-group-text">
+										<input class="form-check-input mt-0" type="radio"
+											name="correctOption" value="1">
+									</div>
+									<input type="text" class="form-control" placeholder="Option 2">
+									<button class="btn btn-outline-danger remove-option"
+										type="button">
+										<i class="fa-solid fa-times"></i>
+									</button>
+								</div>
+							</div>
+							<button type="button" class="btn btn-sm btn-outline-primary"
+								id="addOptionBtn">
+								<i class="fa-solid fa-plus me-1"></i> Add Option
+							</button>
+						</div>
+
+						<div id="trueFalseOptions" class="d-none">
+							<div class="form-check">
+								<input class="form-check-input" type="radio"
+									name="trueFalseAnswer" id="trueOption" value="true"> <label
+									class="form-check-label" for="trueOption">True</label>
+							</div>
+							<div class="form-check">
+								<input class="form-check-input" type="radio"
+									name="trueFalseAnswer" id="falseOption" value="false">
+								<label class="form-check-label" for="falseOption">False</label>
+							</div>
+						</div>
+
+						<div id="shortAnswerOptions" class="d-none">
+							<div class="mb-3">
+								<label for="expectedAnswer" class="form-label">Expected
+									Answer</label> <input type="text" class="form-control"
+									id="expectedAnswer" placeholder="Expected answer (optional)">
+							</div>
+						</div>
+
+						<div class="mb-3">
+							<label for="questionPoints" class="form-label">Points</label> <input
+								type="number" class="form-control" id="questionPoints" value="1"
+								min="1">
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary"
+							data-bs-dismiss="modal">Cancel</button>
+						<button type="button" class="btn btn-primary" id="saveQuestionBtn">Save
+							Question</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Link Modal -->
+		<div class="modal fade" id="linkModal" tabindex="-1"
+			aria-hidden="true">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Add External Link</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal"
+							aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<div class="mb-3">
+							<label for="linkTitle" class="form-label">Title</label> <input
+								type="text" class="form-control" id="linkTitle"
+								placeholder="Link title">
+						</div>
+						<div class="mb-3">
+							<label for="linkUrl" class="form-label">URL</label> <input
+								type="url" class="form-control" id="linkUrl"
+								placeholder="https://example.com">
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary"
+							data-bs-dismiss="modal">Cancel</button>
+						<button type="button" class="btn btn-primary" id="saveLinkBtn">Add
+							Link</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

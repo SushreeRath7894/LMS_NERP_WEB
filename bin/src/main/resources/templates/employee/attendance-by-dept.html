@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+#myReq .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff;
+	text-indent: 10px !important;
+}
+
+#myReq .ag-row-selected::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 3px;
+	right: 4px;
+}
+
+.formValidation1 {
+	font-size: 10px;
+	font-weight: 100;
+	color: #f60909f7;
+	background-color: transparent;
+	position: relative;
+	top: -1px;
+	padding: 3px 0px;
+}
+ .previewTab { 
+ 	margin-top: 5px; 
+}
+  .previewTab table td { 
+  	border: 1px solid #000000 !important; 
+  	padding-left: 5px; 
+  	text-align: center; 
+  	font-weight: 700; 
+}
+   
+</style>
+<script>
+
+function viewAttandance(){
+	agGrid.simpleHttpRequest({
+		url : 'attendance-by-dept-view'
+	}).then(function(data) {
+
+		$('#inList').attr("disabled", true);
+		$('#outList').attr("disabled", true);
+		var jsonData = JSON.parse(data.body);
+		console.log("lllllllll",jsonData);
+		var allData=jsonData.editData;
+		if(allData!=null){
+			var len = allData.length;
+			$('#totalCandidate').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+		}else{
+			$('#totalCandidate').find('span').html('0');
+			gridOptions.api.setRowData('');
+		}
+		/* var len = data.length;
+		$('#totalCandidate').find('span').html(len);
+		gridOptions.api.setRowData(data); */
+	});
+}
+
+function agGridOnLoad(){
+	viewAttandance();
+}
+	$(function() {
+		$("#previewPage").hide();
+		viewAttandance();
+		$('#applyId').attr("disabled", true);
+	});
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	var columnDefs = [
+		 {
+			headerCheckboxSelection : true,
+			headerCheckboxSelectionFilteredOnly : true,
+			checkboxSelection : true,
+			rowSelection: 'single',
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			pinned : 'left',
+		},{
+				headerName : "Employee Id",
+				field : "employeeId",
+				width : 180,
+				pinned: 'left',
+				/* cellRenderer : function(params) {
+					return '<a onclick=editPage("'
+							+ params.data.employeeId
+							+ '") href="javascript:void(0)">'
+							+ params.data.employeeId + '</a>';
+				} */
+			}, {
+				headerName : "Employee Name",
+				field : "name" ,
+				width : 180,
+				pinned: 'left',
+			},{
+				headerName : "Date",
+				field : "date",
+				width : 180,
+				type:"rightAligned",
+			}, {
+				headerName : "Shift",
+				field : "shift",
+				width : 180,
+			},{
+				headerName : "Punch-In Time",
+				field : "punchIn",
+				width : 180,
+			},{
+				headerName : "Punch-In Status",
+				field : "punchInStatus",
+				width : 180,
+			},{
+				headerName : "Punch-Out Time",
+				field : "punchOut",
+				width : 180,
+			},{
+				headerName : "Punch-Out Status",
+				field : "punchOutStatus",
+				width : 180,
+			}/* ,{
+				headerName : "Father Name",
+				field : "fatherName",
+				width : 180,
+			},{
+				headerName : "Preview",
+				field : "preview",
+				width : 180,
+				cellStyle : {
+					textAlign : 'center'
+				},
+				cellRenderer : function(params) {
+					return '<a onclick=viewPreview("'
+							+ params.data.employeeId
+							+ '") href="javascript:void(0)"><i class="fa fa-external-link"></i></a>';
+				}
+			} */
+			];
+	var gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 149,
+			height : 10
+		},
+		rowSelection : 'multiple',
+		suppressRowClickSelection : true,
+		onSelectionChanged : onSelectionChangedState
+	};
+	var date = '';
+	var id = '';
+	function onSelectionChangedState() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		date = '';
+		id='';
+		var punchInStatus = 0;
+		var punchOutStatus = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+			id = id + selectedRow.employeeId+',';
+			date = date + selectedRow.date+',';
+			if(selectedRow.punchInStatus == '1'){
+				punchInStatus = punchInStatus + 1;
+			}
+			if(selectedRow.punchOutStatus == '1'){
+				punchOutStatus = punchOutStatus + 1;
+			};
+			
+		});
+		id = id.slice(0, -1);
+		date = date.slice(0, -1);
+		console.log("id",id);
+		if (rowCount > 0) {
+			
+			if(punchInStatus > 0 && punchOutStatus > 0){
+				$('#inList').attr("disabled", true);
+				$('#outList').attr("disabled", true);
+			}else if(punchOutStatus > 0){
+				$('#inList').attr("disabled", false);
+				$('#outList').attr("disabled", true);
+			} else if(punchInStatus > 0){
+				$('#inList').attr("disabled", true);
+				$('#outList').attr("disabled", false);
+			} else{
+				$('#inList').attr("disabled", false);
+				$('#outList').attr("disabled", false);
+			}
+		} else {
+			$('#inList').attr("disabled", true);
+			$('#outList').attr("disabled", true);
+		}
+	}
+	var activityDefs = [{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			pinned: 'left',
+	
+		}, {
+			headerName : 'Sl No.',
+			width : 100,
+			pinned: 'left',
+			 editable: false,
+			 hide: true,
+			field : "reviewId",
+			cellClass: 'custom-color-column',
+			
+		}, {
+			headerName : 'Date',
+			field : "date",
+			 editable: false,
+			 width : 150,
+			 cellClass: 'custom-color-column',
+			cellRenderer : function(params) {
+				return '<a id="pcrod" onclick=editChild("'
+				+params.data.reviewId + '","'+ params.data.status
+				+ '") href="javascript:void(0)"><i class="bi bi-pencil-square"></i> '
+				+ params.data.date + '</a>';
+	
+			} 
+		}, {
+			headerName : 'Type',
+			field : "type",
+			 editable: false,
+			 width : 150,
+			 cellClass: 'custom-color-column',
+		}, {
+			headerName : 'Subject',
+			field : "subject",
+			 editable: false,
+			 width : 250,
+			 cellClass: 'custom-color-column',
+		}, {
+			headerName : 'Remark',
+			field : "remark",
+			 editable: false,
+			 width : 450,
+	    	 cellClass: 'custom-color-column',
+		}, {
+			headerName : 'Expected Result',
+			field : "expectedResult",
+			 editable: false,
+			 width : 200,
+			 cellClass: 'custom-color-column',
+		}, {
+			headerName : 'Guided By',
+			field : "guidedBy",
+			 editable: false,
+			 width : 150,
+			 cellClass: 'custom-color-column',
+		},{
+			headerName : 'Status',
+			field : "status",
+			 editable: false,
+			 width : 150,
+			 cellClass: 'custom-color-column',
+		},
+	];
+	var activityOptions = {
+			columnDefs : activityDefs,
+			rowSelection : 'single',
+			groupSelectsChildren : true,
+			suppressRowClickSelection : true,
+			suppressAggFuncInHeader : true,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+			},
+		onSelectionChanged : onSelectionChangedChild,
+		};
+
+	function onSelectionChangedChild(){
+		var selectedRows = activityOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			var sts = selectedRows[0].status;
+			if(sts =='Rejected' || sts =='Approved'){
+				$('#approve').attr("disabled", true);
+				$('#reject').attr("disabled", true);
+				$('#delete1').attr("disabled", false);
+				$('#newItem').attr('disabled', true);
+			}else{
+				$('#approve').attr("disabled", false);
+				$('#reject').attr("disabled", false);
+				$('#delete1').attr("disabled", false);
+				$('#newItem').attr('disabled', true);
+			}
+		}else {
+			$('#approve').attr("disabled", true);
+			$('#reject').attr("disabled", true);
+			$('#delete1').attr("disabled", true);
+			$('#newItem').attr('disabled', false);
+		}
+	}
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+function cancelBtn(){
+	$("#grid").show();
+	$("#demo").hide();
+	$("#previewPage").hide();
+	$("#searchDiv").show();
+	$("#download").show();
+	viewAttandance();
+}
+function getEmployeeList(id,emp=null) {
+	$.ajax({
+		type : "GET",
+		url : "view-ccr-details-employee-list?id="+id,
+		success : function(response) {
+			console.log(response);
+			if (response.message == "Success") {
+				console.log("qualify DD---",response.body);
+				$("#guidedBy").empty();
+				$("#guidedBy")
+						.append("<option value=''>Select</option>");
+				for (var i = 0; i < response.body.length; i++) {
+					var option = $("<option></option>");
+					$(option).val(response.body[i].key);
+					$(option).html(response.body[i].name);
+					$("#guidedBy").append(option);
+				}
+				if(emp!=null){
+					$('#guidedBy').val(emp);
+				}
+			}
+		},
+		error : function(data) {
+			console.log(data);
+			$("#guidedBy").empty();
+			$("#guidedBy").append("<option value=''>Select</option>");
+		}
+	})
+}
+	/* function editPage(id) {
+		getEmployeeList(id);
+		$("#searchDiv").hide();
+		$("#download").hide();
+		$.ajax({
+			type : "GET",
+			url : "view-ccr-details-edit?id="+ id,
+			success : function(response) {
+				if (response.code == "success") {
+					$("#grid").hide();
+					$("#demo").show();
+					var jsonData = JSON.parse(response.body);
+					var allData=jsonData.editData;
+					var len = allData.length;
+					$("#empId").val(allData[0].empId);
+					$("#empName").val(allData[0].empName);
+					$("#department").val(allData[0].department);
+					$("#subDepartment").val(allData[0].subDepartment);
+					$("#designation").val(allData[0].designation); 
+					$("#staffType").val(allData[0].staffType); 
+					var data=allData[0].reviewlist;
+					activityOptions.api.setRowData(data);
+					$('#delete1').attr("disabled", true);
+					$('#newItem').attr('disabled', false);
+					$('#approve').attr("disabled", true);
+					$('#reject').attr("disabled", true);
+				}
+			},
+			error : function(e) {
+			}
+		}); 
+	} */
+	function openNav() {
+		$("#empId1").val(id);
+		$("#empId1").html(id);
+		$("#punchInModal").modal('show');
+		
+		
+	}
+	function openNav1() {
+		$("#empId2").val(id);
+		$("#empId2").html(id);
+		$("#punchOutModal").modal('show');
+		
+	}
+	function closeNav1() {
+		//alert("hiiiii")
+		$("#punchOutModal").modal('hide');
+	}
+	function closeNav(){
+		$('#punchInModal').modal('hide');
+		$('#newItem').attr("disabled", false);
+		$('#delete1').attr("disabled", true );
+		$('#save').attr("disabled", false);
+		$('#cancelBtn').attr("disabled", false );
+		$("#newItem").show();
+		$("#delete1").show();
+		$("#reviewId").val("");
+		$('#date').val("");
+		$('#type').val("");
+		$('#subject').val("");
+		$("#remark").val("");
+		$('#expectedResult').val("");
+		$('#guidedBy').val("");
+	}
+	function addPunchOut(){
+		var datas=[];
+		var item = {};
+		var validation = true; 
+		var str = $("#empId2").val();
+		var data= date;// val=23-08-2023,23-08-2023
+		let dataArray = str.split(","); // Split the string by commas to create an array
+		var dateArray = date.split(",")
+		// Loop through each item in the array
+		dataArray.forEach(function(id,index) {
+			var item = {};
+		    item.empId = id;
+		    item.date = dateArray[index];
+		    item.time = $("#outTime").val();
+		    item.type = 'punchOut';
+		    datas.push(item);
+		    console.log(item); 
+		});
+		console.log("add data--",datas);
+		$.ajax({
+			type : "POST",
+			url : "attendance-by-dept-add",
+			contentType : "application/json",
+			data : JSON.stringify(datas),
+			success : function(response) {
+				if (response.message == "Success") {
+					closeNav();
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+					
+					$('#candMsg').text("");
+					$('#candValid').modal('toggle');
+					$('#candMsg').text("Data Saved Successfully");
+					var id = $("#empId").val();
+					$('#punchOutModal').modal('hide');
+					viewAttandance();
+				}
+			},
+			error : function(data) {
+				$('.loader').hide();
+				$("body").removeClass("overlay");	
+			}
+		}) 
+	}
+	function addPunchIn(){
+		var datas=[];
+		var item = {};
+		var validation = true; 
+		var str = $("#empId1").val();
+		var data= date;// val=23-08-2023,23-08-2023
+		let dataArray = str.split(","); // Split the string by commas to create an array
+		var dateArray = date.split(",")
+		// Loop through each item in the array
+		dataArray.forEach(function(id,index) {
+			var item = {};
+		    item.empId = id;
+		    item.date = dateArray[index];
+		    item.time = $("#inTime").val();
+		    item.type = 'punchIn';
+		    datas.push(item);
+		    console.log(item); 
+		});
+		console.log("add data--",datas);
+		$.ajax({
+			type : "POST",
+			url : "attendance-by-dept-add",
+			contentType : "application/json",
+			data : JSON.stringify(datas),
+			success : function(response) {
+				if (response.message == "Success") {
+					closeNav();
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+					
+					$('#candMsg').text("");
+					$('#candValid').modal('toggle');
+					$('#candMsg').text("Data Saved Successfully");
+					var id = $("#empId").val();
+					$('#punchInModal').modal('hide');
+					viewAttandance();
+				}
+			},
+			error : function(data) {
+				$('.loader').hide();
+				$("body").removeClass("overlay");	
+			}
+		}) 
+	}
+	function addReview(){
+		var editProduct = $("#editProduct").val();
+		var item = {};
+		var validation = true; 
+		item.reviewId = $("#reviewId").val();
+		item.empId = $("#empId").val();
+		item.date = $('#date').val();
+		item.type = $('#type').val();
+		item.subject = $('#subject').val();
+		item.remark = $("#remark").val();
+		item.expectedResult = $('#expectedResult').val();
+		item.guidedBy = $('#guidedBy').val();
+		
+		if (item.date == null || item.date == "") {
+			validation = validationUpdated("Date is Required", "date");
+			validation =  false;
+		}
+		if (item.type == null || item.type == "") {
+			validation = validationUpdated("Type is Required", "type");
+			validation = false;
+		}
+		if (item.remark == null || item.remark == "") {
+			validation = validationUpdated("Remark is Required", "remark");
+			validation = false;
+		}
+		if (validation) {
+			saveDatas(item);
+		}
+	}
+	function editChild(id,sts=null) {
+		var empId = $("#empId").val();
+		if(sts =='Rejected' || sts =='Approved'){
+			$('#candMsg').text("");
+			$('#candValid').modal('toggle');
+			$('#candMsg').text("Cannnot edit Rejected Data");
+		}else if( sts =='Approved'){
+			$('#candMsg').text("");
+			$('#candValid').modal('toggle');
+			$('#candMsg').text("Cannnot edit Approved Data");
+		}else{
+			$.ajax({
+				type : "GET",
+				url : "view-ccr-details-edit-review?id="+ id +"&empId="+empId,
+				success : function(response) {
+					if (response.code == "success") {
+						openNav();
+						var jsonData = JSON.parse(response.body);
+						console.log("edit data-----",jsonData);
+						var allData=jsonData.reviewlist;
+						console.log("allData>>>",allData);
+						var len = allData.length;
+						getEmployeeList(empId,allData[0].guidedBy);
+						$("#reviewId").val(allData[0].reviewId);
+						$('#date').val(allData[0].date);
+						$('#type').val(allData[0].type);
+						$('#subject').val(allData[0].subject);
+						$("#remark").val(allData[0].remark);
+						$('#expectedResult').val(allData[0].expectedResult);
+						$('#delete1').attr("disabled", true);
+						$('#newItem').attr('disabled', false);
+						$('#approve').attr("disabled", true);
+						$('#reject').attr("disabled", true);
+						$('#save').attr("disabled", false);
+						$('#cancelBtn').attr("disabled", true );
+					}
+				},
+				error : function(e) {
+				}
+			}); 
+		}
+	}
+	function saveDatas(datas) {		
+			$.ajax({
+				type : "POST",
+				url : "view-ccr-details-add",
+				contentType : "application/json",
+				data : JSON.stringify(datas),
+				success : function(response) {
+					if (response.message == "Success") {
+						closeNav();
+						$('.loader').hide();
+						$("body").removeClass("overlay");
+						
+						$('#candMsg').text("");
+						$('#candValid').modal('toggle');
+						$('#candMsg').text("Data Saved Successfully");
+						var id = $("#empId").val();
+				//		editPage(id);
+					}
+				},
+				error : function(data) {
+					$('.loader').hide();
+					$("body").removeClass("overlay");	
+				}
+			}) 
+	}
+
+	// setup the grid after the page has finished loading
+	document.addEventListener('DOMContentLoaded', function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		var gridDiv2 = document.querySelector('#activity');
+		var gridDivApp=new agGrid.Grid(gridDiv2, activityOptions);
+	});
+
+	$(document).ready(function(){
+		var dateFormat = localStorage.getItem("dateFormat");
+		var currentDate = (new Date()).toISOString().split('T')[0];
+		var newDate = changeDateFormat(currentDate);
+		$('#date').val(newDate);
+		$("#dateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+			value: newDate,
+		}) .on("change", function() {
+			alert($(this).val())
+			$('#date').val($(this).val());
+		}) 
+		$('#date').blur(function() {
+			$("#dateCalendar").val($(this).val());
+		});
+		$("#toDateCalendarTime2").datetimepicker({
+            format: 'h:i A',
+            closeOnDateSelect: false,
+            timepicker: true,
+             datepicker: false,
+            step: 1,
+             formatTime: 'h:i A'
+		    }).on("change", function() {
+		    $('#inTime').val($(this).val());
+		 });
+		
+		$('#inTime').blur(function() {
+		 $("#toDateCalendarTime1").val($(this).val());
+		  });	
+		
+		$('#date1').val(newDate);
+		$("#dateCalendar1").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+			value: newDate,
+		}).on("change", function() {
+			alert($(this).val())
+			$('#date').val($(this).val());
+		}) 
+		$('#date1').blur(function() {
+			$("#dateCalendar1").val($(this).val());
+		});
+		
+		$("#toDateCalendarTime1").datetimepicker({
+            format: 'h:i A',
+            closeOnDateSelect: false,
+            timepicker: true,
+             datepicker: false,
+            step: 1,
+             formatTime: 'h:i A'
+		    }).on("change", function() {
+		    $('#outTime').val($(this).val());
+		 });
+		
+		$('#outTime').blur(function() {
+		 $("#toDateCalendarTime1").val($(this).val());
+		  });	
+	});
+	function changeDateFormat(inputDate) { // expects Y-m-d
+		var splitDate = inputDate.split('-');
+		if (splitDate.count == 0) {
+			return null;
+		}
+		var year = splitDate[0];
+		var month = splitDate[1];
+		var day = splitDate[2];
+		return day + '-' + month + '-' + year;
+	}
+	function deleteItem() {
+		$('#deleteProduct').modal('show');
+	}
+
+	function cancelModalBtn() {
+		$('#deleteProduct').modal('hide');
+	}
+	function reject(){
+		var selectedRows = activityOptions.api.getSelectedRows();	
+		var id = selectedRows[0].reviewId;
+		var empId = $("#empId").val();
+		$.ajax({
+			type : "GET",
+			url : "view-ccr-details-reject?id="+ id+"&empId="+empId,
+			success : function(response) {
+			 if (response.code == "success") {
+					$("#messageParagraph").text(response.message);
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$('#delete').modal('hide');
+			//		editPage(empId);
+					 $('#msgModal2').modal('hide');
+					 $("#reqDltBtn").attr('disabled', true);
+					 $("#newBtn").attr('disabled',false);
+				} else {
+					$("#messageParagraph").text("Something went to wrong!");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+				}
+			},
+		error : function(data) {
+			console.log(data)
+		}
+	})
+	}
+	function approve(){
+		var selectedRows = activityOptions.api.getSelectedRows();	
+		var id = selectedRows[0].reviewId;
+		var empId = $("#empId").val();
+		$.ajax({
+			type : "GET",
+			url : "view-ccr-details-approve?id="+ id+"&empId="+empId,
+			success : function(response) {
+			 if (response.code == "success") {
+					$("#messageParagraph").text(response.message);
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$('#delete').modal('hide');
+			//		editPage(empId);
+					
+					 $('#msgModal2').modal('hide');
+					 $("#reqDltBtn").attr('disabled', true);
+					 $("#newBtn").attr('disabled',false);
+				} else {
+					$("#messageParagraph").text("Something went to wrong!");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+				}
+			},
+		error : function(data) {
+			console.log(data)
+		}
+	})
+	}
+	function deleteProductOnclick(){
+		var selectedRows = activityOptions.api.getSelectedRows();	
+		var id = selectedRows[0].reviewId;
+		var empId = $("#empId").val();
+		
+		$.ajax({
+			type : "GET",
+			url : "view-ccr-details-delete?id="+ id+"&empId="+empId,
+			success : function(response) {
+			 if (response.code == "success") {
+					$("#messageParagraph").text(response.message);
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$('#delete').modal('hide');
+					cancelModalBtn();
+			//		editPage(empId);
+					
+					 $('#msgModal2').modal('hide');
+					 $("#reqDltBtn").attr('disabled', true);
+					 $("#newBtn").attr('disabled',false);
+				} else {
+					$("#messageParagraph").text("Something went to wrong!");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+				}
+			},
+		error : function(data) {
+			console.log(data)
+		}
+	})
+	}
+	function viewPreview(id){
+		$("#grid").hide();
+		$("#previewPage").show();
+		var dataFromDB = [
+		    {
+		        name: "Singh Osahan",
+		        date: "Tue, 20 Mar 2020",
+		        text: "Contrary to popular belief, Lorem Ipsum is not simply random text...",
+		        likes: "856M",
+		        dislikes: "158K"
+		    },
+		    // Add more data items as needed
+		];
+
+		// Reference to the container where tables will be appended
+		var tableContainer = document.getElementById("tableContainer");
+
+		// Loop through the data and create a table for each item
+		dataFromDB.forEach(function(item) {
+		    // Create a new table element
+		    var table = document.createElement("table");
+		    table.className = "previewTab";
+
+		    // Create table body
+		    var tbody = document.createElement("tbody");
+
+		    // Create table rows
+		    var headerRow = createTableRow(createTableData(item.name, 2), "reviews-members-header");
+		    var bodyRow = createTableRow(createTableData(item.text, 2), "reviews-members-body");
+		    var footerRow = createTableRow(
+		        createTableData(
+		            "<a class='total-like' href='#'><i class='icofont-thumbs-up'></i> " + item.likes + "</a> " +
+		            "<a class='total-like' href='#'><i class='icofont-thumbs-down'></i> " + item.dislikes + "</a>",
+		            2
+		        ),
+		        "reviews-members-footer"
+		    );
+
+		    // Append rows to table body
+		    tbody.appendChild(headerRow);
+		    tbody.appendChild(bodyRow);
+		    tbody.appendChild(footerRow);
+
+		    // Append table body to table
+		    table.appendChild(tbody);
+
+		    // Append table to container
+		    tableContainer.appendChild(table);
+		});
+	}
+	function createTableRow(data, className) {
+	    var row = document.createElement("tr");
+	    var cell = document.createElement("td");
+	    cell.colSpan = data.length;
+	    cell.appendChild(data);
+	    row.appendChild(cell);
+	    if (className) {
+	        row.className = className;
+	    }
+	    return row;
+	}
+
+	// Function to create an array of table data elements
+	function createTableData(content, colspan) {
+	    var cell = document.createElement("td");
+	    cell.colSpan = colspan || 1;
+	    cell.innerHTML = content;
+	    return cell;
+	}
+	function closePreview(){
+		$("#grid").show();
+		$("#previewPage").hide();
+		
+	}
+</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<div id="grid">
+						<div class="d-flex justify-content-between" id="hideTbl" style="padding-bottom:20px;">
+							<div class="btn-hs">
+								<div class="font-design" id="totalCandidate"> Attandance List (<span></span>) </div>
+							</div>
+							<div class="btn-hs" id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search" class="searchboxinput" onkeyup="cancelBar()" oninput="onQuickFilterChanged()" id="quickFilter" autocomplete="off">
+									<div class="searchicon"> <a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a href="javascript:void(0)"><i class="ti-search srchicon"></i></a> </div>
+								</div>
+							</div>
+							<div class="col-md-4 btn-hs" align="right">
+								<!-- <button class="btn1" onclick="addCandidate()">NEW</button> -->
+								<button class="btn1" id="outList" onclick="openNav1()">OUT</button>
+								<button class="btn2" id="inList" onclick="openNav()">IN</button>
+								<!-- <button class="btn2" id="applyId"
+								onclick="requisitionModalForApply()">APPLY</button> -->
+							</div>
+						</div>
+						<input type="hidden" id="sessionId" th:value="${userId}" />
+						<input type="hidden" id="sessionName" th:value="${userName}" />
+						<input type="hidden" id="adRole" th:value="${adRole}" />
+						<input type="hidden" id="mrRole" th:value="${mrRole}" />
+						<input type="hidden" id="empRole" th:value="${empRole}" />
+						<input type="hidden" id="sessionRole" th:value="${userRole}" />
+						<div id="myGrid" style="width: 100%; height: 500px;" class="ag-theme-alpine"></div>
+					</div>
+					
+					
+					<div class="modal fade" id="punchInModal">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column"  style="justify-items:right !important;">
+									<button type="button" class="close" data-bs-dismiss="modal"
+										aria-hidden="true">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<div class="col-md-12" id="shippingInfo1">
+									<div class="card-title">
+										Edit Punch-In time
+									</div>
+									<div class="row">
+										<div class="col-md-12">
+											 Employee ID: <span id="empId1"></span>
+										</div>
+										<!-- <div class="col-md-12">
+										<input type="hidden" id="reviewId">
+											<div class="form-group calendar_box">
+												<label>Date</label>  <input type="text"
+													id="date" autocomplete="off" class="form-control"
+													onblur="removeValid(event)"
+													th:attr="onkeyup=|formatDate('date','${session.DATEFORMAT_JS}')|"
+													readonly> <i class="ti-calendar picker_calendar"
+													id="dateCalendar"></i>
+											</div>
+										</div> -->
+										<div class="col-lg-12">
+											<div class="form-group calendar_box">
+												<label>In-Time</label> <input type="text" id="inTime"
+													class="form-control" onblur="removeValid(event)"
+													th:attr="onkeyup=|formatDate('inTime','${session.DATEFORMAT_JS}')|"
+													readonly> <i class="ti-time picker_calendar"
+													id="toDateCalendarTime2"></i>
+											</div>
+										</div>
+									</div>
+								</div>
+								<div class="modal-footer justify-content-center">
+									<button class="delete-btn" id="cancel" onclick="closeNav()">CANCEL</button>
+											<button class="btn1" id="save" onclick="addPunchIn()">SAVE</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+				</div>
+				
+				<div class="modal fade" id="punchOutModal">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-bs-dismiss="modal"
+										aria-hidden="true">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<div class="col-md-12">
+									<div class="card-title">
+										Edit Punch-Out time
+									</div>
+									<div class="row">
+										<div class="col-md-12">
+											 Employee ID: <span id="empId2"></span>
+										</div>
+										<!-- <div class="col-md-12">
+										<input type="hidden" id="reviewId">
+											<div class="form-group calendar_box">
+												<label>Date</label>  <input type="text"
+													id="date1" autocomplete="off" class="form-control"
+													onblur="removeValid(event)"
+													th:attr="onkeyup=|formatDate('date1','${session.DATEFORMAT_JS}')|"
+													readonly> <i class="ti-calendar picker_calendar"
+													id="dateCalendar1"></i>
+											</div>
+										</div> -->
+										<div class="col-lg-12">
+													<div class="form-group calendar_box">
+														<label>Out-Time</label> <input type="text" id="outTime"
+															class="form-control" onblur="removeValid(event)"
+															th:attr="onkeyup=|formatDate('outTime','${session.DATEFORMAT_JS}')|"
+															readonly> <i class="ti-time picker_calendar"
+															id="toDateCalendarTime1"></i>
+													</div>
+												</div>
+								</div>
+								</div>
+								<div class="modal-footer justify-content-center">
+									<button class="delete-btn" id="cancel" onclick="closeNav()">CANCEL</button>
+											<button class="btn1" id="save" onclick="addPunchOut()">SAVE</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+				</div>
+			</div>
+		</div>
+</body>
+
+</html>

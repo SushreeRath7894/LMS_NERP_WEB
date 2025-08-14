@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<style>
+#myReq .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff;
+	text-indent: 10px !important;
+}
+
+#myReq .ag-row-selected::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 3px;
+	right: 4px;
+}
+</style>
+
+
+<script>
+
+
+$(document).ready(function() {
+
+	agGrid.simpleHttpRequest({
+		url : 'stationwise-fuel-entry-view'
+	}).then(function(data) {
+		var len = data.length;
+		$('#totalCandidate').find('span').html(len);
+
+		gridOptions.api.setRowData(data);
+	});
+
+});
+
+	$(document).ready(function() {
+
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		$('#reqDltBtn').attr("disabled", true);
+		
+		
+		
+		agGrid.simpleHttpRequest({
+			url : "stationwise-fuel-entry-view"
+		}).then(function(data) {
+			gridOptions.api.setRowData(data);
+		});
+
+	});
+
+	var columnDefs = [
+
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+
+			{
+				headerName : "Station Id ",
+				field : "slId",
+				width : 120,
+				cellRenderer : function(params) {
+					return '<a id="editId" onclick=edit("' + params.data.slId
+							+ '") href="javascript:void(0)">'
+							+ params.data.slId + '</a>';
+				},
+			}, {
+				headerName : "Vehicle Reg. No",
+				field : "vehicleRegId",
+			},{
+				headerName : "Fuel Type",
+				field : "fuelTypeId",
+			},  {
+				headerName : "Quantity",
+				field : "quantityId",
+			}, {
+				headerName : "Fuel Station",
+				field : "fuelStationId",
+			}, {
+				headerName : "Odometer",
+				field : "ododmeterId",
+			} ];
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 205,
+			height : 10
+		},
+		rowSelection : 'multiple',
+		onSelectionChanged : onSelectionChanged
+	};
+
+	function addCandidate() {
+		//deleteFile();
+		$('#reqDltBtn').hide();
+		$('#myGrid').hide();
+		$('#new').hide();
+		$('#demo').show();
+
+	}
+
+	function cancel() {
+		$("#demo").hide();
+		$("#myGrid").show();
+		$("#new").show();
+		$("#reqDltBtn").show();
+		
+	}
+	function candidateSave() {
+
+		$("#demo").hide();
+		$("#myGrid").show();
+		$("#new").show();
+	}
+
+	function onSelectionChanged() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			$('#reqDltBtn').attr('disabled', false);
+		} else {
+			$('#reqDltBtn').attr('disabled', true);
+		}
+
+	}
+
+	function candidateSave() {
+
+		var obj = {};
+		obj.slId = $("#slId").val();
+		obj.vehicleRegId = $("#vehicleRegId").val();
+		obj.fuelTypeId = $("#fuelTypeId").val();
+		obj.quantityId = $("#quantityId").val();
+		obj.unitPriceId = $("#unitPriceId").val();
+		obj.fuelStationId = $("#fuelStationId").val();
+		obj.ododmeterId = $("#ododmeterId").val();
+		obj.requisitionId = $("#requisitionId").val();
+		obj.lastOdodmeterId = $("#lastOdodmeterId").val();
+
+		console.log(obj)
+
+		$.ajax({
+			type : "POST",
+			url : "stationwise-fuel-entry-add",
+			contentType : "application/json",
+			data : JSON.stringify(obj),
+			success : function(response) {
+
+				console.log(response);
+				if (response.message == "Success") {
+					$("#demo").hide();
+					$("#myGrid").show();
+					$("#new").show();
+
+					agGrid.simpleHttpRequest({
+						url : "stationwise-fuel-entry-view"
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+					});
+				}
+			},
+			error : function(data) {
+
+				console.log(data);
+			}
+		})
+
+	}
+	
+	
+	
+	
+	function deleteFun() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var selectid = selectedRows[0].slId;
+	
+		$.ajax({
+			type : "POST",
+			url : "stationwise-fuel-entry-delete?id=" + selectid,
+			success : function(response) {
+				//alert("hii");
+				if (response.message == "Success") {
+					agGrid.simpleHttpRequest({
+						url : "stationwise-fuel-entry-view"
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+					});
+					cancelBtn();
+				}
+			},
+			error : function(data) {
+				console.log(data);
+			}
+		})
+	}
+	
+	
+
+	function edit(id) {
+		
+		addCandidate()
+
+		$.ajax({
+			type : "GET",
+			url : "stationwise-fuel-entry-edit?id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+					console.log(response.body);
+					
+
+					$("#slId").val(response.body.slId);
+					$("#vehicleRegId").val(response.body.vehicleRegId);
+					$("#fuelTypeId").val(response.body.fuelTypeId);
+					$("#quantityId").val(response.body.quantityId);
+					$("#unitPriceId").val(response.body.unitPriceId);
+					$("#fuelStationId").val(response.body.fuelStationId);
+					$("#ododmeterId").val(response.body.ododmeterId);
+					$("#requisitionId").val(response.body.requisitionId);
+					$("#lastOdodmeterId").val(response.body.lastOdodmeterId);
+							
+
+					$("#save").show();
+					$("#cancelBtn").show();
+					$("#new").hide();
+
+				}
+			}
+		});
+		//$('#reqDltBtn').attr("disabled", false);
+
+	}
+</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="row">
+							<button id="new" class="btn1" onclick="addCandidate()"
+								style="margin-left: 85%; padding-bottom: 0%; width: 7%;">NEW</button>
+							<button class="btn3" id="reqDltBtn" onclick="deleteFun()">DELETE</button>
+						</div>
+						<div class="font-design" id="totalCandidate">
+							Stationwise Fuel List
+						</div>
+
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+
+
+						<div class="collapse" id="demo">
+							<div class="innerstickybg">
+
+								<div class="row">
+
+									<div class="col-md-4"></div>
+									<div class="col-md-4"></div>
+									<div class="col-md-4" align="right">
+										<button class="btn4" id="cancelBtn" onclick="cancel()">Cancel</button>
+										<button class="btn1" id="saveVendor" onclick="candidateSave()">Save</button>
+									</div>
+								</div>
+
+							</div>
+							<div class="innercontent">
+								<div class="row">
+									<div class="col-md-9" id="candidateDetailsBar">
+
+
+										<div class="name" id="nameDtls"></div>
+
+										<div class="mt-0">
+											<div class="details" id="locationDtls"></div>
+										</div>
+
+										<div class="mt-20">
+											<div class="details" id="mobileNoDtls"></div>
+
+											<div class="details" id="emailDtls"></div>
+										</div>
+
+
+
+
+
+									</div>
+								</div>
+							</div>
+							<div id="main">
+
+								<div class="wrapper center-block">
+									<div class="accordion" id="accordionExample">
+										<div class="accordion-item">
+											<h2 class="accordion-header" id="headingOne">
+												<button class="accordion-button" type="button"
+													data-bs-toggle="collapse" data-bs-target="#collapseOne"
+													aria-expanded="true" aria-controls="collapseOne">
+													Add Stationwise Fuel</button>
+
+											</h2>
+											
+													<div class="row">
+
+														
+														<div class="col-md-4">
+															<div class="form-group">
+															<input type="hidden" class="form-control" id="slId"
+															autocomplete="off">
+															
+																<label>Vehicle Reg. No </label>
+																<div class="select">
+																	<select id="vehicleRegId">
+																		<option value="">--Select--</option>
+																		<option th:each="c,iter:${vehicleRegList}"
+																			th:value="${c.name}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+														</div>
+
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Fuel Type </label>
+																<div class="select">
+																	<select id="fuelTypeId">
+																		<option value="">--Select--</option>
+																		<option th:each="c,iter:${fuelTypeList}"
+																			th:value="${c.name}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+														</div>
+															<div class="col-md-4">
+															<div class="form-group">
+																<label>Quantity</label> <input type="text"
+																	name="First Name" value="" placeholder="Quantity"
+																	class="form-control" id="quantityId">
+															</div>
+														</div>
+
+													</div>
+													<div class="row">
+													<div class="col-md-4">
+															<div class="form-group">
+																<label>Unit Price (৳)</label> <input type="text"
+																	name="First Name" value="" placeholder="Unit Price"
+																	class="form-control" id="unitPriceId">
+
+															</div>
+														</div>
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Fuel Station </label>
+																<div class="select">
+																	<select id="fuelStationId">
+																		<option value="">--Select--</option>
+																		<option th:each="c,iter:${fuelStationList}"
+																			th:value="${c.name}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+														</div>
+
+
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Current Odometer</label> <input type="text"
+																	name="First Name" value=""
+																	placeholder="Current Odometer" class="form-control"
+																	id="ododmeterId">
+
+															</div>
+														</div>
+													</div>
+													<div class="row">
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Requisition Date</label> <input type="date"
+																	name="First Name" value=""
+																	placeholder="Requisition Date" class="form-control"
+																	id="requisitionId">
+															</div>
+														</div>
+
+
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Last Odometer</label> <input type="text"
+																	name="First Name" value=""
+																	placeholder="Current Odometer" class="form-control"
+																	id="lastOdodmeterId">
+															</div>
+														</div>
+													</div>
+
+
+
+												</div>
+
+
+
+											
+								</div>
+							</div>
+						</div>
+
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+
+</body>
+
+</html>

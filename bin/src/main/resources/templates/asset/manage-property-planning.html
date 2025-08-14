@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+</style>
+
+<script type="text/javascript">
+
+	$(document).ready(function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		
+		var gridDiv = document.querySelector('#myPropertyGrid');
+		new agGrid.Grid(gridDiv, gridPropertyOptions);
+		
+		var gridDiv = document.querySelector('#myAssetGrid');
+		new agGrid.Grid(gridDiv, gridAssetOptions);
+		
+		$('.loader').show();
+		
+		$('#addPlanBtn').attr('disabled', false);
+		$('#reqDltBtn').attr('disabled', true);
+
+		agGrid.simpleHttpRequest({
+			url : 'manage-property-planning-view',
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.Asset;
+			if(allData!=null){
+				var len = allData.length;
+				$('#totalAsset').find('span').html(len);
+				gridOptions.api.setRowData(allData);
+			}else{
+				$('#totalAsset').find('span').html("0");
+				gridOptions.api.setRowData("");
+			}
+			
+		});
+		
+		$('.loader').hide();
+
+		
+		var dateFormat = localStorage.getItem("dateFormat");
+$("#DateCalendarAssign").datetimepicker({
+	format : dateFormat,
+	closeOnDateSelect : true,
+	timepicker : false,
+	minDate: new Date().toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' }),
+}).on("change", function() {
+	$('#asdate').val($(this).val());
+})
+
+$('#asdate').blur(function() {
+	$("#DateCalendarAssign").val($(this).val());
+})		
+		
+
+  
+	});
+	
+	
+	
+	/* -------------------search bar for mygrid------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+		var totalRowCount = gridOptions.api.getModel().getRowCount();
+		$('#totalAsset').find('span').html(totalRowCount);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	var columnDefs = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			pinned : 'left',
+
+		},{
+			headerName : 'Plan Id',
+			field : "planId",
+			pinned : 'left',
+				cellRenderer : function(params) {
+				return '<a id="assetId" onclick=editPlan("'
+				+params.data.planId
+				+ '") href="javascript:void(0)"><i class="bi bi-pencil-square"></i> '
+				+ params.data.planId + '</a>';
+
+			}
+
+		},{
+			headerName : 'Property ID',
+			field : "propertyId",
+
+		},{
+			headerName : 'Property Name',
+			field : "propertyName",
+
+		},{
+			headerName : 'Floor ID',
+			field : "floorId",
+		},{
+			headerName : 'Floor Name',
+			field : "floorName",
+
+		},{
+			headerName : 'Space ID',
+			field : "spaceId",
+
+		},{
+			headerName : 'Space Name',
+			field : "spaceName",
+
+		}, {
+			headerName : 'Approve Status',
+			field : "approveStatus",
+			cellStyle : {
+				textAlign : 'center'
+			},cellRenderer : function(params) {
+				if(params.data.approveStatus=="Approved"){
+					return '<div style="color:#0642f5">Approved</div>';
+				} else if(params.data.approveStatus == "Rejected"){
+					return '<div style="color:red">Rejected</div>';
+				}else{
+					return '<div style="color:#a9a9a9">Pending</div>';
+				}
+				
+
+			}
+		}];
+
+// let the grid know which columns and what data to use
+var gridOptions = {
+	columnDefs : columnDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 140
+	},
+	onSelectionChanged : onSelectionChanged,
+};
+function onSelectionChanged() {
+	var selectedNodes = gridOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	console.log("@@@@@@--------",selectedData);
+	 var status= selectedData.map(node => node.approveStatus);
+	 var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+	if (rowCount > 0) {
+		if(status == "Approved"){
+			$('#reqDltBtn').attr('disabled', true);
+		}else{
+			$('#reqDltBtn').attr('disabled', false);
+		}
+		$('#addPlanBtn').attr('disabled', true);
+		//$('#reqDltBtn').attr('disabled', false);
+	}else{
+		$('#addPlanBtn').attr('disabled', false);
+		$('#reqDltBtn').attr('disabled', true);
+	}
+}
+
+
+var columnPropertyDefs = [
+	{
+		headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly : false,
+		checkboxSelection: function (params) {
+            const approveStatus = params.data.approveStatus;
+            return approveStatus == null;
+        },
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		pinned : 'left',
+
+	},
+	{
+		headerName : 'Property ID',
+		field : "propertyId",
+		pinned : 'left',
+		width : 120,
+
+	},		{
+		headerName : 'Property Name',
+		field : "propertyName",
+		width : 300,
+
+	},{
+		headerName : 'Floor ID',
+		field : "floorId",
+		width : 110,
+	},{
+		headerName : 'Floor Name',
+		field : "floorName",
+		width : 300,
+
+	},{
+		headerName : 'Space ID',
+		field : "spaceId",
+		width : 110,
+
+	},{
+		headerName : 'Space Name',
+		field : "spaceName",
+		width : 300,
+
+	}];
+
+//let the grid know which columns and what data to use
+var gridPropertyOptions = {
+columnDefs : columnPropertyDefs,
+rowSelection : 'single',
+groupSelectsChildren : true,
+suppressRowClickSelection : true,
+suppressAggFuncInHeader : true,
+defaultColDef : {
+	sortable : true,
+	filter : true,
+	resizable : true,
+	width : 120
+},
+onSelectionChanged : onSelectionPropertyChanged,
+};
+
+	function onSelectionPropertyChanged() {
+		gridAssetOptions.api.setRowData("");
+		closeAssetPlanData();
+		var selectedRows = gridPropertyOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#addAssetBtn').attr("disabled", false);
+			$('#deleteAssetBtn').attr('disabled', true);
+		}else{
+			$('#addAssetBtn').attr("disabled", true);
+			$('#deleteAssetBtn').attr('disabled', true);
+		}
+}
+
+var columnAssetDefs = [
+	{
+		headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly : false,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		pinned : 'left',
+
+	},
+	{
+		headerName : 'Space ID',
+		field : "spaceId",
+
+
+	},{
+		headerName : 'Space Name',
+		field : "spaceName",
+
+
+	},{
+		headerName : 'Asset Category',
+		field : "assetCategoryName",
+
+
+	},{
+		headerName : 'Asset Subcategory',
+		field : "assetSubcategoryName"
+
+	},{
+		headerName : 'Definite Quantity',
+		field : "definiteQty"
+	},{
+		headerName : 'Required Quantity',
+		field : "requiredQty"
+
+	}];
+
+//let the grid know which columns and what data to use
+var gridAssetOptions = {
+columnDefs : columnAssetDefs,
+rowSelection : 'single',
+groupSelectsChildren : true,
+suppressRowClickSelection : true,
+suppressAggFuncInHeader : true,
+defaultColDef : {
+	sortable : true,
+	filter : true,
+	resizable : true,
+	width : 180
+},
+onSelectionChanged : onSelectionAssetChanged,
+};
+
+	function onSelectionAssetChanged() {
+		var selectedRows = gridAssetOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#deleteAssetBtn').attr('disabled', false);
+		}else{
+			$('#deleteAssetBtn').attr('disabled', true);
+		}
+	}
+
+
+	// delete selected record from child ag grid
+	function deleteDetailsOnclick() {
+		$('.modal').hide();
+		var selectedRows = activityOptions.api.getSelectedRows();
+		activityOptions.api.applyTransaction({
+			remove : selectedRows
+		});
+		cancelModalProductBtn();
+	}
+	//for closeing modal box for dlt  product
+	function cancelModalProductBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+		$('#deleteDetails').modal('hide');
+	}
+
+	function deleteFun() {
+		$('#delete').modal('show');
+	}
+	function approveFun() {
+		$('#approveModal').modal('show');
+	}
+
+	function cancelModalBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+		$("#assignsuccessModal").removeAttr("disabled");
+	}
+	
+	function checkEmptyAssign(){
+		var selectedValue = $('input[name="options"]:checked').val();
+	    if(selectedValue=="Employee"){
+	    	var assetemp=$("#assetemployee").val();
+	    }else if(selectedValue=="Room"){
+	    	var assetemp=$("#assetlocation").val();
+	    }else if(selectedValue=="Asset"){
+	    	var assetemp=$("#assetAsset").val();
+	    }
+		var assetcat=$('input[name="options"]:checked').val();
+		var assigndate=$("#asdate").val();
+		if (assetemp && assigndate) {
+			$('#reasondesc').hide();
+		}
+	}
+
+	function addPlanFun(){
+		$('#planningHeading').text("Add Planning");
+		$('#savePlanBtn').show();
+		$('#deleteAssetBtn').show();
+		$('#addAssetBtn').show();
+		$("#addAssetQtyDiv").hide();
+		$('#addAssetBtn').attr('disabled', true);
+		$('#deleteAssetBtn').attr('disabled', true);
+		$('#planId').val("");
+		$('#filterPropertyDiv').show();
+		
+		$('#propertyDr').val("");
+		$('#floorDr').val("");
+		
+		var property="";
+		var floor="";
+		var space="";
+		agGrid.simpleHttpRequest({
+			url : 'manage-property-planning-filter?property='+property+'&floor='+floor+'&space='+space,
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.Space;
+			gridPropertyOptions.api.setRowData(allData);
+		});
+		gridAssetOptions.api.setRowData("");
+		$('#addPlanModal').modal('show');
+	}
+	function cancelAddAssetModal(){
+		$('#addPlanModal').modal('hide');
+	}
+	function getFloorList(){
+		var property=$("#propertyDr").val();
+		var options='<option value="">Select Floor</option>';
+		agGrid.simpleHttpRequest({
+			url : 'manage-property-planning-getfloor?property=' + property,
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			console.log("PRINTED DATA:::",jsonData);
+			var allData=jsonData.FloorList;
+			if(allData!=null){
+				allData.forEach(function(rowNode){
+					options += '<option value="'+rowNode.floorid+'">'+rowNode.floorname+'</option>';
+					  });
+				 $('#floorDr').html(options)
+			}else{
+				 $('#floorDr').html(options)
+			}
+			 
+			
+		});
+	}
+	
+	function filterWithCategory(e){
+		
+		if(e.target.id=="floorDr"){
+			var property=$("#propertyDr").val();
+			var floor=$("#floorDr").val();
+		 }else{
+			 var property=$("#propertyDr").val();
+				var floor="";
+		 }
+		
+		var space="";
+		agGrid.simpleHttpRequest({
+			url : 'manage-property-planning-filter?property='+property+'&floor='+floor+'&space='+space,
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.Space;
+			console.log("FILTER::::",jsonData)
+			if(allData!=null){
+				gridPropertyOptions.api.setRowData(allData);
+				onSelectionPropertyChanged()
+			}else{
+				gridPropertyOptions.api.setRowData("");
+				onSelectionPropertyChanged()
+			}
+			
+		});
+	}
+	
+	function addAssetPlanData(){
+		 $("#addAssetQtyDiv").slideDown();
+		 $('#addAssetBtn').attr('disabled', true);
+		 $('#deleteAssetBtn').attr('disabled', true);
+		 gridAssetOptions.api.deselectAll();
+		 $('#assetcat').val("");
+		 $('#assetsubcat').val("");
+		 $('#definiteQty').val("");
+		 $('#requiredQty').val("");
+	}
+	function closeAssetPlanData(){
+		 $("#addAssetQtyDiv").slideUp();
+		 $('#addAssetBtn').attr('disabled', false);
+		 $('#assetcat').val("");
+		 $('#assetsubcat').val("");
+		 $('#definiteQty').val("");
+		 $('#requiredQty').val("");
+		 gridAssetOptions.api.deselectAll();
+	}
+	
+	function getsubcategory(){
+		var catid=$("#assetcat").val();
+		var options='<option value="">Select</option>';
+		if(catid!="" && catid!=null){
+		agGrid.simpleHttpRequest(
+				{
+					url : 'manage-property-planning-subcategory?id='+ catid
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.Asset;
+					if(allData!=null){
+					 allData.forEach(function(rowNode){
+						options += '<option value="'+rowNode.subcatid+'" data-subQty="' + rowNode.assetqty + '">'+rowNode.subcatname+'</option>';
+						  });
+					}
+					 $("#assetsubcat").html(options);
+				});
+		
+		}else{
+			$("#assetsubcat").html(options);
+		}
+
+	}
+	function getQtyBySub(){
+		var selectedOption = $("#assetsubcat option:selected");
+		var customData = selectedOption.attr("data-subQty");
+		$("#definiteQty").val(customData);
+		$("#requiredQty").val("0");
+	}
+	
+	function checkValidQty(){
+		var definte=$("#definiteQty").val();
+		var required=$("#requiredQty").val();
+		var valid=true;
+		if(parseInt(required)>parseInt(definte)){
+			/* valid = validationUpdated("Required Qunatity Must Be Less", "requiredQty");
+			$("#requiredQty").val(definte); */
+		}else{
+			if (parseInt(required) < 0) {
+				$("#requiredQty").val("0");
+			}else if(!(/^[0-9]+$/.test(required))){
+				$("#requiredQty").val("0");
+			}
+		}
+	}
+
+	function addAssetData() {
+		var selectedRows = gridPropertyOptions.api.getSelectedRows();
+		var propertyId=selectedRows[0].propertyId;
+		var spaceName=selectedRows[0].spaceName;
+		var floorId=selectedRows[0].floorId;
+		var spaceId=selectedRows[0].spaceId;
+		var editAsset=false;
+		var selectedRow="";
+		var item = {};
+		valid=true;
+		
+      {		
+			
+			item.assetCategory = $('#assetcat').val();
+			item.assetSubcategory = $('#assetsubcat').val();
+			item.assetCategoryName = $('#assetcat').find(':selected').text();
+			item.assetSubcategoryName = $('#assetsubcat').find(':selected').text();
+			item.definiteQty = $('#definiteQty').val();
+			item.requiredQty = $('#requiredQty').val();
+			item.spaceId = spaceId;
+			item.spaceName = spaceName;
+			item.propertyId = propertyId;
+			item.floorId = floorId;
+			
+			if (item.assetCategory == null || item.assetCategory == "") {
+				valid = validationUpdated("Asset Type is Required", "assettype");
+			 }
+			if (item.assetSubcategory == null || item.assetSubcategory == "") {
+				valid = validationUpdated("Asset Type is Required", "assettype");
+			 }
+			if (item.requiredQty == null || item.requiredQty == "") {
+				valid = validationUpdated("Asset Type is Required", "assettype");
+			 }
+			
+			
+	if(valid){
+			
+			var quot = [];
+			gridAssetOptions.api.forEachNode(function(rowNode, index) {
+				if (rowNode.data.assetSubcategory ==item.assetSubcategory) {
+   				selectedRow = rowNode.rowIndex;
+   				editAsset=true;
+    			console.log("selectedRow",selectedRow);
+				}
+			 });
+			
+			if (editAsset) {
+				var rowNode = gridAssetOptions.api.getRowNode(selectedRow);
+				rowNode.setData(item);
+			} else {
+				gridAssetOptions.api.forEachNode(function(rowNode, index) {
+					quot.push(rowNode.data);
+				});
+				quot.push(item)
+				gridAssetOptions.api.setRowData(quot);
+		
+			}
+			closeAssetPlanData();
+      }
+
+		}
+
+	}
+	
+	function deleteAssetPlanData(){
+		var selectedRows = gridAssetOptions.api.getSelectedRows();
+		gridAssetOptions.api.applyTransaction({
+			remove : selectedRows
+		});
+	}
+	function masterSaveData() {
+		$(".formValidation").remove();
+		var valid= true;
+		var datas = [];
+		var planObj = [];
+		
+		var item = {};
+		var itemPlan ={};
+		
+		var selectedRows = gridPropertyOptions.api.getSelectedRows();
+		var propertyId=selectedRows[0].propertyId;
+		var spaceName=selectedRows[0].spaceName;
+		var floorId=selectedRows[0].floorId;
+		var spaceId=selectedRows[0].spaceId;
+
+		item.spaceId = spaceId;
+		item.spaceName = spaceName;
+		item.propertyId = propertyId;
+		item.floorId = floorId;
+		item.planId = $('#planId').val();
+		item.approvedSts ="Add";
+
+		if(valid){
+			gridAssetOptions.api.forEachNode(function(rowNode, index) {
+			itemPlan = rowNode.data;
+			itemPlan.approvedQty = "0";
+			planObj.push(itemPlan);
+		});
+			item.planList = planObj;
+
+		
+		if (valid) {
+			if(item.planList.length!=0){
+				
+				datas.push(item);
+				savePlanDetails(datas);
+				console.log(datas);
+			}else{
+				valid=false;
+				$("#messageParagraph").text("Please Add Planning Details First");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+			}
+
+			}
+	}
+	}
+	
+	function savePlanDetails(datas) {
+		$('.loader').show();
+
+		$.ajax({
+			type : "POST",
+			url : "manage-property-planning-add",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(datas),
+			success : function(response) {
+				$('.loader').hide();
+				if (response.code == "success") {
+					cancelAddAssetModal();
+					$("#messageParagraph").text(response.message);
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					
+					agGrid.simpleHttpRequest({
+						url : 'manage-property-planning-view',
+					}).then(function(data) {
+						var jsonData = JSON.parse(data.body);
+						var allData=jsonData.Asset;
+						var len = allData.length;
+						$('#totalAsset').find('span').html(len);
+						gridOptions.api.setRowData(allData);
+						onSelectionChanged();
+					});
+					
+				} else {
+					$('.loader').hide();
+					$("#messageParagraph").text("Something Went Wrong");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+				}
+			},
+			error : function(data) {
+				$('.loader').hide();
+			}
+		
+		})
+
+
+	}
+	function deletePlanOnClick(){
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var planId=selectedRows[0].planId;
+		if (planId) {
+			$('.loader').show();
+				$.ajax({
+		type : "POST",
+		url : "manage-property-planning-delete?id="+ planId,
+		success : function(response) {
+		 if (response.code == "success") {
+			 $('.loader').hide();
+				$("#messageParagraph").text("Plan Deleted Successfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('#delete').modal('hide');
+				agGrid.simpleHttpRequest({
+					url : 'manage-property-planning-view',
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.Asset;
+					var len = allData.length;
+					$('#totalAsset').find('span').html(len);
+					gridOptions.api.setRowData(allData);
+					onSelectionChanged();
+				});
+				
+				} else {
+					$('.loader').hide();
+				$("#messageParagraph").text("Something went to wrong!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+			}
+		},
+		error : function(data) {
+			$('.loader').hide();}
+	})
+		} else {
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Plan !";
+			$('.loader').hide();}
+
+	}
+	
+	function editPlan(planId){
+		addPlanFun();
+		$('#planningHeading').text("Edit Planning");
+		agGrid.simpleHttpRequest(
+				{
+					url : 'manage-property-planning-edit?id='+ planId
+				}).then(function(data) {
+					$('.loader').hide();
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.Plan;
+					var allPlan=allData[0].PlanDetails;
+					if(allData[0].approveStatus=="Pending"){
+						$('#savePlanBtn').show();
+						$('#deleteAssetBtn').show();
+						$('#addAssetBtn').show();
+					}else{
+						$('#savePlanBtn').hide();
+						$('#deleteAssetBtn').hide();
+						$('#addAssetBtn').hide();
+					}
+					setTimeout(function() {
+					gridPropertyOptions.api.setRowData(allData);
+					var firstRowNode = gridPropertyOptions.api.getRowNode(0);
+					if (firstRowNode) {
+					    firstRowNode.setSelected(true);
+					    gridPropertyOptions.api.ensureIndexVisible(0);
+					}
+					 }, 300)
+					 setTimeout(function() {
+						 gridAssetOptions.api.setRowData(allPlan);
+						 $('#planId').val(allData[0].planId);
+						 
+					 }, 500)
+					 $('#filterPropertyDiv').hide();
+
+				});
+		
+	}
+	
+	function downloadDetails() {
+		var params = {
+			fileName: 'property_plan_list.csv', // Specify your custom filename here
+		};
+		gridOptions.api.exportDataAsCsv(params);
+	}
+</script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="d-flex justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalAsset">
+									Planning List(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalAsset').find('span').html(gridOptions.api.getModel().getRowCount());"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+								<button class="download-btn" id="download"
+									onclick="downloadDetails()">DOWNLOAD</button>
+								<button class="new-btn" id="addPlanBtn" onclick="addPlanFun()">ADD
+									PLAN</button>
+								<button class="delete-btn" id="reqDltBtn" onclick="deleteFun()">DROP
+									PLAN</button>
+							</div>
+						</div>
+
+						<input type="hidden" id="planId">
+						<input type="hidden" id="sessionId" th:value="${userId}" />
+						<input type="hidden" id="sessionName" th:value="${userName}" /> 
+						<input type="hidden" id="hrRole" th:value="${hrRole}" /> 
+						<input type="hidden" id="sessionRole" th:value="${userRole}" /> 
+						<input type="hidden" id="adRole" th:value="${adRole}" />
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+					</div>
+				</div>
+
+
+				<!-- delete modal start -->
+				<div id="delete" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column"></div>
+							<div class="modal-body">
+								<p>Do you really want to delete this plan? This process
+									cannot be undone.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: 0px;">
+
+								<button type="button" class="cancel-btn" data-bs-dismiss="modal"
+									onclick="cancelModalBtn();">Cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="deletePlanOnClick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+
+				<!-- approve modal start -->
+				<div id="approveModal" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column"></div>
+							<div class="modal-body">
+								<p>Do you want to approve this asset assign? Once done you
+									will not be able to make further change.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: 0px;">
+
+								<button type="button" class="cancel-btn" data-bs-dismiss="modal"
+									onclick="cancelModalBtn();">Cancel</button>
+								<button type="button" class="new-btn" onclick="activeOnClick()">Activate</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+
+
+				<!-- assign success modal start -->
+				<div id="assignsuccessModal" class="modal fade show"
+					aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column"></div>
+							<div class="modal-body">
+								<p>Modified Successfully</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: 0px;">
+
+								<button type="button" class="new-btn" data-bs-dismiss="modal"
+									onclick="cancelModalBtn();">Okay</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- delete product modal start -->
+				<div id="deleteDetails" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column"></div>
+							<div class="modal-body">
+								<p>Do you really want to delete these data? This process
+									cannot be undone.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: -30px;">
+
+								<button type="button" class="cancel-btn" data-bs-dismiss="modal"
+									onclick="cancelModalBtn();">Cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="deleteDetailsOnclick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<!-- alert modal start -->
+				<div id="alert" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column">
+								<button type="button" class="close" data-bs-dismiss="modal"
+									aria-hidden="true" onclick="cancelModalBtn()">
+									<i class="ti-close modal-close"></i>
+								</button>
+							</div>
+							<div class="modal-body">
+								<p id="textId"></p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: 0px;">
+
+								<button type="button" class="btn1" data-bs-dismiss="modal">SELECT</button>
+								<button type="button" class="btn3" onclick="dissociateOnClick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+
+				<div class="modal fade" id="addPlanModal" role="dialog">
+					<div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable" style="max-width: 1350px !important;">
+					
+						<div class="modal-content">
+							<div class="modal-header">
+								<h4 class="modal-title" id="planningHeading">PLANNING</h4>
+								<div class="col-md-8 row" id="filterPropertyDiv">
+									<div class="col-md-4">
+										<div class="form-group">
+											<div class="select">
+												<select id="propertyDr"
+													onchange="getFloorList();filterWithCategory(event);">
+													<option value="">Select Property</option>
+													<option th:each="c:${propertyLists}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select> <span class="focus"></span>
+											</div>
+										</div>
+									</div>
+									<div class="col-md-4">
+										<div class="form-group">
+											<div class="select">
+												<select id="floorDr" onchange="filterWithCategory(event);">
+													<option value="">Select Floor</option>
+													<option th:each="c:${itemnameList}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select> <span class="focus"></span>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="modal-body row">
+								<input type="hidden" id="AssetId"> <input type="hidden"
+									id="roomId">
+
+								<div class="col-md-12">
+									<div id="myPropertyGrid" style="width: 100%; height: 150px;"
+										class="ag-theme-alpine mt-2"></div>
+								</div>
+								<div class="col-md-12 row justify-content-end mt-3">
+									<button type="button" class="cancel-btn" onclick="deleteAssetPlanData();" id="deleteAssetBtn">DELETE</button>
+									<button type="button" class="new-btn" onclick="addAssetPlanData();" id="addAssetBtn">ADD ASSET</button>
+								</div>
+								<div class="col-md-12 row" id="addAssetQtyDiv">
+									<div class="col-md-3">
+										<div class="form-group">
+											<label style="font-size:12px"> Asset Category </label>
+											<div class="select">
+												<select id="assetcat" onchange="getsubcategory()">
+													<option value="">Select</option>
+													<option th:each="c:${catLists}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select> <span class="focus"></span>
+											</div>
+										</div>
+									</div>
+									<div class="col-md-3">
+										<div class="form-group">
+											<label style="font-size:12px"> Asset Sub Category </label>
+											<div class="select">
+												<select id="assetsubcat" onchange="getQtyBySub()">
+													<option th:each="c:${itemnameList}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select> <span class="focus"></span>
+											</div>
+										</div>
+									</div>
+									<div class="col-md-2">
+										<div class="form-group">
+											<label style="font-size:12px"> Definite Quantity </label> <input type="text"
+												class="form-control" id="definiteQty" disabled>
+										</div>
+									</div>
+									
+									<div class="col-md-2">
+										<div class="form-group">
+											<label style="font-size:12px"> Required Quantity </label> 
+											<input type="number" class="form-control" id="requiredQty" min=0 value=0 oninput="checkValidQty();">
+										</div>
+									</div>
+									<div class="col-md-2 mt-3">
+										<button type="button" class="btn btn-outline-success" onclick="addAssetData();"><i class="bi bi-plus-lg"></i></button>
+										<button type="button" class="btn btn-outline-danger" onclick="closeAssetPlanData();"><i class="bi bi-x-lg"></i></button>
+									</div>
+								</div>
+								<div class="col-md-12">
+									<div id="myAssetGrid" style="width: 100%; height: 150px;"
+										class="ag-theme-alpine mt-2"></div>
+								</div>
+
+
+							</div>
+							<div class="modal-footer">
+								<button type="button" class="cancel-btn" onclick="cancelAddAssetModal();" id="closePlanBtn">CLOSE</button>
+								<button type="button" class="new-btn" onclick="masterSaveData()" id="savePlanBtn">SAVE</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>

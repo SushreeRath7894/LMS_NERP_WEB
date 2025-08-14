@@ -1,0 +1,306 @@
+
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<script
+	src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+
+
+
+<script type="text/javascript">
+
+
+document.addEventListener('DOMContentLoaded', function () {
+    const currentMonth = ("0" + (new Date().getMonth() + 1)).slice(-2);
+    $("#monthDropdown").val(currentMonth);
+    
+    const gridDiv = document.querySelector('#myGrid');
+    new agGrid.Grid(gridDiv, gridOptions);
+
+    updateGridColumns(currentMonth);
+    getAllReportData();
+});
+
+function getSelectedMonth() {
+    const monthDropdown = document.getElementById("monthDropdown");
+    const selectedMonth = monthDropdown.value;
+    
+    // Update column header name for the month
+    updateGridColumns(selectedMonth);
+    getAllReportData();
+}
+
+function updateGridColumns(selectedMonth) {
+    const daysInMonth = getDaysInMonth(selectedMonth);
+    const currentMonth = getMonthName(selectedMonth);
+
+    const columnDefs = generateColumnDefs(selectedMonth, daysInMonth, currentMonth);
+    gridOptions.api.setColumnDefs(columnDefs);
+}
+
+function getDaysInMonth(month) {
+    const now = new Date();
+    const year = now.getFullYear();
+    return new Date(year, parseInt(month, 10), 0).getDate();
+}
+
+function getMonthName(month) {
+    const monthNames = [
+        "January", "February", "March", "April", "May",
+        "June", "July", "August", "September", "October", "November", "December"
+    ];
+    return monthNames[parseInt(month, 10) - 1];
+}
+
+function generateColumnDefs(month, daysInMonth, currentMonth) {
+    const columnDefs = [{
+        headerName: "Responsibility:- A Shift Operator",
+        children: [{
+            headerName: "SlNo",
+            field: "slNo",
+            width: 70,
+            pinned: 'left'
+        }, {
+            headerName: "Description",
+            field: "checkPoint",
+            width: 300,
+            pinned: 'left'
+        }]
+    }, {
+        children: [],
+        hide:true
+    }, {
+        children: []
+    },{
+        children: []
+    } ];
+
+ 
+    columnDefs[1].children = [];
+
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        columnDefs[1].children.push({
+            headerName: `${day}`,
+            field: `day${day}`,
+            width: 50
+        });
+    }
+
+    return columnDefs;
+}
+
+let rowData = [];
+
+function getAllReportData() {
+    var month = $("#monthDropdown").find('option:selected').val();
+    var assetId = $('#assetId').val();
+    gridOptions.api.setRowData([]);
+    $.ajax({
+        url: "fdvSuction-filter-cleaning-view?assetId=" + assetId + "&month=" + month,
+        type: 'GET',
+        success: function(response) {
+            var jsonData = JSON.parse(response.body);
+
+            if (Array.isArray(jsonData) && jsonData.length > 0 && Array.isArray(jsonData[0])) {
+                jsonData = jsonData[0]; // Flatten the array
+            }
+
+            console.log("jsonData=====>>>", jsonData);
+
+            if (!Array.isArray(jsonData) || jsonData.length === 0) {
+                console.error("No data available.");
+                gridOptions.api.setRowData([]);
+                return;
+            }
+
+            let checklistMap = {};
+            let slNoCounter = 1; // Counter for slNo
+
+            jsonData.forEach(item => {
+                var dateParts = item.date.split('-');
+                var day = parseInt(dateParts[0], 10);
+
+                if (!checklistMap[item.assetName]) {
+                    checklistMap[item.assetName] = {
+                        slNo: slNoCounter++, // Incremental slNo
+                        checkPoint: item.assetName
+                    };
+                }
+
+                checklistMap[item.assetName][`day${day}`] = item.completeStatus; // === 'OKAY' ? 'OK' : 'NOT OK';
+            });
+
+            var rowData = Object.values(checklistMap);
+            console.log("Row Data====>", rowData);
+            gridOptions.api.setRowData(rowData);
+        },
+        error: function(error) {
+            console.error("Error in request:", error);
+            gridOptions.api.setRowData([]);
+        }
+    });
+}
+
+
+
+const gridOptions = {
+    columnDefs: [], // Will be set dynamically
+    rowData: rowData,
+    defaultColDef: {
+        resizable: true,
+        sortable: true
+    },
+    rowHeight: 35,
+    domLayout: 'autoHeight',
+};
+
+function downloadExcelFromGrid() {
+    var params = {
+        fileName: 'air_compressor_report.csv', // Specify your custom filename here
+        processHeaderCallback: function(params) {
+            const colId = params.column.getColId();
+            
+            if (colId.startsWith('day')) {
+                const dayNumber = colId.replace('day', ''); // Extract day number from column id
+                return 'Day ' + dayNumber;
+            }
+
+            return params.column.getColDef().headerName;
+        }
+    };
+    gridOptions.api.exportDataAsCsv(params);
+}
+
+
+	
+	/*For Search Div row  */
+	function onQuickFilterChanged() {
+			var quickFilterValue = $('#quickFilter').val();
+			gridOptions.api.setQuickFilter(quickFilterValue);
+			updateTotalTaskCount();
+		}
+
+		function cancelBar() {
+			var closeKey = $('#closeKey');
+			closeKey.css('display', $('#quickFilter').val() ? 'block' : 'none');
+		}
+	
+		function resetQuickFilter() {
+			gridOptions.api.setQuickFilter(null);
+			$('#quickFilter').val('');
+			$('#closeKey').css('display', 'none');
+			updateTotalTaskCount();
+		}
+
+		function updateTotalTaskCount() {
+			var displayedRowCount = gridOptions.api.getDisplayedRowCount();
+			$('#totalReq span').html(displayedRowCount);
+		}
+
+</script>
+
+
+<style type="text/css">
+	.select {
+    position: relative;
+    display: block;
+    background-color: #fff;
+    overflow: hidden;
+    border-radius: .25em;
+    padding: 0 8px;
+    height: 32px!important;
+	}
+
+.select::after {
+    content: '\e64b';
+    font-family: 'themify';
+    position: absolute;
+    top: 3px;
+    right: 5px;
+    bottom: 0;
+    padding: 0;
+    pointer-events: none;
+    height: 30px !important;
+    -webkit-transition: .25s all ease;
+    -o-transition: .25s all ease;
+    transition: .25s all ease;
+}
+
+</style>
+
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="d-flex justify-content-between align-items-center" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalAsset">
+									FDV Filter Cleaning  Report
+								</div>
+							</div>
+							 
+							 
+							<div class="form-group d-flex align-items-center gap-2" style="margin-bottom: 5px;"> 
+							<label>Month</label>
+                           <div class="select" >
+						 
+								<select id="monthDropdown" class="month-dropdown"
+									onchange="getSelectedMonth()" style="width:160px;">
+									<option value="">Select Month</option>
+									<option value="01">January</option>
+									<option value="02">February</option>
+									<option value="03">March</option>
+									<option value="04">April</option>
+									<option value="05">May</option>
+									<option value="06">June</option>
+									<option value="07">July</option>
+									<option value="08">August</option>
+									<option value="09">September</option>
+									<option value="10">October</option>
+									<option value="11">November</option>
+									<option value="12">December</option>
+								</select>
+							</div>
+							</div>
+							
+								<div class="form-group d-flex align-items-center gap-2" style="margin-bottom: 5px;" hidden>
+									<label hidden>Select Asset</label>
+									<div class="select" style="width:160px;" hidden>
+										<select id="assetId" class="month-dropdown"
+											style="height: unset;"onchange="getAllReportData()">
+											<option th:each="c,iter:${assetList}" th:value="${c.key}"
+												th:text="${c.name}"></option>
+										</select>
+									</div>
+								</div>
+							 
+							 
+							<div class="buttonsec btn-hs">
+
+								<input type="button" class="btn1" style="width: 100px"
+									id="dwnldExcel" value="Download"
+									onclick="downloadExcelFromGrid()">
+							</div>
+						
+						</div>
+
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

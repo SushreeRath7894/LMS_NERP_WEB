@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<style>
+.innerstickybg {
+	background: none;
+}
+
+.col-md-5 {
+	flex: 0 0 auto;
+	width: 43.66697%;
+}
+
+#myReq .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff;
+	text-indent: 10px !important;
+}
+
+.blank_row {
+	height: 10px !important; /* overwrites any other rules */
+	background-color: #007bff;
+}
+
+#myReq .ag-row-selected::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 3px;
+	right: 4px;
+}
+</style>
+
+<script>
+	//Multiple Document Upload Ends
+	$(document).ready(function() {	
+		$("#myform").hide();
+		$("#external").hide();
+		$('#assign').attr('disabled', true);
+		$('#newchild').attr('disabled', false);
+		$('#deleteChild').attr('disabled', true);
+		$('#delete1').attr('disabled', true);
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#startDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#startDate').val($(this).val());
+		})
+
+		$('#startDate').blur(function() {
+			$("startDateCalendar").val($(this).val());
+		});
+		$("#endDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#endDate').val($(this).val());
+		})
+
+		$('#endDate').blur(function() {
+			$("endDateCalendar").val($(this).val());
+		});
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		var gridDiv = document.querySelector('#myGrid1');
+		new agGrid.Grid(gridDiv, gridOptions1);
+		var gridDiv = document.querySelector('#activity');
+		new agGrid.Grid(gridDiv, activityOptions);
+		var gridDiv = document.querySelector('#selectCat');
+		new agGrid.Grid(gridDiv, selectOptions);
+		viewData();
+		
+	});
+	function incrementData(data) {
+	    // Assuming 'data' follows the format 'INSP/YYYY-YY/XXXXX'
+	    const parts = data.split('/');
+	    const lastPart = parseInt(parts[2], 10); // Extract the numeric part
+	    const incrementedPart = (lastPart + 1).toString().padStart(5, '0'); // Increment and pad to 5 digits
+	    parts[2] = incrementedPart;
+	    return parts.join('/');
+	}
+ function viewData(){	 
+	 agGrid.simpleHttpRequest({
+			url : "generate-inspection-view-projects"
+		}).then(function(data) {
+			gridOptions.api.setRowData(data);
+			console.log(data);
+			var firstRowNode = gridOptions.api.getDisplayedRowAtIndex(0); // Get the first row node
+			  if (firstRowNode) {
+			    firstRowNode.setSelected(true); // Set the row as selected
+			  }
+			viewdets(id);
+		}) ;
+ }
+ function viewChecklist(){
+	 agGrid.simpleHttpRequest({
+			url : "generate-inspection-view-checklist"
+		}).then(function(data) {
+			selectOptions.api.setRowData(data);
+			console.log("checklist->>>>>>>>"+data);
+			/* var data = "";
+			var rowCount = activityOptions.api.getDisplayedRowCount();
+			console.log("rowCount",rowCount);
+			var i = rowCount - 1;
+			if(rowCount > 0){
+				activityOptions.api.forEachNode(function (rowNode, index1) {
+					data = rowNode.data.inspectionId;
+					console.log("yeeeeeeeeeeeeeeeeee   ",rowNode.data);
+					
+				});
+				}
+			console.log("yeeeeeeeeeeeeeeeeee   ",data);
+			data = incrementData(data);
+			console.log("aaaaaaaaaaaaaaaaaa ",data); */
+			
+		}) ;
+ }
+ function viewdets(id){
+	 var selectedRows = gridOptions.api.getSelectedRows();
+	 	$('#projectNo').val(selectedRows[0].projectId);
+		$('#projectName').val(selectedRows[0].projectName);
+		
+		$('#add1').attr('disabled', false);
+	  agGrid.simpleHttpRequest({
+			url : "generate-inspection-view-inspection?id=" +id
+		}).then(function(data) {
+			gridOptions1.api.setRowData(data);
+			
+		}) ; 
+ }
+ function addId() {
+		$("#upperline").hide();
+		$("#upperOne").hide();
+		$("#myform").show();
+		 var selectedRows = gridOptions.api.getSelectedRows();
+		 	$('#projectp').val(selectedRows[0].projectId);
+			$('#projectNamep').val(selectedRows[0].projectName);
+			
+		}
+	function closeId() {
+		$("#myform").hide();
+		$("#upperline").show();
+		$("#upperOne").show();
+		$("#add").show();
+		$("#delete").show();
+	}
+	function openNav(){
+		$('#myModal').modal('show');
+		viewChecklist();
+	}
+	function closeNav() {
+		$('#myModal').modal('hide');
+		$('#assignModal').modal('hide');
+	}
+	var columnDefs = [{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			}, {
+				headerName : "Project Id",
+				field : "projectId",
+				width : 200,
+			},{
+				headerName : "Date",
+				field : "date",
+				width : 200,
+			}, {
+				headerName : "Project Name",
+				field : "projectName",
+				width : 200,
+			}, {
+				headerName : "Location",
+				field : "location",
+				width : 200,
+			}, {
+				headerName : "Site-Incharge",
+				field : "incharge",
+				width : 200,
+			}, {
+				headerName : 'Inspector',
+				field : "inspector",
+				width : 200,
+			}, {
+				headerName : "Date and Time",
+				field : "dateTime",
+				width : 200,
+			}, {
+				headerName : "Status",
+				field : "status",
+				width : 200,
+			}, ];
+	var columnDefs1 = [{
+		headerCheckboxSelection : true,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true
+	},{
+		headerName : "Inspection Id",
+		field : "inspectionId",
+		width : 250,
+		cellRenderer : function(params) {
+			return '<a onclick=editId("' + params.data.inspectionId
+					+ '") href="javascript:void(0)">'
+					+ params.data.inspectionId + '</a>';
+		} 
+	},{
+		headerName : "ProjectId",
+		field : "projectId",
+		width : 250,
+		hide : true,
+	},{
+		headerName : "Location",
+		field : "site",
+		width : 250,
+	}, {
+		headerName : "Created On",
+		field : "createdOn",
+		width : 250,
+	},  {
+		headerName : "Created By",
+		field : "createdBy",
+		width : 250,
+	},  ];
+	var rowdata=[];
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowData : rowdata,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 200,
+			height : 20
+		},
+		rowSelection : 'single',
+		onSelectionChanged : onSelectionChanged
+	};
+	var rowdata1=[];
+	var gridOptions1 = {
+			columnDefs : columnDefs1,
+			rowData : rowdata1,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 200,
+				height : 20
+			},
+			rowSelection : 'single',
+			onSelectionChanged : onSelectionChanged1
+		};
+	var activityDefs= [{
+		headerCheckboxSelection : true,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true
+	},{
+		headerName : "Serial Id",
+		field : "serialNo",
+		width : 150,
+	//	hide : true,
+		/* cellRenderer : function(params) {
+			return '<a onclick=editCheck("' + params.data.serialNo
+					+ '") href="javascript:void(0)">'
+					+ params.data.serialNo + '</a>';
+		}  */
+	}, {
+		headerName : "Inspection Id",
+		field : "inspectionId",
+		width : 150,
+		hide : true,
+	}, {
+		headerName : "CategoryId",
+		field : "categoryId",
+		width : 150,
+	//	hide : true,
+	}, {
+		headerName : "Category Name",
+		field : "categoryName",
+		width : 150,
+	//	hide : true,
+	}, {
+		headerName : "Sub-CategoryId",
+		field : "subCategoryId",
+		width : 150,
+	//	hide : true,
+	}, {
+		headerName : "Sub-Category Name",
+		field : "subCategoryName",
+		width : 150,
+	//	hide : true,
+	}, {
+		headerName : "Inspection Type",
+		field : "type",
+		width : 150,
+	//	hide : true,
+	}, {
+		headerName : "AssignedTo",
+		field : "assignedToName",
+		width : 150,
+	//	hide : true,
+	},
+	{
+		headerName : "AssignedTo",
+		field : "assignedTo",
+		width : 150,
+		hide : true,
+	},{
+		headerName : "Start Date",
+		field : "startDate",
+		width : 150,
+	//	hide : true,
+	}, {
+		headerName : "End Date",
+		field : "endDate",
+		width : 150,
+	//	hide : true,
+	},  ];
+	var activityOptions = {
+			columnDefs : activityDefs,
+			rowData : rowdata1,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 200,
+				height : 20
+			},
+			rowSelection : 'multiple',
+			onSelectionChanged : onSelection
+		};
+	var selectDefs = [  {
+		headerCheckboxSelection : true,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true
+	}, {
+
+		headerName : "Category Id",
+		field : "categoryId",
+		width : 140,
+	}, {
+
+		headerName : "Category Name",
+		field : "categoryName",
+		width : 200,
+	}, {
+
+		headerName : "Sub-Category Id",
+		field : "subCategoryId",
+		width : 140,
+	}, {
+
+		headerName : "Sub-Category Name",
+		field : "subCategoryName",
+		width : 200,
+	}, ];
+	var selectOptions = {
+			columnDefs : selectDefs,
+			rowData : rowdata1,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 200,
+				height : 20
+			},
+			rowSelection : 'multiple',
+		};
+	
+	function viewImage(id){
+		window.open(id,'_blank');
+	}
+	function onSelection(){
+		var selectedRows1 = activityOptions.api.getSelectedRows();
+		var rowCount1 = 0;
+		selectedId=[];
+		selectedRows1.forEach(function (selectedRow1, index1) {
+	        selectedId.push(selectedRow1.serialNo);
+	    });
+		console.log(" @@@@@@@ "+selectedId)	;
+		$('#assign').attr('disabled', false);
+		$('#newchild').attr('disabled', true);
+		$('#deleteChild').attr('disabled', false);
+		selectedRows1.forEach(function(selectedRow, index) {
+			rowCount1 = rowCount1 + 1;
+		});
+	if (rowCount1 > 0) {
+			$('#assign').attr('disabled', false);
+			$('#deleteChild').attr('disabled', false);
+			$('#newchild').attr('disabled', true);
+		}
+		else{
+			$('#assign').attr('disabled', true);
+			$('#deleteChild').attr('disabled', true);
+			$('#newchild').attr('disabled', false);
+		}
+	
+	}
+	var pId="";
+	var selectedId=[];
+	function onSelectionChanged() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		pId = selectedRows[0].projectId;
+		viewdets(pId);
+		
+		var selectedRows1 = gridOptions1.api.getSelectedRows();
+		var rowCount1 = 0;
+		selectedId=[];
+		selectedRows1.forEach(function (selectedRow1, index1) {
+	        selectedId.push(selectedRow1.categoryCode);
+	    });
+	}
+	function onSelectionChanged1() {
+		var selectedRows1 = gridOptions1.api.getSelectedRows();
+		var rowCount1 = 0;
+		selectedRows1.forEach(function(selectedRow, index) {
+			 rowCount1 = rowCount1 + 1;
+			});
+		  if (rowCount1 > 0) {
+				$('#delete1').attr('disabled', false);
+				$('#add1').attr('disabled', true);
+			}
+			else{
+				$('#delete1').attr('disabled', true);
+				$('#add1').attr('disabled', false);
+			}
+		
+	}
+	function addList(){
+		var selectedRows = selectOptions.api.getSelectedRows();
+		var rowCount1 = 0;
+		var datas = [];
+		
+		 selectedRows.forEach(function (selectedRow1, index1) {
+			var obj={};
+			obj.categoryId = selectedRow1.categoryId;
+			obj.categoryName = selectedRow1.categoryName;
+			obj.subCategoryId = selectedRow1.subCategoryId;
+			obj.subCategoryName =selectedRow1.subCategoryName;
+			console.log(JSON.stringify(obj));
+			datas.push(obj);
+	    });
+		activityOptions.api.setRowData(datas);
+		closeNav();
+		}
+	
+	function masterSaveData(){
+		var data = [];
+		var obj = {};
+		obj.inspectionId = $("#inspectionId").val();
+		obj.projectId = $("#projectp").val();
+		obj.projectName = $("#projectNamep").val();
+		obj.site = $("#site").val();
+		
+		var rowCount = activityOptions.api.getDisplayedRowCount();
+		if(rowCount > 0){
+			activityOptions.api.forEachNode(function (rowNode, index1) {
+				var item = rowNode.data;
+				console.log(JSON.stringify(item));
+				data.push(item);
+				
+			});
+			}
+		obj.subModel=data;
+		saveData(obj);
+	}
+	function saveData(datas){
+		 $.ajax({
+				type : "POST",
+				url : "generate-inspection-add-data",
+				contentType : "application/json",
+				data : JSON.stringify(datas),
+				success : function(response) {
+					if (response.message == "Success") {
+						
+						console.log(response);
+						$("#messageParagraph").text("Data Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$("#msgModal").modal('show');
+						$("#feebackLogs").show();
+						viewData();
+						closeId();
+						//viewdets(pId);
+					}
+				},
+				error : function(datas) {
+					console.log(datas)
+				}
+			}) 
+	}
+	function editId(id){
+	var type= $("#inspectionType").val();
+		$.ajax({
+			type : "GET",
+					url : "generate-inspection-edit?id=" + id +"&type="+type,
+					async : false,
+					success : function(response) {
+						console.log("response for edit cus------"
+								+ JSON.stringify(response));
+						if (response.message == "Success") {
+							addId();
+							console.log("editing data-->>>>>>",response);
+							$("#inspectionId").val(response.body[0].inspectionId);
+							$("#inspectionId").html(response.body[0].inspectionId);
+							var k = $("#inspectionId").val();
+							console.log(response.body[0].inspectionId," @@@@@@@@@ ",k);
+							$("#site").val(response.body[0].site);
+							activityOptions.api.setRowData(response.body);
+						}
+					}
+				})
+	}
+	function openModal(){
+		$('#assignModal').modal('show');
+		var selectedRows = activityOptions.api.getSelectedRows();
+		var rowCount = 0;
+		var selectedNodes = activityOptions.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		 var type= selectedData.map(node => node.type);
+		 var assignedTo= selectedData.map(node => node.assignedTo);
+		 var assignedToName= selectedData.map(node => node.assignedToName);
+		 var startDate= selectedData.map(node => node.startDate);
+		 var endDate= selectedData.map(node => node.endDate);
+		 
+		 selectedRows.forEach(function(selectedRow, index) {
+				rowCount = rowCount + 1;
+			});
+		 if (rowCount == 1) {
+			 $("#inspectionType").val(type);
+			 $("#assignEmp").val(assignedToName);
+			 $("#startDate").val(startDate);
+			 $("#endDate").val(endDate);
+			 $("#assignEmpId").val(assignedTo);
+		 }
+		 else {
+		 $("#inspectionType").val('');
+		 $("#assignEmp").val('')
+		 $("#startDate").val('');
+		 $("#endDate").val('');
+		 $("#assignEmpId").val(''); 
+	     }
+   }
+	function getAssignList(){
+		var type = $("#inspectionType").val();
+		if (type == "internal"){
+			$("#external").hide();
+			$("#internal").show();
+		}
+		else if (type == "external"){
+			$("#internal").hide();
+			$("#external").show();
+		}
+	}
+	function getEmployeeList(){
+		var search = $("#assignEmp").val();
+		console.log("searchhh in getEmployeeAutoSearch"+search)
+		if (search == "") {
+			$("#suggesstion-box1").hide();
+		}
+		if (search) {
+			$.ajax({
+						type : "GET",
+						url : "generate-inspection-autosearch-employee?searchValue="
+								+ search,
+						success : function(response) {
+							if (response.message == "success") {
+								console.log(response);
+								if (response.body.length != 0) {
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list" style="color:#ccc;">';
+									for (var i = 0; i < response.body.length; i++) {
+										
+										content += '<li class="autocompletedata cp" onclick="selectAutocompleteValue1(\''
+												+ response.body[i].key
+												+ '\',\''
+												+ response.body[i].name
+												+ '\')">'
+												+ response.body[i].name
+												+ '</li>';
+									}
+									content += '</ul>';
+									$("#suggesstion-box1").show();
+									$("#suggesstion-box1").html(content);
+
+								} else {
+									$("#search").css("background", "#FFF");
+									var content = '<div id="autocomplete-list">';
+									content += '<div onClick="selectAutocompleteValue1()">'
+											+ "No Data Found" + '</div>';
+									content += '</div>';
+									$("#suggesstion-box1").show();
+									$("#suggesstion-box1").html(content);
+
+								}
+							}
+						},
+						error : function(data) {
+							console.log(data);
+						}
+					})
+		}
+	}
+	function getVendorList(){
+		var search = $("#assignVen").val();
+		console.log("searchhh in getVendorToAutoSearch"+search)
+		if (search == "") {
+			$("#suggesstion-box2").hide();
+		}
+		if (search) {
+			$.ajax({
+						type : "GET",
+						url : "generate-inspection-autosearch-vendor?searchValue="
+								+ search,
+						success : function(response) {
+							if (response.message == "success") {
+								console.log(response);
+								if (response.body.length != 0) {
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list" style="color:#ccc;">';
+									for (var i = 0; i < response.body.length; i++) {
+										
+										content += '<li class="autocompletedata cp" onclick="selectAutocompleteValue2(\''
+												+ response.body[i].key
+												+ '\',\''
+												+ response.body[i].name
+												+ '\')">'
+												+ response.body[i].name
+												+ '</li>';
+									}
+									content += '</ul>';
+									$("#suggesstion-box2").show();
+									$("#suggesstion-box2").html(content);
+
+								} else {
+									$("#search").css("background", "#FFF");
+									var content = '<div id="autocomplete-list">';
+									content += '<div onClick="selectAutocompleteValue2()">'
+											+ "No Data Found" + '</div>';
+									content += '</div>';
+									$("#suggesstion-box2").show();
+									$("#suggesstion-box2").html(content);
+
+								}
+							}
+						},
+						error : function(data) {
+							console.log(data);
+						}
+					})
+		}
+	}
+	function selectAutocompleteValue1(key,name) {
+		if (key) {
+			$("#assignEmpId").val(key);
+			$("#assignedTo").val(key);
+			$("#assignEmp").val(name);
+			$("#search").val(key);
+			$("#search").attr('data-procat', key);
+			$("#suggesstion-box1").hide();
+
+		} else {
+			$("#search").val("");
+			$("#search").attr('data-procat', "");
+			$("#suggesstion-box1").hide();
+
+		}
+	}
+	function selectAutocompleteValue2(key,name) {
+		if (key) {
+			$("#assignVenId").val(key);
+			$("#assignVen").val(name);
+			$("#search").val(key);
+			$("#search").attr('data-procat', key);
+			$("#suggesstion-box2").hide();
+
+		} else {
+			$("#search").val("");
+			$("#search").attr('data-procat', "");
+			$("#suggesstion-box2").hide();
+
+		}
+	}
+	function addAssign(){
+		console.log('selectedID',JSON.stringify(selectedId));
+		var obj = {};
+		var datas = [];
+		var selectRows = activityOptions.api.getSelectedRows();
+		selectRows.forEach(function (selectedRow1, index1) {
+				var obj={};
+				obj.inspectionId = $("#inspectionId").val();
+				obj.projectId = $("#projectp").val();
+				obj.serialNo = selectedRow1.serialNo;
+				obj.categoryId = selectedRow1.categoryId;
+				obj.categoryName = selectedRow1.categoryName;
+				obj.subCategoryId = selectedRow1.subCategoryId;
+				obj.subCategoryName =selectedRow1.subCategoryName;
+				obj.type = $("#inspectionType").val();
+				var type = $("#inspectionType").val();
+				if (type == "internal"){
+					obj.assignedTo = $("#assignEmpId").val();
+				}
+				else if (type == "external"){
+					obj.assignedTo = $("#assignVenId").val();
+				}
+				obj.startDate = $("#startDate").val();
+				obj.endDate = $("#endDate").val();
+				datas.push(obj);
+		    });
+		
+		/* obj.serialNo = selectedId;
+		obj.inspectionType = $("#inspectionType").val();
+		var type = $("#inspectionType").val();
+		if (type == "internal"){
+			obj.assignedTo = $("#assignEmpId").val();
+		}
+		else if (type == "external"){
+			obj.assignedTo = $("#assignVenId").val();
+		}
+		obj.startDate = $("#startDate").val();
+		obj.endDate = $("#endDate").val(); */
+		
+		console.log(JSON.stringify(datas));
+		save(datas);
+		
+	}
+	function save(datas){
+		var id = $("#inspectionId").val();
+		 $.ajax({
+				type : "POST",
+				url : "generate-inspection-add-assignedTo",
+				contentType : "application/json",
+				data : JSON.stringify(datas),
+				success : function(response) {
+					if (response.message == "Success") {
+						console.log(response);
+						$("#messageParagraph").text("Data Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$("#msgModal").modal('show');
+						$("#feebackLogs").show();
+						closeNav();
+						viewChecklist();
+						editId(id);
+						$('#assign').attr('disabled', true);
+						$('#newchild').attr('disabled', false);
+						$('#deleteChild').attr('disabled', true);
+					}
+				},
+				error : function(datas) {
+					console.log(datas)
+				}
+			}) 
+	}
+	function deleteDetails(){
+		 $('#deleteModall').modal('show');
+	}
+	function CanceldeleteDetails(){
+		 $('#deleteModall').modal('hide');
+	}
+    function deleteDetails1(){
+		
+    	$('#deleteModal1').modal('show');
+	}
+    function CanceldeleteDetails1(){
+		 $('#deleteModal1').modal('hide');
+	}
+
+	function deleteOnclick() {
+		$('.loader').show();
+			var selectedRows = gridOptions1.api.getSelectedRows();
+		 var id=selectedRows[0].inspectionId;
+		
+			$.ajax({
+				type : "POST",
+				url : "generate-inspection-delete?id="+ id,
+				success : function(response) {
+				 if (response.message == "Success") {
+					
+					 $('#deleteModall').modal('hide');
+
+						$('#delete1').attr("disabled", true);
+						$('#add1').attr("disabled", false);
+						viewData();
+						closeId();
+						$('.loader').hide();
+					} else {
+						
+					}
+				},
+				error : function(data) {
+					console.log(data)
+					$('.loader').hide();
+				}
+			})
+		}
+	
+	function deleteOnclick1() {
+		var selectedRows = activityOptions.api.getSelectedRows();
+		activityOptions.api.applyTransaction({
+			remove : selectedRows
+		});
+		CanceldeleteDetails1();
+
+	}
+	function deleteOnclick14() {
+		$('.loader').show();
+			var selectedRows = activityOptions.api.getSelectedRows();
+		 var checkId=selectedRows[0].serialNo;
+		var id=$('#inspectionId').val();
+			$.ajax({
+				type : "POST",
+				url : "generate-inspection-checkList-delete?id="+ id+"&checkId="+checkId,
+				success : function(res) {
+				 if (res.message == "Success") {
+					
+					 $('#deleteModal1').modal('hide');
+
+						$('#delete1').attr("disabled", true);
+						$('#add1').attr("disabled", false);
+						
+						$('.loader').hide();
+					} else {
+						$('#delete1').attr("disabled", true);
+						$('#add1').attr("disabled", false);
+					}
+				},
+				error : function(data) {
+					console.log(data)
+					$('.loader').hide();
+				}
+			})
+		}
+</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div id="upperline">
+
+							<div class="row">
+								<div class="row">
+									<div class="d-flex justify-content-between">
+										<div class="col-md-4  btn-hs">
+											<div class="font-design">
+												Projects (<span></span>)
+											</div>
+										</div>
+										<div class="col-md-3 btn-hs" id="searchRowDiv">
+											<div class="input-style">
+												<input type="text" placeholder="Search.." name="search"
+													class="searchboxinput" onkeyup="cancelBar()"
+													oninput="onQuickFilterChanged()" id="quickFilter">
+												<div class="searchicon">
+													<a href="javascript:void(0)"><span
+														style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+														id="closeKey"
+														onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+														class="close_i"><i class="ti-close srchicon"></i></span></a><a
+														href="javascript:void(0)"><i
+														class="ti-search srchicon"></i></a>
+												</div>
+											</div>
+
+										</div>
+										<div class="buttonsec btn-hs col-md-5">
+											<button class="download-btn" id="download" onclick="">Download</button>
+											<button class="approve-btn" id="approve" onclick=""
+												th:if="${hrRole != null}">Approve</button>
+											<button class="reject-btn" id="reject" onclick=""
+												th:if="${hrRole != null}">Reject</button>
+											<!-- <button class="delete-btn" id="delete" onclick="">Delete</button> -->
+
+										</div>
+									</div>
+								</div>
+
+								<div id="myGrid" style="width: 100%; height: 250px;"
+									class="ag-theme-alpine"></div>
+								<div style="width: 100%; height: 15px;" class="ag-theme-alpine"></div>
+							</div>
+						</div>
+						<div class="row" id="upperOne">
+							<div class="d-flex justify-content-between">
+								<div class="col-md-6  btn-hs">
+									<div class="font-design">
+										<!-- Selected Check-list -->
+									</div>
+								</div>
+								<div class="buttonsec btn-hs col-md-5">
+									<div class="buttonsec">
+										<button class="download-btn" id="download1" onclick="">Download</button>
+										<button class="new-btn" id="add1" onclick="addId()">New</button>
+										<button class="approve-btn" id="approve1" onclick=""
+											th:if="${hrRole != null}">Approve</button>
+										<button class="reject-btn" id="reject1" onclick=""
+											th:if="${hrRole != null}">Reject</button>
+										<button class="delete-btn" id="delete1" onclick="deleteDetails()">Delete</button>
+									</div>
+								</div>
+							</div>
+							<div class="col-lg-6">
+								<label> Project No</label> <input type="text"
+									style="width: 100%;" id="projectNo" class="form-control"
+									onblur="removeValid(event)" readonly>
+
+							</div>
+							<div class="col-lg-6">
+								<label> Project Name</label> <input type="text"
+									style="width: 100%;" id="projectName" class="form-control"
+									onblur="removeValid(event)" readonly>
+
+							</div>
+
+							<div id="myGrid1" style="width: 100%; height: 300px;"
+								class="ag-theme-alpine"></div>
+						</div>
+
+						<div id="myform">
+							<div class="innercontent">
+								<div class="innerstickybg">
+									<div class="row">
+										<div class="col-md-6">
+											Inspection Id: <span id="inspectionId"></span>
+										</div>
+
+										<div class="col-md-6" align="right">
+											<button class="cancel-btn" id="cancelBtn" onclick="closeId()">Cancel</button>
+											<button class="approve-btn" id="save"
+												onclick="masterSaveData()">Save</button>
+										</div>
+									</div>
+
+								</div>
+								<div class="row innersticky_contentgap">
+
+									<div class="col-lg-6">
+										<label> Project No</label> <input type="text"
+											style="width: 100%;" id="projectp" class="form-control"
+											onblur="removeValid(event)" readonly>
+
+									</div>
+									<div class="col-lg-6">
+										<label> Project Name</label> <input type="text"
+											style="width: 100%;" id="projectNamep" class="form-control"
+											onblur="removeValid(event)" readonly>
+
+									</div>
+
+									<div class="col-md-4">
+										<div class="form-group">
+											<label> Location/Site </label> <input type="text"
+												class="form-control" id="site">
+										</div>
+									</div>
+								</div>
+								<div id="main" class="mt-4">
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingOne">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseOne"
+												aria-expanded="false" aria-controls="collapseOne">
+												Checklist</button>
+										</h2>
+
+										<div id="collapseOne" class="accordion-collapse collapse show"
+											aria-labelledby="headingOne"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+
+												<div class="row">
+													<div class="col-md-12 buttonsec btn-hs">
+														<button class="new-btn" id="assign" onclick="openModal()">Assign</button>
+														<button class="delete-btn" id="deleteChild"
+															onclick="deleteDetails1()">DELETE</button>
+														<button class="new-btn" id="newchild" onclick="openNav()">NEW</button>
+													</div>
+													<div id="activity" style="width: 100%; height: 200px;"
+														class="ag-theme-alpine"></div>
+												</div>
+
+
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+						</div>
+
+
+					</div>
+					<!-- SIDE BAR NAVIGATION STARTS -->
+
+
+				</div>
+
+				<!-- SIDE BAR NAVIGATION ENDS -->
+
+			</div>
+
+			<!-- select modal start -->
+			<div id="myModal" class="modal fade show">
+				<div class="modal-dialog modal-lg" style="margin-top: 130px;">
+					<div class="modal-content">
+						<!-- 	style="height: 400px; width: 500px; align: center;"> -->
+						<!-- Modal Header -->
+						<div class="modal-header">
+							<h4 class="modal-title md-color">Select Checklist</h4>
+							<button type="button" class="close cp" onclick="closeNav();"
+								data-dismiss="modal">&times;</button>
+						</div>
+
+						<div class="modal-footer justify-content-center"
+							style="margin-top: 0px;">
+
+							<div id="selectCat" style="width: 100%; height: 350px;"
+								class="ag-theme-alpine"></div>
+						</div>
+						<div class="modal-body">
+							<button class="btn3" id="cancelR" align="center"
+								onclick="closeNav()">Cancel</button>
+							<button class="btn2" id="addList " align="center"
+								onclick="addList()">Add</button>
+
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- //for assign inspection -->
+			<div id="assignModal" class="modal fade show">
+				<div class="modal-dialog modal-lg" style="margin-top: 130px;">
+					<div class="modal-content">
+						<!-- 	style="height: 400px; width: 500px; align: center;"> -->
+						<!-- Modal Header -->
+						<div class="modal-header">
+							<h4 class="modal-title md-color">Assign Inspections</h4>
+							<button type="button" class="close cp" onclick="closeNav();"
+								data-dismiss="modal">&times;</button>
+						</div>
+
+						<div class="modal-footer justify-content-center"
+							style="margin-top: 0px;">
+
+							<div class="row">
+								<div class="col-lg-12">
+									<div class="form-group">
+										<input type="hidden" class="form-control" id="checkIds">
+									</div>
+								</div>
+								<div class="col-md-6">
+									<div class="form-group">
+										<label> Type of Inspection </label>
+										<div class="select" onchange="getAssignList()">
+											<select id="inspectionType">
+												<option value="">Select</option>
+												<option value="internal">Internal</option>
+												<option value="external">External</option>
+												<!-- <option th:each="c:${itemnameList}" th:value='${c.key}'
+														th:text="${c.name}"></option> -->
+											</select> <span class="focus"></span>
+										</div>
+									</div>
+								</div>
+								<div class="col-md-6" id="internal">
+									<div class="form-group">
+										<div class="autocomplete" style="width: 100%;">
+											<label>Assigned To</label> <input type="text" id="assignEmp"
+												placeholder="Search Here.." class="form-control"
+												onkeyup='getEmployeeList()'><input type="hidden"
+												id="assignEmpId"> <input type="hidden"
+												id="assignedToName">
+										</div>
+										<div id="suggesstion-box1" class="sugg-cls"></div>
+									</div>
+								</div>
+
+								<div class="col-md-6" id="external">
+									<div class="form-group">
+										<div class="autocomplete" style="width: 100%;">
+											<label>Assigned To</label> <input type="text" id="assignVen"
+												placeholder="Search Here.." class="form-control"
+												onkeyup='getVendorList()'><input type="hidden"
+												id="assignVenId">
+										</div>
+										<div id="suggesstion-box2" class="sugg-cls"></div>
+									</div>
+								</div>
+
+								<div class="col-lg-6">
+									<div class="form-group calendar_box">
+										<label> Start date</label> <input type="text" id="startDate"
+											class="form-control" onblur="removeValid(event)"
+											th:attr="onkeyup=|formatDate('startDate','${session.DATEFORMAT_JS}')|"
+											readonly> <i class="ti-calendar picker_calendar"
+											id="startDateCalendar"></i>
+									</div>
+								</div>
+								<div class="col-lg-6">
+									<div class="form-group calendar_box">
+										<label> End date</label> <input type="text" id="endDate"
+											class="form-control" onblur="removeValid(event)"
+											th:attr="onkeyup=|formatDate('endDate','${session.DATEFORMAT_JS}')|"
+											readonly> <i class="ti-calendar picker_calendar"
+											id="endDateCalendar"></i>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="modal-body">
+							<button class="btn3" id="cancelAssign" align="center"
+								onclick="closeNav()">Cancel</button>
+							<button class="btn2" id="addAssign" align="center"
+								onclick="addAssign()">Assign</button>
+
+						</div>
+					</div>
+				</div>
+			</div>
+			<div id="deleteModall" class="modal fade show" aria-modal="true">
+				<div class="modal-dialog modal-confirm">
+					<div class="modal-content">
+						<div class="modal-header flex-column">
+							<button type="button" class="close" data-dismiss="modal"
+								aria-hidden="true" onclick="CanceldeleteDetails()">
+								<i class="ti-close modal-close"></i>
+							</button>
+						</div>
+						<div class="modal-body">
+							<p>Do you really want to delete these records? This process
+								cannot be undone.</p>
+						</div>
+						<div class="modal-footer justify-content-center"
+							style="margin-top: -30px;">
+
+							<button type="button" class="cancel-btn" data-dismiss="modal"
+								onclick="CanceldeleteDetails();">Cancel</button>
+							<button type="button" class="btn3" onclick="deleteOnclick()">Delete</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div id="deleteModal1" class="modal fade show" aria-modal="true">
+				<div class="modal-dialog modal-confirm">
+					<div class="modal-content">
+						<div class="modal-header flex-column">
+							<button type="button" class="close" data-dismiss="modal"
+								aria-hidden="true" onclick="CanceldeleteDetails1()">
+								<i class="ti-close modal-close"></i>
+							</button>
+						</div>
+						<div class="modal-body">
+							<p>Do you really want to delete these records? This process
+								cannot be undone.</p>
+						</div>
+						<div class="modal-footer justify-content-center"
+							style="margin-top: -30px;">
+
+							<button type="button" class="cancel-btn" data-dismiss="modal"
+								onclick="CanceldeleteDetails1();">Cancel</button>
+							<button type="button" class="btn3" onclick="deleteOnclick1()">Delete</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+	</div>
+</body>
+
+</html>

@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<script type="text/javascript">
+	$(document).ready(
+			function() {
+				$("#new").hide();
+				var dateFormat = localStorage.getItem("dateFormat");
+				var gridDiv1 = document.querySelector('#myGrid');
+				new agGrid.Grid(gridDiv1, gridOptions);
+				var userid = $("#sessionId").val();
+
+				$('.loader').show();
+				gridOptions.api.setRowData();
+				agGrid.simpleHttpRequest({
+					url : "insurance-nominee-details?userid=" + userid,
+				}).then(function(data) {
+					var len = data.length;
+					$('#totalReq').find('span').html(len);
+					gridOptions.api.setRowData(data);
+					$('.loader').hide();
+				})
+
+				$("#empDobCalendarId").datetimepicker({
+					format : 'd-m-Y',
+					closeOnDateSelect : true,
+					timepicker : false,
+					datepicker : true,
+					scrollMonth : false,
+					minDate : new Date()
+				//step : 15
+				}).on("change", function() {
+					$('#empDob').val($(this).val());
+				})
+				$('#empDob').blur(function() {
+					$("#empDobCalendarId").val($(this).val());
+				})
+
+				$("#dob2Calendar").datetimepicker({
+					format : 'd-m-Y',
+					closeOnDateSelect : true,
+					timepicker : false,
+					datepicker : true,
+					scrollMonth : false,
+					maxDate : 0
+				//step : 15
+				}).on("change", function() {
+					$('#nomDob').val($(this).val());
+				})
+				$('#nomDob').blur(function() {
+					$("#dob2Calendar").val($(this).val());
+				})
+
+				$("#dobCalendar").datetimepicker({
+					format : 'd-m-Y',
+					closeOnDateSelect : true,
+					timepicker : false,
+					datepicker : true,
+					scrollMonth : false,
+					maxDate : 0
+				}).on("change", function() {
+					$('#decDob').val($(this).val());
+				})
+				$('#decDob').blur(function() {
+					$("#dobCalendar").val($(this).val());
+				})
+
+				var gridDiv = document.querySelector('#childId1');
+				new agGrid.Grid(gridDiv, gridOptions1);
+				gridOptions1.api.setRowData();
+
+				var gridDiv = document.querySelector('#childId2');
+				new agGrid.Grid(gridDiv, gridOptions2);
+				gridOptions2.api.setRowData();
+
+				var financial_year = "";
+				var today = new Date();
+				if ((today.getMonth() + 1) <= 3) {
+					financial_year = (today.getFullYear() - 1) + "-"
+							+ today.getFullYear()
+				} else {
+					financial_year = today.getFullYear() + "-"
+							+ (today.getFullYear() + 1)
+				}
+				$("#financialYr").val(financial_year)
+				
+				 checkNewAvailable();
+				
+	
+			});
+
+	/*   table add activity*/
+
+	var columnDef = [
+		{
+				headerName : "Insurance Id",
+				field : "insuId",
+				width : 130,
+				cellRenderer : function(params) {
+					if (params.data.insuId) {
+						return '<a onclick=editPage("' + params.data.insuId
+								+ '") href="javascript:void(0)">'
+								+ params.data.insuId + '</a>';
+					}
+				}
+			},
+			{
+				headerName : "Employee Id",
+				field : "empId",
+				width : 130,
+			}, {
+				headerName : 'Employee Name',
+				field : "empName",
+				width : 240,
+			}, {
+				headerName : 'Department',
+				field : "dept",
+				width : 200,
+			}, 
+			{
+				headerName : 'Financial Year',
+				field : "financialYr",
+				width : 150,
+			}, {
+				headerName : 'Date Of Birth',
+				field : "empDob",
+				width : 150,
+			},{
+				headerName : 'Mobile Number',
+				field : "empMob",
+				width : 150,
+			}, {
+				headerName : 'Email Id',
+				field : "email",
+			} ];
+	var gridOptions = {
+		columnDefs : columnDef,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 210,
+			height : 10
+		},
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		//onSelectionChanged : rowSelectId,
+		getRowNodeId : function(data) {
+			return data.eventId;
+		}
+	};
+
+	var colmnDefs2 = [ {
+		headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true
+
+	}, {
+		headerName : 'Declare Id',
+		field : "dclrId",
+		width : 250,
+		cellRenderer : function(params) {
+			if (params.data.dclrId) {
+				return '<a onclick=editDeclaration("' + params.data.dclrId
+						+ '") href="javascript:void(0)">'
+						+ params.data.dclrId + '</a>';
+			}
+		}
+	}, {
+		headerName : "Name",
+		field : "decName",
+		width : 350,
+
+	}, {
+		headerName : 'Date Of Birth',
+		field : "decDob",
+		width : 350,
+	}, {
+
+		headerName : 'Relation',
+		field : "decRelation",
+		width : 350,
+	} ];
+	var gridOptions1 = {
+		columnDefs : colmnDefs2,
+		rowSelection : 'single',
+		onSelectionChanged : rowSelectDeclarationDetails,
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 210,
+			height : 10
+		},
+	};
+
+	var colmnDefs3 = [ {
+		headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true
+
+	}, {
+		headerName : 'Nominee Id',
+		field : "nomId",
+		width : 200,
+		cellRenderer : function(params) {
+			if (params.data.nomId) {
+				return '<a onclick=editNominee("' + params.data.nomId
+						+ '") href="javascript:void(0)">'
+						+ params.data.nomId + '</a>';
+			}
+		}
+	}, {
+		headerName : "Name",
+		field : "nomName",
+		width : 350,
+	}, {
+		headerName : 'Date Of Birth',
+		field : "nomDob",
+		width : 250,
+	}, {
+
+		headerName : 'Relation',
+		field : "nomRelation",
+		width : 250,
+	}, {
+		headerName : '% Of Share',
+		field : "nomPerOfShare",
+		width : 250,
+	} ];
+	var gridOptions2 = {
+		columnDefs : colmnDefs3,
+		rowSelection : 'single',
+		onSelectionChanged : rowSelectNomineeDetails,
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 210,
+			height : 10
+		},
+	
+	};
+
+	
+	function rowSelectDeclarationDetails() {
+		var deleteid = "";
+		var selectedRows = gridOptions1.api.getSelectedRows();
+
+		deleteid = "";
+		for (var i = 0; i < selectedRows.length; i++) {
+
+			deleteid = deleteid + '"' + selectedRows[i].dclrId + '",';
+
+		}
+		
+		deleteid = deleteid.substring(0, deleteid.length - 1);
+		var rowCount = 0;
+		selectedRows.forEach(function() {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#cancelId1').attr("disabled", false);
+			$('#addId1').attr("disabled", true);
+			closeNav();
+			closeNav2();
+		} else {
+			$('#cancelId1').attr("disabled", true);
+			$('#addId1').attr("disabled", false);
+		}
+
+	}
+	
+	function checkNewAvailable() {
+		$("#addReq").val('');
+		//$("#editReq").val('');
+		var financialYear = $("#financialYr").val();
+		$.ajax({
+			type : 'GET',
+			url : 'insurance-nominee-checkNewAvailable?financialYear='
+					+ financialYear,
+			contentType : false,
+			success : function(response) {
+				if (response.message == "Success") {
+					if(response.body.name=="1"){
+						$("#new").hide();
+					}else{
+						$("#new").show();
+					}
+				}
+			},
+			error : function(e) {
+			}
+		});
+	}
+
+	function rowSelectNomineeDetails() {
+		var deleteid = "";
+		var selectedRows = gridOptions2.api.getSelectedRows();
+
+		deleteid = "";
+		for (var i = 0; i < selectedRows.length; i++) {
+
+			deleteid = deleteid + '"' + selectedRows[i].nomId + '",';
+
+		}
+		
+		deleteid = deleteid.substring(0, deleteid.length - 1);
+		var rowCount = 0;
+		selectedRows.forEach(function() {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#cancelId2').attr("disabled", false);
+			$('#addId2').attr("disabled", true);
+			closeNav();
+			closeNav2();
+		} else {
+			$('#cancelId2').attr("disabled", true);
+			$('#addId2').attr("disabled", false);
+		}
+
+	}
+	
+	function deleteDeclaration() {
+		var selectedRows = gridOptions1.api.getSelectedRows();
+				 var id=selectedRows[0].dclrId;
+				 var empid = $("#empId").val();
+				 $.ajax({
+					type : "GET",
+					url : "insurance-nominee-deleteDeclaration?id=" + id,
+					async : false,
+					success : function(response) {
+
+						if (response.message == "Success") {
+							
+							
+							var userid = $("#sessionId").val();
+							agGrid.simpleHttpRequest({
+								url : 'insurance-nominee-declarationDetails?userid=' + userid
+								}).then(function(data) {
+									gridOptions1.api.setRowData(data);
+									
+								});
+							
+							var insuid= $('#insuId').html();
+							agGrid.simpleHttpRequest({
+								url : 'insurance-nominee-NomineeDetails?insuid=' + insuid
+							}).then(function(data) {
+								gridOptions2.api.setRowData(data);
+							
+							});
+							
+							$("#messageParagraph").text(
+							"Data Deleted Successfully");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							//location.reload();
+							//profileSelect();
+				        	$('#cancelId1').attr("disabled", true);
+							$('#addId1').attr("disabled", false);
+							
+						}
+
+					},
+					error : function(data) {
+					}
+				});
+	}
+	
+	
+	function deleteNominee() {
+		var selectedRows = gridOptions2.api.getSelectedRows();
+				 var id=selectedRows[0].nomId;
+				$.ajax({
+					type : "GET",
+					url : "insurance-nominee-deleteNominee?id=" + id,
+					async : false,
+					success : function(response) {
+
+						if (response.message == "Success") {
+							
+							var insuid= $('#insuId').html();
+							agGrid.simpleHttpRequest({
+								url : 'insurance-nominee-NomineeDetails?insuid=' + insuid
+							}).then(function(data) {
+								gridOptions2.api.setRowData(data);
+							
+							});
+							
+							$("#messageParagraph").text(
+							"Data Deleted Successfully");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							//location.reload();
+							//profileSelect();
+							$('#cancelId2').attr("disabled", true);
+							$('#addId2').attr("disabled", false);
+
+							
+						}
+
+					},
+					error : function(data) {
+					}
+				});
+	}
+	
+function editDeclaration(id1) {
+	     openNav1();
+	     
+	    var x = parseInt(id1);
+		$.ajax({
+			type : "GET",
+			url : "insurance-nominee-editDeclaration?id=" + id1,		
+			async : false,
+			success : function(response) {
+				console.log(response)
+				if (response.message == "Success") {	
+					console.log(response.body)
+					 	
+					openNav1();
+					//$("#rltn").removeClass("select");
+					$("#dclrId").val(response.body.dclrId); 
+					$("#decName").val(response.body.decName);
+					$("#decDob").val(response.body.decDob);
+					$("#decRelation").val(response.body.decRelation);
+					//$('#dclrId').val(dataNode.dclrId);
+					
+					}
+				
+			}
+		});
+		
+		
+	}
+function editNominee(id1) {
+    openNav2();
+    
+   var x = parseInt(id1);
+	$.ajax({
+		type : "GET",
+		url : "insurance-nominee-editNominee?id=" + id1,		
+		async : false,
+		success : function(response) {
+			console.log(response)
+			if (response.message == "Success") {	
+				console.log(response.body)
+			
+			 	
+				openNav2();
+				
+				$("#nName").removeClass("select");
+				$("#nomId").val(response.body.nomId); 
+				$("#nomName").val(response.body.nomName);
+				$("#nomDob").val(response.body.nomDob);
+				$("#nomRelation").val(response.body.nomRelation);
+				$("#nomPerOfShare").val(response.body.nomPerOfShare);
+				
+				
+				}
+			
+		}
+	});
+	
+	
+}
+	function openNav1() {
+		closeNav2();
+		$(".formValidation").remove();
+		$("#dclrId").val("");
+		$("#decName").val("");
+		$("#decDob").val("");
+		$("#decRelation").val("");
+		document.getElementById("mySidenav").style.cssText = "width:30%; position: absolute; right:-10px; overflow: hidden; height:auto; top:314px;";
+		document.getElementById("childId1").style.width = "70%";
+		document.getElementById("childId2").style.width = "100%";
+		$("#download1").hide();
+		$("#addId1").hide();
+		$("#cancelId1").hide();
+		$("#download2").show();
+		$("#addId2").show();
+		$("#cancelId2").show();
+	}
+	function openNav2() {
+		getDeclareName();
+		closeNav();
+		$(".formValidation").remove();
+		$("#nomId").val("");
+		$("#nomName").val("");
+		$("#nomDob").val("");
+		$("#nomRelation").val("");
+		$("#nomPerOfShare").val("");
+		document.getElementById("mySidenavNoti").style.cssText = "width: 30%; position: absolute; right:-10px; overflow: hidden; height:auto; top:660px;";
+		document.getElementById("childId2").style.width = "70%";
+		document.getElementById("childId1").style.width = "100%";
+		$("#download2").hide();
+		$("#addId2").hide();
+		$("#cancelId2").hide();
+		$("#download1").show();
+		$("#addId1").show();
+		$("#cancelId1").show();
+	}
+	function closeNav() {
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("childId1").style.width = "100%";
+		document.getElementById("childId2").style.width = "100%";
+		$("#download1").show();
+		$("#addId1").show();
+		$("#cancelId1").show();
+	}
+	function closeNav2() {
+		document.getElementById("mySidenavNoti").style.width = "0";
+		document.getElementById("childId2").style.width = "100%";
+		document.getElementById("childId1").style.width = "100%";
+		$("#download2").show();
+		$("#addId2").show();
+		$("#cancelId2").show();
+	}
+
+	
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	function onQuickFilterChanged1() {
+		gridOptions1.api
+				.setQuickFilter(document.getElementById('quickFilter1').value);
+	}
+	function cancelBar1() {
+		var id = document.getElementById("closeKey1");
+		id.style.display = "block";
+
+		if ($('#quickFilter1').val() == null || $('#quickFilter1').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	function onQuickFilterChanged2() {
+		gridOptions2.api
+				.setQuickFilter(document.getElementById('quickFilter2').value);
+	}
+	function cancelBar2() {
+		var id = document.getElementById("closeKey2");
+		id.style.display = "block";
+
+		if ($('#quickFilter2').val() == null || $('#quickFilter2').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	function newDetails(){
+		$("#demo").show();
+		$("#myGrid").hide();
+		$("#myGrid1").show();
+		$("#demo1").hide();
+		$("#childId1").show();
+		$("#childId2").show();
+		$("#searchRowDiv").hide();
+		$("#totalReq").hide();
+		$("#new").hide();
+		$("#delete").hide();
+		$("#download").hide();
+		$('#cancelId1').attr("disabled", true);
+		$('#cancelId2').attr("disabled", true);
+		var userid = $("#sessionId").val();
+		$.ajax({
+			type : "GET",
+			url : "insurance-nominee-view-empDetails?userid=" + userid,
+			success : function(response) {
+				if (response.message == "Success") {
+					console.log(response.body)
+					$("#empId").val(response.body[0].empId);
+					$("#empName").val(response.body[0].empName);
+					$("#empDob").val(response.body[0].empDob);
+					$("#dept").val(response.body[0].dept);
+					$("#empMob").val(response.body[0].empMob);
+					$("#email").val(response.body[0].email);
+
+				}
+			},
+			error : function(data) {
+				console.log(data)
+
+			}
+		});
+	}
+	function editPage(id) {
+		$('#insuId').html(id);
+		userid = $("#sessionId").val();
+		agGrid.simpleHttpRequest({
+			url : 'insurance-nominee-declarationDetails?userid=' + userid
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq1').find('span').html(len);
+			gridOptions1.api.setRowData(data);
+		});
+		$("#demo").show();
+		$("#myGrid").hide();
+		$("#myGrid1").show();
+		$("#demo1").hide();
+		$("#childId1").show();
+		$("#childId2").show();
+		$("#searchRowDiv").hide();
+		$("#totalReq").hide();
+		$("#new").hide();
+		$("#delete").hide();
+		$("#download").hide();
+		$('#cancelId1').attr("disabled", true);
+		$('#cancelId2').attr("disabled", true);
+		var userid = $("#sessionId").val();
+
+		$.ajax({
+			type : "GET",
+			url : "insurance-nominee-view-empDetails?userid=" + userid,
+			success : function(response) {
+				if (response.message == "Success") {
+					console.log(response.body)
+					$("#empId").val(response.body[0].empId);
+					$("#empName").val(response.body[0].empName);
+					$("#empDob").val(response.body[0].empDob);
+					$("#dept").val(response.body[0].dept);
+					$("#empMob").val(response.body[0].empMob);
+					$("#email").val(response.body[0].email);
+
+				}
+			},
+			error : function(data) {
+				console.log(data)
+
+			}
+		});
+ 
+		agGrid.simpleHttpRequest({
+			url : 'insurance-nominee-NomineeDetails?insuid=' + id
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq2').find('span').html(len);
+			gridOptions2.api.setRowData(data);
+			$('#totalShare').html(data[0].totalShare); 
+			var id=$('#totalShare').html();
+		});
+		//var id=$('#totalShare').text();
+		//console.log(id)
+		
+
+	}
+	function canceldtls() {
+		$("#demo1").show();
+		$("#demo").hide();
+		$("#myGrid").show();
+		$("#myGrid1").hide();
+		$("#childId1").hide();
+		$("#childId2").hide();
+		$("#new").show();
+		$("#delete").show();
+		$("#download").show();
+		$("#searchRowDiv").show();
+		$("#totalReq").show();
+	}
+	
+	function saveTableData1() {
+		if($("#dclrId").val()!=""){
+			saveDeclarationDetails();
+		}else{
+			if($('#totalReq1').find('span').html()=="" || $('#totalReq1').find('span').html()<5){
+				saveDeclarationDetails();
+			}else{
+				$("#messageParagraph").text("You can declare maximum 5 members");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				closeNav();
+			}
+
+		}
+	}
+	function saveDeclarationDetails(){
+		var data1 = {};
+		var valid=true;
+		var empid = $("#empId").val();
+		data1.insuId = $("#insuId").html();
+		data1.empId = $("#empId").val();
+		data1.dept = $("#dept").val();
+		data1.dclrId = $("#dclrId").val();
+		data1.decName = $("#decName").val();
+		data1.decDob = $("#decDob").val();
+		data1.decRelation = $("#decRelation").val();
+		data1.financialYr = $("#financialYr").val();
+		
+	 	if (data1.decName == null || data1.decName == "") {
+			valid = validationUpdated("Declar Name Required", "decName");
+		}
+		if (data1.decDob == null || data1.decDob == "") {
+			valid = validationUpdated("Date Of Birth Required", "decDob");
+		}
+		if (data1.decRelation == null || data1.decRelation == "") {
+			valid = validationUpdated("Relation Required", "decRelation");
+		} 
+		if(valid){
+		$.ajax({
+			type : "POST",
+			url : "insurance-nominee-employeeDeclared-save",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(data1),
+			success : function(response) {
+				if (response.message == "Success") {
+					
+					console.log(response)
+					userid = $("#sessionId").val();
+		           agGrid.simpleHttpRequest({
+			       url : 'insurance-nominee-declarationDetails?userid=' + userid
+					}).then(function(data) {
+						console.log(data[0].insuId)
+						gridOptions1.api.setRowData(data);
+						$("#insuId").html(data[0].insuId)
+					});
+					$("#messageParagraph").text("Data saved successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					
+					closeNav();
+				} else {
+					swal({
+						title : response.code,
+						text : response.message,
+						type : "warning"
+					})
+				}
+			},
+			error : function(response) {
+				console.log(response);
+			}
+		})
+		}
+	}
+	
+	
+	function getName() {
+
+		var NameList = $("#nomName").val();
+		if (NameList) {
+			$.ajax({
+				type : 'GET',
+				url : 'insurance-nominee-viewDobRelation?name='
+						+ NameList,
+				contentType : false,
+				success : function(response) {
+					if (response.message == "success") {
+						console.log(response);
+						for (var i = 0; i < response.body.length; i++) {
+							$("#nomDob").val(response.body[i].key);
+							$("#nomRelation").val(response.body[i].name);
+							//$("#band").val(response.body[i].code);
+
+						}
+					}
+				},
+				error : function(e) {
+
+				}
+			});
+		} else {
+			$("#nomDob").val("");
+			$("#nomRelation").empty();
+
+			var option3 = $("<option></option>");
+			$(option3).val(null);
+			$(option3).html("Select");
+			$("#nomRelation").append(option3);
+
+		}
+
+	}
+	function saveTableData2() {
+		
+		var obj = {};
+		var valid =true;
+		obj.nomId = $("#nomId").val();
+		obj.insuId = $("#insuId").html();
+		obj.empId = $("#empId").val();
+		obj.nomName = $("#nomName").val();
+		obj.nomPerOfShare = $("#nomPerOfShare").val();
+
+
+        if (obj.nomName == null || obj.nomName == "") {
+			valid = validationUpdated("Nominee Name Required","nomName");
+		} 
+        if (obj.nomPerOfShare == null || obj.nomPerOfShare == "") {
+			valid = validationUpdated("Percentage Of Share Required","nomPerOfShare");
+		} 
+        if(valid){
+      		$.ajax({
+			type : "POST",
+			url : "insurance-nominee-NomineeDetails-save",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(obj),
+			success : function(response) {
+				if (response.message == "Success") {
+					
+					var insuid= $('#insuId').html();
+					agGrid.simpleHttpRequest({
+						url : 'insurance-nominee-NomineeDetails?insuid=' + insuid
+					}).then(function(data) {
+						gridOptions2.api.setRowData(data);
+						$('#totalShare').html(data[0].totalShare); 
+						var id=$('#totalShare').html();
+					
+					});
+					$("#messageParagraph").text("Data saved successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					
+					closeNav2();
+				} else {
+					swal({
+						title : response.code,
+						text : response.message,
+						type : "warning"
+					})
+				}
+			},
+			error : function(response) {
+				console.log(response);
+			}
+		})
+        }
+	}
+	
+	
+	 function checkPofShare(fieldId) {   
+			var myField = document.getElementById("nomPerOfShare")
+			var pShare=parseFloat($("#nomPerOfShare").val());
+			var pShare1=$('#totalShare').html();
+			if ( pShare1 == "" || pShare1 ==null  ) {
+				var pShare2 = 0;
+				}
+			 else{
+				  pShare2=parseFloat(pShare1);
+			 } 
+			 var reg = /^\d{0,3}(\.\d{0,2})?$/;   
+			 if (reg.test(myField.value))
+			 { 
+				if(pShare<=100){
+					var pShare3=pShare+pShare2;
+					var pShare4=100-pShare1;
+					if( pShare3 <= 100)		
+					{
+					$("#" + fieldId).val();
+					 reg = ''; 
+					}else{
+						$("#messageParagraph").text("Please add less than or equal to "+pShare4+"%");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$("#" + fieldId).val(null);
+					}
+				}else{
+					$("#messageParagraph").text(
+					"Please add less than or equal to 100%");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$("#" + fieldId).val(null);   
+				}
+ 
+			 }else{        
+					$("#messageParagraph").text(
+					"Please add less than or equal to 100%");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$("#" + fieldId).val(null);   
+			}
+	 }  
+	 function checkAlphabet(fieldId) {
+			
+		    var tempVal = $("#" + fieldId).val().replace(/[^a-zA-Z. ]/g,'');
+		    tempVal=tempVal.replace(/^\w/, c => c.toUpperCase());
+		    
+		    const input = document.getElementById(fieldId);
+		    const position = input.selectionStart;	
+		    if(position == 1 && tempVal.charAt(0) == ' '){
+		    	$("#" + fieldId).empty();
+		    	tempVal = '';
+		   } 
+		   $("#" + fieldId).val(tempVal);
+		} 
+/* 	function checkShare(fieldId) {
+		var pShare=parseFloat($("#nomPerOfShare").val());
+		 var pShare1=$('#totalShare').html();
+		if ( pShare1 == "" || pShare1 ==null  ) {
+			var pShare2 = 0;
+			}
+		 else{
+			  pShare2=parseFloat(pShare1);
+		 }  
+		if(pShare <=100)		
+		{
+			var pShare3=pShare+pShare2;
+			if( pShare3 <= 100)		
+			{
+				$("#" + fieldId).val();
+			
+			}
+			else{
+				
+				$("#messageParagraph").text(
+				"Please add less than or same with 100%");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$("#" + fieldId).val(null);
+				
+			}
+		} else {
+			$("#messageParagraph").text(
+			"Please add less than or same with 100%");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			$("#" + fieldId).val(null);
+		}
+		 
+   } */
+	
+function downloadDetails() { 
+		  var dataset = [];
+		  gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		        dataset.push(rowNode.data);
+		    });
+		  gridOptions.api.exportDataAsCsv(dataset);
+}
+	
+function download1() { 
+		  var dataset = [];
+		  gridOptions1.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		        dataset.push(rowNode.data);
+		    });
+		  gridOptions1.api.exportDataAsCsv(dataset);
+}
+function download2() { 
+		  var dataset = [];
+		  gridOptions2.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		        dataset.push(rowNode.data);
+		    });
+		  gridOptions2.api.exportDataAsCsv(dataset);
+}
+function getDeclareName() {
+	var insuId = $("#insuId").html();
+	//$('.loader').show();
+	if (insuId) {
+		$.ajax({
+			type : "GET",
+			url : "insurance-nominee-getDeclareName?insuId="+ insuId,
+			contentType : false,
+			success : function(response) {
+				console.log(response);
+				if (response.message == "success") {
+					//$('.loader').hide();
+
+					$("#nomName").empty();
+					$("#nomName").append("<option value=''>Select</option>");
+					for (var i = 0; i < response.body.length; i++) {
+						var option = $("<option></option>");
+						$(option).val(response.body[i].key);
+						$(option).html(response.body[i].name);
+						$("#nomName").append(option);
+					}
+				}
+			},
+			error : function(data) {
+				console.log(data);
+				$("#nomName").empty();
+				$("#nomName").append("<option value=''>Select</option>");
+
+			}
+		})
+	} else {
+		$("#nomName").empty();
+		$("#nomName").append("<option value=''>Select</option>");
+	}
+
+}	
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="innercontent">
+
+						<div class="d-flex justify-content-between" id="demo1"
+							style="display: none;">
+							<div class="btn-hs">
+								<div class="font-design" id="totalReq">
+									Insurance Declaration(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+										<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="btndiv">
+								<button class="download-btn" id="download"
+									onclick="downloadDetails()">Download</button>
+								<button class="new-btn" id="new" onclick="newDetails()">New</button>
+
+							</div>
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" /> <input
+							type="hidden" id="dclrId" /> <input type="hidden" id="nomId" />
+						<!------------- parent table my grid ---------------------->
+
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="innercontent" id="demo" style="display: none;">
+							<input type="hidden" id="eventId"> <input type="hidden"
+								id="createdBy">
+
+							<div class="innerstickybg">
+								<div class="row">
+
+									<div class="col-md-6">
+										<input type="hidden">INSURANCE ID: <span id="insuId"></span>
+									</div>
+
+									<div class="col-md-6" style="display: none;">
+										<input type="hidden"> <span id="totalShare"></span>
+									</div>
+
+									<div class="col-md-6" align="right">
+										<button class="cancel-btn" id="cancelDtl"
+											onclick="canceldtls()">Cancel</button>
+
+									</div>
+
+								</div>
+
+							</div>
+							<div class="row innersticky_contentgap">
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Employee Id: </label> <input type="text"
+											name="Email Subject" value="" id="empId" class="form-control"
+											readonly>
+									</div>
+								</div>
+								<div class="col-md-4" style="display: none;">
+									<div class="form-group">
+										<label>FinancialYr </label> <input type="text"
+											name="Email Subject" value="" id="financialYr"
+											class="form-control" readonly>
+									</div>
+								</div>
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Employee Name: </label> <input type="text"
+											name="Email Subject" value="" id="empName"
+											class="form-control" readonly>
+									</div>
+								</div>
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Date Of Birth: </label> <input type="text"
+											name="Email Subject" value="" id="empDob"
+											class="form-control" readonly>
+									</div>
+								</div>
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Department: </label> <input type="text"
+											name="Email Subject" value="" id="dept" class="form-control"
+											readonly>
+									</div>
+								</div>
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Mobile: </label> <input type="text"
+											name="Email Subject" value="" id="empMob"
+											class="form-control" readonly>
+									</div>
+								</div>
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Email: </label> <input type="text" name="Email Subject"
+											value="" id="email" class="form-control" readonly>
+									</div>
+								</div>
+
+
+							</div>
+							<div id="main">
+								<div class="accordion-item mt-4">
+									<h2 class="accordion-header" id="headingOne">
+										<button class="accordion-button" type="button"
+											data-bs-toggle="collapse" data-bs-target="#collapseOne"
+											aria-expanded="false" aria-controls="collapseOne">
+											People to be insured</button>
+									</h2>
+
+									<div id="collapseOne" class="accordion-collapse collapse show"
+										aria-labelledby="headingOne"
+										data-bs-parent="#accordionExample">
+										<div class="accordion-body"></div>
+
+										<div id="mySidenav" class="sidenav">
+											<div class="slidebox">
+												<div class="row">
+													<div class="chartbtnsec">
+														<div align="right">
+															<button class="cancel-btn" onclick="closeNav()">CANCEL</button>
+															<button class="approve-btn" id="saveTableData"
+																onclick="saveTableData1()">SAVE</button>
+
+														</div>
+													</div>
+													<div class="col-lg-6">
+														<div class="form-group">
+															<label>Name</label> <input type="text" id="decName"
+																class="form-control" onblur="removeValid(event)"
+																maxLength="50" onkeyup="checkAlphabet('decName');">
+														</div>
+													</div>
+
+													<div class="col-lg-6">
+														<div class="form-group calendar_box">
+															<label>Date Of Birth</label> <input type="text"
+																id="decDob" class="form-control"
+																onblur="removeValid(event)"
+																th:attr="onkeyup=|formatDate('decDob','${session.DATEFORMAT_JS}')|">
+															<i class="ti-calendar picker_calendar" id="dobCalendar"></i>
+														</div>
+													</div>
+
+													<div class="col-md-6">
+														<div class="form-group">
+															<label>Relation</label>
+															<div class="select" id="rltn">
+																<select class="form-control deptcls" id="decRelation">
+																	<option value="">Select</option>
+																	<option th:each="c,iter:${relationshipList}"
+																		th:value="${c.key}" th:text="${c.name}"></option>
+																</select>
+															</div>
+														</div>
+													</div>
+
+												</div>
+											</div>
+										</div>
+
+										<div class="row">
+											<div class="d-flex justify-content-between" >
+												<div class="btn-hs">
+													<div class="font-design" id="totalReq1">
+														Declaration List(<span></span>)
+													</div>
+												</div>
+												<div id="searchRowDiv1">
+													<div class="input-style">
+														<input type="text" placeholder="Search.." name="search"
+															class="searchboxinput" onkeyup="cancelBar1()"
+															oninput="onQuickFilterChanged1()" id="quickFilter1"
+															autocomplete="off">
+															
+														<div class="searchicon">
+															<a href="javascript:void(0)"><span
+																style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+																id="closeKey1"
+																onclick="gridOptions1.api.setQuickFilter(null);$('#quickFilter1').val('');document.getElementById('closeKey1').style.display='none';"
+																class="close_i"><i class="ti-close srchicon"></i></span></a><a
+																href="javascript:void(0)"><i
+																class="ti-search srchicon"></i></a>
+														</div>
+													</div>
+												</div>
+												<div class="buttonsec btn-hs" id="btndiv1">
+												<button class="download-btn" id="download1"
+													onClick="download1()">Download</button>
+												<button class="delete-btn" id="cancelId1"
+													onClick="deleteDeclaration()">delete</button>
+												<button class="new-btn" id="addId1" onclick="openNav1()">Add</button>
+
+												</div>
+											</div>
+ 
+											<div id="childId1" style="width: 100%; height: 200px;"
+												class="ag-theme-alpine"></div>
+										</div>
+
+									</div>
+								</div>
+							</div>
+
+							<div id="main1">
+								<div class="accordion-item mt-4">
+									<h2 class="accordion-header" id="headingTwo">
+										<button class="accordion-button" type="button"
+											data-bs-toggle="collapse" data-bs-target="#collapseTwo"
+											aria-expanded="false" aria-controls="collapseTwo">
+											Nominee Details</button>
+									</h2>
+
+									<div id="collapseTwo" class="accordion-collapse collapse show"
+										aria-labelledby="headingTwo"
+										data-bs-parent="#accordionExample">
+										<div class="accordion-body"></div>
+
+
+										<div id="mySidenavNoti" class="sidenav">
+											<div class="slidebox">
+												<div class="row">
+													<div class="chartbtnsec">
+														<div align="right">
+															<button class="cancel-btn" onclick="closeNav2()">CANCEL</button>
+															<button class="approve-btn" id="saveTableData2"
+																onclick="saveTableData2()">SAVE</button>
+
+														</div>
+													</div>
+
+													<div class="col-md-6">
+														<div class="form-group">
+															<label>Name</label>
+															<div class="select" id="nName">
+																<select class="form-control drelationcls" id="nomName"
+																	onchange="getName()" onblur="removeValid(event)">
+																	<option value="">Select</option>
+																	<option th:each="c,iter:${nameList}"
+																		th:value="${c.key}" th:text="${c.name}"></option>
+																</select>
+															</div>
+														</div>
+													</div>
+
+
+													<div class="col-md-6">
+														<div class="form-group">
+															<label>Date Of Birth</label> <input type="text"
+																name="Email Subject" value="" id="nomDob"
+																class="form-control" readonly>
+														</div>
+													</div>
+
+													<div class="col-md-6">
+														<div class="form-group">
+															<label>Relation</label> <input type="text"
+																id="nomRelation" class="form-control"
+																onblur="removeValid(event)" readonly>
+														</div>
+													</div>
+
+													<div class="col-lg-6">
+														<div class="form-group">
+															<label>% Of share</label> <input type="text"
+																id="nomPerOfShare" class="form-control"
+																onkeyup="checkPofShare('nomPerOfShare')"
+																autocomplete="off" onblur="removeValid(event)">
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+
+										<div class="row">
+										<div class="d-flex justify-content-between" >
+												<div class="btn-hs">
+													<div class="font-design" id="totalReq2">
+														Nominee List(<span></span>)
+													</div>
+												</div>
+												<div id="searchRowDiv2">
+													<div class="input-style">
+														<input type="text" placeholder="Search.." name="search"
+															class="searchboxinput" onkeyup="cancelBar2()"
+															oninput="onQuickFilterChanged2()" id="quickFilter2"
+															autocomplete="off">
+														<div class="searchicon">
+															<a href="javascript:void(0)"><span
+																style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+																id="closeKey2"
+																onclick="gridOptions2.api.setQuickFilter(null);$('#quickFilter2').val('');document.getElementById('closeKey2').style.display='none';"
+																class="close_i"><i class="ti-close srchicon"></i></span></a><a
+																href="javascript:void(0)"><i
+																class="ti-search srchicon"></i></a>
+														</div>
+													</div>
+												</div>
+												<div class="buttonsec btn-hs" id="btndiv2">
+												<button class="download-btn" id="download2"
+													onClick="download2()">Download</button>
+												<button class="delete-btn" id="cancelId2"
+													onClick="deleteNominee()">delete</button>
+												<button class="new-btn" id="addId2" onclick="openNav2()">Add</button>
+
+												</div>
+											</div>
+ 
+											<div id="childId2" style="width: 100%; height: 150px;"
+												class="ag-theme-alpine"></div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

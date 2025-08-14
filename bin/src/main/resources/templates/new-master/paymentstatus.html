@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:fragment="paymentstatus">
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+<script type="text/javascript">
+var columnDefspaymentStatus = [
+
+    {
+        headerName: "Payment Status Type",
+        field: "paymentStatusId",
+        flex: 1,
+        hide: true
+    },
+    {
+        headerName: "Name",
+        field: "paymentStatusName",
+        flex: 2,
+        width: 80
+    }, {
+        headerName: "Description",
+        field: "paymentStatusDesc",
+        width: 175,
+        flex: 3,
+    }, {
+        headerName: "Status",
+        field: "paymentStatusStatus",
+        width: 90,
+        flex: 1,
+        cellRenderer: function(params) {
+            if (params.data.paymentStatusStatus == "Active") {
+                return '<div style="color:green">' + params.data.paymentStatusStatus + '</div>';
+            } else {
+                return '<div>' + params.data.paymentStatusStatus + '</div>';
+            }
+        }
+    }
+];
+
+var gridOptionspaymentStatus = {
+    columnDefs: columnDefspaymentStatus,
+    defaultColDef: {
+        sortable: true,
+        filter: true,
+        resizable: true,
+        width: 195,
+        height: 10
+    },
+    rowSelection: 'single',
+    rowMultiSelectWithClick: true,
+    onSelectionChanged: onSelectionChangedPayStatus,
+    onRowClicked: (event) => {
+        const selectedNode = event.node;
+        if (!selectedNode.isSelected()) {
+            selectedNode.setSelected(true);
+        }
+    },
+    getRowNodeId : function(data) {
+		return data.paymentStatusId;
+	}
+
+};
+
+$(document).ready(() => {
+	getPayStatusData();
+})
+
+function getPayStatusData() {
+	agGrid.simpleHttpRequest({
+        url: '/configuration/view-procurement-view-payment-status-type'
+    }).then(function(data) {
+        let dataSet = [];
+        if (data.length > 0) {
+        	gridOptionspaymentStatus.api.setRowData(data);
+        	gridOptionspaymentStatus.api.getRowNode(data[0].paymentStatusId).setSelected(true);
+        } else {
+        	gridOptionspaymentStatus.api.setRowData(dataSet);
+        	$("#deletePayStatusBtn").attr("disabled",true);
+        }
+    });
+	$('#paymentStatusName,#paymentStatusDesc,#paymentStatusStatus').attr('disabled',true);
+}
+
+function onSelectionChangedPayStatus() {
+
+    var selectedNodes = gridOptionspaymentStatus.api.getSelectedNodes();
+    var selectedData = selectedNodes.map(node => node.data);
+    
+    if(selectedData && selectedData.length > 0) {
+    	$('#paymentStatusName').val(selectedData.map(node => node.paymentStatusName));
+        $('#paymentStatusDesc').val(selectedData.map(node => node.paymentStatusDesc));
+        $('#paymentStatusId').val(selectedData.map(node => node.paymentStatusId));
+
+        if (selectedData.map(node => node.paymentStatusStatus) == "Active") {
+            $('#paymentStatusStatus').val("1");
+        } else if(selectedData.map(node => node.paymentStatusStatus) == "") {
+        	$('#paymentStatusStatus').val("1");
+        } else {
+            $('#paymentStatusStatus').val("0");
+        }
+        $("#resetPayStatusBtn").attr("disabled",true);
+        $("#deletePayStatusBtn").attr("disabled",false);
+    }
+}
+
+function enableFieldsPayStatus() {
+	$('#paymentStatusName,#paymentStatusDesc,#paymentStatusStatus').attr('disabled',false);
+}
+function openAddSectionPayStatus() {
+	enableFieldsPayStatus();
+	$('#paymentStatusId,#paymentStatusName,#paymentStatusDesc').val('');
+	$('#paymentStatusStatus').val('1');
+	$("#resetPayStatusBtn").attr("disabled",false);
+	$("#deletePayStatusBtn").attr("disabled",true);
+	gridOptionspaymentStatus.api.deselectAll();
+}
+function resetPayStatus() {
+	if(!$("#paymentStatusId").val()) {
+		$('#paymentStatusId,#paymentStatusName,#paymentStatusDesc').val('');
+		$('#paymentStatusStatus').val('1');
+	}
+}
+
+function savePaymentStatusType() {
+	
+	if($("#paymentStatusName").val() == null || $("#paymentStatusName").val() == '') {
+		toastr.error('Payment status type name required');
+		return;
+	}
+	if($("#paymentStatusStatus").val() == null || $("#paymentStatusStatus").val() == '') {
+		toastr.error('Payment type status required');
+		return;
+	}
+
+	var data9 = {};
+
+    data9.paymentStatusId = $("#paymentStatusId").val();
+    data9.paymentStatusName = $("#paymentStatusName").val();
+    data9.paymentStatusDesc = $("#paymentStatusDesc").val();
+    data9.paymentStatusStatus = $("#paymentStatusStatus").val();
+
+    $.ajax({
+        type: "POST",
+        url: "/configuration/view-procurement-add-payment-status-type",
+        dataType: "json",
+        contentType: "application/json",
+        data: JSON.stringify(data9),
+        success: function(response) {
+            if (response.message == "Success") {
+            	if($("#paymentStatusId").val() == null || $("#paymentStatusId").val() == "" || $("#paymentStatusId").val() == undefined) {
+            		toastr.success('Data saved successfully')
+            	} else {
+            		toastr.success('Data updated successfully')
+            	}
+            	getPayStatusData()
+            }
+        },
+        error: function(response) {
+            console.log(response);
+        }
+    })
+}
+
+function deletePaymentStatusType() {
+	
+	Swal.fire({
+        title: 'Are you sure?',
+        text: 'Do you want to delete this?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'No, keep it',
+        confirmButtonColor: 'var(--mainColor)',
+    }).then((result) => {
+        if (result?.value) {
+
+            var id = $('#paymentStatusId').val();
+
+            $.ajax({
+                type: "GET",
+                url: "/configuration/view-procurement-payment-status-type-delete?id=" + id,
+                dataType: "json",
+                contentType: "application/json",
+                success: function(response) {
+                    if (response.message == "Success") {
+                    	getPayStatusData()
+                    	toastr.success('Data deleted successfully')
+                    }
+                },
+                error: function(response) {
+                    console.log(response);
+                }
+            })
+        }
+    });
+    
+}
+
+$(document).ready(() => {
+    var gridDiv = document.querySelector('#myGrid12');
+    new agGrid.Grid(gridDiv, gridOptionspaymentStatus);
+})
+</script>
+</head>
+<body>
+	<h6>Payment Status Type List</h6>
+	<div class="mb-2">
+		<table class="table  mb-0" width="100%">
+			<tr valign="middle">
+				<td width="50%"><strong id="pName"></strong></td>
+				<td>
+					<div class="d-flex justify-content-end">
+						<div class="mr-2">
+							<button id="newBtn" class="btn  edit-btn"
+								onclick="openAddSectionPayStatus()" type="button">Add</button>
+						</div>
+						<div class="mr-2">
+							<button id="next" class="btn  edit-btn" type="button"
+								onclick="enableFieldsPayStatus()">Edit</button>
+						</div>
+						<div class="mr-0">
+							<button id="deletePayStatusBtn" class="btn  edit-btn"
+								onclick="deletePaymentStatusType()" type="button">Delete</button>
+						</div>
+					</div>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<div class="box_reference" style="margin-bottom: 10px !important;">
+		<div id="myGrid12" style="width: 100%; height: 190px;"
+			class="ag-theme-alpine"></div>
+	</div>
+	<h6>Add Payment Status Type</h6>
+	<div class="mb-2">
+		<table class="table  mb-0" width="100%">
+			<tr valign="middle">
+				<td width="50%"><div style="color: red; font-weight: bold;">
+						Note: All fields marked with <span>*</span> are mandatory.
+					</div></td>
+				<td>
+					<div class="d-flex justify-content-end">
+						<div class="mr-2">
+							<button id="newBtn" class="btn  edit-btn"
+								onclick="savePaymentStatusType()" type="button">Save</button>
+						</div>
+						<div class="mr-0">
+							<button id="resetPayStatusBtn" class="btn  edit-btn"
+								onclick="resetPayStatus()" type="button">Reset</button>
+						</div>
+					</div>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<div class="row">
+		<div class="col-md-4">
+			<div class="form-group">
+				<label>Name <span class="mandatory">*</span></label> <input type="text"
+					class="form-control transparenttxtbox" placeholder="Name"
+					id="paymentStatusName"> <input type="hidden"
+					id="paymentStatusId">
+			</div>
+		</div>
+
+		<div class="col-md-4">
+			<div class="form-group">
+				<label>Description</label> <input type="text"
+					class="form-control transparenttxtbox" placeholder="Desc"
+					id="paymentStatusDesc">
+			</div>
+		</div>
+
+
+		<div class="col-md-4">
+			<div class="form-group">
+				<label>Status <span class="mandatory">*</span></label>
+				<div class="select">
+					<select id="paymentStatusStatus" class="form-control">
+						<option value="">Select</option>
+						<option value="1">Active</option>
+						<option value="0">Inactive</option>
+					</select>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

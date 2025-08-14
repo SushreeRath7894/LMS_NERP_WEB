@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<script type="text/javascript">
+	$(document).ready(function() {
+		$("#myGrid").show();
+		$("#demo").hide();
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		agGrid.simpleHttpRequest({
+			url : 'property-performance-view'
+		}).then(function(data) {
+			console.log(data);
+			var len = data.length;
+			
+			$('#totalReq').find('span').html(len);
+
+			gridOptions.api.setRowData(data);
+		});
+	})
+
+	var columnDefs = [ {
+		headerCheckboxSelection : true,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		width : 30
+	}, {
+		headerName : "Property No. ",
+		field : "propNo",
+		width : 170,
+		
+		cellRenderer : function(params) {
+			return '<a onclick=edit("'
+					+ params.data.propNo
+					+ '") href="javascript:void(0)">'
+					+ params.data.propNo + '</a>';
+		}
+	}, {
+		headerName : "Property Name ",
+		field : "propName"
+	}, {
+		headerName : "Type",
+		field : "type"
+
+	}, {
+		headerName : "Area(sq. ft.)",
+		field : "area"
+
+	}, {
+		headerName : "Property Price",
+		field : "propPrice"
+
+	}, {
+		headerName : "Expected Annual Rent",
+		field : "annualRent"
+
+	}, {
+		headerName : "Actual Rent Received",
+		field : "actualRent"
+
+	}, {
+		headerName : "Experience(if any)",
+		field : "experience"
+
+	}, {
+		headerName : "Net Income",
+		field : "netIncome"
+
+	}, {
+		headerName : "Annual Rate of Return",
+		field : "returnRate"
+
+	} ];
+	$("#propNo").click(function() {
+		$("#a").css("display", "block");
+		$("#b").css("display", "block");
+	});
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+
+		rowSelection : 'multiple',
+		onSelectionChanged : deleteDetails,
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 400
+		}
+	};
+
+	var deleteId = "";
+	function deleteDetails() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+
+		deleteId = "";
+		for (var i = 0; i < selectedRows.length; i++) {
+			deleteId = deleteId + '"' + selectedRows[i].propNo + '",';
+
+		}
+		deleteId = deleteId.substring(0, deleteId.length - 1);
+
+		var rowCount = 0;
+		selectedRows.forEach(function() {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#delete').attr("disabled", false);
+			$('#add').hide();
+			if (rowCount == 1) {
+				$('#add').hide();
+			}
+		} else {
+			$('#delete').attr("disabled", true);
+			$('#add').show();
+
+		}
+
+	}
+	function add() {
+
+		$("#demo").hide();
+		$("#reqTable").hide();
+		$("#myGrid").show();
+		
+		$("#propNo").val("");
+		$("#propName").val("");
+		$("#actualRent").val("");
+		$("#annualRent").val("");
+		$("#type").val("");
+		$("#experience").val("");
+		$("#area").val("");
+		$("#netIncome").val("");
+		$("#propPrice").val("");
+		$("#returnRate").val("");
+		
+		
+		
+
+		$('#delete').attr("disabled", true);
+
+	}
+	function cancelBtn() {
+		$("#demo").hide();
+		$("#myGrid").show();
+		$("#reqTable").show();
+	}
+
+	function save() {
+
+		var org = {};
+		org.propNo= $("#propNo").val();
+		org.propName = $("#propName").val();
+		org.actualRent = $("#actualRent").val();
+		org.annualRent = $("#annualRent").val();
+		org.type = $("#type").val();
+		org.experience = $("#experience").val();
+		org.area = $("#area").val();
+		org.netIncome = $("#netIncome").val();
+		org.propPrice = $("#propPrice").val();
+		org.returnRate = $("#returnRate").val();
+		
+		
+
+		console.log(org);
+
+		$.ajax({
+			type : "POST",
+			url : "property-performance-add",
+			contentType : "application/json",
+			data : JSON.stringify(org),
+			success : function(response) {
+				if (response.message == "Success") {
+
+					agGrid.simpleHttpRequest({
+						url : 'property-performance-view'
+					}).then(function(data) {
+						console.log(data);
+						var len = data.length;
+						$('#totalReq').find('span').html(len);
+
+						gridOptions.api.setRowData(data);
+					});
+
+					cancelBtn();
+				}
+			},
+			error : function(response) {
+				console.log(response);
+			}
+
+		});
+
+	}
+	function edit(id) {
+		alert("hii")
+
+		$.ajax({
+
+			type : "GET",
+			url : "property-performance-edit?id=" + id,
+			
+			success : function(response) {
+
+				if (response.message == "Success") {
+					
+					$("#propNo").val(response.body[0].propNo);
+					$("#propName").val(response.body[0].propName);
+					$("#actualRent").val(response.body[0].actualRent);
+					$("#annualRent").val(response.body[0].annualRent);
+					$("#type").val(response.body[0].type);
+					$("#experience").val(response.body[0].experience);
+					$("#area").val(response.body[0].area);
+					$("#netIncome").val(response.body[0].netIncome);
+					$("#propPrice").val(response.body[0].propPrice);
+					$("#returnRate").val(response.body[0].returnRate);
+					
+					
+
+				}
+			}
+		});
+
+	}
+
+	function deleteDemocategory() {
+
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var id = selectedRows[0].propNo;
+
+		$.ajax({
+			type : "GET",
+			url : "property-performance-delete?id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+					location.reload();
+					agGrid.simpleHttpRequest({
+						url : 'property-performance-view'
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+					});
+
+					Cancel();
+					location.reload();
+				}
+			},
+			error : function(data) {
+				console.log(data);
+			}
+		})
+	}
+</script>
+<style>
+.form-check-input::before {
+	display: none !important;
+}
+</style>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+
+			<div class="row">
+				<div class="maincontentsec"></div>
+				<div class="col-md-6"></div>
+				<div class="col-md-3"></div>
+
+				<div class="col-md-3" align="right">
+					<button type="button" class="btn4" onclick="cancelBtn()">Cancel</button>
+					<button class="btn1" onclick="save()">Save</button>
+
+
+					<!-- <button class="btn1" id="add" onclick="add()">NEW</button> -->
+					<button class="btn3" id="delete" onclick=" deleteDemocategory()">DELETE</button>
+				</div>
+				<div class="row" id="reqTable">
+					<div class="col-md-6 btn-hs">
+						<div class="font-design" id="totalReq"></div>
+
+					</div>
+
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>To Date</label> <input type="date" class="form-control"
+									id="todate">
+							</div>
+						</div>
+
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>From Date</label> <input type="date" class="form-control"
+									id="fromdate">
+							</div>
+						</div>
+						<div id="myGrid" style="width: 100%; height: 270px;"
+							class="ag-theme-alpine"></div>
+						<div class="collapse" id="demo">
+							<div class=""></div>
+
+						</div>
+
+							<div class="row">
+						<input type="hidden" class="form-control" id="sid"
+							autocomplete="off">
+						<div class="col-md-6">
+							PROPERTY PERFORMANCE <span id="stdhead"></span>
+						</div>
+
+					
+						<div class="row">
+						
+
+						<div class="col-md-6">
+							<div class="form-group">
+							<input type="hidden" autocomplete="off" id="propNo"> 
+								<label>Excepted Annual Rent</label> <input type="text"
+									class="form-control" id="annualRent">
+							</div>
+						</div>
+
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>Allies Name</label> <input type="text"
+									class="form-control" id="propName">
+							</div>
+						</div>
+
+
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>Actual Rent Received</label> <input type="text"
+									class="form-control" id="actualRent">
+							</div>
+						</div>
+
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>Property Type</label> <input type="text"
+									class="form-control" id="type">
+							</div>
+						</div>
+
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>Experience(if any)</label> <input type="text"
+									class="form-control" id="experience">
+							</div>
+						</div>
+
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>Area(sq.ft.)</label> <input type="text"
+									class="form-control" id="area">
+							</div>
+						</div>
+
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>Net Income</label> <input type="text"
+									class="form-control" id="netIncome">
+							</div>
+						</div>
+
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>Purchase Price</label> <input type="text"
+									class="form-control" id="propPrice">
+							</div>
+						</div>
+
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>Annual Rate of Return</label> <input type="text"
+									class="form-control" id="returnRate">
+							</div>
+						</div>
+
+						<div class="col-md-6">
+							<div class="form-group">
+								<input class="form-check-input" type="hidden" id="createdBy">
+
+							</div>
+						</div>
+
+					</div>
+					
+
+							
+						</div>
+					</div>
+				</div>
+
+
+			</div>
+			</div>
+		</div>
+</body>
+
+
+</html>

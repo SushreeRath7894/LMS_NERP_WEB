@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<link href="/css/ncrm/admin/executive-report.css" rel="stylesheet">
+<script src="../javaScript/crm/admin/executive-report.js"></script>
+<script src="../javaScript/crm/common.js"></script>
+<link href="/css/ncrm/admin/admin-task-assign.css" rel="stylesheet">
+<script src="../javaScript/crm/admin/admin-task-assign.js"></script>
+<style type="text/css">
+.grey-box div {
+	font-size: 12px;
+	text-align: center;
+	color: #eaebed;
+	padding-top: 0.5px;
+}
+
+
+/* .mt-2{
+margin-top:7px !important;} */
+.snackbar {
+	visibility: hidden;
+	min-width: 150px;
+	margin-left: -125px;
+	background-color: #BF05FF;
+	color: #fff;
+	text-align: center;
+	border-radius: 4px;
+	padding: 16px;
+	position: fixed;
+	z-index: 1000;
+	left: 50%;
+	bottom: 30px;
+	font-size: 14px;
+	opacity: 0;
+	transition: opacity 0.5s, bottom 0.5s;
+}
+
+.snackbar.show {
+	visibility: visible;
+	opacity: 1;
+	bottom: 50px;
+}
+</style>
+<script>
+	$(document).ready(function() {
+        setTabAsDefault();
+
+        var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		
+ 
+	    // Retrieve data from the hidden input
+	    const hiddenInput = document.getElementById("executiveData");
+	   
+	    const rowData = hiddenInput ? JSON.parse(hiddenInput.value) : [];
+	    console.log("Executive List=====>",rowData);
+	    
+	    // Set data to the grid
+	    gridOptions.api.setRowData(rowData);
+		
+		
+
+	});
+	
+	/* -------------------search bar for mygrid1------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+		  var displayedRowCount = gridOptions.api.getDisplayedRowCount();
+		  
+		    var len = displayedRowCount;
+			$('#totalReq').find('span').html(len);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+
+	    var len = gridOptions.api.getDisplayedRowCount();
+		$('#totalReq').find('span').html(len);
+	}
+
+
+	/* ------------ag grid for leave apply(parent table)----------------------- */
+
+	const columnDefs = 
+	[
+			{
+				headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true,
+				pinned: 'left'
+			},
+			{
+				headerName : 'Executive Id',
+				field : "key",
+				width : 120,
+				pinned: 'left',
+				 
+			} ,
+			{
+				headerName : 'Executive Name',
+				field : "name",
+				width : 120,
+				pinned: 'left',
+				 
+			} ]; 
+
+	const gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 150,
+			height : 10
+		},
+		rowSelection : 'single',
+		pagination : true,
+		paginationPageSize: 15, 
+		onFirstDataRendered: function(params) {
+			params.api.selectIndex(0, true, true);
+		},
+		onSelectionChanged : rowSelectExecutive,
+		suppressRowClickSelection : true,
+		getRowNodeId : function(data) {
+			return data.key;
+		}
+
+	};
+ 
+	function rowSelectExecutive() {
+		setTabAsDefault();
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var selectedRow=selectedRows[0];
+		var executiveId=selectedRow.key;
+		leadDetailsByExecutive(executiveId);
+		 
+	}
+ 
+	function setTabAsDefault() {
+		document.querySelectorAll('.nav-link').forEach((link) => {
+			link.classList.remove('active');
+			link.setAttribute('aria-selected', 'false');
+		});
+		const executiveTab = document.querySelector('#executiveReport-tab a.nav-link');
+		if (executiveTab) {
+			executiveTab.classList.add('active');
+			executiveTab.setAttribute('aria-selected', 'true');
+		} else {
+			console.error('Executive Tab element not found.');
+			return;
+		}
+		document.querySelectorAll('.tab-pane').forEach((tab) => {
+			tab.classList.remove('show', 'active');
+		});
+		const executiveTabContent = document.querySelector('#executiveReport');
+		if (executiveTabContent) {
+			executiveTabContent.classList.add('show', 'active');
+		} else {
+			console.error('Executive tab content pane not found.');
+		}
+	}
+	function showSnackbar(message) {
+		  const snackbar = document.getElementById("snackbar");
+		  snackbar.textContent = message;
+		  snackbar.className = "snackbar show";
+		  setTimeout(() => {
+		    snackbar.className = snackbar.className.replace("show", "");
+		  }, 3000);  
+		}
+	function disableAllFields() {
+	    const idsToDisable = [
+	        "empNameList", "empID", "leaveApplyDate", "leaveType", 
+	        "fromDate", "toDate", "totalLeave", "reason", 
+	        "uploadWarDoc_0","saveLeave"
+	    ];
+	    idsToDisable.forEach(id => {
+	        const element = document.getElementById(id);
+	        if (element) {
+	            element.disabled = true;
+	        }
+	    });
+	    const calendarIcons = document.querySelectorAll(".picker_calendar");
+	    calendarIcons.forEach(icon => {
+	        icon.style.pointerEvents = "none";
+	        icon.style.opacity = "0.5";  
+	    });
+	}
+	function enableAllFields() {
+	    const idsToEnable = [
+	        "empNameList", "empID", "leaveApplyDate", "leaveType", 
+	        "fromDate", "toDate", "totalLeave", "reason", 
+	        "uploadWarDoc_0","saveLeave"
+	    ];
+	    idsToEnable.forEach(id => {
+	        const element = document.getElementById(id);
+	        if (element) {
+	            element.disabled = false;
+	        }
+	    });
+	    const calendarIcons = document.querySelectorAll(".picker_calendar");
+	    calendarIcons.forEach(icon => {
+	        icon.style.pointerEvents = "auto";
+	        icon.style.opacity = "1";  
+	    });
+	}
+function addNewTask(){
+	$(".formValidation").remove();
+	$("#toggleSection").removeClass("d-none");
+	$("#closeTask").removeClass("d-none");
+	$("#saveTask").removeClass("d-none");
+	$("#addTask").addClass("d-none");
+	$("#title").val("")
+	$("#customerId").val("")
+	$("#priority").val("")
+	$("#leadFirstName").val("")
+	$("#leadLastName").val("")
+	$("#leadMobile").val("")
+	$("#commentck").val("")
+	$("#executive").val("");
+	$("#myGridTask").hide();
+}
+function closeTask(){
+    $(".formValidation").remove();
+	$("#title").val("")
+	$("#customerId").val("")
+	$("#priority").val("")
+	$("#leadFirstName").val("")
+	$("#leadLastName").val("")
+	$("#leadMobile").val("")
+	$("#commentck").val("")
+	$("#executive").val("")
+	$("#toggleSection").addClass("d-none");
+	$("#closeTask").addClass("d-none");
+	$("#saveTask").addClass("d-none");
+	$("#addTask").removeClass("d-none");
+	$("#myGridTask").show();
+}
+
+function adminApprove(id) {
+	var selectedNodes = leadgridOptions.api.getSelectedNodes();
+	var selectedData = selectedNodes.map(node => node.data);
+	var leadId = selectedData.map(node => node.leadId);
+	$.ajax({
+		type: "GET",
+		url: "admin-approval?lead=" + leadId + "&rejectStatus=" + id,
+		success: function(response) {
+			if (response.code == "Success") {
+				//getCrmNotifications();
+				if (response.body == null) {
+					showSnackbar("Rejected Successfully");
+					 
+				} else {
+					console.log("Data For Convert To Next Step=====>",JSON.parse(response.body)[0]);
+					convertLeadToNextStep(JSON.parse(response.body)[0]);
+					showSnackbar("Approved Successfully");
+					//let leadId = $("#leadId").val();
+					$.ajax({
+						type: "GET",
+						url: "view-crm-leads-view-detail?id=" + leadId,
+						success: function(response) {
+							if (response.code == "Success") {
+								$('#leadStatus').text(response.body[0].leadStatus);
+							}
+						}
+					});
+				}
+				//var pages;
+			    var pageno = 1;
+			    var selectedRows = gridOptions.api.getSelectedRows();
+				var selectedRow=selectedRows[0];
+				var executiveId=selectedRow.key;
+				agGrid.simpleHttpRequest({
+					url: "view-crm-leads-view-Data?pageno=" + pageno + "&userId=" + executiveId,
+				}).then(function(data) {
+					if (data.code == "Success") {
+						var resp = JSON.parse(data.body);
+						var len = resp.length;
+						$('#totalLead').find('span').html(len);
+						leadgridOptions.api.setRowData(resp);
+
+					} else {
+						leadgridOptions.api.setRowData([])
+					}
+
+					$('.loader').hide();
+				});
+			}
+		}
+	});
+}
+
+function convertLeadToNextStep(data) {
+	var obj = {};
+	//var dealcheck = $("input:checkbox[name=dealcheck]:checked").val();
+	obj.leadOwnerId = data.leadOwner
+	obj.leadId = data.leadId
+	obj.firstName = data.firstName
+	obj.lastName = data.lastName
+	obj.accountName = data.company
+	obj.email = data.email
+	obj.phone = data.phone
+	obj.fax = data.projectId
+	obj.website = data.website
+	obj.title = data.title
+	obj.mobile = data.mobile
+	obj.skypeId = data.skypeId
+	obj.secondaryEmail = data.secondaryEmail
+	obj.twitter = data.twitter
+	obj.description = data.description
+	obj.referenceContact = data.referenceContact
+	/*obj.dealcheck = dealcheck;
+	 obj.dealAmount = $('#dealAmountCheck').val();
+	obj.dealName = $('#dealNameCheck').val();
+	obj.dealClosingDate = $('#dealClosingDateCheck').val();
+	obj.dealStage = $('#dealStageCheck').val();
+	obj.dealCampaignSource = $('#dealCampaignSource').val();
+	obj.dealContactRole = $('#dealContactRole').val();
+	obj.probability = $('#probability').val(); */
+
+	console.log('converted data response--------------' + JSON.stringify(obj));
+
+	var validation = true;
+
+	$.ajax({
+		type: "POST",
+		url: "view-crm-leads-detail-converted",
+		contentType: "application/json",
+		data: JSON.stringify(obj),
+		success: function(response) {
+			if (response.message == "Success") {
+                
+				sessionStorage.setItem("contact_Id", response.body[0].contactId)
+				sessionStorage.setItem("account_Id", response.body[0].contactId)
+
+			}
+		},
+		error: function(data) {
+
+			console.log(data);
+		}
+	})
+
+}
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<div id="main_content">
+					<input type="hidden" id="executiveData" th:value="${executive}" />
+					<input type="hidden" id="userId" th:value="${session.USER_ID}" /> <input
+						type="hidden" id="sessionName" th:value="${userName}" /> <input
+						type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+						type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+						type="hidden" id="adRole" th:value="${adRole}" /> <input
+						type="hidden" id="leaveIdForEdit" />
+					<!-- <input type="hidden"
+						id="sessionempId" th:text="${session.USER_ID}"> -->
+					<div id="tab1" class="tab-pane" role="tabpanel">
+						<div class="d-flex flex-column flex-lg-row">
+							<!--Left Sec Start-->
+							<div class="box-sec" id="collapseWidthR1">
+								<div class="out-box">
+										<!-- <div class="d-flex gap-3">
+											<div class="d-flex align-items-center search-sec">
+												<input class="form-control me-2" type="text"
+													placeholder="Search" onkeyup="cancelBar()"
+													oninput="onQuickFilterChanged()" id="quickFilter"
+													autocomplete="off">
+												<div class="searchicon position-relative">
+													<span style="display: none;" id="closeKey"
+														onclick="gridOptionsEmployee.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalEmp').find('span').html(gridOptionsEmployee.api.getModel().getRowCount());"
+														class="close_i close-search"> <i
+														class="ti-close srchicon"></i>
+													</span>
+													<button class="btn btn-primary go-btn" type="button">Go</button>
+												</div>
+											</div>
+											<div class="btn btn-primary max-btn m-2">
+												<i class="fa fa-arrows-alt"></i>
+											</div>
+										</div> -->
+										<div class="d-flex justify-content-between bdr-line p-2">
+											<div class="col-md-8 col-12">
+												<div class="d-flex gap-2 search-sec flxwrap">
+													<input class="form-control" type="text" placeholder="Search"
+														id="quickFilter" autocomplete="off" onkeyup="cancelBar()">
+													<button class="btn go-btn" type="button">Go</button>
+                          <button class="btn go-btn" type="reset">Reset</button>
+												</div>
+											</div>
+
+											<button class="btn btn-primary max-btn" id="collapseButtonR1"
+												onclick="triggerExpansionR(1)" data-bs-toggle="tooltip"
+												data-bs-placement="top" title="Expand">
+												<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+													class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+											</button>
+										</div>
+										<div class="p-2 m-2 card">
+										<div id="myGrid"
+											style="width: 100%; height: 100vh;"
+											class="ag-theme-alpine">
+											<!-- <div class="font-design" id="totalReq">
+												Total Executive(<span></span>)
+											</div> -->
+										</div>
+										</div>
+									
+								</div>
+							</div>
+							<div id="snackbar" class="snackbar"></div>
+							<!--Left Sec End-->
+							<div class="box-sec" id="collapseWidthL1">
+								<div class="out-box">
+									<div class="d-flex justify-content-between align-items-center flex-row-reverse p-2 bdr-line">
+										<button class="btn btn-primary max-btn" id="collapseButtonL1" type="button"
+												onclick="triggerExpansionL(1)" data-bs-toggle="tooltip"
+												data-bs-placement="top" title="Expand">
+												<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+													class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+											</button>
+										<ul class="nav nav-pills newtab" role="tablist"
+											id="tabMenu">
+											<li class="nav-item" role="presentation"
+												id="executiveReport-tab"><a class="nav-link"
+												data-bs-toggle="pill" href="#executiveReport"
+												aria-selected="false">Executive Report</a></li>
+											<li class="nav-item " role="presentation" id="taskAssign-tab"><a
+												class="nav-link" data-bs-toggle="pill" href="#taskAssign"
+												aria-selected="false">Task Assign</a></li>
+										</ul>
+									</div>
+									<div class="tab-content flex-fill" id="tabContent">
+
+										<!--Executive Report Section Start -->
+										<div class="tab-pane fade p-2 h-100" id="executiveReport"
+											role="tabpanel">
+                      <div class="d-flex flex-column gap-2 h-100">
+                        <div class="d-flex justify-content-end p-2 gap-2 border rounded">
+                          <button class="btn btn-primary edit-btn d-none" id="approveLead" onclick="adminApprove('0');">Approve</button>
+                          <button class="btn btn-primary edit-btn d-none" id="rejectLead" onclick="adminApprove('1');">Reject</button>
+                        </div>
+                        <div class="card p-2">
+                          <div id="myGridLead"
+                               style="width: 100%; height: 100vh;"
+                               class="ag-theme-alpine"></div>
+                        </div>
+                      </div>
+										</div>
+										<!--Executive Report Section End -->
+										<!--Task Assign Section Start -->
+										<div class="tab-pane fade p-2 h-100" id="taskAssign" role="tabpanel">
+                      <div class="d-flex flex-column gap-2 h-100">
+                        <div class="d-flex justify-content-end gap-2 rounded border p-2">
+                          <button class="btn m-0 add-btn" id="addTask" onclick="addNewTask()">Add</button>
+                          <button class="btn m-0 edit-btn d-none" id="closeTask" onclick="closeTask()">Close</button>
+                          <button class="btn m-0 add-btn d-none" id="saveTask" onclick="addTask()">Save</button>
+                        </div>
+                        <div class="d-flex flex-column gap-2 p-2 border rounded d-none" id="toggleSection">
+                          <div class="row">
+                            <div class="col-md-10">
+                              <h6 class="text-dark" id="heading">Assign Task</h6>
+                            </div>
+                            <input type="hidden" id="pipelineId"> <input
+                               type="hidden" id="meetingId">
+
+                            <div class="col-md-4 mb-3">
+                              <div class="form-group">
+                                <label for="title" class="form-label">Title</label> <input
+                                   type="text" class="form-control" id="title"
+                                   placeholder="Title"
+                                   oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+                              </div>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                              <div class="form-group">
+                                <label for="leadFirstName" class="form-label">Lead
+                                  First Name</label> <input type="text" class="form-control"
+                                                            id="leadFirstName" placeholder="Lead First Name"
+                                                            oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+                              </div>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                              <div class="form-group">
+                                <label for="leadLastName" class="form-label">Lead
+                                  Last Name</label> <input type="text" class="form-control"
+                                                           id="leadLastName" placeholder="Lead Last Name"
+                                                           oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+                              </div>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                              <div class="form-group">
+                                <label for="leadMobile" class="form-label">Lead
+                                  Mobile No.</label> <input type="text" class="form-control"
+                                                            id="leadMobile" placeholder="Lead Mobile No."
+                                                            maxlength="10">
+                              </div>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                              <div class="form-group">
+                                <label for="executive" class="form-label">Executive
+                                  Name</label> <select id="executive" class="form-select">
+                                <option value="">Select Executive</option>
+                                <option th:each="c:${executive}" th:value="${c.key}"
+                                        th:text="${c.name}" th:data-code="${c.code}"></option>
+                              </select>
+                              </div>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                              <div class="form-group">
+                                <label for="priority" class="form-label">Priority</label>
+                                <select id="priority" class="form-select">
+                                  <option value="">Select Priority</option>
+                                  <option value="1">High</option>
+                                  <option value="2">Medium</option>
+                                  <option value="3">Low</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            <div class="col-md-12">
+                              <div class="form-group">
+                                <label for="commentck" class="form-label">Description</label>
+                                <textarea id="commentck" class="form-control border" rows="3"
+                                          onkeyup="textCount(event)"></textarea>
+                                <div class="form-text text-danger desc-task-error"
+                                     style="display: none;"></div>
+                              </div>
+                            </div>
+
+                          </div>
+                        </div>
+
+                        <div class="card p-2">
+                          <div id="myGridTask"
+                               style="width: 100%; height: 100vh;"
+                               class="ag-theme-alpine"></div>
+                        </div>
+                      </div>
+
+										</div>
+										<!--Task Assign Section End -->
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</body>
+</html>

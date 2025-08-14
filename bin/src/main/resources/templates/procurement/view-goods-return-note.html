@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<script type="text/javascript">
+	function openNav() {
+		document.getElementById("mySidenav").style.cssText = "width: 350px; position: absolute; right:-30px; overflow: hidden; height:auto; top:360px;";
+
+		document.getElementById("main_content").style.width = "72%";
+		$('#invoiceCancelBtn').attr('disabled', true);
+		$('#saveInv').attr('disabled', true);
+	}
+
+	function closeNav() {
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main_content").style.width = "100%";
+		$("#sku").html('');
+		$("#skuEditId").html('');
+		$("#brandName").html('');
+		$("#brandId").val('');
+		$("#brandId").val('');
+		$("#prodCatId").val('');
+		$("#prodCatName").html('');
+		$("#itemName").html('');
+		$("#quantity").val('');
+		$("#unitPrice").val('');
+		$("#totalMaxAmount").val('');
+		$("#discount").val('');
+		$("#subTotal").val('');
+		$("#shipping").val('');
+		$("#tax").val('');
+		$("#total").val('');
+		$("#locationId").val(null);
+		$("#uom").val(null);
+		$("#search").val('');
+		$("#productEdit").val(null);
+		$('#invoiceCancelBtn').attr('disabled', false);
+		$('#saveInv').attr('disabled', false);
+	}
+
+	var count1 = 0;
+	function allCheck1() {
+		count1++;
+
+		if (count1 == 1) {
+			$('.checkCls1').prop("checked", true);
+		} else {
+			count1 = 0;
+			$('.checkCls1').prop("checked", false);
+		}
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#searchBar').val() == null || $('#searchBar').val() == "") {
+			id.style.display = "none";
+		}
+	}
+</script>
+
+<script type="text/javascript">
+	$(document)
+			.ready(
+					function() { 
+						agGrid.simpleHttpRequest({
+							url : 'view-grn-return-get-view-list'
+						}).then(function(data) {
+							var len = data.length;
+							$('#totalReq').find('span').html(len);
+
+							grnOptions.api.setRowData(data);
+
+						});
+
+						$('.docTblCls').on( 'click', '.rmv1', function() {
+							openDeleteConfirm();
+							var value = $(this).parent("div").attr("id");
+							$("#dltValue").val(value); 
+						});
+
+						$("#statusDiv").hide();
+						$('#reqDltBtn').attr('disabled', true);
+						$('#reqCopyBtn').attr('disabled', true);
+						$('#reqAppvBtn').attr('disabled', true);
+						$('#rfqDistBtn').attr('disabled', true);
+						$('#createReturn').attr('disabled', true);
+
+						$('.collapse').on(
+								'show.bs.collapse',
+								function() {
+									$(this).siblings('.panel-heading')
+											.addClass('active');
+								});
+
+						$('.collapse').on(
+								'hide.bs.collapse',
+								function() {
+									$(this).siblings('.panel-heading')
+											.removeClass('active');
+								});
+						$("#newBtn").click(function() {
+							$("#grnTable").hide();
+							$("#reqTable").hide();
+							$(".btn-hs").hide();
+							$("#demo").show();
+						}) 
+
+						$("#invoiceCancelBtn").click(function() {
+							$("#reqTable").show();
+							$(".btn-hs").show();
+							$("#grnTable").show();
+							$("#totalReq").show();
+							$("#demo").hide();
+							agGrid.simpleHttpRequest({
+								url : 'view-grn-return-get-view-list'
+							}).then(function(data) {
+								var len = data.length;
+								$('#totalReq').find('span').html(len);
+								grnOptions.api.setRowData(data);
+							});
+							$("#invNo").val('');
+							$("#invDate").val('');
+							$("#invDateCalendar").val('');
+							$("#paymentTerm").val(null);
+							$("#dueDate").val('');
+							$("#dueDateCalendar").val('');
+							$("#vendorId").val(null);
+							$("#vendorLocId").val(null);
+							$("#vendorContactId").val(null);
+							$("#paymentStatus").val(null);
+							$("#companyContactId").val('');
+							$("#totalValue").val('');
+							$("#paymentDueIn").val('');
+							$("#comments").val('');
+
+							$("#invId").val('');
+							$("#source").html('');
+							$("#reqHeadId").html('');
+							$("#createdDate").append('');
+							$("#activeDate").append('');
+							$("#completeDate").html('');
+							$("#onHoldDate").html('');
+							$("#sku").html('');
+							$("#skuEditId").html('');
+							$("#brandId").html('');
+							$("#itemId").val('');
+							$("#itemName").html('');
+							$("#locationId").val('');
+							$("#quantity").val('');
+							$("#uom").val('');
+
+							$("#unitPrice").val('');
+							$("#discount").val('');
+							$("#tax").val('');
+							$("#total").val('');
+							$("#shipping").val('');
+							$("#subTotal").val('');
+							$("#search").val('');
+							$("#search").val('');
+
+						});
+
+						$("#quarter").click(function() {
+							$("#myTbl").hide();
+							$(".btn-hs").hide();
+							$("#demo").show();
+						})
+
+						$("#browseBtn").click(function() {
+							$("#myModal").modal('show');
+							getCategoryList();
+						})
+
+					});
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+</script>
+
+<script>
+	var columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				sortable : false,
+				filter : false,
+				resizable : true,
+				pinned: 'left',
+				width : 20
+			},
+			{
+				headerName : "Return Note Id",
+				field : "returnNoteId",
+				cellRenderer : function(params) {
+					return '<a onclick=editGrnReturn("'
+							+ params.data.returnNoteId
+							+ '") href="javascript:void(0)">'
+							+ params.data.returnNoteId + '</a>';
+				}
+
+			}, {
+				headerName : "Note Id",
+				field : "noteId",
+
+			}, {
+				headerName : "Invoice Date",
+				field : "invDate",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : "Invoice NO",
+				field : "invNo"
+			}, {
+				headerName : "PO ID",
+				field : "poId"
+			}, {
+				headerName : "PO Date",
+				field : "poDate",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : "Dispatch Date",
+				field : "dispatchDate",
+				cellStyle : {
+					textAlign : 'center'
+				}
+
+			}, {
+				headerName : "Delivery Method",
+				field : "deliveryMethodName",
+				width : 200,
+
+			}, {
+				headerName : "Tracking Number",
+				field : "trackingNo",
+				width : 200,
+
+			}, {
+				headerName : "Total Invoice Quantity",
+				field : "totalInvQty",
+				type : 'rightAligned',
+				width : 250,
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "Total Deliverd Quantity",
+				field : "totalDnQty",
+				type : 'rightAligned',
+				width : 250,
+				valueFormatter : currencyFormatter
+			}, {
+				headerName : "Total Receive Quantity",
+				field : "totalReceiveQty",
+				type : 'rightAligned',
+				width : 250,
+				valueFormatter : currencyFormatter
+			}, {
+				headerName : "Total Not Receive Quantity",
+				field : "totalNotReceiveQty",
+				type : 'rightAligned',
+				width : 250,
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "Total Return Quantity",
+				field : "totalReturnQty",
+				type : 'rightAligned',
+				width : 250,
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "OutStanding Quantity",
+				field : "totalOutStandingQty",
+				type : 'rightAligned',
+				width : 250,
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "Status",
+				field : "status",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : "Created By",
+				field : "createdBy"
+
+			}, {
+				headerName : "Created Date",
+				field : "createdOn",
+				cellStyle : {
+					textAlign : 'center'
+				}
+
+			} ];
+
+	// for product table
+	var productDefs = [   {
+		headerName : "SKU",
+		field : "sku" 
+	}, {
+		headerName : "Name",
+		field : "itemName"
+
+	}, {
+		headerName : "Brand",
+		field : "brand"
+
+	}, {
+		headerName : "itemId",
+		field : "itemId",
+		hide : "true"
+	}, {
+		headerName : "Return Quantity",
+		field : "returnQty",
+		type : 'rightAligned',
+		editable : true,
+		singleClickEdit: true,
+		cellStyle : { textAlign : 'right', 'background-color': 'white' },
+		valueFormatter : currencyFormatter
+
+	} ];
+
+	function checkboxSelection(params) {
+		return params.node.group === true;
+	}
+
+	var activityDefs = [ {
+		headerCheckboxSelection : true,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		width : 20
+	}, {
+		headerName : "Activity Name",
+		field : "operationName"
+	}, {
+		headerName : "User Name",
+		field : "operationBy"
+	}, {
+		headerName : "Created Date",
+		field : "operationOn",
+		cellStyle : {
+			textAlign : 'center'
+		}
+
+	} ];
+
+	// let the grid know which columns and what data to use product table
+	var activityOptions = {
+		columnDefs : activityDefs,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 353
+		}
+
+	};
+
+	// let the grid know which columns and what data to use activity table
+	var productOptions = {
+		columnDefs : productDefs,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 271
+		},
+		getRowNodeId : function(data) {
+			return data.sku;
+		}
+
+	};
+
+	function checkboxSelection(params) {
+		return params.node.group === true;
+	}
+
+	function checkbox(params) {
+		return params.node.group === true;
+	}
+
+	// let the grid know which columns and what data to use
+	var grnOptions = {
+		columnDefs : columnDefs,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 153
+		}
+
+	};
+
+	// setup the grid after the page has finished loading
+	document.addEventListener('DOMContentLoaded', function() {
+		var gridDiv = document.querySelector('#grnTable');
+		new agGrid.Grid(gridDiv, grnOptions);
+
+		var gridDiv = document.querySelector('#product');
+		new agGrid.Grid(gridDiv, productOptions);
+
+		var gridDiv = document.querySelector('#activity');
+		new agGrid.Grid(gridDiv, activityOptions);
+
+	});
+
+	function resetState() {
+		grnOptions.columnApi.resetColumnState();
+
+	}
+
+	function onQuickFilterChanged() {
+		grnOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	// for switch pages
+	function switchPage() {
+		var data = [];
+		productOptions.api.setRowData(data);
+
+		activityOptions.api.setRowData(data);
+	}
+
+	function editGrnReturn(noteId) {
+		newPage();
+		$("#grnTable").hide();
+		$("#reqTable").hide();
+		$(".btn-hs").hide();
+		$("#demo").show();
+		$('.loader').show();
+		$("body").addClass("overlay");
+		agGrid
+				.simpleHttpRequest({
+					url : 'view-grn-return-edit-trough-ajax?id=' + noteId
+				})
+				.then(
+						function(data) {
+							$('.loader').hide();
+							$("body").removeClass("overlay");
+							$("#noteId").val(data.noteId);
+							$("#reqHeadId").html(noteId);
+							$("#returnNoteId").val(noteId);
+							$("#createdDate").empty();
+							$("#createdDate").append(data.createdOn);
+							$("#activeDate").empty();
+							$("#activeDate").append(data.activeDate);
+							$("#completeDate").empty();
+							$("#completeDate").html(data.completeDate);
+							$("#onHoldDate").empty();
+							$("#onHoldDate").html(data.onHoldDate);
+
+							productOptions.api.setRowData(data.productList);
+							$("#doctbodyData").empty();
+							var documentList = data.documentList;
+							if (documentList != null && documentList != "") {
+								for (var i = 0; i < documentList.length; i++) {
+
+									var tbl = '<tr>'
+											+ '<td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+											+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option>  </select> </div></td>'
+											+ '<td><div class="form-group"> <input type="text" value="'+documentList[i].documnentName+'" class="form-control docNoclss" id="docnoid_'+i+'"> </div></td>'
+											+ '<td><div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_'+i+'" id="uploadFor_'+i+'"> <i class="ti-pencil" id="clickImg_'+i+'"></i> </label>'
+											+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_'
+											+ i
+											+ '"name="userImage" onchange="saveMultiFile(event)" /> </div>'
+											+ '</div> <input type="hidden" id="uploadHidden_'+i+'" value="'+documentList[i].fileName+'" class="uploadHidCls">'
+											+ '<div id="uploadedBillDiv_'+i+'" align="center" class="uploadedBillCls"><div class="uploadicon position-l">'
+											+ documentList[i].action
+											+ '</div></div>'
+											+ '<div id="imageName_'+i+'" class="imageName">'
+											+ documentList[i].fileName
+											+ '</div>'
+											+ '<input type="hidden" id="editId_'+i+'" value="'+ documentList[i].vendorRfqId+'">'
+											+ '<div id="dltImage_'+i+'" class="custom-file-delete"><i class="ti-close position-l rmv1" onclick="openDeleteConfirm()"></i></div> </td>'
+											+ '</tr>';
+
+									$("#doctbodyData").append(tbl);
+								}
+							} else {
+								var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+										+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+										+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_"></div></td>'
+										+ '<td> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+										+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+										+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div><div id="dltImage_0" ></div><input type="hidden" id="editId_0></td>'
+										+ '</tr>';
+								$("#doctbodyData").append(tbl);
+							}
+							headerStatus();
+						});
+
+		agGrid.simpleHttpRequest({
+			url : 'view-grn-return-activity-log?id=' + noteId
+		}).then(function(data) {
+			activityOptions.api.setRowData(data);
+		});
+
+	}
+	function onBtIncludeAthleteColumn(colDefsAthleteIncluded) {
+		productOptions.api.setColumnDefs(colDefsAthleteIncluded);
+	}
+ 
+ 
+	//for approve requisition
+	function completeGrnReturn() {
+		var returnNoteId = $("#returnNoteId").val();
+		var item = {};
+		item.moduleId = localStorage.getItem('module');
+		item.componentId = localStorage.getItem('function');
+		item.subComponentId = localStorage.getItem('activity');
+		item.returnNoteId = returnNoteId;
+		$('.loader').show();
+		$
+				.ajax({
+					type : "POST",
+					url : "view-grn-return-complete-grn-return",
+					dataType : "json",
+					contentType : "application/json",
+					data : JSON.stringify(item),
+					success : function(response) {
+						$('.loader').hide();
+						if (response.message == "Success") {
+							agGrid
+									.simpleHttpRequest(
+											{
+												url : 'view-grn-receipt-activity-log?id='
+														+ noteId
+											}).then(function(data) {
+										activityOptions.api.setRowData(data);
+									});
+							editGrnReturn(returnNoteId);
+						} else {
+							$("#messageParagraph").text(
+									"Opps ! Something Went Wrong.");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+						}
+					},
+					error : function(data) {
+						console.log(data)
+					}
+				})
+
+	}
+</script>
+
+<script>
+	function saveData() {
+
+		$('.loader').show();
+		$("body").addClass("overlay");
+		var itemList = [];
+		productOptions.api.forEachNode(function(rowNode, index) {
+			itemList.push(rowNode.data);
+		});
+
+		var imageValid = true;
+		var uploadList = [];
+		$("#doctbodyData > tr").each(function() {
+			var uFile = $(this).find(".document")[0].files[0];
+			var fileName = $(this).find(".document").val();
+			var data = [];
+			var x = [];
+			if (fileName != '' && fileName != 'undefined' && fileName != null) {
+				var lastIndex = fileName.lastIndexOf("\\");
+				if (lastIndex >= 0) {
+					fileName = fileName.substring(lastIndex + 1);
+				}
+				var reader = new FileReader();
+				reader.readAsDataURL(uFile);
+
+				reader.onload = function() {
+					data = reader.result.split(",");
+					x.push(data[1]);
+				};
+			} else {
+				if ($("#invId").val()) {
+
+					fileName = $(this).find(".uploadHidCls").val();
+
+				} else {
+					x = [];
+
+				}
+
+			}
+			uploadData = {};
+			uploadData['documnentName'] = $(this).find(".docNoclss").val();
+			uploadData['documentFile'] = x;
+			uploadData['fileName'] = fileName;
+			uploadData['imageNameEdit'] = $(this).find(".uploadHidCls").val();
+			uploadList.push(uploadData);
+
+		});
+
+		setTimeout(function() {
+			var item = {};
+			item.noteId = $("#noteId").val();
+			item.returnNoteId = $("#returnNoteId").val();
+			item.moduleId = localStorage.getItem('module');
+			item.componentId = localStorage.getItem('function');
+			item.subComponentId = localStorage.getItem('activity');
+			item.productList = itemList;
+			item.documentList = uploadList;
+			saveInvoice(item);
+		}, 1000)
+
+	}
+
+	function saveInvoice(item) {
+		$
+				.ajax({
+					type : "POST",
+					url : "view-grn-return-save-th-ajax",
+					dataType : "json",
+					contentType : "application/json",
+					data : JSON.stringify(item),
+					success : function(response) {
+						$('.loader').hide();
+						$("body").removeClass("overlay");
+						if (response.message == "Success") {
+							returnPage();
+							$("#messageParagraph").text(
+									"Data Saved Successfully");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+
+							$("#noteId").val(response.body.noteId);
+							$("#reqHeadId").html(response.body.returnNoteId);
+							$("#returnNoteId").val(response.body.returnNoteId);
+							$("#createdDate").empty();
+							$("#createdDate").append(response.body.createdOn);
+							$("#activeDate").empty();
+							$("#activeDate").append(response.body.activeDate);
+							$("#completeDate").empty();
+							$("#completeDate").html(response.body.completeDate);
+							$("#onHoldDate").empty();
+							$("#onHoldDate").html(response.body.onHoldDate);
+							$("#doctbodyData").empty();
+							var documentList = response.body.documentList;
+
+							if (documentList != null && documentList != "") {
+								for (var i = 0; i < documentList.length; i++) {
+									var tbl = '<tr>'
+											+ '<td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+											+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option>  </select> </div></td>'
+											+ '<td><div class="form-group"> <input type="text" value="'+documentList[i].documnentName+'" class="form-control docNoclss" id="docnoid_'+i+'"> </div></td>'
+											+ '<td><div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_'+i+'" id="uploadFor_'+i+'"> <i class="ti-pencil" id="clickImg_'+i+'"></i> </label>'
+											+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_'
+											+ i
+											+ '" name="userImage" onchange="saveMultiFile(event)" /> </div>'
+											+ '</div> <input type="hidden" id="uploadHidden_'+i+'" value="'+documentList[i].fileName+'" class="uploadHidCls">'
+											+ '<div id="uploadedBillDiv_'+i+'" align="center" class="uploadedBillCls"><div class="uploadicon position-l">'
+											+ documentList[i].action
+											+ '</div></div>'
+											+ '<div id="imageName_'+i+'" class="imageName">'
+											+ documentList[i].fileName
+											+ '</div>'
+											+ '<div id="dltImage_'+i+'" class="custom-file-delete"><i class="ti-close position-l rmv1" onclick="openDeleteConfirm()"></i></div>'
+											+ '<input type="hidden" id="editId_'+i+'" value="'+ documentList[i].vendorRfqId+'">'
+											+ '</td>' + '</tr>';
+
+									$("#doctbodyData").append(tbl);
+								}
+							} else {
+								var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+										+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+										+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_"></div></td>'
+										+ '<td> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+										+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+										+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="custom-file-upload"></div> <input type="hidden" id="editId_0"> </td>'
+										+ '</tr>';
+								$("#doctbodyData").append(tbl);
+							}
+
+							productOptions.api
+									.setRowData(response.body.productList);
+
+							agGrid
+									.simpleHttpRequest(
+											{
+												url : 'view-grn-return-activity-log?id='
+														+ response.body.invId
+											}).then(function(data) {
+										activityOptions.api.setRowData(data);
+									});
+							headerStatus();
+						} else {
+
+							$('.loader').hide();
+							$("body").removeClass("overlay");
+						}
+					},
+					error : function(data) {
+						console.log(data);
+						$('.loader').hide();
+						$("body").removeClass("overlay");
+					}
+				}) //ajax ends
+
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+
+	function headerStatus() {
+
+		$("#statusDiv").show();
+
+		var createdDate = $("#createdDate").text();
+		var activeDate = $("#activeDate").text();
+		var completeDate = $("#completeDate").text();
+		var onHoldDate = $("#onHoldDate").text();
+
+		if (createdDate) {
+			$('#createdDiv').addClass('green-box');
+			$('#createdDiv').removeClass('grey-box');
+		} else {
+			$('#createdDiv').removeClass('green-box');
+			$('#createdDiv').addClass('grey-box');
+		}
+		if (activeDate) {
+			$('#activeDiv').addClass('green-box');
+			$('#activeDiv').removeClass('grey-box');
+		} else {
+			$('#activeDiv').addClass('grey-box');
+			$('#activeDiv').removeClass('green-box');
+		}
+		if (completeDate) {
+			$('#completeDiv').addClass('green-box');
+			$('#completeDiv').removeClass('grey-box');
+			$('#productDltBtn').attr('disabled', true);
+			$('#addProductBtn').attr('disabled', true);
+			$('#addAttchmentBtn').attr('disabled', false);
+			$('#saveInv').attr('disabled', false);
+			$('.poCls').attr('disabled', true);
+		} else {
+			$('#completeDiv').removeClass('green-box');
+			$('#completeDiv').addClass('grey-box');
+			$('#productDltBtn').attr('disabled', false);
+			$('#addProductBtn').attr('disabled', false);
+			$('#addAttchmentBtn').attr('disabled', false);
+			$('#saveInv').attr('disabled', false);
+			$('.poCls').attr('disabled', false);
+		}
+		if (onHoldDate) {
+			$('#onHoldDiv').addClass('green-box');
+			$('#onHoldDiv').removeClass('grey-box');
+		} else {
+			$('#onHoldDiv').removeClass('green-box');
+			$('#onHoldDiv').addClass('grey-box');
+		}
+	}
+	function clearSearchData() {
+		$("#search").val(null);
+		$("#sku").html('');
+		$("#brandName").html('');
+		$("#brandId").val('');
+		$("#itemId").val('');
+		$("#itemName").html('');
+	}
+
+	// download function
+	function skuProductCSV() {
+		var dataset = [];
+		productOptions.api.forEachNodeAfterFilterAndSort(function(rowNode,
+				index) {
+			dataset.push(rowNode.data);
+		});
+		productOptions.api.exportDataAsCsv(dataset);
+	}
+
+	function activityCSV() {
+		var dataset = [];
+		activityOptions.api.forEachNodeAfterFilterAndSort(function(rowNode,
+				index) {
+			dataset.push(rowNode.data);
+		});
+		activityOptions.api.exportDataAsCsv(dataset);
+	}
+
+	function rfqCSV() {
+		var dataset = [];
+		grnOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+		grnOptions.api.exportDataAsCsv(dataset);
+	}
+	function validFormData() {
+		var allValid = true;
+		if (!validationUpdated("Description can't be Left Blank", 'desc'))
+			allValid = false;
+		if (!validationUpdated("Requisition Type can't be Left Blank",
+				'reqType'))
+			allValid = false;
+		if (!validationUpdated("Requisition Priority can't be Left Blank",
+				'reqPrior'))
+			allValid = false;
+		if (!validationUpdated("Receive Date can't be Left Blank",
+				'receiveDate'))
+			allValid = false;
+		return allValid;
+	}
+	function validSideBarData() {
+		var allValid = true;
+
+		if (!validationUpdated("Item can't be Left Blank", 'itemId'))
+			allValid = false;
+		if (!validationUpdated("Location can't be Left Blank", 'locationId'))
+			allValid = false;
+		if (!validationUpdated("Location can't be Left Blank", 'locationId'))
+			allValid = false;
+		if (!validationUpdated("Quantity can't be Left Blank", 'quantity'))
+			allValid = false;
+		if (!validationUpdated("UOM can't be Left Blank", 'uom'))
+			allValid = false;
+		if (!validationUpdated("Unit Price can't be Left Blank", 'unitPrice'))
+			allValid = false;
+		return allValid;
+
+	}
+
+	function validProductData() {
+		var item = null;
+		productOptions.api.forEachNode(function(rowNode, index) {
+			item = rowNode.data;
+		});
+		if (item) {
+			return true;
+		} else {
+			$("#messageParagraph").text("Please Add At Least One Product");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			return false;
+		}
+	}
+
+	function checkEmpty() {
+		var infofileName = true;
+		$(".formValidation").remove();
+		$('.docNoclss').each(function() {
+			if ($(this).val() == null || $(this).val() == "") {
+				infofileName = false;
+				validationModal("Document Name Required", $(this).attr('id'));
+			}
+		});
+
+		var mulDocInfo = true;
+		if (infofileName) {
+			$('#doctbodyData > tr').each(function() {
+				if ($(this).closest('tr').find('.imageName').text()) {
+					mulDocInfo = true;
+				} else {
+					mulDocInfo = false;
+					$("#messageParagraph").text("Please Choose a File ");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					return false;
+				}
+
+			});
+		}
+		if (infofileName && mulDocInfo) {
+			addMore1()
+		}
+	}
+
+	function saveMultiFile(event) {
+		var AssignItemQty = event.currentTarget.value;
+		var currentFldId = event.currentTarget.getAttribute('id');
+		var l = currentFldId.split("_");
+		var counter = l[1];
+		var currentFldId = "#" + currentFldId;
+
+		var uFile = $(currentFldId)[0].files[0];
+		var fileName = event.currentTarget.value;
+		var lastIndex = fileName.lastIndexOf("\\");
+		if (lastIndex >= 0) {
+			fileName = fileName.substring(lastIndex + 1);
+		}
+		var extension = fileName.split(".");
+
+		var iURL = URL.createObjectURL(uFile);
+		$("#uploadedBillDiv_" + counter).html("");
+		if (extension[1] != null && extension[1] != "") {
+			$("#uploadHidden_" + counter).val('');
+		}
+		if (extension[1] == "jpg" || extension[1] == "png" || extension[1] == "jpeg") {
+			var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-picture-o'></i></a></div>";
+		} else if (extension[1] == "pdf") {
+			var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-pdf-o'></i> </a></div>";
+		} else if (extension[1] == "xls" || extension[1] == "xlsx") {
+			var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-excel-o'></i></a></div>";
+		} else if (extension[1] == "doc" || extension[1] == "dox"
+				|| extension[1] == "docx") {
+			var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-word-o'></i></a></div>";
+		} else {
+			var LightImg = "<div class='uploadicon position-l '> </div>";
+		}
+		var dltImg = "<i class='ti-close position-l rmv1' onclick='openDeleteConfirm()'></i>";
+		$("#uploadedBillDiv_" + counter).html(LightImg);
+		$("#imageName_" + counter).html(fileName);
+		$("#dltImage_" + counter).html(dltImg); 
+		$("#dltImage_" + counter).addClass("custom-file-delete"); 
+	 
+		$("#clickImg_" + counter).removeClass("ti-plus");
+		$("#clickImg_" + counter).addClass("ti-pencil");
+
+	}
+	function addMore1() {
+
+		var lengthOfTableRow = $("#doctbodyData").children('tr').length;
+		var cloneHtml = $("#docTbl tbody tr:first").clone();
+
+		$("#docTbl tbody").append($("#docTbl tbody tr:first").clone());
+		$("#myTable tbody tr td:last").html("");
+
+		$("#docTbl tbody tr:last").find(".documentclss").val("");
+		$("#docTbl tbody tr:last").find(".docNoclss").val("");
+		$("#docTbl tbody tr:last").find(".documentclssup").val("");
+		$("#docTbl tbody tr:last").find(".uploadedBillCls").empty();
+		$("#docTbl tbody tr:last").find(".uploadHidCls").empty();
+		$("#docTbl tbody tr:last").find(".uploadHidCls").val('');
+		$("#docTbl tbody tr:last").find(".imageName").empty();
+            var j =0;
+		$("#docTbl > #doctbodyData > tr").each(function(i) {
+
+			var selectInput = $(this).find('select');
+			var textInput = $(this).find('input');
+			var fileInput = $(this).find('file');
+			var divInput = $(this).find('div');
+			var label = $(this).find('label');
+			var iInput = $(this).find('i');
+			selectInput.eq(0).attr('id', "docid_" + i);
+
+			textInput.eq(1).attr('id', "docnoid_" + i);
+			textInput.eq(2).attr('id', "uploadDoc_" + i);
+			label.eq(1).attr('for', "uploadDoc_" + i);
+			textInput.eq(3).attr('id', "uploadHidden_" + i);
+			divInput.eq(4).attr('id', "uploadedBillDiv_" + i);
+			divInput.eq(5).attr('id', "imageName_" + i);
+			divInput.eq(6).attr('id', "dltImage_" + i);
+			iInput.eq(0).attr('id', "clickImg_" + i); 
+			j++;
+		}) 
+		$("#clickImg_" + (j-1)).removeClass("ti-pencil");
+		$("#clickImg_" + (j-1)).addClass("ti-plus");
+
+	}
+ 
+	 function openDeleteConfirm() {
+		 $("#dltValue").val("");
+			$('#deleteAttachment').modal('show');
+		}
+		//for closeing modal box for dlt ind product
+		function closeDeleteConfirm() {
+			$("#dltValue").val("");
+			$('#deleteAttachment').modal('hide');
+		}
+		
+		function deletAttachmentRow(){
+			var lengthOfTableRow1 = 0;
+			$("#docTbl > #doctbodyData > tr") .each( function() {
+					lengthOfTableRow1 = lengthOfTableRow1 + 1;
+			})
+			var id = $("#dltValue").val();
+			$("#"+id).closest('tr').remove();
+			closeDeleteConfirm();
+			if (lengthOfTableRow1 == 1) {
+			var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+						+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+						+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_"></div></td>'
+						+ '<td> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+						+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+						+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div><div id="dltImage_0" ></div> </td>'
+						+ '</tr>';
+						$("#doctbodyData").append(tbl);
+				}
+		}
+		
+		function returnPage() {
+			$("#reqTable").show();
+			$("#total").show();
+			$("#totalReq").show();
+			$("#searchDiv").show();
+			$("#btndiv").show();
+			$("#grnTable").show();
+			$("#mainPage").hide();
+			$("#accordionExample").hide();
+			$("#headingItem").hide();
+		}
+		
+		function newPage() {
+			$("#reqTable").hide();
+			$("#totalReq").hide();
+			$("#searchDiv").hide();
+			$("#btndiv").hide();
+			$("#grnTable").hide();
+			$("#mainPage").show();
+			$("#accordionExample").show();
+			$("#headingItem").show();
+			headerStatus()
+		}
+		
+</script>
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<!-- <div class="row margin_topbot">
+							<div class="btn-hs">
+								<div class="input-style row">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter">
+									<div class="searchicon">
+										<a href="#"><span style="display: none" id="closeKey"
+											onclick="grnOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i">X</span></a><a href="#"><i
+											class="fa fa-search"></i></a>
+									</div>
+								</div>
+							</div>
+						</div> -->
+						<div class="row" id="reqTable">
+                         <div class="d-flex justify-content-between">
+							<div class="btn-hs" id="total">
+								<div class="font-design" id="totalReq">
+									GRN RETURN LIST (<span></span>)
+								</div>
+							</div>
+                          <div class="btn-hs" id="searchDiv">
+									<div class="input-style">
+										<input type="text" placeholder="Search.." name="search"
+											class="searchboxinput" onkeyup="cancelBar()"
+											oninput="onQuickFilterChanged()" id="quickFilter"
+											autocomplete="off">
+										<div class="searchicon">
+											<a href="javascript:void(0)"><span
+												style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+												id="closeKey"
+												onclick="grnOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+												class="close_i"><i class="ti-close srchicon"></i></span></a><a
+												href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+										</div>
+									</div>
+
+								</div>
+								<div class="buttonsec btn-hs" id="btndiv"></div>
+
+						</div>
+						</div>
+
+						<div id="grnTable" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innerstickybg" id="headingItem">
+								<div class="row">
+
+									<div class="col-md-3 padding-0">
+										<div class="font-design">
+											RETURN NOTE ID: <span id="reqHeadId"></span>
+										</div>
+									</div>
+									<div class="col-md-6">
+										<div id="statusDiv">
+											<div class="hr4"></div>
+											<div class="main-div">
+												<div class="section2">
+													<div id="createdDiv" class="green-box">
+														<div class="green-box-heading">CREATED</div>
+														<div class="date" id="createdDate"></div>
+													</div>
+												</div>
+												<div class="section3">
+													<div id="activeDiv" class="green-box">
+														<div class="green-box-heading">ACTIVE</div>
+														<div class="date" id="activeDate"></div>
+													</div>
+												</div>
+												<div class="section4">
+													<div id="completeDiv" class="grey-box">
+														<div class="green-box-heading">COMPLETE</div>
+														<div class="date" id="completeDate"></div>
+													</div>
+												</div>
+												<div class="section5">
+													<div id="onHoldDiv" class="grey-box">
+														<div class="green-box-heading">ONHOLD</div>
+														<div class="date" id="onHoldDate"></div>
+													</div>
+												</div>
+
+											</div>
+										</div>
+									</div>
+									<div class="col-md-3" align="right">
+										<button class="cancel-btn" id="invoiceCancelBtn">Cancel</button>
+										<button class="approve-btn" id="saveInv" onclick="saveData()">Save</button>
+									</div>
+								</div>
+
+							</div>
+							<div class="row innersticky_contentgap" id="mainPage">
+
+								<div class="col-md-3">
+									<div class="form-group">
+										<label>Receive Note</label> <input type="text" id="noteId"
+											class="form-control border_none" readonly> <input
+											type="hidden" id="returnNoteId" />
+									</div>
+								</div>
+							</div>
+							<div id="main">
+								<div class="accordion" id="accordionExample">
+
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingOne">
+										
+											<button class="accordion-button collapsed" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseOne"
+												aria-expanded="false" aria-controls="collapseOne">
+												Item List</button>
+
+										</h2>
+										<div id="collapseOne" class="accordion-collapse collapse"
+											aria-labelledby="headingOne"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+
+												
+												
+
+												<div id="product" style="width: 100%; height: 100px;"
+													class="ag-theme-alpine"></div>
+												
+
+											</div>
+										</div>
+									</div>
+
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingTwo">
+											
+											<button class="accordion-button collapsed" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseTwo"
+												aria-expanded="false" aria-controls="collapseTwo">
+												Attachment</button>
+
+										</h2>
+										<div id="collapseTwo" class="accordion-collapse collapse"
+											aria-labelledby="headingTwo"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+
+
+												<div class="row">
+													<div class="col-md-4 btn-hs1">
+														<div class="font-design"></div>
+													</div>
+													<div class="col-md-8 butttonsec">
+														<button class="new-btn" id="addAttchmentBtn"
+															onclick="checkEmpty();">New</button>
+                                                     </div>
+											
+													<table id="docTbl" cellspacing="7" cellpadding="7">
+														<thead>
+															<tr class="tr_clone">
+
+																<th width="320">Document Name</th>
+																<th width="380">Attachment</th>
+
+
+															</tr>
+														</thead>
+														<tbody id="doctbodyData">
+															<tr>
+																<td style="display: none" align="center" class="pdb-24"><input
+																	class="checkCls" type="checkbox" id="check2"><label
+																	for="check2"></label></td>
+																<td style="display: none"><div class="form-group">
+
+
+																		<select class="form-control documentclss" id="docid_0"
+																			onblur="removeValid(event);">
+																			<option value="">--Select--</option>
+																			<option th:each="c,iter:${documentTypeList}"
+																				th:value="${c.key}" th:text="${c.name}"></option>
+																		</select>
+																	</div></td>
+																<td><div class="form-group">
+																		<input type="text" value=""
+																			class="form-control docNoclss"
+																			onblur="checkForDuplicateEntry(event)" id="docnoid_">
+																	</div></td>
+
+																<td>
+																	<div class="control-group position-r">
+																		<label class="custom-file-upload" for="uploadDoc_0"
+																			id="uploadFor_0"> <i id="clickImg_0"
+																			class="ti-plus"></i>
+																		</label>
+																		<div class="controls">
+
+																			<input type="file" class="document" id="uploadDoc_0"
+																				name="userImage" accept="image/*"
+																				onchange="saveMultiFile(event)" />
+
+																		</div>
+																	</div> <input type="hidden" id="uploadHidden_0"
+																	class="uploadHidCls">
+																	<div id="uploadedBillDiv_0" align="center"
+																		class="uploadedBillCls"></div>
+																	<div id="imageName_0" class="imageName"></div>
+																	<div id="dltImage_0"></div>
+																</td>
+
+															</tr>
+
+
+														</tbody>
+													</table>
+													
+													
+												</div>
+
+												
+
+											</div>
+										</div>
+									</div>
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingThree">
+										
+											<button class="accordion-button collapsed" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseThree"
+												aria-expanded="false" aria-controls="collapseThree">
+												Actions</button>
+
+										</h2>
+										<div id="collapseThree" class="accordion-collapse collapse"
+											aria-labelledby="headingThree"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+
+
+												<div class="row">
+													<div class="col-md-6 btn-hs1">
+														<div class="font-design"></div>
+													</div>
+													<div class="col-md-8 butttonsec">
+														<button class="approve-btn putonhold"
+															onclick="completeGrnReturn()">Complete</button>
+														<button class="approve-btn putonhold" onclick="startPhyVr()">Start
+															Physical Verification</button>
+
+													</div>
+												</div>
+
+											</div>
+										</div>
+									</div>
+
+
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingFour">
+											
+											<button class="accordion-button collapsed" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseFour"
+												aria-expanded="false" aria-controls="collapseFour">
+												Activities</button>
+
+										</h2>
+										<div id="collapseFour" class="accordion-collapse collapse"
+											aria-labelledby="headingFour"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+
+
+												<div class="row">
+													<div class="col-md-4 btn-hs1">
+														<div class="font-design"></div>
+													</div>
+													<div class="col-md-8 butttonsec">
+														<button class="download-btn" onclick="activityCSV()">Download</button>
+
+													</div>
+												</div>
+
+												<div id="activity" style="width: 100%; height: 100px;"
+													class="ag-theme-alpine"></div>
+
+											</div>
+										</div>
+									</div>
+                                  </div>
+							</div>
+							
+							
+							
+						</div>
+					</div>
+
+					<!-- delete attachment modal start -->
+					<div id="deleteAttachment" class="modal fade show"
+						aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-dismiss="modal"
+										aria-hidden="true" onclick="closeDeleteConfirm()">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p>Do you really want to delete these records? This process
+										cannot be undone.</p>
+									<input type="hidden" id="dltValue">
+								</div>
+								<div class="modal-footer justify-content-center">
+
+									<button type="button" class="cancel-btn" data-dismiss="modal"
+										onclick="closeDeleteConfirm()">Cancel</button>
+									<button type="button" class="delete-btn"
+										onclick="deletAttachmentRow()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

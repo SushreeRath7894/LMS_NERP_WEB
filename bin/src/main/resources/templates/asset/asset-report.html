@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+/* .form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+} */
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+</style>
+
+<script type="text/javascript">
+
+	$(document).ready(function() {
+		$('.loader').show();
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		var gridDiv = document.querySelector('#assetGrid');
+		new agGrid.Grid(gridDiv, activityOptions);
+		activityOptions.api.setRowData("");
+		var gridDiv = document.querySelector('#activity');
+		gridOptions.api.setRowData();
+		agGrid.simpleHttpRequest({
+			url : 'asset-report-view'
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.Asset;
+
+			var len = allData.length;
+			$('#totalAsset').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+		});
+		$('.loader').hide();
+		$('#deleteChild').attr('disabled', true);
+		$("#emplist").hide();
+    	$("#loclist").hide();
+    	$("#assigndate").hide();
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+		$('.collapse').on('hide.bs.collapse', function() {
+			$(this).siblings('.panel-heading').removeClass('active');
+		});
+		$("#newBtn").click(function() {
+
+		})
+
+		
+		var dateFormat = localStorage.getItem("dateFormat");
+$("#DateCalendarAssign").datetimepicker({
+	format : dateFormat,
+	closeOnDateSelect : true,
+	timepicker : false,
+}).on("change", function() {
+	$('#asdate').val($(this).val());
+})
+
+$('#asdate').blur(function() {
+	$("#DateCalendarAssign").val($(this).val());
+})
+
+
+var dateFormat = localStorage.getItem("dateFormat");
+$("#DateCalendar1").datetimepicker({
+	format : dateFormat,
+	closeOnDateSelect : true,
+	timepicker : false,
+}).on("change", function() {
+	$('#sdate').val($(this).val());
+})
+
+$('#sdate').blur(function() {
+	$("#DateCalendar1").val($(this).val());
+})
+
+var dateFormat = localStorage.getItem("dateFormat");
+		$("#DateCalendar2").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#edate').val($(this).val());
+		})
+
+		$('#edate').blur(function() {
+			$("#DateCalendar2").val($(this).val());
+		})
+		
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#DateCalendar3").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#pdate').val($(this).val());
+		})
+
+		$('#pdate').blur(function() {
+			$("#DateCalendar3").val($(this).val());
+		})
+		
+		
+		  $('input[name="options"]').on('change', function() {
+			    var selectedValue = $('input[name="options"]:checked').val();
+			    if(selectedValue=="Employee"){
+			    	$("#emplist").show();
+			    	$("#loclist").hide();
+			    	$("#assetlocation").val("");
+			    	$("#assigndate").show();
+			    }else if(selectedValue=="Location"){
+			    	$("#emplist").hide();
+			    	$("#loclist").show();
+			    	$("#assetemployee").val("");
+			    	$("#assigndate").show();
+			    }
+			  });
+
+  
+	});
+	
+	
+	
+	/* -------------------search bar for mygrid------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+		var totalRowCount = gridOptions.api.getModel().getRowCount();
+		$('#totalAsset').find('span').html(totalRowCount);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	var columnDefs = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			pinned : 'left',
+			resizable : true
+
+		},
+		{
+			headerName : 'Asset Type',
+			field : "assettype",
+			pinned : 'left',
+
+		},		{
+			headerName : 'Asset Category',
+			field : "assetcat",
+
+		},{
+			headerName : 'Asset Subcategory',
+			field : "assetsubcat",
+
+		}, {
+			headerName : 'Total Quantity',
+			field : "total",
+			cellStyle : {
+				textAlign : 'center'
+			},
+			cellRenderer : function(params) {
+				return '<a id="id" onclick=viewAssignModal("'
+				+ params.data.assettype + '","'+ params.data.assetcatid + '","'+ params.data.assetsubcatid + '","ttl") href="javascript:void(0)">'
+				+ '<i class="bi bi-list-ol" style="color:#318CE7">'
+				+ params.data.total + '</i>'
+				+ '</a>';
+
+			}
+		}, {
+			headerName : 'Available Quantity',
+			field : "available",
+			cellStyle : {
+				textAlign : 'center'
+			},
+			cellRenderer : function(params) {
+				return '<a id="id" onclick=viewAssignModal("'
+				+ params.data.assettype + '","'+ params.data.assetcatid + '","'+ params.data.assetsubcatid + '","avl") href="javascript:void(0)">'
+				+ '<i class="bi bi-list-ol" style="color:#355E3B">'
+				+ params.data.available + '</i>'
+				+ '</a>';
+
+			}
+		
+		}];
+
+// let the grid know which columns and what data to use
+var gridOptions = {
+	columnDefs : columnDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 238
+	},
+	onSelectionChanged : onSelectionChanged,
+};
+//function for row select parents
+var id = "";
+var apstatus = "";
+function onSelectionChanged() {
+	var selectedNodes = gridOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	 id= selectedData.map(node => node.assignId);
+	 apstatus=selectedData.map(node => node.assignsts);
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+
+}
+
+//for activity table
+var activityDefs = [
+		{
+			headerName : "Asset Id",
+			field : "assetid",
+			cellStyle : {
+				textAlign : 'center'
+			},
+		}, {
+			headerName : "Asset Name",
+			field : "assetname",
+			cellStyle : {
+				textAlign : 'center'
+			},
+		}, {
+			headerName : "Assign Status",
+			field : "status",
+			cellStyle : {
+				textAlign : 'center'
+			},cellRenderer : function(params) {
+				if(params.data.status==1){
+					return '<div style="color:#0642f5">Assigned</div>';
+				}else{
+					return '<div style="color:#a9a9a9">Not Assigned</div>';
+				}
+				
+
+			}
+			}
+		, {
+			headerName : "Action",
+			field : "status",
+			cellStyle : {
+				textAlign : 'center'
+			},cellRenderer : function(params) {
+				return '<a id="id" onclick=goTOAsset("'+params.data.assetid+'") href="javascript:void(0)">'
+				+ '<i class="bi bi-book" style="color:#4F7942"> VIEW</i>'
+				+ '</a>';
+
+			}
+			}];
+
+
+// let the grid know which columns and what data to use product table
+var activityOptions = {
+	columnDefs : activityDefs,
+	rowSelection : 'multiple',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		width : 190
+	},
+	onSelectionChanged : onSelectionChangeChild,
+
+};
+//function for row select parents
+var childid = "";
+function onSelectionChangeChild() {
+	 var selectedNodes = activityOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	 childid= selectedData.map(node => node.slnoId);
+	var selectedRows = activityOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+	if (rowCount > 0) {
+		$('#newchild').attr('disabled', true);
+		$('#deleteChild').attr('disabled', false);
+		
+	}else{
+		$('#newchild').attr('disabled', false);
+		$('#deleteChild').attr('disabled', true);
+	}
+}
+
+
+	// delete selected record from child ag grid
+	function deleteDetailsOnclick() {
+		$('.modal').hide();
+		var selectedRows = activityOptions.api.getSelectedRows();
+		activityOptions.api.applyTransaction({
+			remove : selectedRows
+		});
+		cancelModalProductBtn();
+	}
+	//for closeing modal box for dlt  product
+	function cancelModalProductBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+		$('#deleteDetails').modal('hide');
+	}
+
+
+	function viewAssignModal(type,cat,scat,action) {
+		if(action=="avl"){
+			$("#modalTitle").html('Available Quantity');
+		}else{
+			$("#modalTitle").html('Total Quantity');
+		}
+		$("#myModal").modal('show');
+
+		agGrid.simpleHttpRequest(
+				{
+					url : "asset-report-list?type="+ type+"&cat="+cat+"&scat="+scat+"&action="+action
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.Asset;
+
+					activityOptions.api.setRowData(allData);
+				});
+	}
+	
+	function cancelModalBtn() {
+		gridOptions.api.setQuickFilter(null);
+		$('#quickFilter').val('');
+		document.getElementById('closeKey').style.display='none';
+		$('#totalAsset').find('span').html(gridOptions.api.getModel().getRowCount());
+		
+		$('#myModal').modal('hide');
+		$('.loader').show();
+		agGrid.simpleHttpRequest({
+			url : 'asset-report-view'
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.Asset;
+
+			var len = allData.length;
+			$('#totalAsset').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+		});
+		$('.loader').hide();
+	}
+	
+	function goTOAsset(asseiiddata) {
+		localStorage.setItem('assetIdData',asseiiddata);
+		sessionStorage.setItem('activity', 'ACT0429');
+		window.location.href = "/asset/asset-code";
+	
+}
+
+	function downloadDetails() {
+		var params = {
+			fileName: 'asset_report_list.csv', // Specify your custom filename here
+		};
+		gridOptions.api.exportDataAsCsv(params);
+	}
+</script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="d-flex justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalAsset">
+									Asset Details(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalAsset').find('span').html(gridOptions.api.getModel().getRowCount());"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+								<button class="download-btn" id="download"
+									onclick="downloadDetails()">Download</button>
+								<!-- <button class="new-btn" id="activeBtn" onclick="approveFun()">ACTIVE</button> -->
+								<!-- <button class="delete-btn" id="reqDltBtn" onclick="deleteFun()">DELETE</button> -->
+							</div>
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" />
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+					</div>
+				</div>
+
+				<!--   Assign training modal start	 -->
+
+				<div class="modal fade" id="myModal">
+					<div class="modal-dialog modal-lg" style="margin-top: 130px;">
+						<div class="modal-content">
+
+							<!-- Modal Header -->
+							<div class="modal-header">
+								<h4 class="modal-title md-color" id="modalTitle">Asset Details</h4>
+								<button type="button" class="close cp" data-dismiss="modal"
+									onclick="cancelModalBtn()">&times;</button>
+							</div>
+
+							<!-- Modal body -->
+							<div class="row" style="height: 320px;">
+								<div class="ag-theme-alpine" id="assetGrid" style="width: 100%; height: 300px;">
+
+							</div>
+							</div>
+
+							<!-- Modal footer -->
+							
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>

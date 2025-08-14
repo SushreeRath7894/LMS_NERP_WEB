@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+</style>
+
+<script type="text/javascript">
+
+	$(document).ready(function() {
+		$('.loader').show();
+		var gridDiv = document.querySelector('#myGridMain');
+		new agGrid.Grid(gridDiv, gridOptionsMain);
+		
+		
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		var gridDiv = document.querySelector('#activity');
+		gridOptions.api.setRowData();
+		window.LB=[];
+		window.DePowder=[];
+		window.Bags=[];
+		agGrid.simpleHttpRequest({
+			url : "production-log-floor-view"
+		}).then(function(data) {
+			$(".loader").hide();
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.viewShopFloor;
+			var len = allData.length;
+			$('#totalReq').find('span').html(len);
+			gridOptionsMain.api.setRowData(allData);
+			
+			var firstRowNode = gridOptionsMain.api.getDisplayedRowAtIndex(0);
+			  if (firstRowNode) {
+			    firstRowNode.setSelected(true);
+			  }
+			  onSelectionChanged();
+			
+		});
+		
+		$('.loader').hide();
+
+
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+		$('.collapse').on('hide.bs.collapse', function() {
+			$(this).siblings('.panel-heading').removeClass('active');
+		});
+  
+	});
+	/* -------------------search bar for mygrid------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptionsMain.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+		var totalRowCount = gridOptionsMain.api.getModel().getRowCount();
+		$('#totalLog').find('span').html(totalRowCount);
+	}
+
+
+	var columnDefs = [
+		{
+			headerName : 'M/C No',
+			field : "mcno",
+			pinned : 'left',
+
+		},{
+			headerName : 'Material Code',
+			field : "sku",
+			width : 140
+		},{
+			headerName : 'Material Name',
+			field : "skuname",
+			width : 180
+		},{
+			headerName : 'Bags',
+			field : "bags",
+			cellStyle : {
+				textAlign : 'right'
+			},
+			cellRenderer : function(params) {
+					if (params.data.leakerBagCalc == "" || params.data.leakerBagCalc == null) { 
+						return '';
+					}else {
+						var lbBags = eval(params.data.leakerBagCalc);
+						if(parseFloat(lbBags) < 0.3){
+							lbBags = 0;
+						}else if(parseFloat(lbBags) >= 0.3 && parseFloat(lbBags) <= 0.3){
+							lbBags = 1;
+						}else{
+							lbBags = lbBags.toFixed(1);
+						}
+						
+						var bag = "";
+						
+						if(params.data.pouchWtType == 'pkt'){
+							 bag = parseFloat(params.data.pouchreading)/parseFloat(params.data.bagquantity);
+						}else{
+							 bag = parseFloat(params.data.pouchreading)*parseFloat(params.data.mcTrack)/parseFloat(params.data.bagquantity)-parseFloat(lbBags);
+						}
+						
+						//var bag = parseFloat(params.data.pouchreading)*parseFloat(params.data.mcTrack)/parseFloat(params.data.bagquantity)-parseFloat(lbBags);
+						
+						if (isNaN(bag) || !isFinite(bag)) {
+							bag = "";
+					        }else {
+					        	bag = bag.toFixed(0);
+					        }
+						
+						window.Bags[params.node.rowIndex]=bag;
+						return bag;
+					}
+
+			},
+		},
+		{
+			headerName : 'Pouch Reading',
+			field : "pouchreading",
+			cellStyle : {
+				textAlign : 'right'
+			},
+
+		},{
+			headerName : 'Trail',
+			field : "trail",
+			cellStyle : {
+				textAlign : 'right'
+			},
+
+		},{
+			headerName : 'Leaker',
+			field : "leaker",
+			cellStyle : {
+				textAlign : 'right'
+			},
+
+		},{
+			headerName : 'Damage',
+			field : "damage",
+			cellStyle : {
+				textAlign : 'right'
+			},
+
+		},{
+			headerName : 'Depowder',
+			field : "depowder",
+			cellStyle : {
+				textAlign : 'right'
+			},
+			cellRenderer : function(params) {
+				if (params.data.leakerBagCalc == "" || params.data.leakerBagCalc == null) { 
+					return '';
+				}else {
+					var lbDePwdr = eval(params.data.leakerBagCalc);
+					
+					if(parseFloat(lbDePwdr) < 0.3){
+						lbDePwdr = 0;
+					}else if(parseFloat(lbDePwdr) >= 0.3 && parseFloat(lbDePwdr) <= 0.3){
+						lbDePwdr = 1;
+					}else{
+						lbDePwdr = lbDePwdr.toFixed(1);
+					}
+					
+					var dePwdr = parseFloat(lbDePwdr)*parseFloat(params.data.bagWt);
+					
+					if (isNaN(dePwdr) || !isFinite(dePwdr)) {
+						dePwdr = "";
+				        }else {
+				        	dePwdr = dePwdr.toFixed(0);
+				        }
+					window.DePowder[params.node.rowIndex]=dePwdr;
+					return dePwdr;
+				}
+
+		},
+
+		},{
+			headerName : 'Bag Wt',
+			field : "bagWt",
+			cellStyle : {
+				textAlign : 'right'
+			},
+
+		},{
+			headerName : 'STD Speed',
+			field : "stdSpeed",
+			cellStyle : {
+				textAlign : 'right'
+			},
+
+		},{
+			headerName : 'STD Readings',
+			field : "stdreading",
+			cellStyle : {
+				textAlign : 'right'
+			},
+
+		},{
+			headerName : 'OEE',
+			field : "oee",
+			cellStyle : {
+				textAlign : 'right'
+			},
+
+		},{
+			headerName : 'Bag Quantity(pouch)',
+			field : "bagquantity",
+			cellStyle : {
+				textAlign : 'right'
+			},
+
+		},{
+			headerName : 'Leaker Bag',
+			field : "leakerBag",
+			cellStyle : {
+				textAlign : 'right'
+			},
+			cellRenderer : function(params) {
+				if (params.data.leakerBagCalc == "" || params.data.leakerBagCalc == null) { 
+					return '';
+				}else {
+					
+					var lb = eval(params.data.leakerBagCalc);
+					
+					if(parseFloat(lb) < 0.3){
+						lb = 0;
+					}else if(parseFloat(lb) >= 0.3 && parseFloat(lb) <= 0.3){
+						lb = 1;
+					}else{
+						lb = lb.toFixed(1);
+					}
+					
+					 if (isNaN(lb) || !isFinite(lb)) {
+						 lb = "";
+				        }else {
+				        	 lb = lb;
+				        }
+					 
+					window.LB[params.node.rowIndex]=lb;
+					return lb;
+				}
+
+		},
+		},{
+			headerName : 'Pouch Wt',
+			field : "pouchwt",
+			cellStyle : {
+				textAlign : 'right'
+			},
+
+		}];
+
+// let the grid know which columns and what data to use
+var gridOptions = {
+	columnDefs : columnDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 140
+	}
+};
+
+var columnDefsMain = [
+	{
+		headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly : false,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true
+
+	},
+	{
+		headerName : 'Shop Floor Id',
+		width : 150,
+		field : "floorId"
+
+	}, {
+		headerName : 'Date',
+		field : "date",
+		cellStyle : {
+			textAlign : 'center'
+		}
+	}, {
+		headerName : 'Shift',
+		field : "shift",
+		cellStyle : {
+			textAlign : 'center'
+		}
+	}, {
+		headerName : 'Remark',
+		field : "remark",
+		cellStyle : {
+			textAlign : 'center'
+		}
+	},  {
+		headerName : 'Created By',
+		field : "createdBy",
+		cellStyle : {
+			textAlign : 'center'
+		},
+	}, {
+	
+		headerName : 'Approve Status',
+		field : "approvestatus",
+		cellStyle : {
+			textAlign : 'center'
+		},cellRenderer : function(params) {
+			if (params.data.approvestatus =="Approved") { 
+				return '<div style="color:#0642f5">'+params.data.approvestatus+'</div>';
+			}else {
+				return '<div style="color:#a9a9a9">'+params.data.approvestatus+'</div>';
+			}
+			
+
+		}
+	},  {
+		headerName : 'Approved By',
+		field : "approveBy",
+		cellStyle : {
+			textAlign : 'center'
+		},
+	}];
+
+//let the grid know which columns and what data to use
+var gridOptionsMain = {
+columnDefs : columnDefsMain,
+rowSelection : 'single',
+groupSelectsChildren : true,
+suppressAggFuncInHeader : true,
+defaultColDef : {
+	sortable : true,
+	filter : true,
+	resizable : true,
+	width : 190
+},
+onSelectionChanged : onSelectionChanged,
+};
+//function for row select parents
+var id = "";
+function onSelectionChanged() {
+
+var selectedNodes = gridOptionsMain.api.getSelectedNodes();
+ var selectedData = selectedNodes.map(node => node.data);
+ id= selectedData.map(node => node.floorId);
+
+var selectedRows = gridOptionsMain.api.getSelectedRows();
+var rowCount = 0;
+selectedRows.forEach(function(i) {
+	rowCount = rowCount + 1;
+});
+if (rowCount > 0) {
+window.LB=[];
+window.DePowder=[];
+window.Bags=[];
+agGrid.simpleHttpRequest({
+	url : 'production-log-view?floorId='+ id[0]
+}).then(function(data) {
+	console.log("JSON DATA:::::",data)
+	var jsonData = JSON.parse(data.body);
+	var allData = jsonData.LOG;
+	if(allData!=null){
+		var len = allData.length;
+		$('#totalLog').find('span').html(len);
+		gridOptions.api.setRowData(allData);
+	}else{
+		$('#totalLog').find('span').html("0");
+		gridOptions.api.setRowData("");
+	}
+	
+});
+}else{
+	gridOptions.api.setRowData("");
+}
+
+}
+
+function downloadDetails() { 
+	var dataset = [];
+	gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		var a = rowNode.data;
+		a.leakerBag = window.LB[index];
+		a.depowder =window.DePowder[index];
+		a.bags=window.Bags[index];
+		dataset.push(a);
+	});
+    gridOptions.api.exportDataAsCsv(dataset);
+}
+</script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="d-flex justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalLog">
+									Production Log(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalLog').find('span').html(gridOptions.api.getModel().getRowCount());"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+								<button class="download-btn" id="download"
+									onclick="downloadDetails()">Download</button>
+								<!-- <button class="new-btn" id="activeBtn" onclick="approveFun()">ACTIVE</button> -->
+								<!-- <button class="delete-btn" id="reqDltBtn" onclick="deleteFun()">DELETE</button> -->
+							</div>
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" />
+
+						<div id="myGridMain" style="width: 100%; height: 250px;"
+							class="ag-theme-alpine"></div>
+
+						<div id="myGrid" style="width: 100%; height: 250px;"
+							class="ag-theme-alpine mt-4"></div>
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>

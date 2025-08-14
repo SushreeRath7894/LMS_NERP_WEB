@@ -1,0 +1,3019 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<style>
+#autocomplete-list {
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+	max-width: 300px;
+	border: 1px solid #ccc;
+	border-radius: 5px;
+	overflow: hidden;
+	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+	max-height: 200px;
+	overflow: hidden;
+	overflow-y: auto;
+}
+
+.autocompletedata {
+	padding: 5px 15px;
+	font-size: 13px;
+	font-weight: 500;
+	color: #333;
+	cursor: pointer;
+	transition: background-color 0.3s, color 0.3s;
+}
+
+.autocompletedata:nth-child(even) {
+	background-color: #f9f9f9; /* Alternating row colors */
+}
+
+.autocompletedata:nth-child(odd) {
+	background-color: #ffffff;
+}
+
+.autocompletedata:hover {
+	color: #fff;
+	background-color: #BF05FF !important;
+	border: 1px solid #BF05FF;
+	font-size: 13px;
+}
+
+.navTabContainer {
+	padding: 0px 10px;
+}
+
+.removeAccessForSave {
+	pointer-events: none;
+	opacity: 0.5;
+}
+
+.navTabContainer {
+	padding: 10px 15px;
+	flex-wrap: wrap;
+}
+
+.navTabContainer .nav-link {
+	color: #495057;
+	background-color: #ffffff;
+	border: 1px solid #dee2e6;
+	padding: 10px 20px;
+	font-weight: 500;
+}
+
+.navTabContainer .nav-link:hover {
+	background: #bf05ff !important;
+	color: whitesmoke !important;
+}
+
+.navTabContainer .nav-link.active {
+	background: #bf05ff !important;
+	color: whitesmoke !important;
+	border-radius: 6px !important;
+}
+
+.tab-content {
+	border: 1px solid #dee2e6;
+	border-top: none;
+	background-color: #ffffff;
+	border-radius: 0 0 8px 8px;
+}
+
+#tdiv {
+	justify-content: flex-start;
+	align-items: center;
+	gap: 5rem;
+	padding: 2px 15px;
+}
+</style>
+<script type="text/javascript" charset="utf-8">
+$(document).ready(function() {
+    var gridDiv = document.querySelector('#vpsGrid');
+    new agGrid.Grid(gridDiv, gridOptionsVPS);
+
+    var gridDiv1 = document.querySelector('#opsGrid');
+    new agGrid.Grid(gridDiv1, gridOptionsOPS);
+
+    var gridDiv2 = document.querySelector('#vppGrid');
+    new agGrid.Grid(gridDiv2, gridOptionsVPP);
+
+    var gridDiv3 = document.querySelector('#oppGrid');
+    new agGrid.Grid(gridDiv3, gridOptionsOPP);
+
+
+    getActId('vps', 'psLi');
+
+    $("#costCenter").select2({
+        placeholder: "Select Cost Center",
+        allowClear: true
+    });
+
+    //$('#schedule').attr('disabled', true);
+    //$('#schedule1').attr("disabled", true);
+    var rowData = [];
+    gridOptionsVPS.api.setRowData(rowData);
+    gridOptionsOPS.api.setRowData(rowData);
+    gridOptionsVPP.api.setRowData(rowData);
+    gridOptionsOPP.api.setRowData(rowData);
+
+    //callGrid('vendor')
+
+    var dateFormat = localStorage.getItem("dateFormat");
+    $("#scheduleDateCalendar").datetimepicker({
+        format: dateFormat,
+        closeOnDateSelect: true,
+        timepicker: false,
+        minDate: 0,
+    }).on("change", function() {
+        $('#scheduleDate').val($(this).val());
+    })
+
+    $('#scheduleDate').blur(function() {
+        $("#scheduleCalendar").val($(this).val());
+    })
+
+
+    var dateFormat = localStorage.getItem("dateFormat");
+    $("#toDateCalendar").datetimepicker({
+        format: dateFormat,
+        closeOnDateSelect: true,
+        timepicker: false,
+        //minDate : 0,
+    }).on("change", function() {
+        validateDateRange("#fromDate", "#toDate");
+        $('#fromDate').val($(this).val());
+    })
+
+    $('#fromDate').blur(function() {
+        $("#toDateCalendar").val($(this).val());
+    })
+
+    $("#toDateCalendar2").datetimepicker({
+        format: dateFormat,
+        closeOnDateSelect: true,
+        timepicker: false,
+        //minDate : 0,
+    }).on("change", function() {
+        validateDateRange("#fromDate", "#toDate");
+        $('#toDate').val($(this).val());
+    })
+
+    $('#toDate').blur(function() {
+        $("#toDateCalendar2").val($(this).val());
+    })
+
+
+
+
+    CKEDITOR.replace('description', {
+        height: 150,
+        removePlugins: 'wsc',
+        scayt_autoStartup: true,
+        scayt_maxSuggestions: 3,
+        autoParagraph: false,
+    });
+
+
+
+    var dateFormat = localStorage.getItem("dateFormat");
+    $("#toDateCalendar3").datetimepicker({
+        format: dateFormat,
+        closeOnDateSelect: true,
+        timepicker: false,
+        //minDate : 0,
+    }).on("change", function() {
+        validateDateRange("#oppFromDate", "#oppToDate");
+        $('#oppFromDate').val($(this).val());
+    })
+
+    $('#oppFromDate').blur(function() {
+        $("#toDateCalendar3").val($(this).val());
+    })
+
+    $("#toDateCalendar4").datetimepicker({
+        format: dateFormat,
+        closeOnDateSelect: true,
+        timepicker: false,
+        //minDate : 0,
+    }).on("change", function() {
+        validateDateRange("#oppFromDate", "#oppToDate");
+        $('#oppToDate').val($(this).val());
+    })
+
+    $('#oppToDate').blur(function() {
+        $("#toDateCalendar4").val($(this).val());
+    })
+
+
+    var today = new Date();
+    var dateString = ('0' + today.getDate()).slice(-2) + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + today.getFullYear();
+    var fromDate = dateString.toString();
+    var todate = dateString.toString();
+    $("#fromDate").val(fromDate);
+    $("#toDate").val(todate);
+
+    $("#oppFromDate").val(fromDate);
+    $("#oppToDate").val(todate);
+
+
+    $(".nav-link").on("click", function() {
+        var activeTabId = $(this).attr("href").substring(1); // Remove #
+        $("#activeTabId").val(activeTabId);
+    });
+
+});
+
+function viewPaymentSchedule() {
+	
+	showLoader();
+	
+    agGrid.simpleHttpRequest({
+        url: "payment-payable-schedule-view?type=vnd"
+    }).then(function(data) {
+    	
+    	hideLoader();
+    	
+        var jsonData = JSON.parse(data.body);
+        var alldata = jsonData.InvoiceDetails;
+        var newData = [];
+        $.each(alldata, function(index, obj) {
+            if (obj.payStatus != "Fully Paid") {
+                newData.push(obj);
+            }
+        });
+
+        var rowData = [];
+        gridOptionsVPS.api.setRowData(rowData);
+
+        gridOptionsVPS.api.setRowData(newData);
+
+        if (newData && newData.length > 0) {
+            gridOptionsVPS.api.forEachNode(function(node) {
+                if (node.rowIndex === 0) {
+                    node.setSelected(true); // Select the first row
+                }
+            });
+        }
+
+        /* var allsaldata = jsonData.payrollDetails;
+        var newData1 = [];
+        $.each(allsaldata, function(index, obj) {
+            if (obj.payStatus != "Fully Paid") {
+                newData1.push(obj);
+            }
+        });
+        //gridOptionsOPS.api.setRowData(newData1);
+        var rowData2 = [];
+        gridOptionsOPS.api.setRowData(rowData2);
+        gridOptionsOPS.api.setRowData(newData1);
+
+        if (newData1 && newData1.length > 0) {
+            gridOptionsOPS.api.forEachNode(function(node) {
+                if (node.rowIndex === 0) {
+                    node.setSelected(true); // Select the first row
+                }
+            });
+        } */
+
+    });
+}
+
+function viewPaymentScheduleOth() {
+	
+	showLoader();
+	
+    agGrid.simpleHttpRequest({
+        url: "payment-payable-schedule-view?type=oth"
+    }).then(function(data) {
+    	
+    	hideLoader();
+    	
+        var jsonData = JSON.parse(data.body);
+        /* var alldata = jsonData.InvoiceDetails;
+        var newData = [];
+        $.each(alldata, function(index, obj) {
+            if (obj.payStatus != "Fully Paid") {
+                newData.push(obj);
+            }
+        });
+
+        var rowData = [];
+        gridOptionsVPS.api.setRowData(rowData);
+
+        gridOptionsVPS.api.setRowData(newData);
+
+        if (newData && newData.length > 0) {
+            gridOptionsVPS.api.forEachNode(function(node) {
+                if (node.rowIndex === 0) {
+                    node.setSelected(true); // Select the first row
+                }
+            });
+        } */
+
+        var allsaldata = jsonData.payrollDetails;
+        var newData1 = [];
+        $.each(allsaldata, function(index, obj) {
+            if (obj.payStatus != "Fully Paid") {
+                newData1.push(obj);
+            }
+        });
+        //gridOptionsOPS.api.setRowData(newData1);
+        var rowData2 = [];
+        gridOptionsOPS.api.setRowData(rowData2);
+        gridOptionsOPS.api.setRowData(newData1);
+
+        if (newData1 && newData1.length > 0) {
+            gridOptionsOPS.api.forEachNode(function(node) {
+                if (node.rowIndex === 0) {
+                    node.setSelected(true); // Select the first row
+                }
+            });
+        }
+
+    });
+}
+
+var columnDefsVPS = [{
+        headerCheckboxSelection: false,
+        headerCheckboxSelectionFilteredOnly: true,
+        checkboxSelection: function(params) {
+            const paymentStatus = params.data.payStatus;
+            return paymentStatus !== 'Fully Paid';
+        },
+        width: 10,
+        sortable: false,
+        filter: false,
+        resizable: true,
+        pinned: 'left',
+    },
+    {
+        headerName: "INVOICE Id",
+        field: "invoiceId",
+        width: 120,
+        hide: true,
+        pinned: 'left',
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Po Id',
+        field: "poId",
+        width: 150,
+        hide: true,
+        cellStyle: {
+            textAlign: 'left',
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Tax Invoice No',
+        field: "taxInvNo",
+        width: 150,
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Tax Invoice Date',
+        field: "taxInvDate",
+        width: 150,
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Vendor name',
+        field: "vendorName",
+        width: 250,
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Vendor ID',
+        field: "vendorId",
+        width: 150,
+        hide: true,
+        cellStyle: {
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+
+        headerName: 'Approve Status',
+        field: "appoveStatus",
+        width: 150,
+        hide: true,
+        cellStyle: {
+            textAlign: 'left',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        },
+        cellRenderer: function(params) {
+            if (params.data.appoveStatus == "Pending") {
+                return '<div style="color:#a9a9a9">Pending</div>';
+            } else {
+                return '<div style="color:#0642f5">Approved</div>';
+            }
+        }
+    }, {
+
+        headerName: 'Amount',
+        field: "grandTotal",
+        width: 110,
+        type: 'rightAligned',
+        valueFormatter: params => amountFormatter(params.data.grandTotal.toFixed(2)),
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+
+        headerName: 'Paid Amount',
+        field: "paidAmount",
+        hide: true,
+        width: 110,
+        type: 'rightAligned',
+        valueFormatter: params => amountFormatter(params.data.paidAmount.toFixed(2)),
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+
+        headerName: 'Outstanding Amount',
+        field: "outstandingAmount",
+        width: 110,
+        type: 'rightAligned',
+        valueFormatter: params => amountFormatter(params.data.outstandingAmount.toFixed(2)),
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+
+        headerName: 'Payment Status',
+        field: "payStatus",
+        width: 150,
+        cellStyle: {
+            textAlign: 'center',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        },
+        cellRenderer: function(params) {
+            if (params.data.payStatus == "Pending") {
+                return '<div style="color:red;font-weight: bold;">' + params.data.payStatus + '</div>';
+            }
+            if (params.data.payStatus == "Fully Paid") {
+                return '<div style="color:blue;font-weight: bold;">' + params.data.payStatus + '</div>';
+            } else {
+                return '<div style="color:orange;font-weight: bold;">' + params.data.payStatus + '</div>';
+            }
+        }
+    }, {
+        headerName: 'Due date',
+        field: "qutValidDate",
+        width: 150,
+        cellStyle: {
+            textAlign: 'left',
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Scheduled date',
+        field: "scheduleDate",
+        width: 150,
+        cellStyle: {
+            textAlign: 'left',
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        },
+
+    }
+];
+
+var gridOptionsVPS = {
+    columnDefs: columnDefsVPS,
+    rowSelection: 'multiple',
+    groupSelectsChildren: true,
+    onSelectionChanged: rowSelect,
+    suppressRowClickSelection: true,
+    suppressAggFuncInHeader: true,
+    defaultColDef: {
+        sortable: true,
+        filter: true,
+        resizable: true,
+        width: 251,
+        height: 10
+    },
+    pagination: true,
+    paginationPageSize: 15,
+    //onSelectionChanged: rowSelect
+};
+
+function rowSelect() {
+    var selectedRows = gridOptionsVPS.api.getSelectedRows();
+    var rowCount = 0;
+    var selectedNodes = gridOptionsVPS.api.getSelectedNodes();
+    var selectedData = selectedNodes.map(node => node.data);
+    selectedRows.forEach(function(selectedRow, index) {
+        rowCount = rowCount + 1;
+    });
+
+    if (rowCount > 0) {
+        if (selectedData.map(node => node.payStatus) == "Fully Paid") {
+            $('#schedule').attr("disabled", true);
+        } else {
+            $('#schedule').attr("disabled", false);
+        }
+        $("#scheduleDate").val(selectedRows[0].scheduleDate);
+        $("#schedule_save_btn").removeClass("removeAccessForSave");
+    } else {
+        $('#schedule').attr("disabled", true);
+        $("#scheduleDate").val('');
+        $("#schedule_save_btn").addClass("removeAccessForSave");
+
+        var today = new Date();
+        var dateString = ('0' + today.getDate()).slice(-2) + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + today.getFullYear();
+        var fromDate = dateString.toString();
+
+        $("#scheduleDate").val(null)
+    }
+
+}
+
+
+var columnDefsOPS = [{
+        headerCheckboxSelection: false,
+        headerCheckboxSelectionFilteredOnly: true,
+        checkboxSelection: function(params) {
+            const paymentStatus = params.data.payStatus;
+            return paymentStatus !== 'Fully Paid';
+        },
+        width: 10,
+        sortable: false,
+        filter: false,
+        resizable: true,
+        pinned: 'left',
+    },
+    {
+        headerName: 'VID',
+        field: "vid",
+        hide: true
+    }, {
+        headerName: "Voucher Id",
+        field: "voucherId",
+        width: 150,
+        pinned: 'left',
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Voucher Date',
+        field: "voucherDate",
+        width: 100,
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Salary Month',
+        field: "salaryMonth",
+        width: 200,
+        cellStyle: {
+            textAlign: 'left',
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        },
+        hide: true
+    }, {
+        headerName: 'Ledger Head',
+        field: "salaryHead",
+        hide: true
+    }, {
+        headerName: 'Ledger Head',
+        field: "salaryHeadName",
+        width: 200,
+        cellStyle: {
+            textAlign: 'left',
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Amount',
+        field: "amount",
+        width: 100,
+        type: 'rightAligned',
+        valueFormatter: params => amountFormatter(params.data.amount.toFixed(2)),
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Voucher Type',
+        field: "vchType",
+        width: 100,
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Pay Status',
+        field: "payStatus",
+        width: 100,
+        cellStyle: {
+            textAlign: 'center',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        },
+        cellRenderer: function(params) {
+            if (params.data.payStatus == "Pending") {
+                return '<div style="color:red;font-weight: bold;">' + params.data.payStatus + '</div>';
+            }
+            if (params.data.payStatus == "Fully Paid") {
+                return '<div style="color:blue;font-weight: bold;">' + params.data.payStatus + '</div>';
+            } else {
+                return '<div style="color:orange;font-weight: bold;">' + params.data.payStatus + '</div>';
+            }
+        }
+    }, {
+        headerName: 'Scheduled date',
+        field: "scheduleDate",
+        width: 100,
+        cellStyle: {
+            textAlign: 'left',
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        },
+
+    }
+];
+
+var gridOptionsOPS = {
+    columnDefs: columnDefsOPS,
+    rowSelection: 'multiple',
+    groupSelectsChildren: true,
+    onSelectionChanged: rowSelect11,
+    suppressRowClickSelection: true,
+    suppressAggFuncInHeader: true,
+    defaultColDef: {
+        sortable: true,
+        filter: true,
+        resizable: true,
+        width: 251,
+        height: 10
+    },
+    pagination: true,
+    paginationPageSize: 10,
+    //onSelectionChanged: rowSelect11
+};
+
+function rowSelect11() {
+    var selectedRows = gridOptionsOPS.api.getSelectedRows();
+    var rowCount = 0;
+    var selectedNodes = gridOptionsOPS.api.getSelectedNodes();
+    var selectedData = selectedNodes.map(node => node.data);
+    selectedRows.forEach(function(selectedRow, index) {
+        rowCount = rowCount + 1;
+    });
+
+    if (rowCount > 0) {
+    	
+    	if(selectedRows[0].scheduleDate) {
+    		$("#scheduleDate").val(selectedRows[0].scheduleDate);
+    	} else {
+            $("#scheduleDate").val(null)
+    	}
+    	 
+        if (selectedData.map(node => node.payStatus) == "Fully Paid") {
+            $('#schedule_save_btn').attr("disabled", true);
+        } else {
+            $('#schedule_save_btn').attr("disabled", false);
+        }
+        $("#schedule_save_btn").removeClass("removeAccessForSave");
+    } else {
+        $('#schedule_save_btn').attr("disabled", true);
+        $("#schedule_save_btn").addClass("removeAccessForSave");
+        
+        var today = new Date();
+        var dateString = ('0' + today.getDate()).slice(-2) + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + today.getFullYear();
+        var fromDate = dateString.toString();
+
+        $("#scheduleDate").val(null)
+
+    }
+
+}
+
+var columnDefsVPP = [{
+        headerCheckboxSelection: false,
+        headerCheckboxSelectionFilteredOnly: true,
+        checkboxSelection: function(params) {
+            const paymentStatus = params.data.payStatus;
+            return paymentStatus !== 'Fully Paid';
+        },
+        width: 10,
+        sortable: false,
+        filter: false,
+        resizable: true,
+        pinned: 'left',
+    },
+    {
+        headerName: 'Scheduled date',
+        field: "scheduleDate",
+        width: 150,
+        cellStyle: {
+            textAlign: 'center',
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        },
+
+    },
+    {
+        headerName: "INVOICE Id",
+        field: "invoiceId",
+        width: 120,
+
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Po Id',
+        field: "poId",
+        hide: true,
+        width: 150,
+        cellStyle: {
+            textAlign: 'left',
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Tax Invoice No',
+        field: "taxInvNo",
+        width: 150,
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Tax Invoice Date',
+        field: "taxInvDate",
+        width: 150,
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Vendor name',
+        field: "vendorName",
+        width: 250,
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Vendor ID',
+        field: "vendorId",
+        width: 150,
+        hide: true,
+        cellStyle: {
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+
+        headerName: 'Approve Status',
+        field: "appoveStatus",
+        width: 150,
+        hide: true,
+        cellStyle: {
+            textAlign: 'left',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        },
+        cellRenderer: function(params) {
+            if (params.data.appoveStatus == "Pending") {
+                return '<div style="color:#a9a9a9">Pending</div>';
+            } else {
+                return '<div style="color:#0642f5">Approved</div>';
+            }
+        }
+    }, {
+
+        headerName: 'Amount',
+        field: "grandTotal",
+        width: 110,
+        type: 'rightAligned',
+        valueFormatter: params => amountFormatter(params.data.grandTotal.toFixed(2)),
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+
+        headerName: 'Paid Amount',
+        field: "paidAmount",
+        hide: true,
+        width: 110,
+        type: 'rightAligned',
+        valueFormatter: params => amountFormatter(params.data.paidAmount.toFixed(2)),
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+
+        headerName: 'Outstanding Amount',
+        field: "outstandingAmount",
+        width: 110,
+        type: 'rightAligned',
+        valueFormatter: params => amountFormatter(params.data.outstandingAmount.toFixed(2)),
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+
+        headerName: 'Payment Status',
+        field: "payStatus",
+        width: 150,
+        cellStyle: {
+            textAlign: 'center',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        },
+        cellRenderer: function(params) {
+            if (params.data.payStatus == "Pending") {
+                return '<div style="color:red;font-weight: bold;">' + params.data.payStatus + '</div>';
+            }
+            if (params.data.payStatus == "Fully Paid") {
+                return '<div style="color:blue;font-weight: bold;">' + params.data.payStatus + '</div>';
+            } else {
+                return '<div style="color:orange;font-weight: bold;">' + params.data.payStatus + '</div>';
+            }
+        }
+    }, {
+        headerName: 'Due date',
+        field: "qutValidDate",
+        width: 150,
+        cellStyle: {
+            textAlign: 'left',
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    },
+    {
+        headerName: 'ledgerId',
+        field: "ledgerId",
+        width: 150,
+        hide: true,
+        cellStyle: {
+            textAlign: 'left',
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }
+];
+
+var gridOptionsVPP = {
+    columnDefs: columnDefsVPP,
+    rowSelection: 'multiple',
+    groupSelectsChildren: true,
+    suppressRowClickSelection: true,
+    suppressAggFuncInHeader: true,
+    defaultColDef: {
+        sortable: true,
+        filter: true,
+        resizable: true,
+        width: 251,
+        height: 10
+    },
+    onSelectionChanged: multiPayRowSelect,
+    pagination: true,
+    paginationPageSize: 10,
+
+
+};
+
+let firstSelectedVendor = null;
+let totalInvoiceAmount = 0;
+let debitSubgroup = '';
+let debitSubGroupId = '';
+var advanceReceiveDetails = [];
+
+function multiPayRowSelect() {
+    let selectedRows = gridOptionsVPP.api.getSelectedRows();
+    console.log("selected row in payable-->", selectedRows);
+    let newTotalAmount = 0;
+    if (selectedRows?.length === 0) {
+        firstSelectedVendor = null;
+        totalInvoiceAmount = 0;
+        $("#pay").hide();
+        $("#payment_save_btn").addClass("d-none");
+        $("#payment-process-parent-container").addClass("d-none");
+        $("#vendorNameText").text('');
+        return;
+    }
+    if (selectedRows && selectedRows.length > 0) {
+    	
+    	$("#payment_save_btn").removeClass("d-none");
+    	
+        firstSelectedVendor = selectedRows[0]["vendorName"];
+        $("#debitAccountSubGroup_0").val(selectedRows[0]["vendorName"]);
+        $("#debitAccountGroupId_0").val(selectedRows[0]["ledgerId"]);
+
+        debitSubgroup = selectedRows[0]["vendorName"];
+        debitSubGroupId = selectedRows[0]["ledgerId"];
+
+        advanceReceiveDetails = [];
+        /* advanceReceiveDetails.push({
+        	rcvLedgerId : selectedRows[0]["ledgerId"],
+        	receiveMsg : '',
+        	receiptAmount : '',
+        	rcvType : 'againstRef'
+        }); */
+    }
+
+    gridOptionsVPP.api.forEachNode((node) => {
+        if (node.isSelected()) {
+            let rowVendor = node.data["vendorName"];
+            if (rowVendor === firstSelectedVendor) {
+                newTotalAmount += parseFloat(node.data["grandTotal"]);
+            } else {
+                node.setSelected(false);
+            }
+        }
+    });
+    totalInvoiceAmount = newTotalAmount.toFixed(2);
+
+    if (selectedRows && selectedRows.length > 0) {
+        $("#pay").show();
+        if ($("#activeTabId").val() == "vpp") {
+            pay();
+        }
+        $("#vendorNameText").text(selectedRows[0].vendorName);
+        $("#payment-process-parent-container").removeClass("d-none");
+    } else {
+        $("#payment-process-parent-container").addClass("d-none");
+        $("#vendorNameText").text('');
+    }
+
+    SaveFinalAmount();
+
+}
+
+var columnDefsOPP = [{
+        headerCheckboxSelection: false,
+        headerCheckboxSelectionFilteredOnly: true,
+        checkboxSelection: function(params) {
+            const paymentStatus = params.data.payStatus;
+            return paymentStatus !== 'Fully Paid';
+        },
+        width: 10,
+        sortable: false,
+        filter: false,
+        resizable: true,
+        pinned: 'left',
+    },
+    {
+        headerName: 'Scheduled date',
+        field: "scheduleDate",
+        width: 100,
+        cellStyle: {
+            textAlign: 'left',
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        },
+
+    },
+    {
+        headerName: 'VID',
+        field: "vid",
+        hide: true
+    }, {
+        headerName: "Voucher Id",
+        field: "voucherId",
+        width: 120,
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Voucher Date',
+        field: "voucherDate",
+        width: 100,
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Salary Month',
+        field: "salaryMonth",
+        width: 200,
+        cellStyle: {
+            textAlign: 'left',
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        },
+        hide: true
+    }, {
+        headerName: 'Ledger Head',
+        field: "salaryHead",
+        hide: true
+    }, {
+        headerName: 'Ledger Head',
+        field: "salaryHeadName",
+        width: 200,
+        cellStyle: {
+            textAlign: 'left',
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Amount',
+        field: "amount",
+        width: 100,
+        type: 'rightAligned',
+        valueFormatter: params => amountFormatter(params.data.amount.toFixed(2)),
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+    	headerName: 'Voucher Type',
+        field: "vchType",
+        width: 100,
+        cellStyle: {
+            color: 'black!important',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        }
+    }, {
+        headerName: 'Pay Status',
+        field: "payStatus",
+        width: 100,
+        cellStyle: {
+            textAlign: 'center',
+            fontFamily: 'Montserrat, sans-serif',
+            fontSize: 'smaller'
+        },
+        cellRenderer: function(params) {
+            if (params.data.payStatus == "Pending") {
+                return '<div style="color:red;font-weight: bold;">' + params.data.payStatus + '</div>';
+            }
+            if (params.data.payStatus == "Fully Paid") {
+                return '<div style="color:blue;font-weight: bold;">' + params.data.payStatus + '</div>';
+            } else {
+                return '<div style="color:orange;font-weight: bold;">' + params.data.payStatus + '</div>';
+            }
+        }
+    }
+];
+
+var gridOptionsOPP = {
+    columnDefs: columnDefsOPP,
+    rowSelection: 'multiple',
+    groupSelectsChildren: true,
+    suppressRowClickSelection: true,
+    suppressAggFuncInHeader: true,
+    onSelectionChanged: multiSalaryAmount,
+    defaultColDef: {
+        sortable: true,
+        filter: true,
+        resizable: true,
+        width: 251,
+        height: 10
+    },
+    pagination: true,
+    paginationPageSize: 10,
+};
+
+
+function amountFormatter(value) {
+    if (value !== null && value !== undefined) {
+        var parts = value.toString().split('.');
+        var integerPart = parts[0];
+        var decimalPart = parts.length > 1 ? '.' + parts[1] : '';
+        var formattedIntegerPart = new Intl.NumberFormat('en-IN').format(integerPart);
+        return formattedIntegerPart + decimalPart;
+    } else {
+        return '';
+    }
+}
+
+
+function pay() {
+    var today = new Date();
+    var dateString = ('0' + today.getDate()).slice(-2) + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + today.getFullYear();
+    var fromDate = dateString.toString();
+    $("#voucherDate").val(fromDate);
+    $("#creditTbodyData").empty();
+    var abc = '<tr class="tr_clone" id="credit_0">' +
+        '<td><input type="text" id="creditAccountSubGroup_0" placeholder="Search SubGroup" class="form-control creditAccountSubGroupCls" onkeyup="creditSubGroup(this.id);" autocomplete="off">' +
+        '<div id="suggesstion-box2_0"></div> <input type="hidden" id="creditAccountGroupId_0" class="form-control creditAccountGroupIdCls">' +
+        '<p class="mb-0">' +
+        '</p></td>' +
+        '<td><input type="text" placeholder="Enter Amount" id="creditAmount_0" oninput="formatAmount(this);" class="form-control creditAmountCls" onblur="changeToDecimal(this),getToSubtotal();" autocomplete="off">' +
+        '</td>' +
+        '<td style="vertical-align: baseline;" align="center">' +
+        '<button type="button" class="btn btn-primary tr_clone_add go-btn" name="add" onclick="creditCheckEmpty();">' +
+        '<span class="ti-plus"></span>' +
+        '</button>' +
+        '</td>' +
+        '</tr>'
+    $("#creditTbodyData").append(abc);
+    var creditRoundOff = '<tr class="tr_clone" id="credit">' +
+        '<td><input type="text" placeholder="Search Ledger" id="creditAccountSubGroup" value="Round Off(TLM0121)" class="form-control creditAccountSubGroupCls" onkeyup="creditSubGroup(this.id);" autocomplete="off" disabled>' +
+        '<div id="suggesstion-box2_0"></div> <input type="hidden" value="TLM0121" id="creditAccountGroupId" class="form-control creditAccountGroupIdCls">' +
+        '<p class="mb-0"><input type="hidden" id="ledgerId" class="form-control creditAccountGroupIdCls">' +
+        '</p></td>' +
+        '<td><input type="text" placeholder="Enter Amount" id="creditAmount" class="form-control lastCreditRoundOffAmount creditRoundOffAmount" oninput="formatAmount(this);" onblur="getToSubtotal();" onkeyup="checkNumberInput(this.id)" autocomplete="off">' +
+        '</td>' +
+        '</tr>'
+    //$("#creditTbodyData").append(creditRoundOff);
+    $("#debitTbodyData").empty();
+    var abc = '<tr class="tr_clone" id="debit_0">' +
+        '<td class ="legerSearchDiv"><input type="text" id="debitAccountSubGroup_0" placeholder="Search SubGroup" class="form-control debitAccountSubGroupCls disableInputfield" onkeyup="debitSubGroup(this.id);" autocomplete="off" disabled> ' +
+        '<div id="suggesstion-box1_0"></div> <input type="hidden" id="debitAccountGroupId_0" class="form-control debitAccountGroupIdCls">' +
+        '<p class="mb-0">' +
+        '</p></td>' +
+        '<td><input type="text" placeholder="Enter Amount" id="debitAmount_0" oninput="formatAmount(this);" class="form-control debitAmountCls" onblur="changeToDecimal(this),getFromSubtotal() ;" autocomplete="off" disabled>' +
+        '</td>'
+        /* +'<td style="vertical-align: baseline;" align="center">'
+        +'<button type="button" class="btn btn-primary tr_clone_add" name="add" onclick="debitCheckEmpty();">'
+        +'<span class="ti-plus"></span>'
+        +'</button>'
+        +'</td>' */
+        +
+        '</tr>'
+    $("#debitTbodyData").append(abc);
+    /* var debitRoundOff = '<tr class="tr_clone" id="debit_0">'
+    			+ '<td><input type="text" placeholder="Search Ledger" id="debitAccountSubGroup" value="Round Off(TLM0121)" class="form-control disableInputfield" autocomplete="off" disabled>'
+    			+ '<div id="suggesstion-box1_0"></div> <input type="hidden" value="TLM0121" id="debitAccountGroupId" class="form-control debitAccountGroupIdCls">'
+    			+ '<p class="mb-0">'
+    			+ '</p></td>'
+    			+ '<td><input type="text" placeholder="Enter Amount" id="debitRoundOffAmount"  oninput="formatAmount(this);" class="form-control  lastDebitRoundOffAmount" onkeyup="checkNumberInput(this.id);" onblur="changeToDecimal(this),getFromSubtotal() ;" autocomplete="off">'
+    			+ '</td>'
+    			+ '</tr>'
+    			$("#debitTbodyData").append(debitRoundOff);	 */
+    getVoucherNumber();
+    $("#paymentSection-div").show();
+    $("#main_content").hide();
+    $("#debitAmount_0").val(indianCurreny(totalInvoiceAmount));
+    $("#debitAccountSubGroup_0").val(debitSubgroup);
+    $("#debitAccountGroupId_0").val(debitSubGroupId);
+    getFromSubtotal();
+    $("#modeOfPayment").val('vendor');
+}
+
+function getVoucherNumber() {
+    $.ajax({
+        type: "GET",
+        url: "payment-voucher-vouchernumber",
+        async: false,
+        success: function(response) {
+            if (response.message == "Success") {
+                $("#voucherNumber").text(response.body[0].key);
+            }
+        }
+    });
+
+}
+
+
+function debitCheckEmpty() {
+    var debitAccountGroup = true;
+    $('.debitAccountSubGroupCls').each(function() {
+        if (!blankValidation($(this).attr('id'), "TextField", "Please Enter Account Ledger")) {
+            debitAccountGroup = false;
+            return false;
+        }
+
+    });
+
+    var debitName = true;
+    if (debitAccountGroup) {
+        $('.debitNameCls').each(function() {
+            if (!blankValidation($(this).attr('id'), "TextField", "Please Enter Name")) {
+
+                debitName = false;
+                return false;
+            }
+
+        });
+    }
+    var debitAmount = true;
+    if (debitAccountGroup && debitName) {
+        $('.debitAmountCls').each(function() {
+            if (!blankValidation($(this).attr('id'), "TextField", "Please Enter Amount ")) {
+
+                debitAmount = false;
+                return false;
+            }
+
+        });
+    }
+
+    if (debitAccountGroup && debitName && debitAmount) {
+
+        debitAddMore();
+    }
+}
+
+
+function debitAddMore() {
+    var lengthOfTableRow = $("#debitTbodyData").children('tr').length;
+    var newRow = $("#debitMyTable tbody tr:first").clone(); // Clone first row
+
+    newRow.find('.debitAccountSubGroupCls').val("");
+    newRow.find('.debitNameCls').val("");
+    newRow.find('.debitAmountCls').val("");
+
+    var addMore = '<button type="button" class="btn btn-primary tr_clone_add go-btn" name="add" onclick="debitCheckEmpty();"><span class="ti-plus"></span></button>&nbsp;';
+    var removeMore = '<button type="button" class="btn btn-warning rmv" name="Remove" onclick="removeRow(this);"><span class="ti-minus"></span></button>';
+
+    newRow.find('td:last').html(addMore + removeMore);
+
+    $("#debitTbodyData tr:last").before(newRow);
+
+    $("#debitTbodyData > tr").each(function(i) {
+        var textInput = $(this).find('input');
+        var divInput = $(this).find('div');
+        $(this).attr('id', "debit_" + i);
+        textInput.eq(0).attr('id', "debitAccountSubGroup_" + i);
+        textInput.eq(1).attr('id', "debitAccountGroupId_" + i);
+        textInput.eq(2).attr('id', "debitName_" + i);
+        textInput.eq(3).attr('id', "debitAmount_" + i);
+        divInput.eq(0).attr('id', "suggesstion-box1_" + i);
+    });
+}
+
+function removeRow(btn) {
+    $(btn).closest("tr").remove();
+}
+
+function creditAddMore() {
+    var lengthOfTableRow = $("#creditTbodyData").children("tr").length;
+
+    var newRow = $("#creditTbodyData tr.tr_clone:first").clone();
+
+    newRow.find("input").val("");
+    newRow.find("div").html("");
+    newRow.find("span").text("");
+
+    var newIndex = $("#creditTbodyData tr.tr_clone").length;
+
+    newRow.attr("id", "credit_" + newIndex);
+    newRow.find(".creditAccountSubGroupCls").attr("id", "creditAccountSubGroup_" + newIndex);
+    newRow.find(".creditAccountSubGroupCls").attr("data-procat", '');
+    newRow.find(".creditAccountGroupIdCls").attr("id", "creditAccountGroupId_" + newIndex);
+    newRow.find(".creditAmountCls").attr("id", "creditAmount_" + newIndex);
+    newRow.find("#suggesstion-box2_0").attr("id", "suggesstion-box2_" + newIndex);
+
+    var addMore = `<button type="button" class="btn btn-primary tr_clone_add" name="add" onclick="creditAddMore();"><span class="ti-plus"></span></button>`;
+    var removeMore = `<button type="button" class="btn btn-warning rmv" name="Remove" onclick="$(this).closest('tr').remove();"><span class="ti-minus"></span></button>`;
+
+    newRow.find("td:last").html(addMore + removeMore);
+
+    $("#creditTbodyData tr:last").before(newRow);
+}
+
+
+function getFromSubtotal() {
+    var sum = 0;
+
+    $(".debitAmountCls , .lastDebitRoundOffAmount").each(function() {
+        var val = $(this).val().replace(/,/g, '');
+        sum += isNaN(parseFloat(val)) ? 0 : parseFloat(val);
+    });
+
+
+
+    $("#fromTotalAmount").html(amountFormatter(sum.toFixed(2)));
+
+    if (!getFromSubtotal.called) {
+        getFromSubtotal.called = true;
+        getToSubtotal();
+        getFromSubtotal.called = false;
+    }
+}
+
+function getToSubtotal() {
+    var sum = 0;
+
+    $(".creditAmountCls , .creditRoundOffAmount").each(function() {
+        var val = $(this).val().replace(/,/g, '');
+        sum += isNaN(parseFloat(val)) ? 0 : parseFloat(val);
+    });
+
+    $("#toTotalAmount").html(amountFormatter(sum.toFixed(2)));
+
+    if (!getToSubtotal.called) {
+        getToSubtotal.called = true;
+        getFromSubtotal();
+        getToSubtotal.called = false;
+    }
+}
+
+
+function addPaymentInfo() {
+    var dataset = [];
+    item = {};
+    var mode = $("#modeOfPayment").val();
+
+
+    if ($("#toTotalAmount").text() == "") {
+        $("#toTotalAmount").text($("#fromTotalAmount").text());
+    }
+
+    $("#description").val(CKEDITOR.instances.description.getData());
+
+    $("#debitTbodyData > tr").each(function() {
+        item = {};
+        item['costCenter'] = $("#costCenter").val();
+        item['journalVoucher'] = $("#journalVoucher").text();
+        item['totalAmount'] = $("#fromTotalAmount").text().replace(/,/g, '');
+        item['description'] = $("#description").val()
+        item['voucherDate'] = $("#voucherDate").val();
+        item['fromAccountSubGroup'] = $(this).find(".debitAccountGroupIdCls").val();
+        item['fromName'] = $(this).find(".debitNameCls").val();
+        let fromAmount = $(this).find(".debitAmountCls").val();
+        if (!fromAmount) {
+            fromAmount = $(this).find(".lastDebitRoundOffAmount").val();
+        }
+        item['fromAmount'] = fromAmount ? fromAmount.replace(/,/g, '') : '0';
+        item['voucherType'] = "TVTM003";
+        item['listTdsId'] = $("#selectionIds").val();
+        item['taxType'] = '';
+        if (parseFloat(item['fromAmount']) !== 0) {
+            dataset.push(item);
+        }
+    }); //table tbody tr loop ends
+    $("#creditTbodyData > tr").each(function() {
+        item = {};
+        item['costCenter'] = $("#costCenter").val();
+        item['journalVoucher'] = $("#journalVoucher").text();
+        item['totalAmount'] = $("#toTotalAmount").text().replace(/,/g, '');
+        item['description'] = $("#description").val()
+        item['voucherDate'] = $("#voucherDate").val();
+        item['toAccountSubGroup'] = $(this).find(".creditAccountGroupIdCls").val();
+        item['toName'] = $(this).find(".creditNameCls").val();
+        let toAmountAmount = $(this).find(".creditAmountCls").val();
+        if (!toAmountAmount) {
+            toAmountAmount = $(this).find(".lastCreditRoundOffAmount").val();
+        }
+        item['toAmount'] = toAmountAmount ? toAmountAmount.replace(/,/g, '') : '0';
+        item['voucherType'] = "PAYMENT";
+        item['listTdsId'] = $("#selectionIds").val();
+        item['taxType'] = ''
+        item['paymentType'] = "againstRef"
+        item['paymentDesc'] = $("#transName").val();
+        item['advOrNewRfAmount'] = $("#transAmount").val();
+        item['invoiceObj'] = mode == "vendor" ? JSON.stringify(selectedInvoiceid) : JSON.stringify(selectedSalaryInvoice)
+        item['advReceiveObj'] = mode == "vendor" ? JSON.stringify(advanceReceiveDetails) : JSON.stringify(advanceReceiveDetails);
+        if (parseFloat(item['toAmount']) !== 0) {
+            dataset.push(item);
+        }
+    }); //table tbody tr loop ends
+
+    var dscValue = CKEDITOR.instances.description.getData();
+
+    console.log("dataset -->", dataset);
+
+    //return false;
+    //submitJournal(dataset);
+
+    var debitAccountGroup = true;
+    $('.debitAccountSubGroupCls').each(function() {
+        if (!$(this).val()) { // Check if the value is empty
+            toastr.error("Please Enter Ledger");
+            debitAccountGroup = false;
+            return false; // Stop the loop if validation fails
+        }
+    });
+
+    if (debitAccountGroup) {
+        var debitName = true;
+        $('.debitNameCls').each(function() {
+            if (!$(this).val()) {
+                toastr.error("Please Enter Name");
+                debitName = false;
+                return false;
+            }
+        });
+    }
+
+    if (debitAccountGroup && debitName) {
+        var debitAmount = true;
+        $('.debitAmountCls').each(function() {
+            if (!$(this).val()) {
+                toastr.error("Please Enter Amount");
+                debitAmount = false;
+                return false;
+            }
+        });
+    }
+
+    if (debitAccountGroup && debitName && debitAmount) {
+        var creditAccountGroup = true;
+        $('.creditAccountSubGroupCls').each(function() {
+            if (!$(this).val()) {
+                toastr.error("Please Enter Ledger");
+                creditAccountGroup = false;
+                return false;
+            }
+        });
+    }
+
+    if (debitAccountGroup && debitName && debitAmount && creditAccountGroup) {
+        var creditName = true;
+        $('.creditNameCls').each(function() {
+            if (!$(this).val()) {
+                toastr.error("Please Enter Name");
+                creditName = false;
+                return false;
+            }
+        });
+    }
+
+    if (debitAccountGroup && debitName && debitAmount && creditAccountGroup && creditName) {
+        var creditAmount = true;
+        $('.creditAmountCls').each(function() {
+            if (!$(this).val()) {
+                toastr.error("Please Enter Amount");
+                creditAmount = false;
+                return false;
+            }
+        });
+    }
+
+
+    if (debitAccountGroup && debitName && debitAmount && creditAccountGroup && creditName && creditAmount) {
+        if ($("#costCenter").val() === "") {
+            toastr.error("Please Select Cost Center Name");
+            return false;
+        }
+
+        if ($("#description").val() === "") {
+            toastr.error("Please Enter Narration");
+            return false;
+        }
+
+        var debit = 0,
+            credit = 0;
+
+        $(".debitAmountCls").each(function() {
+            debit += parseFloat($(this).val().replace(/,/g, ''));
+        });
+
+        $(".creditAmountCls").each(function() {
+            credit += parseFloat($(this).val().replace(/,/g, ''));
+        });
+
+        if (parseFloat(credit).toFixed(2) === parseFloat(debit).toFixed(2)) {
+            submitJournal(dataset);
+        } else {
+            toastr.error("Debit Amount not same with credit Amount");
+            return false;
+        }
+    }
+
+}
+
+function submitJournal(dataset) {
+    swal.fire({
+        title: "Are you sure want to Submit?",
+        text: "Once Submited,Can't revert back !",
+        type: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#264c82",
+        confirmButtonText: "Submit",
+        showLoaderOnConfirm: true,
+        reverseButtons: true,
+        confirmButtonAriaLabel: 'Thumbs up, great!',
+        cancelButtonText: 'Cancel',
+        cancelButtonAriaLabel: 'Thumbs down',
+        preConfirm: () => {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve()
+                }, 3000)
+            })
+        }
+    }).then((result) => {
+        if (result.value) {
+            $.ajax({
+                type: "POST",
+                url: "view-account-payment-voucher-add",
+                dataType: "json",
+                contentType: "application/json",
+                data: JSON.stringify(dataset),
+                success: function(response) {
+                    if (response.message == "Success") {
+                        toastr.success("Payment voucher created successfully.");
+                        setTimeout(() => {
+                        	let t = $("#activeTabId").val();
+                        	if(t == 'vpp') {
+                        		viewPaymentProcess();
+                        	} else {
+                        		viewPaymentProcessOth();
+                        	}
+                            
+                        }, 1000);
+                    } else {
+                        toastr.error(response.code);
+                    }
+                },
+                error: function(response) {
+                    toastr.error(response.code);
+                }
+            })
+        }
+    })
+}
+
+
+//Function for cancel button
+function funcLoad() {
+    location.reload();
+}
+
+var selectedInvoiceid = [];
+
+function SaveFinalAmount() {
+
+    selectedInvoiceid = [];
+
+
+    var selectedRows = gridOptionsVPP.api.getSelectedRows();
+    var vendorid = $("#ledgerNameModalId").val();
+    var sellerLdgerid = $("#debitLegderId").val();
+    var rcvType = $("#modAdjustment").val();
+
+    selectedRows.forEach(rows => {
+        selectedInvoiceid.push({
+            invoiceId: rows.invoiceId,
+            outstandingAmount: rows.outstandingAmount,
+            vendorId: rows.vendorId,
+            legerid: rows.ledgerId,
+            rcvType: 'againstRef'
+
+        });
+    });
+
+
+    console.log("invoice object is -->", selectedInvoiceid);
+
+}
+
+function cancelBtn() {
+    $("#paymentSection-div").hide();
+    $("#main_content").show();
+
+}
+
+
+/* Auto Search Vendor Name */
+
+function getVendorList() {
+    $('.loader').show();
+    var search = $("#vendorName").val();
+
+    //console.log("search value",search)
+    $("#addre").hide();
+    if (search) {
+
+        $
+            .ajax({
+                type: "POST",
+                url: "payment-voucher-vendorList",
+                dataType: 'json',
+                contentType: 'application/json',
+                data: search,
+                success: function(response) {
+                    if (response.message == "success") {
+
+                        if (response.body.length != 0) {
+                            $("#search").css("background", "#FFF");
+                            var content = '<ul id="autocomplete-list1" >';
+                            for (var i = 0; i < response.body.length; i++) {
+                                content += '<li  class="autocompletedata cp" onClick="selectAutocompleteValue1(\'' +
+                                    response.body[i].vendorId +
+                                    '\',\'' +
+                                    response.body[i].vendorName +
+                                    '\',\'' +
+                                    response.body[i].outstandingAmt +
+                                    '\')">' +
+                                    response.body[i].vendorName +
+                                    '</li>';
+                            }
+                            content += '</ul>';
+
+                            $("#suggesstion-box1_").show();
+                            $("#suggesstion-box1_").html(content);
+
+                        } else {
+                            $("#search").css("background", "#FFF");
+                            var content = '<ul id="autocomplete-list1">';
+                            content += '<li style="font-weight:600; color:#fff;  font-size:12px; background-color: #07449b;" onClick="selectAutocompleteValue()">' +
+                                "No Data Found" + '</li>';
+                            /* content += '<li style="margin-left:-30px;"  onclick="openModalForVendor();"><a class="addCust" href="#">Add New Vendor</a>'
+                            		+ '</li>'; */
+                            content += '</ul>';
+                            $("#suggesstion-box1_").show();
+                            $("#suggesstion-box1_").html(content);
+                        }
+                        $('.loader').hide();
+                    }
+                },
+                error: function(data) {
+                    //console.log(data);
+                    $('.loader').hide();
+                }
+            })
+    } else {
+        $("#suggesstion-box1_").hide();
+    }
+
+}
+
+function selectAutocompleteValue1(vendorId, vendorName, outstandingAmt) {
+
+    $("#transNameDiv").hide();
+    $("#transAmountDiv").hide();
+    $("#multipaymentgrid").show();
+    $(".totalPaymentAmountDiv").show();
+
+    if (vendorId) {
+        $("#vendorId").val(vendorId);
+        $("#vendorName").val(vendorName);
+        $("#search").val(vendorName);
+        $("#search").attr('data-procat', vendorId);
+        $("#suggesstion-box1_").hide();
+        $("#adjustment").attr("disabled", false);
+
+        $("#outstandingAmountDiv").show();
+        $("#outstandingAmountView").val(amountFormatter(outstandingAmt));
+
+        var methodOfAdj = $("#adjustment").val();
+
+        if (methodOfAdj == "againstRef") {
+            $("#parentDiv").val('');
+            $("#paymentgrid").show();
+            $("#parentDiv").show();
+            $("#amount").attr("disabled", true);
+            $("#split").show();
+            $("#payBtn").hide();
+
+            $("#remainingAmtDiv").show();
+            $("#amountDiv").hide();
+
+            var vendorid = $("#vendorId").val();
+
+
+            $.ajax({
+                type: "GET",
+                url: "payment-voucher-get-invoiceList?id=" + vendorid,
+                async: false,
+                success: function(response) {
+                    var jsondata = JSON.parse(response.body);
+                    var alldata = jsondata.InvoiceDetails;
+
+
+
+
+                    var newData = [];
+                    $.each(alldata, function(index, obj) {
+                        if (obj.payStatus != "Fully Paid") {
+                            newData.push(obj);
+                        }
+                    });
+                    gridOptions2.api.setRowData(newData);
+                    var dataLength = newData.length;
+                    $("#totalInvoice").find('span').html(dataLength);
+                }
+            })
+        }
+
+    } else {
+
+        $("#vendorId").val("");
+        $("#vendorName").val("");
+        $("#search").val("");
+
+        $("#outstandingAmountDiv").hide();
+        $("#outstandingAmountView").val("");
+
+        $("#search").attr('data-procat', "");
+        $("#suggesstion-box1_").hide();
+        $("#adjustment").attr("disabled", true);
+
+    }
+}
+
+function selectAutocompleteValue() {
+    $("#vendorId").val("");
+    $("#vendorName").val("");
+    $("#search").val("");
+    $("#search").attr('data-procat', "");
+    $("#suggesstion-box1_").hide();
+
+}
+
+function refreshGrid() {
+    var api = gridOptions2.api;
+    var selectedNodes = api.getSelectedNodes();
+    selectedNodes.forEach(function(node) {
+        node.setSelected(false);
+    });
+}
+
+function debitSubGroup(id) {
+    var l = id.split("_");
+    var counter = l[1];
+    var search = $("#" + id).val();
+    $.ajax({
+        type: "POST",
+        url: "payment-voucher-getAccountDebitGroup",
+        dataType: 'json',
+        contentType: 'application/json',
+        data: $("#" + id).val(),
+        success: function(response) {
+            console.log(response);
+            if (response.code == "Success") {
+                if (response.body.length != 0) {
+                    $("#debitAccountSubGroup_0").css("background", "#FFF");
+                    var content = '<ul id="autocomplete-list">';
+                    for (var i = 0; i < response.body.length; i++) {
+                        content += '<li  class ="autocompletedata cp" onClick="autocompleteValue1(\'' + response.body[i].debAccGroupId + '\',\'' + response.body[i].debitedAccGroup + '\',\'' + id + '\',\'' + response.body[i].amount + '\',\'' + response.body[i].cvDescription + '\',\'' + response.body[i].contraVoucherType + '\',\'' + response.body[i].createdBy + '\')">' + response.body[i].debitedAccGroup + '(' + response.body[i].debAccGroupId + ')' + '</li>';
+                    }
+                    //content += '<li style="margin-left: -26px; border-bottom: solid 1px #6189c2; cursor: pointer; background-color: #0c0c6b; color: white" id="debitLedger" onclick="addLedger(this.id)">+ Add Ledger</button></li>';
+                    content += '</ul>';
+                    $("#suggesstion-box1_" + counter).show();
+                    $("#suggesstion-box1_" + counter).html(content);
+
+                } else {
+                    console.log("else: " + response);
+                    $("#debitAccountSubGroup_0").css("background", "#FFF");
+                    var content = '<ul id="autocomplete-list">';
+                    content += '<li  class ="autocompletedata cp" onClick="autocompleteValue1(\'' + '' + '\',\'' + '' + '\')">' + "No Data Found" + '</li>';
+                    //	content += '<li style="margin-left: -26px; border-bottom: solid 1px #6189c2; cursor: pointer; background-color: #0c0c6b; color: white" id="debitLedger" onclick="addLedger(this.id)">+ Add Ledger</button></li>';
+                    content += '</ul>';
+                    $("#suggesstion-box1_" + counter).show();
+                    $("#suggesstion-box1_" + counter).html(content);
+                }
+            }
+        },
+        error: function(data) {
+            //console.log(data);
+        }
+    })
+
+    if (search.length == 0) {
+        $("#suggesstion-box1_" + counter).hide();
+    }
+
+    $("#amountDivId").val(id);
+}
+
+function creditSubGroup(id) {
+
+    var l = id.split("_");
+    var counter = l[1];
+    var search = $("#" + id).val();
+
+    $.ajax({
+        type: "POST",
+        url: "payment-voucher-getAccountCreditGroup",
+        dataType: 'json',
+        contentType: 'application/json',
+        data: $("#" + id).val(),
+        success: function(response) {
+            console.log(response);
+            if (response.code == "Success") {
+                if (response.body.length != 0) {
+                    $("#creditAccountSubGroup_0").css("background", "#FFF");
+                    var content = '<ul id="autocomplete-list">';
+                    for (var i = 0; i < response.body.length; i++) {
+                        content += '<li  class ="autocompletedata cp" onClick="autocompleteValue2(\'' + response.body[i].debAccGroupId + '\',\'' + response.body[i].debitedAccGroup + '\',\'' + id + '\',\'' + response.body[i].amount + '\')">' + response.body[i].debitedAccGroup + '(' + response.body[i].debAccGroupId + ')' + '</li>';
+                    }
+                    //content += '<li style="margin-left: -26px; border-bottom: solid 1px #6189c2; cursor: pointer; background-color: #0c0c6b; color: white" id="creditLedger" onclick="addLedger(this.id)">+ Add Ledger</button></li>';
+                    content += '</ul>';
+                    $("#suggesstion-box2_" + counter).show();
+                    $("#suggesstion-box2_" + counter).html(content);
+
+                } else {
+                    console.log("else: " + response);
+                    $("#creditAccountSubGroup_0").css("background", "#FFF");
+                    var content = '<ul id="autocomplete-list">';
+                    content += '<li  class ="autocompletedata cp" onClick="autocompleteValue2(\'' + '' + '\',\'' + '' + '\')">' + "No Data Found" + '</li>';
+                    //	content += '<li style="margin-left: -26px; border-bottom: solid 1px #6189c2; cursor: pointer; background-color: #0c0c6b; color: white" id="creditLedger" onclick="addLedger(this.id)">+ Add Ledger</button></li>';
+                    content += '</ul>';
+                    $("#suggesstion-box2_" + counter).show();
+                    $("#suggesstion-box2_" + counter).html(content);
+                }
+            }
+        },
+        error: function(data) {
+            //console.log(data);
+        }
+    })
+
+    if (search.length == 0) {
+        $("#suggesstion-box2_" + counter).hide();
+    }
+
+    var fromDataAmount = $("#fromTotalAmount").text();
+
+    var indexNumber = id.charAt(id.length - 1);
+
+    //$("#"+"creditAmount_" + indexNumber).text(fromDataAmount);
+    $("#toTotalAmount").text(fromDataAmount);
+
+}
+
+function autocompleteValue2(sGroupId, sGroupName, id, amount) {
+    var l = id.split("_");
+    var counter = l[1];
+
+    if (sGroupId) {
+        $("#creditAccountSubGroup_" + counter).val(sGroupName + '( ' + sGroupId + ' )');
+        $("#creditAccountGroupId_" + counter).val(sGroupId);
+        $("#creditCurrentBalance_" + counter).text(amount);
+        $("#creditAccountSubGroup_" + counter).attr('data-procat', sGroupName);
+        $("#suggesstion-box2_" + counter).hide();
+        let amnt = $("#debitAmount_0").val();
+		$("#creditAmount_0").val(amnt || 0.00);
+    } else {
+        $("#creditAccountSubGroup_" + counter).val("");
+        $("#creditAccountGroupId_" + counter).val("");
+        $("#creditCurrentBalance_" + counter).text("");
+        $("#creditAccountSubGroup_" + counter).attr('data-procat', "");
+        $("#suggesstion-box2_" + counter).hide();
+        $("#creditAmount_0").val(0.00);
+    }
+}
+
+
+function TdsVoucherList(ledgerId, taxType) {
+    //$("#taxType").val(taxType);
+    var totalSelectedAmount = 0;
+
+    //console.log("TaxType-->",taxType)
+    $.ajax({
+        type: "GET",
+        url: "payment-voucher-getTDSVoucherList?id=" + ledgerId,
+        success: function(response) {
+            if (response.code == "success") {
+                var responseData = JSON.parse(response.body);
+                var tdsData = responseData.getTdsVoucherList;
+                TDSOptions2.api.setRowData(tdsData);
+                TDSOptions2.api.forEachNode(function(node) {
+                    node.setSelected(true);
+                });
+                TDSOptions2.api.forEachNode(rows => {
+                    totalSelectedAmount += rows.data.amount;
+                })
+                $("#myModalTaxDeduction").modal('show');
+                $("#totalTDSAmount").val(amountFormatter(totalSelectedAmount));
+            }
+        }
+
+    });
+
+}
+
+
+function autocompleteValue1(sGroupId, sGroupName, id, amount, taxType, multiPayType, vendorId) {
+    var l = id.split("_");
+    var counter = l[1];
+    $("#parentTransNameDiv").hide();
+    $("#transAmountDiv").hide();
+
+    if (taxType != "False") {
+        TdsVoucherList(sGroupId, taxType);
+
+    }
+
+    if (multiPayType != "False" && (vendorId != "" || vendorId != null)) {
+
+        $("#ledgerNameModal").text(sGroupName);
+        $("#ledgerNameModalId").val(vendorId);
+        $("#debitLegderId").val(sGroupId);
+        getInvoiceDataList(vendorId);
+    }
+    if (sGroupId) {
+        $("#debitAccountSubGroup_" + counter).val(sGroupName + '( ' + sGroupId + ' )');
+        $("#debitAccountGroupId_" + counter).val(sGroupId);
+        $("#debitCurrentBalance_" + counter).text(amount);
+        $("#debitAccountSubGroup_" + counter).attr('data-procat', sGroupName);
+        $("#suggesstion-box1_" + counter).hide();
+
+
+    } else {
+        $("#debitAccountSubGroup_" + counter).val("");
+        $("#debitAccountGroupId_" + counter).val("");
+        $("#debitCurrentBalance_" + counter).val("");
+        $("#debitAccountSubGroup_" + counter).attr('data-procat', "");
+        $("#suggesstion-box1_" + counter).hide();
+    }
+
+}
+
+
+function changeToDecimal(elemt) {
+    id = $(elemt).attr('id');
+    value = $("#" + id).val();
+    value = value.replace(/,/g, '');
+    var floatValue = (parseFloat(value).toFixed(2));
+    if (floatValue > 0) {
+        $("#" + id).val(amountFormatter(floatValue));
+        $("#creditAmount_0").val(amountFormatter(floatValue))
+        getToSubtotal();
+    } else {
+        $("#" + id).val(0.00);
+        $("#creditAmount_0").val(0.00);
+
+    }
+}
+
+function formatAmount(element) {
+    let value = element.value;
+    if (value) {
+        let formattedValue = indianCurreny(value);
+        element.value = formattedValue;
+        $("#remainAmount").val(value);
+    }
+
+}
+
+
+function indianCurreny(value) {
+    if (value !== null && value !== undefined) {
+        //value = value.replace(/[^\d.,]/g, '');
+
+        var parts = value.toString().split('.');
+        var integerPart = parts[0].replace(/,/g, '');
+        var decimalPart = parts.length > 1 ? '.' + parts[1] : '';
+
+        if (decimalPart.length > 3) {
+            decimalPart = decimalPart.substring(0, 3);
+        }
+
+        var formattedIntegerPart = new Intl.NumberFormat('en-IN').format(integerPart);
+        return formattedIntegerPart + decimalPart;
+    } else {
+        return '';
+    }
+}
+
+
+/* Salary Payment  */
+
+
+let firstSelectedSalary = null;
+let totalSalaryAmount = 0;
+let debitSalaryGroupName = '';
+let debitSalaryGroupId = '';
+var advanceReceiveDetails = [];
+
+function multiSalaryAmount() {
+    let selectedRows = gridOptionsOPP.api.getSelectedRows();
+    let newTotalAmount = 0;
+    if (selectedRows.length === 0) {
+        firstSelectedSalary = null;
+        totalSalaryAmount = 0;
+        $("#pay1").hide();
+        $("#payment-process-parent-container").addClass("d-none");
+        $("#payment_save_btn").addClass("d-none");
+        $("#vendorNameText").text('');
+        return;
+    }
+    if (firstSelectedSalary === null && selectedRows.length > 0) {
+        firstSelectedSalary = selectedRows[0]["salaryHeadName"];
+        $("#debitAccountSubGroup_1").val(selectedRows[0]["salaryHeadName"]);
+        $("#debitAccountGroupId_1").val(selectedRows[0]["salaryHead"]);
+        debitSalaryGroupName = selectedRows[0]["salaryHeadName"];
+        debitSalaryGroupId = selectedRows[0]["salaryHead"];
+
+    }
+    if (selectedRows.length > 0) {
+    	$("#payment_save_btn").removeClass("d-none");
+        saveFinalSalaryAmount();
+        gridOptionsOPP.api.forEachNode((node) => {
+            if (node.isSelected()) {
+                let rowVendor = node.data["salaryHeadName"];
+                if (rowVendor.trim().toLowerCase().includes(firstSelectedSalary.trim().toLowerCase())) {
+                    newTotalAmount += parseFloat(node.data["amount"]);
+                } else {
+                    node.setSelected(false);
+                }
+            }
+        });
+        totalSalaryAmount = newTotalAmount.toFixed();
+        $("#pay1").show();
+
+        paySalary();
+
+
+        $("#vendorNameText").text(selectedRows[0].salaryHeadName);
+        $("#payment-process-parent-container2").removeClass("d-none");
+    } else {
+        $("#vendorNameText").text('');
+    }
+
+
+
+
+}
+
+
+function paySalary() {
+    var today = new Date();
+    var dateString = ('0' + today.getDate()).slice(-2) + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + today.getFullYear();
+    var fromDate = dateString.toString();
+    $("#voucherDate").val(fromDate);
+    $("#creditTbodyData").empty();
+    var abc = '<tr class="tr_clone" id="credit_0">' +
+        '<td><input type="text" id="creditAccountSubGroup_0" placeholder="Search SubGroup" class="form-control creditAccountSubGroupCls" onkeyup="creditSubGroup(this.id);" autocomplete="off">' +
+        '<div id="suggesstion-box2_0"></div> <input type="hidden" id="creditAccountGroupId_0" class="form-control creditAccountGroupIdCls">' +
+        '<p class="mb-0">' +
+        '</p></td>' +
+        '<td><input type="text" placeholder="Enter Amount" id="creditAmount_0" oninput="formatAmount(this);" class="form-control creditAmountCls" onblur="changeToDecimal(this),getToSubtotal();" autocomplete="off">' +
+        '</td>' +
+        '<td style="vertical-align: baseline;" align="center">' +
+        '<button type="button" class="btn btn-primary tr_clone_add go-btn" name="add" onclick="creditCheckEmpty();">' +
+        '<span class="ti-plus"></span>' +
+        '</button>' +
+        '</td>' +
+        '</tr>'
+    $("#creditTbodyData").append(abc);
+    /* var creditRoundOff = '<tr class="tr_clone" id="credit">'
+    		+ '<td><input type="text" placeholder="Search Ledger" id="creditAccountSubGroup" value="Round Off(TLM0121)" class="form-control creditAccountSubGroupCls" onkeyup="creditSubGroup(this.id);" autocomplete="off" disabled>'
+    		+ '<div id="suggesstion-box2_1"></div> <input type="hidden" value="TLM0121" id="creditAccountGroupId" class="form-control creditAccountGroupIdCls">'
+    		+ '<p class="mb-0"><input type="hidden" id="ledgerId" class="form-control creditAccountGroupIdCls">'
+    		+ '</p></td>'
+    		+ '<td><input type="text" placeholder="Enter Amount" id="creditAmount" class="form-control lastCreditRoundOffAmount creditRoundOffAmount" oninput="formatAmount(this);" onblur="getToSubtotal();" onkeyup="checkNumberInput(this.id)" autocomplete="off">'
+    		+ '</td>'
+    		+ '</tr>'	
+    		$("#creditTbodyData").append(creditRoundOff);	 */
+    $("#debitTbodyData").empty();
+    var abc = '<tr class="tr_clone" id="debit_0">' +
+        '<td class ="legerSearchDiv"><input type="text" id="debitAccountSubGroup_0" placeholder="Search SubGroup" class="form-control debitAccountSubGroupCls" onkeyup="debitSubGroup(this.id);" autocomplete="off" disabled> ' +
+        '<div id="suggesstion-box1_0"></div> <input type="hidden" id="debitAccountGroupId_0" class="form-control debitAccountGroupIdCls">' +
+        '<p class="mb-1">' +
+        '</p></td>' +
+        '<td><input type="text" placeholder="Enter Amount" id="debitAmount_0" oninput="formatAmount(this);" class="form-control debitAmountCls" onblur="changeToDecimal(this),getFromSubtotal() ;" autocomplete="off" disabled>' +
+        '</td>'
+        /* +'<td style="vertical-align: baseline;" align="center">'
+        +'<button type="button" class="btn btn-primary tr_clone_add" name="add" onclick="debitCheckEmpty();">'
+        +'<span class="ti-plus"></span>'
+        +'</button>'
+        +'</td>' */
+        +
+        '</tr>'
+    $("#debitTbodyData").append(abc);
+    /* var debitRoundOff = '<tr class="tr_clone" id="debit_1">'
+    			+ '<td><input type="text" placeholder="Search Ledger" id="debitAccountSubGroup" value="Round Off(TLM0121)" class="form-control" autocomplete="off" disabled>'
+    			+ '<div id="suggesstion-box1_1"></div> <input type="hidden" value="TLM0121" id="debitAccountGroupId" class="form-control debitAccountGroupIdCls">'
+    			+ '<p class="mb-0">'
+    			+ '</p></td>'
+    			+ '<td><input type="text" placeholder="Enter Amount" id="debitRoundOffAmount"  oninput="formatAmount(this);" class="form-control  lastDebitRoundOffAmount" onkeyup="checkNumberInput(this.id);" onblur="changeToDecimal(this),getFromSubtotal() ;" autocomplete="off">'
+    			+ '</td>'
+    			+ '</tr>'
+    			$("#debitTbodyData").append(debitRoundOff);	 */
+    //getVoucherNumber();
+    $("#paymentSection-div").show();
+    $("#main_content").hide();
+    $("#debitAmount_0").val(indianCurreny(totalSalaryAmount));
+    $("#debitAccountSubGroup_0").val(debitSalaryGroupName);
+    $("#debitAccountGroupId_0").val(debitSalaryGroupId);
+    getFromSubtotal();
+    $("#modeOfPayment").val('salary');
+    $("#payment-process-parent-container").removeClass("d-none");
+}
+
+
+var selectedSalaryInvoice = [];
+
+function saveFinalSalaryAmount() {
+    selectedSalaryInvoice = [];
+    var selectedRows = gridOptionsOPP.api.getSelectedRows();
+
+    selectedRows.forEach(rows => {
+        selectedSalaryInvoice.push({
+            invoiceId: rows.vid,
+            outstandingAmount: rows.amount,
+            vendorId: rows.voucherId,
+            legerid: rows.salaryHead,
+            rcvType: 'againstRef'
+
+        });
+    });
+}
+
+
+function validateDateRange(fromDateSelector, toDateSelector) {
+
+    let fromDate = $(fromDateSelector).val();
+    let toDate = $(toDateSelector).val();
+
+
+    if (fromDate && toDate) {
+        let from = new Date(fromDate.split('-').reverse().join('-'));
+        let to = new Date(toDate.split('-').reverse().join('-'));
+
+        if (from > to) {
+            swal("From Date cannot be greater than To Date!");
+            $(fromDateSelector).val("");
+            $(toDateSelector).val("");
+        }
+    }
+}
+
+
+function checkNumberInput(id) {
+    var tagname = $("#" + id).val()
+    var replaceValue = tagname.replace(/[^\d.]/g, '');
+    var decimalIndex = replaceValue.indexOf('.');
+    if (decimalIndex !== -1) {
+        replaceValue = replaceValue.substring(0, decimalIndex + 1) + replaceValue.substring(decimalIndex + 1).replace(/\./g, '');
+    }
+    $("#" + id).val(replaceValue);
+}
+
+function viewPaymentProcess() {
+    let activeTab = $("#activeTabId").val();
+    var fromDate = activeTab == "vpp" ? $("#fromDate").val() : $("#oppFromDate").val();
+    var toDate = activeTab == "vpp" ? $("#toDate").val() : $("#oppToDate").val();
+
+    showLoader();
+    agGrid.simpleHttpRequest({
+        url: "payment-payable-process-view?fromdate=" + fromDate + "&todate=" + toDate + "&type=vnd",
+    }).then(function(data) {
+
+        let activatedTab = $("#activeTabId").val();
+        var jsonData = JSON.parse(data.body);
+        
+        var alldata = jsonData.InvoiceDetails;
+        var newData = [];
+        $.each(alldata, function(index, obj) {
+            if (obj.payStatus != "Fully Paid") {
+                newData.push(obj);
+            }
+        });
+
+        var rowData = [];
+        gridOptionsVPP.api.setRowData(rowData);
+        gridOptionsVPP.api.setRowData(newData);
+        if (newData && newData.length > 0) {
+            gridOptionsVPP.api.forEachNode(function(node) {
+                if (node.rowIndex === 0) {
+                    node.setSelected(true); // Select the first row
+                }
+            });
+        } else {
+            $("#payment-process-parent-container").addClass("d-none");
+            $("#vendorNameText").text('');
+            $("#payment_save_btn").addClass("d-none");
+        }
+        hideLoader();
+    });
+}
+
+function viewPaymentProcessOth() {
+    let activeTab = $("#activeTabId").val();
+    var fromDate = activeTab == "vpp" ? $("#fromDate").val() : $("#oppFromDate").val();
+    var toDate = activeTab == "vpp" ? $("#toDate").val() : $("#oppToDate").val();
+
+
+    showLoader();
+    agGrid.simpleHttpRequest({
+        url: "payment-payable-process-view?fromdate=" + fromDate + "&todate=" + toDate + "&type=oth",
+    }).then(function(data) {
+
+        let activatedTab = $("#activeTabId").val();
+        var jsonData = JSON.parse(data.body);
+        
+
+        var rowData2 = [];
+        gridOptionsOPP.api.setRowData(rowData2);
+
+        var allsaldata = jsonData.payrollDetails;
+        var newData1 = [];
+        $.each(allsaldata, function(index, obj) {
+        	if (obj.payStatus != "Fully Paid") {
+            	newData1.push(obj);
+            }
+        });
+        gridOptionsOPP.api.setRowData(newData1);
+
+        if (newData1 && newData1.length > 0) {
+        	gridOptionsOPP.api.forEachNode(function(node) {
+            	if (node.rowIndex === 0) {
+                	node.setSelected(true); // Select the first row
+                }
+            });
+        } else {
+        	console.log("newData1-->", newData1);
+            $("#payment-process-parent-container").addClass("d-none");
+            $("#vendorNameText").text('');
+            $("#payment_save_btn").addClass("d-none");
+        }
+        hideLoader();
+    });
+}
+
+function downloadDetails() {
+    var params = {
+        fileName: `outstanding_vendor_payment.csv`, // Use template literals for dynamic file naming
+    };
+    gridOptionsVPS.api.exportDataAsCsv(params);
+}
+
+function onQuickFilterChanged(event) {
+    gridOptionsVPS.api
+        .setQuickFilter(document.getElementById('quickFilter').value);
+}
+
+function cancelBar() {
+    var id = document.getElementById("closeKey");
+    id.style.display = "block";
+
+    if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+        id.style.display = "none";
+    }
+}
+
+function downloadDetails1() {
+    var params = {
+        fileName: `outstanding_payroll_payment.csv`, // Use template literals for dynamic file naming
+    };
+    gridOptionsOPS.api.exportDataAsCsv(params);
+}
+
+function onQuickFilterChanged1(event) {
+    gridOptionsOPS.api
+        .setQuickFilter(document.getElementById('quickFilter1').value);
+}
+
+function cancelBar1() {
+    var id = document.getElementById("closeKey1");
+    id.style.display = "block";
+
+    if ($('#quickFilter1').val() == null || $('#quickFilter1').val() == "") {
+        id.style.display = "none";
+    }
+}
+
+function amountFormatter(value) {
+    if (value !== null && value !== undefined) {
+        var parts = value.toString().split('.');
+        var integerPart = parts[0];
+        var decimalPart = parts.length > 1 ? '.' + parts[1] : '';
+        var formattedIntegerPart = new Intl.NumberFormat('en-IN').format(integerPart);
+        return formattedIntegerPart + decimalPart;
+    } else {
+        return '';
+    }
+}
+
+function schedule() {
+    $(".formValidation").remove();
+    $('#scheduleModal').modal('show');
+}
+
+function scheduleCancelOnclick() {
+    $("#scheduleDate").val("");
+    $('#scheduleModal').modal('hide');
+}
+
+function scheduleOnclick(event) {
+    let activeElements = $(".nav-link.active").map(function() {
+        return $(this).parent().attr("id");
+    }).get();
+
+
+    let type = activeElements.filter(item => item === "psLi" || item === "vpsLiId");
+    
+    let idType = $('#activeTabId').val();
+
+
+    var scheduleDate = $("#scheduleDate").val();
+    var validation = true;
+    if (scheduleDate == null || scheduleDate == "") {
+        validation = validationUpdated("Schedule Date Required", 'scheduleDate');
+    }
+    if (validation) {
+        if (type[0] == "vpsLiId") {
+            var selectedRows = gridOptionsVPS.api.getSelectedRows();
+            var invoiceIdArray = [];
+            for (var i = 0; i < selectedRows.length; i++) {
+                invoiceIdArray.push(selectedRows[i].invoiceId);
+            }
+            var JsonInvArrayId = JSON.stringify(invoiceIdArray);
+            $.ajax({
+                type: "GET",
+                url: "payment-payable-schedule-save?id=" + encodeURIComponent(JsonInvArrayId) + "&scheduleDate=" + encodeURIComponent(scheduleDate) + "&type=" + type[0],
+                async: false,
+                success: function(response) {
+                    if (true) {
+                        toastr.success("Payment Scheduled Successfully");
+                        //scheduleCancelOnclick();
+                        viewPaymentSchedule()
+                        
+                    }
+
+                },
+            });
+        } else {
+            var selectedRows1 = gridOptionsOPS.api.getSelectedRows();
+            var vIdArray = [];
+            for (var i = 0; i < selectedRows1.length; i++) {
+                vIdArray.push(selectedRows1[i].vid);
+            }
+            var JsonVidArrayId = JSON.stringify(vIdArray);
+            $.ajax({
+                type: "GET",
+                url: "payment-payable-schedule-save?id=" + encodeURIComponent(JsonVidArrayId) + "&scheduleDate=" + encodeURIComponent(scheduleDate) + "&type=" + type[0],
+                async: false,
+                success: function(response) {
+                    if (true) {
+                        toastr.success("Payment Scheduled Successfully");
+                        //scheduleCancelOnclick();
+                        viewPaymentScheduleOth()
+                    }
+
+                },
+            });
+        }
+    }
+}
+
+function getActId(id1, id2) {
+	
+	$('#psLi').toggle(id2 !== 'ppLi');
+	$('#ppLi').toggle(id2 === 'ppLi');
+	
+	if (id2 === 'ppLi') {
+	    if (id1 === 'vpp') viewPaymentProcess();
+	    else if (id1 === 'opp') viewPaymentProcessOth();
+	} else if (id2 === 'psLi') {
+	    if (id1 === 'vps') viewPaymentSchedule();
+	    else if (id1 === 'ops') viewPaymentScheduleOth();
+	}
+
+	const tabElement = document.querySelector(`#${id2} a`);
+	if (tabElement) {
+	    new bootstrap.Tab(tabElement).show();
+	}
+
+	$('#activeTabId').val(id1);
+	$('#quickFilter').val('');
+
+}
+
+function creditCheckEmpty() {
+    var creditAccountGroup = true;
+    $('.creditAccountSubGroupCls').each(function() {
+        if (!blankValidation($(this).attr('id'), "TextField", "Please Enter Account Ledger")) {
+
+            creditAccountGroup = false;
+            return false;
+        }
+
+    });
+    var creditName = true;
+    if (creditAccountGroup) {
+        $('.creditNameCls').each(function() {
+            if (!blankValidation($(this).attr('id'), "TextField", "Please Enter Name")) {
+
+                creditName = false;
+                return false;
+            }
+
+        });
+    }
+    var creditAmount = true;
+    if (creditAccountGroup && creditName) {
+        $('.creditAmountCls').each(function() {
+            if (!blankValidation($(this).attr('id'), "TextField", "Please Enter Amount ")) {
+
+                creditAmount = false;
+                return false;
+            }
+
+        });
+    }
+    if (creditAccountGroup && creditName && creditAmount) {
+
+        creditAddMore();
+    }
+}
+
+
+
+function SearchUserInput(event) {
+    if (event.key === "Enter" || event.keyCode === 13) {
+        event.preventDefault();
+        onQuickFilterChanged();
+    }
+}
+
+function onQuickFilterChanged() {
+    let searchValue = document.getElementById('quickFilter').value;
+
+    gridOptionsVPS.api.setQuickFilter(searchValue);
+    gridOptionsOPS.api.setQuickFilter(searchValue);
+    gridOptionsVPP.api.setQuickFilter(searchValue);
+    gridOptionsOPP.api.setQuickFilter(searchValue);
+
+    $('#totalReq').find('span').html(gridOptions.api.getModel().getRowCount());
+
+    getMostClosestRow();
+}
+
+function getMostClosestRow() {
+    let searchValue = document.getElementById('quickFilter').value;
+
+    [gridOptionsVPS, gridOptionsOPS, gridOptionsVPP, gridOptionsOPP].forEach(grid => {
+        grid.api.setQuickFilter(searchValue);
+
+        grid.api.forEachNodeAfterFilter((node, index) => {
+            if (index === 0) {
+                node.setSelected(true);
+                grid.api.ensureIndexVisible(node.rowIndex);
+            }
+        });
+    });
+}
+
+function resetBtn() {
+    $("#quickFilter").val('');
+
+    [gridOptionsVPS, gridOptionsOPS, gridOptionsVPP, gridOptionsOPP].forEach(grid => {
+        grid.api.setQuickFilter('');
+        grid.api.refreshCells({
+            force: true
+        });
+
+        setTimeout(() => {
+            grid.api.forEachNode((node, index) => {
+                if (index === 0) {
+                    node.setSelected(true);
+                    grid.api.ensureIndexVisible(node.rowIndex);
+                }
+            });
+        }, 50);
+    });
+}
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<div class="tab-content">
+
+						<!--Tabbination 1 Start-->
+						<div id="opd" class="tab-pane active">
+							<div class="d-flex flex-column flex-lg-row">
+
+								<!--Left Sec Start-->
+								<div class="box-sec" id="collapseWidthR1">
+									<div class="out-box">
+										<div class="d-flex justify-content-between bdr-line p-2">
+
+											<div class="col-md-8 col-12 d-flex">
+												<input class="form-control me-2 search_input_bar"
+													placeholder="Search.." type="text" name="search"
+													onkeyup="SearchUserInput(event)" id="quickFilter"
+													autocomplete="off">
+												<button class="btn btn-primary go-btn"
+													onclick="onQuickFilterChanged()" id="SearchBtn"
+													type="button">Go</button>
+												&nbsp;
+												<button class="btn go-btn w-auto" onclick="resetBtn()"
+													type="button">Reset</button>
+											</div>
+
+											<div class="col-md-2 d-flex justify-content-end">
+												<button class="btn btn-primary max-btn"
+													id="collapseButtonR1" onclick="triggerExpansionR(1)"
+													data-bs-toggle="tooltip" data-bs-placement="top"
+													title="Expand">
+													<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+														class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+												</button>
+											</div>
+
+										</div>
+										<div class="d-flex gap-2">
+											<ul class="nav nav-pills newtab navTabContainer"
+												role="tablist" id="tabMenu">
+												<li class="nav-item" role="presentation" id="vpsLiId"><a
+													class="nav-link active" data-bs-toggle="pill" href="#vps"
+													onclick="getActId('vps','psLi');" aria-selected="true"
+													role="tab">Vendor Payment Schedule</a></li>
+												<li class="nav-item" role="presentation" id="vppLiId"><a
+													class="nav-link" data-bs-toggle="pill" href="#vpp"
+													onclick="getActId('vpp','ppLi');" aria-selected="true"
+													role="tab">Vendor Payment Process</a></li>
+												<li class="nav-item" role="presentation" id="opsLiId"><a
+													class="nav-link" data-bs-toggle="pill" href="#ops"
+													onclick="getActId('ops','psLi');" aria-selected="true"
+													role="tab">Other Payment Schedule</a></li>
+												<li class="nav-item" role="presentation" id="oppLiId"><a
+													class="nav-link" data-bs-toggle="pill" href="#opp"
+													onclick="getActId('opp','ppLi');" aria-selected="true"
+													role="tab">Other Payment Process</a></li>
+
+											</ul>
+										</div>
+										<div class="tab-content flex-fill mt-4">
+											<div id="vps" class="tab-pane fade show active p-2 h-100">
+												<div class="card m-2 p-2">
+													<div id="vpsGrid" style="width: 100%; height: 70vh;"
+														class="ag-theme-alpine"></div>
+												</div>
+											</div>
+											<div id="vpp" class="tab-pane fade show p-2 h-100">
+												<div class="d-flex" id="tdiv">
+
+													<div class=" form-group f1" id="fdateDiv"
+														style="margin-top: -24px;">
+														<div class="form-group calendar_box">
+															<label>From Date</label> <input type="text" id="fromDate"
+																placeholder="From Date" class="form-control"
+																onchange="validateDateRange('#fromDate','#toDate')"
+																readonly> <i class="ti-calendar picker_calendar"
+																id="toDateCalendar" style="top: 45px; right: 5px;"></i>
+														</div>
+													</div>
+
+													<div class="form-group f1" id="tdateDiv"
+														style="margin-top: -24px;">
+														<div class="form-group calendar_box">
+															<label>To Date</label> <input type="text" id="toDate"
+																placeholder="To Date" class="form-control"
+																onchange="validateDateRange('#fromDate','#toDate')"
+																readonly> <i class="ti-calendar picker_calendar"
+																id="toDateCalendar2" style="top: 45px; right: 5px;"></i>
+														</div>
+													</div>
+
+													<div class=" f1">
+														<input type="button" id="filter" value="Search"
+															class="btn btn-primary edit-btn"
+															onclick="viewPaymentProcess()">
+													</div>
+
+
+												</div>
+												<div class="card m-2 p-2">
+													<div id="vppGrid" style="width: 100%; height: 60vh;"
+														class="ag-theme-alpine"></div>
+												</div>
+											</div>
+											<div id="ops" class="tab-pane fade show p-2 h-100">
+
+												<div class="card m-2 p-2">
+													<div id="opsGrid" style="width: 100%; height: 70vh;"
+														class="ag-theme-alpine"></div>
+												</div>
+											</div>
+											<div id="opp" class="tab-pane fade show p-2 h-100">
+												<div class="row" id="tdiv">
+
+													<div class="col-md-3 form-group f1"
+														style="margin-top: -24px;">
+														<div class="form-group calendar_box">
+															<label>From Date</label> <input type="text"
+																id="oppFromDate" placeholder="From Date"
+																class="form-control"
+																onchange="validateDateRange('#oppFromDate','#oppToDate')">
+															<i class="ti-calendar picker_calendar"
+																id="toDateCalendar3" style="top: 35px; right: 5px;"></i>
+														</div>
+													</div>
+
+													<div class="col-md-3 form-group f1"
+														style="margin-top: -24px;">
+														<div class="form-group calendar_box">
+															<label>To Date</label> <input type="text" id="oppToDate"
+																placeholder="To Date" class="form-control"
+																onchange="validateDateRange('#oppFromDate','#oppToDate')">
+															<i class="ti-calendar picker_calendar"
+																id="toDateCalendar4" style="top: 35px; right: 5px;"></i>
+														</div>
+													</div>
+
+													<div class="col-md-3 f1">
+														<input type="button" id="filter" value="Search"
+															class="approve-btn" onclick="viewPaymentProcessOth()">
+													</div>
+												</div>
+												<div class="card m-2 p-2">
+													<div id="oppGrid" style="width: 100%; height: 60vh;"
+														class="ag-theme-alpine"></div>
+												</div>
+											</div>
+										</div>
+									</div>
+
+								</div>
+
+								<!--Left Sec End-->
+
+
+
+								<!--Right Sec Start-->
+								<div class="box-sec" id="collapseWidthL1">
+									<div class="out-box">
+										<div
+											class="d-flex flex-row-reverse justify-content-between align-items-center p-2 bdr-line">
+											<button class="btn btn-primary max-btn" id="collapseButtonL1"
+												type="button" onclick="triggerExpansionL(1)"
+												data-bs-toggle="tooltip" data-bs-placement="top"
+												title="Expand">
+												<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+													class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+											</button>
+
+											<!--Right Inner Tab Start-->
+											<div class="d-flex gap-2">
+												<ul class="nav nav-pills newtab tablistUl" role="tablist">
+													<li class="nav-item" role="presentation" id="psLi"><a
+														class="nav-link active" data-bs-toggle="pill" href="#ps"
+														aria-selected="true" role="tab"> Payment Schedule</a></li>
+													<li class="nav-item" role="presentation" id="ppLi"><a
+														class="nav-link" data-bs-toggle="pill" href="#pp"
+														aria-selected="false" role="tab" tabindex="-1">Payment
+															Process </a></li>
+
+
+												</ul>
+											</div>
+										</div>
+
+
+
+										<!-- Tab panes -->
+
+										<div class="tab-content flex-fill h-25">
+											<!-- Create Workspace -->
+											<div id="ps" class="tab-pane active h-100 p-2">
+
+												<div class="requisition-tbl d-flex flex-column h-100">
+
+													<div class="mb-2">
+														<table class="table table-bordered mb-0" width="100%">
+															<tr valign="middle">
+																<td>
+																	<div class="d-flex justify-content-end flxwrap">
+																		<div class="mr-2" id="parentSaveBtn">
+																			<button class="btn btn-primary edit-btn"
+																				onclick="scheduleOnclick(event)"
+																				id="schedule_save_btn" type="button">Save</button>
+
+																		</div>
+																	</div>
+																</td>
+															</tr>
+														</table>
+													</div>
+													<div class="card p-2 mt-0">
+														<form>
+															<div class="content-header">
+																<!-- Modal Header -->
+																<div class="form-modal-header"></div>
+																<div class="row">
+																	<div class="col-md-12 d-flex justify-content-end"
+																		id="notificationBox" style="margin: 4px 0px"></div>
+																</div>
+																<div class="row">
+																	<div class="col-md-6">
+																		<div class="form-group">
+																			<label>Schedule Date</label>
+																			<div class="form-group calendar_box">
+																				<input type="text" id="scheduleDate"
+																					placeholder="Schedule Date" class="form-control"
+																					readonly> <i
+																					class="ti-calendar picker_calendar"
+																					id="scheduleDateCalendar"
+																					style="top: 12px; right: 5px;"></i>
+																			</div>
+																		</div>
+																	</div>
+
+																</div>
+
+															</div>
+														</form>
+													</div>
+												</div>
+											</div>
+
+
+											<div id="pp" class="tab-pane  h-100 p-2">
+
+												<div class="requisition-tbl d-flex flex-column h-100">
+
+													<div class="mb-2">
+														<table class="table table-bordered mb-0" width="100%">
+															<tbody>
+																<tr valign="middle">
+																	<td width="50%"><strong><div
+																				class="col-md-12 requisition_ids_text">
+																				<span id="vendorNameText"></span> <input
+																					type="hidden" id="modeOfPayment" /> <input
+																					type="hidden" id="activeTabId" />
+																			</div></strong></td>
+																	<td>
+																		<div class="d-flex justify-content-end flxwrap">
+																			<div class="mr-2" id="parentSaveBtn">
+																				<button class="btn btn-primary edit-btn" id="payment_save_btn"
+																					onclick="addPaymentInfo()" type="button">Save</button>
+																			</div>
+																		</div>
+
+																	</td>
+																</tr>
+															</tbody>
+														</table>
+													</div>
+													<div class="card p-2 mt-0">
+														<form>
+															<div class="content-header">
+																<!-- Modal Header -->
+																<div class="form-modal-header"></div>
+																<div class="row">
+																	<div class="col-md-12 d-flex justify-content-end"
+																		id="notificationBox" style="margin: 4px 0px"></div>
+																</div>
+																<div class="row d-none"
+																	id="payment-process-parent-container">
+																	<div class="col-lg-12">
+																		<div class="subheading heading debit">Debited To</div>
+																		<table class="tbll table table-bordered mb-0"
+																			id="debitMyTable" width="100%" border="0"
+																			cellspacing="2" cellpadding="5">
+																			<thead class="tablenewhead">
+																				<tr>
+																					<th th:width="'45%'" style="text-align: left;">Account
+																						Ledger</th>
+																					<th th:width="'45%'" style="text-align: right;">Amount</th>
+																				</tr>
+																			</thead>
+																			<tbody id="debitTbodyData">
+
+																				<tr class="tr_clone" th:if="${id}"
+																					th:each="a,iter:${spaTableStaff}">
+																					<td><input type="text"
+																						id="debitAccountSubGroup_0"
+																						class="form-control debitAccountSubGroupCls"
+																						onkeyup="debitSubGroup(this.id);"
+																						autocomplete="off">
+																						<div id="suggesstion-box1_0"></div> <input
+																						type="hidden" id="debitAccountGroupId_0"
+																						class="form-control debitAccountGroupIdCls" />
+																					<td><input type="text" id="debitAmount_"
+																						class="form-control debitAmountCls"
+																						onkeyup="getFromSubtotal();" autocomplete="off">
+																					</td>
+																					<td style="vertical-align: baseline;"
+																						th:align="center">
+																						<button th:if="${iter.size == iter.index+1}"
+																							type="button"
+																							class="btn btn-primary tr_clone_add" name="add"
+																							onclick="debitCheckEmpty();">
+																							<span class="ti-plus"></span>
+																						</button>&nbsp;
+																						<button th:if="${iter.size != 1}" type="button"
+																							class="btn btn-warning rmv" name="Remove">
+																							<span class="ti-minus"></span>
+																						</button>
+																					</td>
+																				</tr>
+																				<tr class="tr_clone" th:unless="${id}" id="debit_0">
+																					<td><input type="text"
+																						id="debitAccountSubGroup_0"
+																						class="form-control debitAccountSubGroupCls"
+																						onkeyup="debitSubGroup(this.id);"
+																						autocomplete="off">
+																						<div id="suggesstion-box1_0"></div> <input
+																						type="hidden" id="debitAccountGroupId_0"
+																						class="form-control debitAccountGroupIdCls" /> <!-- <span id="currentBalance">234</span> -->
+																					<td><input type="text" id="debitAmount_0"
+																						class="form-control debitAmountCls"
+																						onblur="changeToDecimal(this),getFromSubtotal() ;"
+																						oninput="formatAmount(this);" autocomplete="off">
+																					</td>
+																					<td style="vertical-align: baseline;"
+																						th:align="center">
+																						<button type="button"
+																							class="btn btn-primary tr_clone_add" name="add"
+																							onclick="debitCheckEmpty();">
+																							<span class="ti-plus"></span>
+																						</button>&nbsp;
+																					</td>
+																				</tr>
+
+																			</tbody>
+
+																		</table>
+
+																		<div class="form-group subheading"
+																			style="text-align: center;">
+																			<label>Sub Total :</label> <label
+																				id="fromTotalAmount"></label>
+																		</div>
+
+																	</div>
+
+																	<div class="col-lg-12">
+																		<!-- id="table-data" -->
+																		<div class="subheading heading credit">Credited
+																			To</div>
+																		<table class="tbll table table-bordered mb-0"
+																			id="creditMyTable" width="100%" border="0"
+																			cellspacing="2" cellpadding="5">
+																			<thead class="tablenewhead">
+																				<tr>
+																					<th th:width="'45%'" style="text-align: left;">Account
+																						Ledger</th>
+																					<!-- <th>Name</th> -->
+																					<th th:width="'45%'" style="text-align: right;">Amount</th>
+																					<th th:width="'10%'">Action</th>
+																				</tr>
+																			</thead>
+																			<tbody id="creditTbodyData">
+																				<tr class="tr_clone" th:if="${id}"
+																					th:each="a,iter:${spaTableStaff}">
+																					<td><input type="text"
+																						id="creditAccountSubGroup_0"
+																						class="form-control creditAccountSubGroupCls"
+																						onkeyup="creditSubGroup(this.id);"
+																						autocomplete="off">
+																						<div id="suggesstion-box2_0"></div> <input
+																						type="hidden" id="creditAccountGroupId_0"
+																						class="form-control creditAccountGroupIdCls" />
+																					<td><input type="text" id="creditAmount_"
+																						class="form-control creditAmountCls"
+																						onkeyup="getToSubtotal();" autocomplete="off"></td>
+																					<td style="vertical-align: baseline;"
+																						th:align="center">
+																						<button th:if="${iter.size == iter.index+1}"
+																							type="button"
+																							class="btn btn-primary tr_clone_add" name="add"
+																							onclick="creditCheckEmpty();">
+																							<span class="ti-plus"></span>
+																						</button>&nbsp;
+																						<button th:if="${iter.size != 1}" type="button"
+																							class="btn btn-warning rmv" name="Remove">
+																							<span class="ti-minus"></span>
+																						</button>
+																					</td>
+																				</tr>
+																				<tr class="tr_clone" th:unless="${id}" id="credit_0">
+																					<td><input type="text"
+																						id="creditAccountSubGroup_0"
+																						class="form-control creditAccountSubGroupCls"
+																						onkeyup="creditSubGroup(this.id);"
+																						autocomplete="off">
+																						<div id="suggesstion-box2_0"></div> <input
+																						type="hidden" id="creditAccountSubGroupId_0"
+																						class="form-control creditAccountGroupIdCls" />
+																					<td><input type="text" id="creditAmount_0"
+																						class="form-control creditAmountCls"
+																						oninput="formatAmount(this);"
+																						onblur="changeToDecimal(this),getToSubtotal() ;"
+																						autocomplete="off"></td>
+																					<td style="vertical-align: baseline;"
+																						th:align="center">
+																						<button type="button"
+																							class="btn btn-primary tr_clone_add" name="add"
+																							onclick="creditCheckEmpty();">
+																							<span class="ti-plus"></span>
+																						</button>&nbsp;
+																					</td>
+																				</tr>
+																			</tbody>
+																		</table>
+
+																		<div class="form-group subheading"
+																			style="text-align: center;">
+																			<label>Sub Total :</label> <label id="toTotalAmount"></label>
+																		</div>
+																	</div>
+
+																	<div class="row pt-lg-5">
+
+																		<div class="col-md-6">
+																			<div class="form-group">
+																				<label>Cost Center</label>
+																				<div>
+																					<select class="form-select" id="costCenter">
+																						<option value="">Select</option>
+																						<option th:each="c,iter:${ccList}"
+																							th:value="${c.key}" th:text="${c.name}"></option>
+																					</select>
+																				</div>
+																			</div>
+
+																		</div>
+																		<div class="col-md-6">
+																			<div class="form-group" style="position: relative;">
+																				<label>Voucher date</label> <input type="text"
+																					id="voucherDate" class="form-control"> <i
+																					class="ti-calendar picker_calendar"
+																					id="toDateCalendar3" style="right: 5px;"></i>
+																			</div>
+
+
+																		</div>
+
+																		<div class="col-md-12">
+																			<div class="form-group">
+																				<label>Narration</label>
+																				<div class="position-text">
+																					<textarea class="form-controlarea" id="description"
+																						onkeyup="textCount(event)"></textarea>
+																					<input type="hidden" id="journalVoucher">
+																					<div id="charNumSN" class="txtcounter"
+																						align="right">
+																						<span>0</span> characters
+																					</div>
+																				</div>
+																			</div>
+																		</div>
+																	</div>
+
+																</div>
+															</div>
+														</form>
+													</div>
+												</div>
+											</div>
+
+										</div>
+
+									</div>
+
+								</div>
+							</div>
+							<!--Tabbination 1 End-->
+
+						</div>
+
+					</div>
+				</div>
+
+			</div>
+		</div>
+	</div>
+</body>
+</html>

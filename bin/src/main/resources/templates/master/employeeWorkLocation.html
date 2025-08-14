@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<meta charset="ISO-8859-1">
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+/* .form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+} */
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+</style>
+
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(function(){
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+	
+		agGrid.simpleHttpRequest({
+			url : "work-location-view"
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReim').find('span').html(len);
+			gridOptions.api.setRowData(data);
+		}); 
+ 
+		$('#delete').attr("disabled", true);
+		$('#add').attr("disabled", false);
+		
+		$("#locationType").on("change", function(){
+			var loc = $("#locationType").val();
+			if(loc == 1){
+				$("#lat").show();
+				$("#lan").show();
+				$("#loct").show();
+			}else if(loc==0){
+				$("#lat").hide();
+				$("#lan").hide();
+				$("#loct").show();
+			}
+			else{
+				$("#lat").hide();
+				$("#lan").hide();
+				$("#loct").hide();
+			}
+			})
+	});
+	
+	//For Employee Table Search Bar
+	function onQuickFilterChanged() {
+		gridOptions.api.setQuickFilter(document
+				.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	
+	var colmnDefs = [
+		{
+			headerCheckboxSelection : true,
+			headerCheckboxSelectionFilteredOnly : true,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true
+		},{
+			headerName : "Employee Id",
+			field : "empId",
+			 cellRenderer : function(params) {
+					return '<a id="" onclick=editDetails("' + params.data.locId
+							+ '") href="javascript:void(0)">'
+							+ params.data.empId + '</a>';
+		       }
+			
+		}, {
+			headerName : 'Name',
+			field : "name"
+		}, {
+			headerName : 'Location Type',
+			field : "locationType",
+			cellStyle : {
+				textAlign : 'center'
+			},
+			cellRenderer: function(params){
+			    if(params.data.locationType == 1){
+			    	return '<div style="color:#0642f5">GeoTag</div>';
+			    }else if(params.data.locationType == 0){
+			    	 return '<div style="color:#ffa500">City Wise</div>';
+			    }
+			    else{
+			    	return '<div style="color:#a9a9a9">Other</div>';
+			      }
+			}
+			
+		}, {
+			headerName : 'Location',
+			field : "location",
+			
+		},{
+			headerName : 'Longitude',
+			field : "longitude",
+		},  {
+			headerName : 'Latitude',
+			field : "latitude",
+		}, {
+			headerName : "Status",
+			field : "status",
+			cellRenderer: function(params){
+				    if(params.data.status == 1){
+				         return 'Active';
+				  } else{
+				         return 'Inactive';
+				         }
+				}
+			}  ];
+	
+var gridOptions = {
+	columnDefs : colmnDefs,
+	rowSelection : 'multiple',
+	onSelectionChanged : deleteDetails,
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 186,
+		height : 10
+	},
+
+};
+
+function Cancel(){
+	$('#add').attr('disabled', false);
+	$("#delete").show();
+	$("#myGrid").show();
+	$("#save").hide();
+	$("#cancel").hide();
+	
+}
+
+	function openNav(id) {
+		$('#add').attr('disabled', true);
+		$("#lat").hide();
+		$("#lan").hide();
+		$("#loct").hide();
+		document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto;";
+		document.getElementById("main_content").style.width = "75%";
+		$("#cancel").show();
+		$("#save").show();
+		$('#delete').hide();
+		getEmployeeList(id);
+	}
+	
+
+	function addDetails() {
+		$(".formValidation").remove();
+		obj = {};
+		var validation = true;
+		obj.locId = $("#locId").val();
+		obj.empId = $("#empId").val();
+		obj.name = $("#name").val();
+		obj.locationType = $("#locationType").val();	
+		
+		if (obj.name == null || obj.name == "") {
+			validation = validationUpdated("Employee Id is Required", "empId");
+		}
+		if (obj.locationType == null || obj.locationType == "") {
+			validation = validationUpdated("Location Type is Required", "locationType");
+		}
+		if(obj.locationType == "0"){
+			obj.location = $("#location").val();
+			obj.latitude = '';
+			obj.longitude = '';
+			if (obj.location == null || obj.location == "") {
+				validation = validationUpdated("Location is Required", "location");
+			}
+		}else if(obj.locationType == "1")
+		{
+			obj.location = $("#location").val();
+			obj.latitude = $("#latitude").val();
+			obj.longitude = $("#longitude").val();
+			if (obj.location == null || obj.location == "") {
+				validation = validationUpdated("Location is Required", "location");
+			}
+			if (obj.latitude == null || obj.latitude == "") {
+				validation = validationUpdated("Latitude is Required", "latitude");
+			}
+			if (obj.longitude == null || obj.longitude == "") {
+				validation = validationUpdated("Longitude is Required", "longitude");
+			}
+		}else{
+			obj.location = '';
+			obj.latitude = '';
+			obj.longitude = '';
+		}
+			
+		obj.status = $("#status").val();
+		if (obj.status == null || obj.status == "") {
+			validation = validationUpdated("Status is Required", "status");
+		}
+	
+		console.log(obj);
+		 if (validation) {
+			$.ajax({
+				type : "POST",
+				url : "work-location-add",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "success") {
+
+						$("#messageParagraph").text("Data Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$("#activityone").show();
+						$("#add").show();
+						$("#myGrid").show();
+						$("#cancel").hide();
+						$("#save").hide();
+						$("#form").hide();
+						$("#new").hide();
+						closeNav();
+
+						agGrid.simpleHttpRequest({
+							url : "work-location-view"
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+
+					}
+				},
+				error : function(data) {
+				}
+			}) 
+		}
+	}
+
+function editDetails(id) {
+		
+		$.ajax({
+			type : "GET",
+			url : "work-location-edit?Id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+					 openNav('edit') ;
+                    $("#empdiv").hide();
+					console.log(response)
+					$("#locId").val(response.body.locId);
+					$("#empId").val(response.body.empId);
+					$("#name").val(response.body.name);
+					$("#locationType").val(response.body.locationType);
+					if(response.body.locationType==1){
+						$("#lat").show();
+						$("#lan").show();
+						$("#loct").show();
+					}else if(response.body.locationType==0){
+						$("#lat").hide();
+						$("#lan").hide();
+						$("#loct").show();
+					}else{
+						$("#lat").hide();
+						$("#lan").hide();
+						$("#loct").hide();
+					}
+
+					$("#location").val(response.body.location);
+					$("#latitude").val(response.body.latitude);
+					$("#longitude").val(response.body.longitude);
+					$("#status").val(response.body.status);
+					
+						$("#myGrid").show();
+						$("#save").show();
+						$("#cancel").show();
+						$("#delete").hide();
+						
+				}
+
+			},
+			error : function(data) {
+				console.log(data)
+				
+				$("#locId").val("");
+				$("#empId").val("");
+				$("#name").val("");
+				$("#locationType").val("");
+				$("#location").val("");
+				$("#latitude").val("");
+				$("#longitude").val("");
+				$("#status").val("");
+				
+			}
+		});
+	}
+	
+	var deleteId = "";
+	function deleteDetails() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+
+		deleteId = "";
+		for (var i = 0; i < selectedRows.length; i++) {
+			deleteId = deleteId + '"' + selectedRows[i].reqId + '",';
+
+		}
+		deleteId = deleteId.substring(0, deleteId.length - 1);
+
+		var rowCount = 0;
+		selectedRows.forEach(function() {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#delete').attr("disabled", false);
+			$('#add').attr("disabled", true);
+ 
+		}else {
+			$('#delete').attr("disabled", true);
+			$('#add').attr("disabled", false);
+			
+		}
+
+	}
+	//Delete 
+	function deleteFun() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		 var id=selectedRows[0].locId;
+		
+		
+			$.ajax({
+				type : "POST",
+				url : "work-location-delete?id="+ id,
+				success : function(response) {
+				 if (response.message == "Success") {
+					 agGrid.simpleHttpRequest({
+							url : "work-location-view"
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+
+					 Cancel();
+				} 
+				},
+				error : function(data) {
+				console.log(data);
+				}
+			})
+	} 	
+	obj.locId = $("#locId").val();	
+	obj.empId = $("#empId").val();
+	obj.name = $("#name").val();
+	obj.locationType = $("#locationType").val();
+	obj.location = $("#location").val();
+	obj.latitude = $("#latitude").val();
+	obj.longitude = $("#longitude").val();
+	obj.status = $("#status").val();
+	
+	function closeNav() {
+		$("#locId").val("");
+		$("#empId").val("");
+		$("#name").val("");
+		$("#locationType").val("");
+		$("#location").val("");
+	    $("#latitude").val("");
+		$("#longitude").val("");
+		$("#status").val("");
+		
+	    $('#delete').show();
+		$('#add').attr('disabled', false);
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main_content").style.width = "100%";
+	}
+	
+	function getName() {
+
+		var EmpId = $("#empId").val();
+		if (EmpId) { 
+			$.ajax({
+				type : 'GET',
+				url : 'work-location-name-ajax?name='
+						+ EmpId,
+				contentType : false,
+				success : function(response) {
+					if (response.message == "success") {
+						console.log(response);
+						for (var i = 0; i < response.body.length; i++) {
+							$("#name").val(response.body[i].name);
+							
+
+						}
+					}
+				},
+				error : function(e) {
+
+				}
+			});
+		} else {
+			$("#name").val("");
+			
+
+		}
+
+	}
+
+
+</script>
+<!-- Add the this google map apis to webpage -->
+<script
+	src="https://maps.googleapis.com/maps/api/js?v=3.exp&key=AIzaSyD-o-8txzrqCvKZaf35i-zILm2ooG851uE&libraries=places"></script>
+
+<script>
+/* google.maps.event.addDomListener(window, 'load', initialize);
+function initialize() {
+var input = document.getElementById('location');
+var autocomplete = new google.maps.places.Autocomplete(input);
+autocomplete.addListener('place_changed', function () {
+var place = autocomplete.getPlace();
+// place variable will have all the information you are looking for.
+ 
+  console.log(document.getElementById("latitude").value = place.geometry['location'].lat());
+  document.getElementById("longitude").value = place.geometry['location'].lng();
+});
+} */
+
+function getEmployeeList(id) {
+	var type =id;
+	if (type) {
+		$.ajax({
+			type : "GET",
+			url : "work-location-employee-list?type="+ type,
+			contentType : false,
+			success : function(response) {
+				console.log(response);
+				if (response.message == "success") {
+					$("#empId").empty();
+					$("#empId")
+							.append("<option value=''>Select</option>");
+					for (var i = 0; i < response.body.length; i++) {
+						var option = $("<option></option>");
+						$(option).val(response.body[i].key);
+						$(option).html(response.body[i].key);
+						$("#empId").append(option);
+					}
+				}
+			},
+			error : function(data) {
+				console.log(data);
+				$("#empId").empty();
+				$("#empId").append("<option value=''>Select</option>");
+
+			}
+		})
+	} else {
+		$("#empId").empty();
+		$("#empId").append("<option value=''>Select</option>");
+	}
+
+}
+</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div id="main_content">
+							<!-- <div>
+						     <h3> Enter an adress and press the button</h3>
+						 
+						    <input id="address" type="text" placeholder="Enter address here" />
+						    <div>
+						        <p>Latitude:
+						            <input type="text" id="latitude" readonly />
+						        </p>
+						        <p>Longitude:
+						            <input type="text" id="longitude" readonly />
+						        </p>
+						    </div>
+						</div> -->
+							<div class="row">
+								<div class="col-md-4 btn-hs">
+									<div class="font-design" id="totalReim">
+										Employee Work Location(<span></span>)
+									</div>
+								</div>
+								<div class="col-md-4  btn-hs" id="searchDiv">
+									<div class="input-style">
+										<input type="text" placeholder="Search.." name="search"
+											class="searchboxinput" onkeyup="cancelBar()"
+											oninput="onQuickFilterChanged()" id="quickFilter"
+											autocomplete="off">
+										<div class="searchicon">
+											<a href="javascript: void(0)"><span
+												style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+												id="closeKey"
+												onclick="gridOptionsEmployee.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+												class="close_i"><i class="ti-close srchicon"></i></span></a><a
+												href="javascript: void(0)"><i class="ti-search srchicon"></i></a>
+										</div>
+									</div>
+
+								</div>
+								<div class="col-md-4 buttonsec btn-hs">
+									<button class="btn1" id="add" onclick="openNav('add')">New</button>
+									<button id="delete" onclick="deleteFun()" class="btn3">DELETE</button>
+								</div>
+							</div>
+
+
+							<div id="mySidenav" class="sidenav">
+								<div class="slidebox">
+									<div class="row">
+										<div class="col-md-10 edit">Work Location Details</div>
+										<div class="col-md-2">
+											<div class="arrow">
+												<a href="javascript:void(0)" class="closebtn"
+													onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+											</div>
+										</div>
+									</div>
+									<div class="row">
+										<div class="col-md-12 buttonsec btn-hs">
+											<button class="btn4" id="cancel" onclick="closeNav()">Cancel</button>
+											<button class="btn1" type="submit" id="save" value="add"
+												onclick="addDetails()">Save</button>
+
+											<!-- saveClrncDetails() -->
+
+										</div>
+									</div>
+
+									<!--    hidden id  -->
+
+									<input type="hidden" id="locId">
+
+									<div class="row">
+										<div class="col-md-12" id="empdiv">
+											<div class="form-group">
+												<label> Employee ID</label>
+												<div class="select">
+													<select id="empId" class="form-control"
+														onchange="getName()">
+														<option value="">--Select--</option>
+														<option th:each="c,iter:${employeeId}" th:value="${c.key}"
+															th:text="${c.key}"></option>
+													</select>
+												</div>
+											</div>
+										</div>
+										<div class="col-md-12">
+											<div class="form-group">
+												<label>Name</label> <input id="name" class="form-control"
+													readonly>
+											</div>
+										</div>
+
+									</div>
+
+									<div class="row">
+										<div class="col-md-12">
+											<div class="form-group">
+												<label>Location Type</label>
+												<div class="select">
+													<select id="locationType" class="form-control">
+														<option value="">Select</option>
+														<option value="1">GeoTag</option>
+														<option value="0">City Wise</option>
+														<option value="2">Other</option>
+													</select>
+												</div>
+											</div>
+										</div>
+
+
+
+
+										<div class="col-md-12" id="loct">
+											<div class="form-group">
+												<label>Location</label> <input type="text"
+													class="form-control" id="location">
+											</div>
+										</div>
+										<div class="col-md-12" id="lan">
+											<div class="form-group">
+												<label>Longitude</label> <input type="text"
+													class="form-control" id="longitude">
+											</div>
+										</div>
+										<div class="col-md-12" id="lat">
+											<div class="form-group">
+												<label>Latitude</label> <input type="text"
+													class="form-control" id="latitude">
+											</div>
+										</div>
+
+										<div class="col-md-12">
+											<div class="form-group">
+												<label>Status</label>
+												<div class="select">
+													<select id="status" class="form-control">
+														<option value="">Select</option>
+														<option value="1">Active</option>
+														<option value="0">Inactive</option>
+													</select>
+												</div>
+											</div>
+										</div>
+
+									</div>
+
+								</div>
+							</div>
+							<div id="myGrid" style="width: 100%; height: 500px;"
+								class="ag-theme-alpine"></div>
+						</div>
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

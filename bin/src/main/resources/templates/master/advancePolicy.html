@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<meta charset="ISO-8859-1">
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+/* .form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+} */
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+</style>
+
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(function(){
+		 $("#delete").prop("disabled", true);
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		
+//	     date format Expense Date
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#expenseDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#date').val($(this).val());
+		})
+
+		$('#date').blur(function() {
+			$("#expenseDateCalendar").val($(this).val());
+		})
+
+		/* $("#expenseDateCalendar1").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#expenseDate').val($(this).val());
+		})
+
+		$('#expenseDate').blur(function() {
+			$("#expenseDateCalendar1").val($(this).val());
+		}) */
+		
+		
+
+		
+		
+		
+	
+		agGrid.simpleHttpRequest({
+			url : "advance-policy-view"
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReim').find('span').html(len);
+			gridOptions.api.setRowData(data);
+		}); 
+
+	});
+	
+	var colmnDefs = [
+		{
+			headerCheckboxSelection : true,
+			headerCheckboxSelectionFilteredOnly : true,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true
+		},{
+			headerName : "Requisition No",
+			field : "reqId",
+			 cellRenderer : function(params) {
+					return '<a id="" onclick=editId("' + params.data.reqId
+							+ '") href="javascript:void(0)">'
+							+ params.data.reqId + '</a>';
+		       }
+			
+		}, {
+			headerName : 'Date',
+			field : "date"
+		}, {
+			headerName : 'Loan Amount',
+			field : "loanamt"
+		}, {
+			headerName : 'Eligibility',
+			field : "eligibility",
+		}, {
+			headerName : 'Tenure(Monthly)',
+			field : "ternure",
+		}, {
+			headerName : 'Interest Rate',
+			field : "intrestRate",
+		},{
+			headerName : "Status",
+			field : "status",
+			cellRenderer: function(params){
+				    if(params.data.status == 1){
+				         return 'Active';
+				  } else{
+				         return 'Inactive';
+				         }
+				}
+			}  ];
+	
+var gridOptions = {
+	columnDefs : colmnDefs,
+	rowSelection : 'multiple',
+	onSelectionChanged : deleteDetails,
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 185,
+		height : 10
+	},
+
+};
+
+function Cancel(){
+	
+	$("#add").show();
+	$("#delete").show();
+	$("#myGrid").show();
+	$("#save").hide();
+	$("#cancel").hide();
+	
+}
+
+	//Open Nav for Exit Management
+	function openNav() {
+
+		document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto;";
+		document.getElementById("main_content").style.width = "75%";
+		$("#cancel").show();
+		$("#save").show();
+		$('#delete').hide();
+	}
+	
+
+	function addDetails() {
+		obj = {};
+		
+		obj.reqId = $("#reqId").val();
+		obj.date = $("#date").val();
+		obj.eligibility = $("#eligibility").val();
+		obj.loanamt = $("#loanamt").val();
+		obj.ternure = $("#ternure").val();
+		obj.intrestRate = $("#intrestRate").val();
+		obj.status=$("#status").val();
+		var validation = true;
+/* 
+		if (obj.placeName == null || obj.placeName == "") {
+			validation = validationUpdated("Place Name Required", "placeName");
+		}
+		if (obj.fromDate == null || obj.fromDate == "") {
+			validation = validationUpdated("From Date Required", "fromDate");
+		}
+		if (obj.toDate == null || obj.toDate == "") {
+			validation = validationUpdated("To Date Required", "toDate");
+		}
+		if (obj.advanceReq == "1") {
+			validation = validationUpdated("Advance Amount Required",
+					"advanceAmount");
+		} */
+		if (validation) {
+			$.ajax({
+				type : "POST",
+				url : "advance-policy-add",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "Success") {
+
+						$("#messageParagraph").text("Data Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$("#activityone").show();
+						//$("#activity").show();
+						$("#add").show();
+						$("#myGrid").show();
+						$("#cancel").hide();
+						$("#save").hide();
+						$("#form").hide();
+						$("#new").hide();
+						closeNav();
+
+						agGrid.simpleHttpRequest({
+							url : "advance-policy-view"
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+
+					}
+				},
+				error : function(data) {
+				}
+			})
+		}
+	}
+
+	function editId(id)
+	 {
+ 
+		//$("#add").hide();
+		//$("#myGrid").show();
+		//$("#cancel").show();
+		//$("#save").show();
+		//$("#form").show();
+		//$("#new").hide();
+		   
+	$.ajax({
+		type : "POST",
+		url : "advance-policy-edit?Id=" + id,
+		dataType : 'json',
+		contentType : 'application/json',
+		data : id,
+			success : function(response) {
+				if (response.message == "success") {
+					
+				console.log("edit", response.body)
+				$("#reqId").val(response.body[0].reqId);
+				$("#date").val(response.body[0].date);
+				$("#eligibility").val(response.body[0].eligibility);
+				$("#loanamt").val(response.body[0].loanamt);
+				$("#ternure").val(response.body[0].ternure);
+				$("#intrestRate").val(response.body[0].intrestRate);
+				$("#status").val(response.body[0].status);
+				openNav();
+			}
+		},
+		
+		error : function(data) {
+			console.log(data)
+			$("#reqId").val("");
+			$("#date").val("");
+			$("#eligibility").val("");
+			$("#loanamt").val("");
+			$("#ternure").val("");
+			$("#intrestRate").val("");
+			$("#status").val("");
+		}
+	});
+
+	}
+	
+	var deleteId = "";
+	function deleteDetails() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+
+		deleteId = "";
+		for (var i = 0; i < selectedRows.length; i++) {
+			deleteId = deleteId + '"' + selectedRows[i].reqId + '",';
+
+		}
+		deleteId = deleteId.substring(0, deleteId.length - 1);
+
+		var rowCount = 0;
+		selectedRows.forEach(function() {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#delete').attr("disabled", false);
+			$('#add').hide();
+		if (rowCount == 1) {
+			$('#add').hide();
+		}
+		}else {
+			$('#delete').attr("disabled", true);
+			$('#add').show();
+			
+		}
+
+	}
+	//Delete 
+	function deleteFun() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		 var id=selectedRows[0].reqId;
+		
+		
+			$.ajax({
+				type : "POST",
+				url : "advance-policy-delete?id="+ id,
+				success : function(response) {
+				 if (response.message == "Success") {
+					 agGrid.simpleHttpRequest({
+							url : "advance-policy-view"
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+
+					 Cancel();
+				} 
+				},
+				error : function(data) {
+				console.log(data);
+				}
+			})
+	} 	
+		
+	
+	
+	function closeNav() {
+		$("#advancePId").val("");
+		$("#reqId").val("");
+		$("#date").val("");
+		$("#eligibility").val("");
+	    $("#loanamt").val("");
+		$("#ternure").val("");
+		$("#intrestRate").val("");
+	    $("#status").val("");
+	    $('#delete').show();
+	    $('#add').show();
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main_content").style.width = "100%";
+	}
+	
+
+
+</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div id="main_content">
+							<div class="row">
+								<div class="col-md-6 btn-hs">
+									<div class="font-design" id="totalReim">
+										Total Requisition(<span></span>)
+									</div>
+								</div>
+								<div class="col-md-6 buttonsec btn-hs">
+									<button class="btn1" id="add" onclick="openNav()">New</button>
+									<button id="delete" onclick="deleteFun()" class="btn3">DELETE</button>
+								</div>
+							</div>
+
+
+							<div id="mySidenav" class="sidenav">
+								<div class="slidebox">
+									<div class="row">
+										<div class="col-md-10 edit">Details</div>
+										<div class="col-md-2">
+											<div class="arrow">
+												<a href="javascript:void(0)" class="closebtn"
+													onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+											</div>
+										</div>
+									</div>
+									<div class="row">
+										<div class="col-md-12 buttonsec btn-hs">
+											<button class="btn4" id="cancel" onclick="closeNav()">Cancel</button>
+											<button class="btn1" type="submit" id="save" value="add"
+												onclick="addDetails()">Save</button>
+
+											<!-- saveClrncDetails() -->
+										</div>
+									</div>
+									<!-- -------------------------------Travels--------------------------------------------------------- -->
+									<input type="hidden" id="advancePId">
+									<input type="hidden" id="reqId">
+
+
+
+									<div class="row">
+										<div class="col-md-12">
+											<div class="form-group calendar_box">
+												<label>Date</label> <input type="text" id="date"
+													class="form-control" onblur="removeValid(event)"
+													th:attr="onkeyup=|formatDate('date','${session.DATEFORMAT_JS}')|" readonly>
+												<i class="ti-calendar picker_calendar"
+													id="expenseDateCalendar"></i>
+											</div>
+										</div>
+									</div>
+
+									<div class="row">
+										<div class="col-md-12">
+											<div class="form-group">
+												<label> Eligibility</label>
+												<div class="select">
+													<select id="eligibility">
+														<option value="">--Select--</option>
+														<option th:each="c,iter:${requisitionList}"
+															th:value="${c.key}" th:text="${c.name}"></option>
+													</select>
+												</div>
+
+
+											</div>
+										</div>
+
+										<div class="col-md-12">
+											<div class="form-group">
+												<label>Loan Amount</label><input type="text"
+													class="form-control" id="loanamt">
+											</div>
+										</div>
+									</div>
+									<div class="row">
+										<div class="col-md-12">
+											<div class="form-group">
+												<label>Tenure(Monthly)</label> <input type="text"
+													class="form-control" id="ternure">
+											</div>
+										</div>
+
+										<div class="col-md-12">
+											<div class="form-group">
+												<label>Intrest Rate</label> <input type="text"
+													class="form-control" id="intrestRate">
+											</div>
+										</div>
+										<div class="col-md-12">
+											<div class="form-group">
+												<label>Status</label>
+												<div class="select">
+													<select id="status" class="form-control">
+														<option value="">Select</option>
+														<option value="1">Active</option>
+														<option value="0">Inactive</option>
+													</select>
+												</div>
+											</div>
+										</div>
+
+
+									</div>
+
+								</div>
+							</div>
+							<div id="myGrid" style="width: 100%; height: 500px;"
+								class="ag-theme-alpine"></div>
+						</div>
+
+
+
+
+					</div>
+					<!-- ------------------------------------------------Modal-------------------------------------------------------------------------- -->
+
+
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

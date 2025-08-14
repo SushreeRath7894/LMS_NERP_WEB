@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+
+<head>  
+<script>
+$(document).ready(function() {
+
+	////
+	
+	agGridEmployee();
+	var currentYear = (new Date()).getFullYear();
+	var currentMonth = (new Date()).getMonth();
+	//alert(currentMonth+1);
+	var dropdownAwardYear = document.getElementById("dropdownYear").options;
+	for(i=0;i <= dropdownAwardYear.length;i++){
+		if(dropdownAwardYear[i].value==currentYear){
+			$("#dropdownYear").val(currentYear);
+			
+		}
+	}
+	
+	var dataset = [];
+	gridOptions.api.forEachNode(function(rowNode,index){
+		dataset.push(rowNode.data)
+	})
+	submitTimeSheet(dataset);
+			
+	//getMonthWeeks(currentMonth+1);
+	//agGridTotalProject();
+
+	
+	/* var dropdownAwardYear = document.getElementById("dropdownAwardYear");
+	
+	for (i = startYear; i <= endYear; i++) {
+		newOption = document.createElement("option");
+		newOption.value = i;
+		newOption.label = i;
+		if (i == currentYear) {
+			newOption.selected = true;
+		}
+		dropdownAwardYear.appendChild(newOption);
+	} */
+	
+});
+
+	//ag grid  for contact end
+	//ag grid for vendor master start
+	var columnVendorDefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+	 		{
+				headerName : "Employee Id",
+				field : "empId",
+				 cellRenderer : function(params) {
+					return '<a onclick=timesheetDetails("' + params.data.empId
+							+'","'+ params.data.empName+ '") href="javascript:void(0)">'
+							+ params.data.empId + '</a>';
+					 
+				} 
+			}, 
+			{
+				headerName : "Name",
+				field : "empName",
+				type : "rightAligned"
+
+			}, 
+			{
+				headerName : "Type",
+				field : "empStatus",
+				type : "rightAligned"
+
+			}, 
+			{
+				headerName : "Jan",
+				field : "janHour",
+				type : "rightAligned"
+
+			}, 
+			{
+				headerName : "Feb",
+				field : "febHour",
+				type : "rightAligned"
+
+			}, 
+			{
+				headerName : "March",
+				field : "marchHour",
+				type : "rightAligned"
+
+			}, 
+			{
+				headerName : "April",
+				field : "aprilHour",
+				type : "rightAligned"
+
+			}, 
+			{
+				headerName : "May",
+				field : "mayHour",
+				type : "rightAligned"
+
+			}, 
+			{
+				headerName : "June",
+				field : "juneHour",
+				type : "rightAligned"
+
+			}, 
+			{
+				headerName : "July",
+				field : "julyHour",
+				type : "rightAligned"
+
+			}, 
+			{
+				headerName : "August",
+				field : "augHour",
+				type : "rightAligned"
+
+			}, 
+			{
+				headerName : "Sept",
+				field : "sepHour",
+				type : "rightAligned"
+
+			}, 
+			{
+				headerName : "Oct",
+				field : "octHour",
+				type : "rightAligned"
+
+			}, 
+			{
+				headerName : "Nov",
+				field : "novHour",
+				type : "rightAligned"
+
+			}, 
+			{
+				headerName : "Dec",
+				field : "decHour",
+				type : "rightAligned"
+
+			}/* , 
+			{
+				headerName : "Created Date",
+				field : "createdon",
+				type : "rightAligned"
+
+			}  */ ];
+
+	var gridEmployeeOptions = {
+		columnDefs : columnVendorDefs,
+		rowSelection : 'multiple',
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 149,
+			height : 10
+		},
+		rowSelection : 'single',
+		onSelectionChanged: newTimeSheet
+	};
+	function newTimeSheet(){
+		var selectedRows = gridEmployeeOptions.api.getSelectedRows();
+		
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+		
+		if (rowCount > 0) {
+		$('#newBtn').attr("disabled", false);
+		$('#deleteBtn').attr("disabled", false);
+		} else{
+		$('#newBtn').attr("disabled", true);
+		$('#deleteBtn').attr("disabled", true);
+		}
+	}
+	//setup the grid after the page has finished loading
+	document.addEventListener('DOMContentLoaded', function() {
+		var gridVendorDiv = document.querySelector('#myEmployee');
+		new agGrid.Grid(gridVendorDiv, gridEmployeeOptions);
+
+
+	});
+	function agGridEmployee() {
+		$('#newBtn').attr("disabled", true);
+		$('#deleteBtn').attr("disabled", true);
+		
+		agGrid.simpleHttpRequest({
+			url : "time-sheet-view-manage-employee-master-through-ajax"
+		}).then(function(data) {
+			//console.log(JSON.stringify(data))
+			var len = data.length;
+			$('#totalEmp').find('span').html(len);
+			gridEmployeeOptions.api.setRowData(data);
+		});
+	}
+function projectDetails(week){
+	
+	var id=$("#empId").attr("value");	
+	var year=  $("#dropdownYear").val();
+	
+	var month=week.split("-");
+	var monthdata=month[1];
+	var currentDate = new Date();
+	var currentMonth = currentDate.getMonth() + 1;
+	if (currentMonth < 10)
+	{ 
+		currentMonth = '0' + currentMonth;
+	}
+	
+	//getMonthWeeks(currentMonth);
+	//var week=$(".datebtn").html();
+	
+	data = [id,year,monthdata,week];
+
+	//var empId=$("#empId").val();
+	var totalAllocated=0;
+	var totalUsed=0;
+	var totalUsed=0;
+	var finalAvailable=0;
+	var totalMon=0;
+	var totalTue=0;
+	var totalWed=0;
+	var totalThu=0;
+	var totalFri=0;
+	var totalSat=0;
+	var totalSun=0;
+	var totalProject=0;
+	$.ajax({
+		type : "POST",
+		url : "time-sheet-get-project-list", 
+		dataType : 'json',
+		contentType : 'application/json',
+		data : JSON.stringify(data),
+		success : function(response) {
+			if (response.message == "Success") {
+				console.log("project"+response);
+				$("#projectList").empty();
+				var currDate=$(".datebtn").html();
+				
+				Date.prototype.addDay = function(days) {
+				var date = new Date(this.valueOf());
+			
+				date.setDate(date.getDate() + days);
+				return date;
+				}
+
+				function getDate(strDate, stpDate) {
+				var dArray = new Array();
+				var cDate = strDate;
+				while (cDate <= stpDate) {
+
+				dArray.push(formatDate(new Date(cDate)));
+
+				cDate = cDate.addDay(1);
+				}
+				return dArray;
+				}
+				function formatDate(date) {
+				    var d = new Date(date),
+				        month = '' + (d.getMonth() + 1),
+				        day = '' + d.getDate(),
+				        year = d.getFullYear();
+
+				    if (month.length < 2) 
+				        month = '0' + month;
+				    if (day.length < 2) 
+				        day = '0' + day;
+
+				    return [year, month, day].join('-');
+				}
+				$(document).ready(function() {
+				var startDate = new Date(currDate);
+				var endDate = startDate.addDay(7);
+				var list = getDate(startDate,endDate);
+			
+				for(i=0;i<list.length;i++){
+					
+					$("#monDate").html(list[0]+'<br><span>'+'MON'+'</span>');	
+					$("#tueDate").html(list[1]+'<br><span>'+'TUE'+'</span>');	
+					$("#wedDate").html(list[2]+'<br><span>'+'WED'+'</span>');	
+					$("#thuDate").html(list[3]+'<br><span>'+'THU'+'</span>');	
+					$("#friDate").html(list[4]+'<br><span>'+'FRI'+'</span>');	
+					$("#satDate").html(list[5]+'<br><span>'+'SAT'+'</span>');	
+					$("#sunDate").html(list[6]+'<br><span>'+'SUN'+'</span>');	
+					
+				}
+				})
+				
+				 for (var i = 0; i < response.body.length; i++) {
+						var projectAllocated=response.body[i].projectAllocated;
+					    totalAllocated = totalAllocated+parseInt(projectAllocated);
+					    var used=response.body[i].projectUsed;
+					    totalUsed = totalUsed+parseInt(used);
+					    var available = response.body[i].projectAvailable;
+					    finalAvailable = finalAvailable + parseInt(available);
+					    var monday = response.body[i].monday;
+					    totalMon = totalMon + parseInt(monday);
+					    var tuesday = response.body[i].tuesday;
+					    totalTue = totalTue + parseInt(tuesday);
+					    var wedday = response.body[i].wedday;
+					    totalWed = totalWed + parseInt(wedday);
+					    var thursday = response.body[i].thursday;
+					    totalThu = totalThu + parseInt(thursday);
+					    var friday = response.body[i].friday;
+					    totalFri = totalFri + parseInt(friday);
+					    var saturday = response.body[i].saturday;
+					    totalSat = totalSat + parseInt(saturday);
+					    var sunday = response.body[i].sunday;
+					    totalSun = totalSun + parseInt(sunday);
+					    var totalProjectDays = response.body[i].totalProjectDays;
+					    totalProject = totalProject + parseInt(totalProjectDays);
+					var tbl = '<tr id="proTr"><td bgcolor="#F6f8f8" width="50" class="tdwhite projectCls" value="'+response.body[i].projectId+'">'+response.body[i].projectName+'<input type="hidden" class="proDetailsIdCls"  id="proDetailsId_'+i+'" value="'+response.body[i].proDetailsId+'"></td>'+
+						'<td bgcolor="#F6f8f8" align="right" width="50"  class="allocateHourCls" id="allocated_'+i+'">'+response.body[i].projectAllocated+'</td>'+
+						'<td bgcolor="#F6f8f8" align="right" width="50" class="usedCls" id="used_'+i+'">'+response.body[i].projectUsed+'</td>'+
+						'<td bgcolor="#F6f8f8" align="right" width="50" class="availableCls" id="available_'+i+'">'+response.body[i].projectAvailable+'</td>'+
+						'<td bgcolor="#FFFFFF" align="right" width="50" class="tdwhite monCls"><input type="text" align="right" class="days mon" id="mon_'+i+'" value="'+response.body[i].monday+'" onkeyup="totalHour(event);checkInt(event);"></td>'+
+						'<td bgcolor="#F6f8f8" align="right" width="50" class="tdwhite tueCls"><input type="text" align="right" class="days tue" id="tue_'+i+'" value="'+response.body[i].tuesday+'" onkeyup="totalHour(event);checkInt(event);"></td>'+
+						'<td bgcolor="#F6f8f8" align="right" width="50" class="tdwhite wedCls"><input type="text" align="right" class="days wed" id="wed_'+i+'" value="'+response.body[i].wedday+'" onkeyup="totalHour(event);checkInt(event);"></td>'+
+						'<td bgcolor="#F6f8f8" align="right" width="50"  class="tdwhite thuCls"><input type="text" align="right" class="days thu" id="thu_'+i+'" value="'+response.body[i].thursday+'" onkeyup="totalHour(event);checkInt(event);"></td>'+
+						'<td bgcolor="#F6f8f8" align="right" width="50"  class="tdwhite friCls"><input type="text" align="right" class="days fri" id="fri_'+i+'" value="'+response.body[i].friday+'" onkeyup="totalHour(event);checkInt(event);"></td>'+
+						'<td bgcolor="#F6f8f8" align="right" width="50"  class="tdwhite satCls"><input type="text" align="right" class="days sat" id="sat_'+i+'" value="'+response.body[i].saturday+'" onkeyup="totalHour(event);checkInt(event);"></td>'+
+						'<td bgcolor="#F6f8f8" align="right" width="50"  class="tdwhite sunCls"><input type="text" align="right" class="days sun" id="sun_'+i+'" value="'+response.body[i].sunday+'" onkeyup="totalHour(event);checkInt(event);"></td>'+
+						'<td bgcolor="#F6f8f8" align="right" class="total" value="" id="total_'+i+'">'+response.body[i].totalProjectDays+'</td></tr>';
+					
+					 $("#projectList").append(tbl);
+				}
+				var tbl2='<tr><td bgcolor="#F6f8f8" width="50" >Total</td>'+
+				'<td bgcolor="#F6f8f8" align="right" width="50" id="finalAllocated">'+totalAllocated+'</td>'+
+				'<td bgcolor="#F6f8f8" align="right" width="50" id="finalUsed">'+totalUsed+'</td>'+
+				'<td bgcolor="#F6f8f8" align="right" width="50" id="finalAvailable">'+finalAvailable+'</td>'+
+				'<td bgcolor="#FFFFFF" align="right" width="50" id="finalMon">'+totalMon+'</td>'+
+				'<td bgcolor="#F6f8f8" align="right" width="50" id="finalTue">'+totalTue+'</td>'+
+				'<td bgcolor="#F6f8f8" align="right" width="50" id="finalWed">'+totalWed+'</td>'+
+				'<td bgcolor="#F6f8f8" align="right" width="50" id="finalThu">'+totalThu+'</td>'+
+				'<td bgcolor="#F6f8f8" align="right" width="50" id="finalFri">'+totalFri+'</td>'+
+				'<td bgcolor="#F6f8f8" align="right" width="50" id="finalSat">'+totalSat+'</td>'+
+				'<td bgcolor="#F6f8f8" align="right" width="50" id="finalSun">'+totalSun+'</td>'+
+				'<td bgcolor="#F6f8f8" align="right" width="50"  value="" id="totalFinal">'+totalProject+'</td></tr>';
+				
+				$("#projectList").append(tbl2);
+				
+				
+			}
+		},
+		error : function(data) {
+			console.log(data);
+			
+		}
+	})
+}
+	//ag grid for vendor master end
+	function timesheetDetails(id,name){	
+		$("#timesheet").hide();
+		$("#copy").show();
+		
+		if(id==null && name==null){
+			 var selectedRows = gridEmployeeOptions.api.getSelectedRows();
+			 var selectid=selectedRows[0].empId;
+			 var selectname=selectedRows[0].empName;
+			 
+			$("#empId").html("Emp ID: "+selectid);
+			$("#empId").attr("value",selectid);
+			$("#empName").html("Emp Name: "+selectname);
+		}else{
+			$("#empId").html("Emp ID: "+id);
+			$("#empId").attr("value",id);
+			$("#empName").html("Emp Name: "+name);
+		}
+		 agGridTotalProject();
+	
+	}
+	function cancelBtn(){
+		$("#timesheet").show();
+		$("#copy").hide();
+		agGridEmployee();
+	}
+	function getMonthWeeks(id){
+	var year=$("#dropdownYear").val();
+	
+		
+		data = [id,year];
+		$.ajax({
+			type : "POST",
+			url : "time-sheet-get-week-list", 
+			dataType : 'json',
+			contentType : 'application/json',
+			data : JSON.stringify(data),
+			success : function(response) {
+				if (response.message == "success") {
+					
+					$("#weekdays").empty();
+					 for (var i = 0; i < response.body.length; i++) {
+						 console.log("WEEK LIST"+response.body[i].name);
+						var tbl = '<button class="datebtn_inact weekchoose" id="weekDates_'+response.body[i].key+'" onclick="getProjectList('+response.body[i].key+');">'+response.body[i].name+'</button>';
+						$("#weekDates_"+response.body[0].key).removeClass("datebtn_inact");
+					    $("#weekDates_"+response.body[0].key).addClass("datebtn");
+						$("#weekdays").append(tbl);
+						
+					}
+					 	
+					 projectDetails(response.body[0].name);
+					 //getProjectList(id)
+				}
+			},
+			error : function(data) {
+				console.log(data);
+				$("#stateid_").empty();
+				$("#stateid_").append("<option value=''>Select</option>");
+				$("#cityid_").empty();
+				$("#cityid_").append("<option value=''>Select</option>");
+			}
+		})
+	 	/* var currData = new Date; // get current date
+		alert(currData); */
+	/* 	var currDate=$(".datebtn").html();
+		var curr = new Date(currDate);
+		alert(curr)
+		var first = curr.getDate() - curr.getDay(); // First day is the day of the month - the day of the week
+		for(i=0;i<=7;i++){
+			var last = first + i; // last day is the first day + 6
+			var lastday = new Date(curr.setDate(last)).toUTCString();
+			alert(lastday)
+		}
+		var firstday = new Date(curr.setDate(first)).toUTCString(); */
+		
+	
+	}
+	function getProjectList(id){
+		
+	  var value=$('#weekDates_'+id).html();
+		$(".weekchoose").removeClass("datebtn");
+		$(".weekchoose").addClass("datebtn_inact");
+		$("#weekDates_"+id).removeClass("datebtn_inact");
+		$("#weekDates_"+id).addClass("datebtn");
+		projectDetails(value);
+	
+	}
+	function totalHour(event){
+	
+		var currentId = event.currentTarget.id;
+		alert(currentId);
+		var l = currentId.split("_");
+		var counter = l[1];
+		var mon=0;
+		var tue=0;
+		var wed=0;
+		var thu=0;
+		var fri=0;
+		var sat=0;
+		var sun=0;
+		var total=0;
+		var allocated=0;
+		var used=0;
+		var finalAllocated=0;
+		var finalMonday=0;
+		var available=0;
+		//calculation for  projects hours start
+		
+		if($("#mon_"+counter).val()!=""){
+			mon=$("#mon_"+counter).val();	
+			alert(mon)
+		}
+		if($("#tue_"+counter).val()!=""){
+			tue=$("#tue_"+counter).val();	
+		}
+		if($("#wed_"+counter).val()!=""){
+			wed=$("#wed_"+counter).val();	
+		}
+		if($("#thu_"+counter).val()!=""){
+			thu=$("#thu_"+counter).val();	
+		}
+		if($("#fri_"+counter).val()!=""){
+			fri=$("#fri_"+counter).val();	
+		}
+		if($("#sat_"+counter).val()!=""){
+			sat=$("#sat_"+counter).val();	
+		}
+		if($("#sun_"+counter).val()!=""){
+			sun=$("#sun_"+counter).val();	
+		}
+		total=total+parseInt(mon)+parseInt(tue)+parseInt(wed)+parseInt(thu)+parseInt(fri)+parseInt(sat)+parseInt(sun);
+		
+		$("#total_"+counter).html(total);
+		$("#total_"+counter).val(total);
+		if($("#allocated_"+counter).html()!=""){
+			allocated=$("#allocated_"+counter).html();	
+			/* used=allocated-parseInt(total); */
+			available=allocated-parseInt(total);
+			
+		}
+		
+	 	$("#available_"+counter).html(available);
+	 	 if($("#available_"+counter).html()!="" && $("#allocated_"+counter).html()!=""){
+			allocated=$("#allocated_"+counter).html();	
+			//used=allocated-parseInt(total);
+			used=parseInt(allocated)-parseInt(available);
+			
+		} 
+		$("#used_"+counter).html(used);
+		
+		
+		//finalMonday=finalMonday+parseInt(mon);
+		
+		//calculation for final total projects hours start
+		//cal for Used's total
+		var usedVal=0;
+		var usedHour=0;
+		$(".usedCls").each(function(i){
+			if($("#used_"+i).html()!=""){
+				usedHour=$("#used_"+i).html();			
+				usedVal=usedVal+parseInt(usedHour)
+			}
+			
+		});
+		$("#finalUsed").html(usedVal);
+		//cal for Available's total
+		var avlVal=0;
+		var avlHour=0;
+		$(".availableCls").each(function(i){
+			if($("#available_"+i).html()!=""){
+				avlHour=$("#available_"+i).html();			
+				avlVal=avlVal+parseInt(avlHour)
+			}
+			
+		});
+		$("#finalAvailable").html(avlVal);
+		//cal for monday's total
+		var monVal=0;
+		var monDay=0;
+		$(".mon").each(function(i){
+			if($("#mon_"+i).val()!=""){
+				monDay=$("#mon_"+i).val();			
+				monVal=monVal+parseInt(monDay)
+			};
+			
+		});
+		$("#finalMon").html(monVal);
+		//cal for tuesday's total
+		var tueVal=0;
+		var tueDay=0;
+		$(".tue").each(function(i){
+			if($("#tue_"+i).val()!=""){
+				tueDay=$("#tue_"+i).val();			
+				tueVal=tueVal+parseInt(tueDay)
+			}
+			
+		});
+		$("#finalTue").html(tueVal);
+		//cal for wedday's total
+		var wedVal=0;
+		var wedDay=0;
+		$(".wed").each(function(i){
+			if($("#wed_"+i).val()!=""){
+				wedDay=$("#wed_"+i).val();			
+				wedVal=wedVal+parseInt(wedDay)
+			}
+			
+		});
+		$("#finalWed").html(wedVal);
+		//cal for thursday's total
+		var thuVal=0;
+		var thuDay=0;
+		$(".thu").each(function(i){
+			if($("#thu_"+i).val()!=""){
+				thuDay=$("#thu_"+i).val();			
+				thuVal=thuVal+parseInt(thuDay)
+			}
+			
+		});
+		$("#finalThu").html(thuVal);
+		//cal for friday's total
+		var friVal=0;
+		var friDay=0;
+		$(".fri").each(function(i){
+			if($("#fri_"+i).val()!=""){
+				friDay=$("#fri_"+i).val();			
+				friVal=friVal+parseInt(friDay)
+			}
+			
+		});
+		$("#finalFri").html(friVal);
+		//cal for satday's total
+		var satVal=0;
+		var satDay=0;
+		$(".sat").each(function(i){
+			if($("#sat_"+i).val()!=""){
+				satDay=$("#sat_"+i).val();			
+				satVal=satVal+parseInt(satDay)
+			}
+			
+		});
+		$("#finalSat").html(satVal);
+		//cal for sunday's total
+		var sunVal=0;
+		var sunDay=0;
+		$(".sun").each(function(i){
+			if($("#sun_"+i).val()!=""){
+				sunDay=$("#sun_"+i).val();			
+				sunVal=sunVal+parseInt(sunDay)
+			}
+			
+		});
+		$("#finalSun").html(sunVal);
+		//cal for total's total
+		var totalVal=0;
+		var totalDay=0;
+		$(".total").each(function(i){
+			if($("#total_"+i).val()!=""){
+				totalDay=$("#total_"+i).val();			
+				totalVal=totalVal+parseInt(totalDay)
+			}
+			
+		});
+		$("#totalFinal").html(totalVal);
+		
+	}
+	function checkInt(event){
+  		var currentId = event.currentTarget.id;
+  		checkNum(currentId);
+  	}
+	
+	//save timesheet
+	$(document).ready(function() {
+		
+		$("#saveTimeSheet").click(function() {
+					
+					var week=$(".datebtn").html();
+					var month=week.split("-");
+					var monthdata=month[1];
+					var dataset = [];
+					
+					$("#projectList  > #proTr").each(function(i){	
+						data = {};
+						
+						data.year = $("#dropdownYear").val();
+						data.empId = $("#empId").attr("value");
+						data.week = week;
+						data.month = monthdata;
+						data.timesheetId =  $(this).find(".proDetailsIdCls").attr("value");
+						data.project = $(this).find(".projectCls").attr("value");
+						data.allocateHour = $(this).find(".allocateHourCls").html();
+						data.usedHour = $(this).find(".usedCls").html();
+						data.availableHour = $(this).find(".availableCls").html();
+						data.monday = $(this).find(".mon").val();
+						data.tuesday = $(this).find(".tue").val();
+						data.wedday = $(this).find(".wed").val();
+						data.thursday = $(this).find(".thu").val();
+						data.friday = $(this).find(".fri").val();
+						data.saturday = $(this).find(".sat").val();
+						data.sunday = $(this).find(".sun").val();
+						data.totalProjectDays = $(this).find(".total").html();
+						var total=$(this).find(".total").html();
+						var allocate=$(this).find(".allocateHourCls").html();
+						if(parseInt(total)>=parseInt(allocate)){
+						
+							return false;
+							
+						}else{
+							
+							dataset.push(data);
+						}
+						
+					});
+					
+					console.log(dataset)
+					submitTimeSheet(dataset);
+
+				})
+				
+				
+	});
+function submitTimeSheet(dataset){
+	   $.ajax({
+	        type: "POST",
+	        url: "time-sheet-save",
+	        dataType: "json",
+	        contentType: "application/json",
+	        data: JSON.stringify(dataset),
+	        success: function(response) {
+	            if (response.message == "Success") {
+	            	agGridTotalProject();
+	            	console.log(response.body)
+	            	$('#candMsg').text("");
+	            	$('#candValid').modal('toggle');
+	            	$('#candMsg').text("Data Saved Successfully");
+	            	/* $("#myUL").show(); */
+	            	//agGridLocation();
+	            	
+	            	//closeNav();
+	            	//agGridActivity();
+	            } else {
+	                swal({
+	                    title: response.code,
+	                    text: response.message,
+	                    type: "warning"
+	                })
+	            }
+	        },
+	        error: function(response) {
+	            console.log(response);
+	        }
+	    })
+}
+
+//ag grid for timesheet
+var columnDefs = [{
+	headerCheckboxSelection: true,
+	headerCheckboxSelectionFilteredOnly: true,
+	checkboxSelection: true,
+	width: 10,
+	sortable: false,
+	filter: false,
+	resizable: true
+},
+{
+	headerName: "Jan",
+	field: "janHour",
+	type: "rightAligned",
+	valueFormatter: currencyFormatter,
+	cellRenderer: function (params) {
+		return '<a onclick=getMonthWeeks("01"); href="javascript:void(0)">' + params.data.janHour+ '</a>';
+	}
+},
+ {
+	headerName: "Feb",
+	field: "febHour",
+	type: "rightAligned",
+	valueFormatter: currencyFormatter,
+	cellRenderer: function (params) {
+		return '<a onclick=getMonthWeeks("02"); href="javascript:void(0)">' + params.data.febHour + '</a>';
+	}
+}, 
+{
+	headerName: "March",
+	field: "marchHour",
+	type: "rightAligned",
+	valueFormatter: currencyFormatter,
+	cellRenderer: function (params) {
+		return '<a onclick=getMonthWeeks("03"); href="javascript:void(0)">' + params.data.marchHour + '</a>';
+	}
+},
+{
+	headerName: "April",
+	field: "aprilHour",
+	type: "rightAligned",
+	valueFormatter: currencyFormatter,
+	cellRenderer: function (params) {
+		return '<a onclick=getMonthWeeks("04"); href="javascript:void(0)">' + params.data.aprilHour + '</a>';
+	}
+},{
+	headerName: "May",
+	field: "mayHour",
+	type: "rightAligned",
+	valueFormatter: currencyFormatter,
+	cellRenderer: function (params) {
+		return '<a onclick=getMonthWeeks("05"); href="javascript:void(0)">' + params.data.mayHour + '</a>';
+	}
+},{
+	headerName: "Jun",
+	field: "juneHour",
+		type: "rightAligned",
+		valueFormatter: currencyFormatter,
+		cellRenderer: function (params) {
+			return '<a onclick=getMonthWeeks("06"); href="javascript:void(0)">' + params.data.juneHour + '</a>';
+		}
+},{
+	headerName: "Jul",
+	field: "julyHour",
+	type: "rightAligned",
+	valueFormatter: currencyFormatter,
+	cellRenderer: function (params) {
+		return '<a onclick=getMonthWeeks("07"); href="javascript:void(0)">' + params.data.julyHour + '</a>';
+	}
+	
+},{
+	headerName: "Aug",
+	field: "augHour",
+	type: "rightAligned",
+	valueFormatter: currencyFormatter,
+	cellRenderer: function (params) {
+		return '<a onclick=getMonthWeeks("08"); href="javascript:void(0)">' + params.data.augHour + '</a>';
+	}
+	
+},{
+	headerName: "Sep",
+	field: "sepHour",
+	type: "rightAligned",
+	valueFormatter: currencyFormatter,
+	cellRenderer: function (params) {
+		return '<a onclick=getMonthWeeks("09"); href="javascript:void(0)">' + params.data.sepHour + '</a>';
+	}
+	
+},{
+	headerName: "Oct",
+	field: "octHour",
+	type: "rightAligned",
+	valueFormatter: currencyFormatter,
+	cellRenderer: function (params) {
+		return '<a onclick=getMonthWeeks("10"); href="javascript:void(0)">' + params.data.octHour + '</a>';
+	}
+	
+},{
+	headerName: "Nov",
+	field: "novHour",
+	type: "rightAligned",
+	valueFormatter: currencyFormatter,
+	cellRenderer: function (params) {
+		return '<a onclick=getMonthWeeks("11"); href="javascript:void(0)">' + params.data.novHour + '</a>';
+	}
+	
+},{
+	headerName: "Dec",
+	field: "decHour",
+	type: "rightAligned",
+	valueFormatter: currencyFormatter,
+	cellRenderer: function (params) {
+		return '<a onclick=getMonthWeeks("12"); href="javascript:void(0)">' + params.data.decHour + '</a>';
+	}
+	
+},{
+	headerName: "Total",
+	field: "totalHour",
+	type: "rightAligned",
+	valueFormatter: currencyFormatter,
+	
+}];
+
+var gridOptions = {
+	columnDefs: columnDefs,
+	rowSelection: 'multiple',
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 149,
+		height: 10
+	}
+};
+
+
+//setup the grid after the page has finished loading
+document.addEventListener('DOMContentLoaded', function() {
+var gridDiv = document.querySelector('#myGrid');
+new agGrid.Grid(gridDiv, gridOptions);
+});
+function agGridTotalProject(){
+	var id=  $("#empId").attr("value");
+	
+	var year=  $("#dropdownYear").val();
+	
+	agGrid.simpleHttpRequest({
+    	url : "time-sheet-total-hour-through-ajax?id="+ id +"&year="+year
+    }).then(function(data) {	
+    	gridOptions.api.setRowData(data);
+    	
+    });
+	 var currentDate = new Date();
+	var currentMonth = currentDate.getMonth() + 1;
+	if (currentMonth < 10)
+	{ 
+		currentMonth = '0' + currentMonth;
+	}
+	
+	getMonthWeeks(currentMonth); 
+}
+
+function deleteEmpHireDetails(){
+	
+	$('#deleteTimeSheet').modal('show');
+	
+	
+}
+function deleteTimesheetOnclick(){
+	var selectedRows = gridEmployeeOptions.api.getSelectedRows();
+	 var selectid=selectedRows[0].empId;
+	
+		$.ajax({
+			type : "POST",
+			url : "time-sheet-delete?id="+ selectid,
+			success : function(response) {
+			 if (response.message == "Success") {
+				 cancelModalTimeSheet();
+				 agGridEmployee();
+				 /* agGridVendor();
+				 cancelModalVendorBtn(); */
+				 //deleteVendorModel
+			} 
+			},
+			error : function(data) {
+			console.log(data);
+			}
+		})
+}
+function deleteTimeSheetDetails(){
+
+	$('#deleteTimeSheetDtl').modal('show');
+	
+}
+function deleteTimesheetDetailsOnclick(){
+	var week=$(".datebtn").html();
+	var month=week.split("-");
+	var monthdata=month[1];
+	var year=$("#dropdownYear").val();
+	var empId=$("#empId").attr("value");
+	var dataset = [empId,year,monthdata,week];
+	
+	$.ajax({
+			type : "POST",
+			url : "time-sheet-delete-project-details?empId="+ empId + "&year=" + year + "&monthdata=" + monthdata + "&week=" + week,
+			success : function(response) {
+			 if (response.message == "Success") {
+				 cancelModalTimeSheetDetails();
+				 agGridTotalProject();
+				 /* agGridVendor();
+				 cancelModalVendorBtn(); */
+				 //deleteVendorModel
+			} 
+			},
+			error : function(data) {
+			console.log(data);
+			}
+		})
+}
+function cancelModalTimeSheet() {
+	
+	$('#deleteTimeSheet').modal('hide');
+}
+function cancelModalTimeSheetDetails() {
+	
+	$('#deleteTimeSheetDtl').modal('hide');
+}
+function downloadTimesheet() { 
+	  var dataset = [];
+	  gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		// alert("hyy")
+	        dataset.push(rowNode.data);
+	       // alert( dataset.push(rowNode.data))
+	        
+	    });
+	  gridOptions.api.exportDataAsCsv(dataset);
+	}
+	
+</script>
+</head>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding" id="timesheet">
+						<div class="row margin_topbot">
+							<div class="col-md-8 btn-hs">
+								<div class="input-style row">
+									<input type="text" id="searchBar" placeholder="Search.."
+										name="search" class="searchboxinput" onkeyup="cancelBar()">
+									<div class="searchicon">
+										<a href="#"><span style="display: none" id="closeKey"
+											onclick="$('#searchBar').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i">X</span></a> <a href="#"><i
+											class="fa fa-search"></i></a>
+									</div>
+								</div>
+							</div>
+						</div>
+						<!--  <form enctype="multipart/form-data"> -->
+						<div class="row">
+
+							<div class="col-md-7 btn-hs">
+								<div class="font-design" id="totalEmp">
+									EMPLOYEE LIST (<span>200</span>)
+								</div>
+							</div>
+							<div class="col-md-5 butttonsec btn-hs">
+								<button class="btn4" onclick="downloadTimesheet()">Download</button>
+								<button class="btn4">Upload</button>
+<!-- 								<input type="button" class="btn2" value="COPY" onclick="copyBtn()" readonly="" placeholder=""> -->
+								<div class="buttongap"></div>
+								<button class="btn3" data-toggle="modal" data-target="#delete" id="deleteBtn"
+									onclick="deleteEmpHireDetails();">DELETE</button>
+								<button class="btn1" id="newBtn" onclick="timesheetDetails()">NEW</button>
+
+							</div>
+						</div>
+ 						<div id="myEmployee" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div> 
+			<!-- 				<table class="newtbl" id="myTbl" cellpadding="1" cellspacing="1">
+							<thead>
+								<tr>
+									<th align="center" width="20"><input type="checkbox"
+										name="" id="chk1" onclick="allCheck()"><label for="chk1"></label></th>
+									<th>Emp ID</th>
+									<th>Name</th>
+									<th>Type</th>
+									<th>Jan</th>
+									<th>Feb</th>
+									<th>March</th>
+									<th>April</th>
+									<th>May</th>
+									<th>June</th>
+									<th>July</th>
+									<th>August</th>
+									<th>Sep</th>
+									<th>Oct</th>
+									<th>Nov</th>
+									<th>Dec</th>
+									<th>Total</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td align="center"><input type="checkbox" name=""
+										id="chk2" class="checkCls" > <label for="chk2"></label></td>
+									<td align="center">
+										<div class="txt-blue" onclick="timesheetDetails();">1023</div>
+									</td>
+									<td>
+										<div class="txt-blue" data-toggle="collapse"
+											data-target="#demo" id="quarter" onclick="timesheetDetails();">Pinaki Datta</div>
+									</td>
+									<td align="left">Full-time</td>
+									<td>Office</td>
+
+									<td>1 Main Street</td>
+									<td align="left"></td>
+									<td align="left"></td>
+									<td align="center"></td>
+									<td align="center">160</td>
+									<td align="center">80</td>
+									<td align="center">100</td>
+									<td align="center">200</td>
+									<td align="center">160</td>
+									<td align="center">180</td>
+									<td align="center">180</td>
+									<td align="center">200</td>
+								</tr>
+							</tbody>
+						</table> -->
+						  </div>
+					<!-- start for inner timesheet -->
+					<div class="collapse" id="copy">
+						<div class="col-md-12">
+							<div class="row">
+								<div class="col-md-3 font-design" id="empId" value="">Emp ID: 1023</div>
+								<div class="col-md-3 font-design" id="empName">Name: Pinaki Datta</div>
+								<div class="col-md-6">
+									<div class="butttonsec">
+										<button class="btn1" id="saveTimeSheet">SAVE</button>
+										<button class="btn3" data-toggle="modal" data-target="#delete" id="deleteBtn"
+									onclick="deleteTimeSheetDetails();">DELETE</button>
+										<button class="btn4" onclick="cancelBtn()">Cancel</button>
+
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="col-md-3">
+									<label>Year</label>
+								<div class="select">
+										<select class="form-control" id="dropdownYear" onchange="agGridTotalProject();">
+											<!-- <option value="">Select</option> -->
+											<option th:each="c,iter:${yearList}" th:value="${c}" th:text="${c}" ></option>
+										</select>
+									</div>
+								</div>
+							</div>
+
+							<div class="mrt_20">
+		<div id="myGrid" style="width: 100%; height: 100px;"
+													class="ag-theme-alpine"></div>
+							<!-- 	<table class="table table-bordered table-responsive" id="myTbl"
+									cellspacing="0" cellpadding="0">
+									<thead>
+										<tr>
+											<th bgcolor="#F6f8f8"></th>
+											<th bgcolor="#F6f8f8">Jan</th>
+											<th bgcolor="#F6f8f8">Feb</th>
+											<th bgcolor="#F6f8f8">Mar</th>
+											<th bgcolor="#F6f8f8">Apr</th>
+											<th bgcolor="#F6f8f8">May</th>
+											<th bgcolor="#F6f8f8">Jun</th>
+											<th bgcolor="#F6f8f8">Jul</th>
+											<th bgcolor="#F6f8f8">Aug</th>
+											<th bgcolor="#F6f8f8">Sep</th>
+											<th bgcolor="#F6f8f8">Oct</th>
+											<th bgcolor="#F6f8f8">Nov</th>
+											<th bgcolor="#F6f8f8">Dec</th>
+											<th bgcolor="#F6f8f8">Total</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<td bgcolor="#F6f8f8">Hours</td>
+											<td bgcolor="#F6f8f8" align="right" onclick="getMonthWeeks('01');"><a>40</a></td>
+											<td bgcolor="#F6f8f8" align="right" onclick="getMonthWeeks('02');">0</td>
+											<td bgcolor="#F6f8f8" align="right" onclick="getMonthWeeks('03');">0</td>
+											<td bgcolor="#F6f8f8" align="right" onclick="getMonthWeeks('04');">0</td>
+											<td bgcolor="#F6f8f8" align="right" onclick="getMonthWeeks('05');">0</td>
+											<td bgcolor="#F6f8f8" align="right" onclick="getMonthWeeks('06');">0</td>
+											<td bgcolor="#F6f8f8" align="right" onclick="getMonthWeeks('07');">0</td>
+											<td bgcolor="#F6f8f8" align="right" onclick="getMonthWeeks('08');">0</td>
+											<td bgcolor="#F6f8f8" align="right" onclick="getMonthWeeks('09');">0</td>
+											<td bgcolor="#F6f8f8" align="right" onclick="getMonthWeeks('10');">0</td>
+											<td bgcolor="#F6f8f8" align="right" onclick="getMonthWeeks('11');">0</td>
+											<td bgcolor="#F6f8f8" align="right" onclick="getMonthWeeks('12');">0</td>
+											<td bgcolor="#F6f8f8" align="right" >0</td>
+										</tr>
+
+									</tbody>
+								</table> -->
+
+							</div>
+
+							<div id="weekdays">
+								<!-- <button class="datebtn" id="weekDates">Jan-4-2021</button>
+								<button class="datebtn_inact">Jan-11-2021</button>
+								<button class="datebtn_inact">Jan-18-2021</button>
+								<button class="datebtn_inact">Jan-25-2021</button>
+								<button class="datebtn_inact">Feb-1-2021</button> -->
+							</div>
+
+							<div class="mrt_20">
+
+								<table class="table table-bordered table-responsive" id="myTbl"
+									cellspacing="0" cellpadding="0">
+									<thead>
+										<tr>
+											<th bgcolor="#F6f8f8"></th>
+											<th bgcolor="#F6f8f8">ALLOCATED</th>
+											<th bgcolor="#F6f8f8">USED</th>
+											<th bgcolor="#F6f8f8">AVAILABLE</th>
+											<th bgcolor="#F6f8f8" id="monDate" class="colorheader">MON</th>
+											<th bgcolor="#F6f8f8" id="tueDate" class="colorheader">TUE</th>
+											<th bgcolor="#F6f8f8" id="wedDate" class="colorheader">WED</th>
+											<th bgcolor="#F6f8f8" id="thuDate" class="colorheader">THU</th>
+											<th bgcolor="#F6f8f8" id="friDate" class="colorheader">FRI</th>
+											<th bgcolor="#F6f8f8" id="satDate" class="colorheader">SAT</th>
+											<th bgcolor="#F6f8f8" id="sunDate" class="colorheader">SUN</th>
+											<th bgcolor="#F6f8f8" id="totDate">TOTAL</th>
+										</tr>
+									</thead>
+									<tbody id="projectList">
+										<tr>
+											<td bgcolor="#F6f8f8">Sap Implementation</td>
+											<td bgcolor="#F6f8f8" align="right">1,350</td>
+											<td bgcolor="#F6f8f8" align="right">250</td>
+											<td bgcolor="#F6f8f8" align="right">1,100</td>
+											<td bgcolor="#F6f8f8" align="right">8</td>
+											<td bgcolor="#F6f8f8" align="right">8</td>
+											<td bgcolor="#F6f8f8" align="right">0</td>
+											<td bgcolor="#F6f8f8" align="right">9</td>
+											<td bgcolor="#F6f8f8" align="right">8</td>
+											<td bgcolor="#F6f8f8" align="right">0</td>
+											<td bgcolor="#F6f8f8" align="right">0</td>
+											<td bgcolor="#F6f8f8" align="right">33</td>
+										</tr>
+										<tr>
+											<td bgcolor="#F6f8f8">Holiday</td>
+											<td bgcolor="#F6f8f8" align="right"><a>80</a></td>
+											<td bgcolor="#F6f8f8" align="right">16</td>
+											<td bgcolor="#F6f8f8" align="right">64</td>
+											<td align="right">0</td>
+											<td align="right">0</td>
+											<td align="right">8</td>
+											<td align="right">0</td>
+											<td align="right">0</td>
+											<td align="right">0</td>
+											<td align="right">0</td>
+											<td bgcolor="#F6f8f8" align="right">8</td>
+										</tr>
+										<tr>
+											<td bgcolor="#F6f8f8">Vacation</td>
+											<td bgcolor="#F6f8f8" align="right"><a>120</a></td>
+											<td bgcolor="#F6f8f8" align="right"></td>
+											<td bgcolor="#F6f8f8" align="right">120</td>
+											<td bgcolor="#FFFFFF" align="right">0</td>
+											<td bgcolor="#FFFFFF" align="right">0</td>
+											<td bgcolor="#FFFFFF" align="right">0</td>
+											<td bgcolor="#FFFFFF" align="right">0</td>
+											<td bgcolor="#FFFFFF" align="right">0</td>
+											<td bgcolor="#FFFFFF" align="right">0</td>
+											<td bgcolor="#FFFFFF" align="right">0</td>
+											<td bgcolor="#F6f8f8" align="right">0</td>
+										</tr>
+										<tr>
+											<td bgcolor="#F6f8f8">Total</td>
+											<td bgcolor="#F6f8f8" align="right"><a>1,550</a></td>
+											<td bgcolor="#F6f8f8" align="right">266</td>
+											<td bgcolor="#F6f8f8" align="right">1,284</td>
+											<td bgcolor="#F6f8f8" align="right">8</td>
+											<td bgcolor="#F6f8f8" align="right">8</td>
+											<td bgcolor="#F6f8f8" align="right">8</td>
+											<td bgcolor="#FFFFFF" align="right">9</td>
+											<td bgcolor="#FFFFFF" align="right">8</td>
+											<td bgcolor="#FFFFFF" align="right">0</td>
+											<td bgcolor="#FFFFFF" align="right">0</td>
+											<td align="right">41</td>
+										</tr>
+
+
+									</tbody>
+								</table>
+
+							</div>
+						</div>
+					</div>
+					<!-- inner timesheet end -->
+						<!-- delete modal start -->
+						<div id="deleteTimeSheet" class="modal fade show" aria-modal="true">
+							<div class="modal-dialog modal-confirm">
+								<div class="modal-content">
+									<div class="modal-header flex-column">
+										<button type="button" class="close" data-dismiss="modal"
+											aria-hidden="true" onclick="cancelModalTimeSheet()">
+											<i class="ti-close modal-close"></i>
+										</button>
+									</div>
+									<div class="modal-body">
+										<p>Do you really want to delete these records? This
+											process cannot be undone.</p>
+									</div>
+									<div class="modal-footer justify-content-center"
+										style="margin-top: 0px;">
+
+										<button type="button" class="btn1" data-dismiss="modal"
+											onclick="cancelModalTimeSheet();">Cancel</button>
+										<button type="button" class="btn3"
+											onclick="deleteTimesheetOnclick()">Delete</button>
+									</div>
+								</div>
+							</div>
+						</div>
+						<!-- delete vendor -->
+						<div id="deleteTimeSheetDtl" class="modal fade show"
+							aria-modal="true">
+							<div class="modal-dialog modal-confirm">
+								<div class="modal-content">
+									<div class="modal-header flex-column">
+										<button type="button" class="close" data-dismiss="modal"
+											aria-hidden="true" onclick="cancelModalTimeSheetDetails()">
+											<i class="ti-close modal-close"></i>
+										</button>
+									</div>
+									<div class="modal-body">
+										<p>Do you really want to delete these records? This
+											process cannot be undone.</p>
+									</div>
+									<div class="modal-footer justify-content-center"
+										style="margin-top: 0px;">
+
+										<button type="button" class="btn1" data-dismiss="modal"
+											onclick="cancelModalTimeSheetDetails();">Cancel</button>
+										<button type="button" class="btn3" data-dismiss="modal"
+											onclick="deleteTimesheetDetailsOnclick()">Delete</button>
+									</div>
+								</div>
+							</div>
+						</div>
+							<!-- The Modal For Validation-->
+					  <div class="modal fade" id="candValid">
+					    <div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+						<div class="modal-header flex-column">
+						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+						<i class="ti-close modal-close"></i>
+						</button>
+						</div>
+						<div class="modal-body">
+						<p id="candMsg"></p>
+						</div>
+						<div class="modal-footer justify-content-center">
+						<button type="button" class="btn1" data-dismiss="modal" aria-hidden="true">Ok</button>
+						</div>
+						</div>
+						</div>
+					  </div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

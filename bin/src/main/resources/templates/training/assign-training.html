@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+#myModal input[type=checkbox] {
+	width: 0px;
+	margin-right: 16px;
+	position: relative;
+	top: -2px;
+	float: none;
+}
+
+.cldr {
+	position: relative;
+	top: -4px;
+}
+
+.totalHour {
+	border: none;
+	width: 224px;
+}
+.searchicon{
+	width:55px !important;
+}
+</style>
+
+<script>
+/* Column for assign 
+ * training */
+	var columnDefs = [ {
+		headerCheckboxSelection : true,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		pinned: 'left'
+
+	}, {
+		headerName : "Employee Id",
+		field : "employeeId",
+		pinned: 'left'
+
+
+	}, {
+		headerName : "Employee Name",
+		field : "empName",
+		pinned: 'left'
+
+	}, {
+		headerName : "Joining Date",
+		field : "joiningDate",
+		cellStyle : {
+			textAlign : 'center'
+		},
+	}, {
+		headerName : "Gender",
+		field : "gender",
+	}, {
+		headerName : "Date Of Birth",
+		field : "dob",
+		cellStyle : {
+			textAlign : 'center'
+		},
+	}, {
+		headerName : "Department",
+		field : "department",
+	}, {
+		headerName : "Sub Department",
+		field : "subDepartment"
+	}, {
+		headerName : "Designation",
+		field : "designation"
+	}, {
+		headerName : "Manager",
+		field : "manager"
+	}, {
+		headerName : "Mobile No",
+		field : "mobileNo",
+		type : "rightAligned",
+	}, {
+		headerName : "Personal Mail",
+		field : "personalMail"
+	}
+
+	];
+	
+	/* Column for
+	Schedule training */
+	
+	var columnDefsSchedule = [ {
+		headerCheckboxSelection : true,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		pinned: 'left'
+
+	}, {
+		headerName : "Employee Id",
+		field : "employeeId",
+		pinned: 'left'
+	},{
+		headerName : "Employee Name",
+		field : "empName",
+		width: 150,
+		pinned: 'left'
+	}, {
+		headerName : "Training Category",
+		field : "assignedCategoryName",
+		width: 170,
+	},{
+		headerName : "Assigned Date",
+		field : "assignedOn",
+		cellStyle : {
+			textAlign : 'center'
+		},
+	}, {
+		headerName : "Training Category",
+		field : "assignedCategoryName",
+		width : 180
+
+	},{
+		headerName : "Assigned Date",
+		field : "assignedOn",
+		width : 180
+	}, {
+		headerName : "Joining Date",
+		field : "joiningDate",
+		cellStyle : {
+			textAlign : 'center'
+		},
+	},{
+		headerName : "Department",
+		field : "department",
+	}, {
+		headerName : "Sub Department",
+		field : "subDepartment",
+	}, {
+		headerName : "Designation",
+		field : "designation"
+	}, {
+		headerName : "Manager",
+		field : "manager"
+	
+	}
+
+	];
+
+	/* Column for
+	Schedule timing */
+	window.index=-1;
+	var columnDefsTime = [ {
+		headerName : "Category",
+		field : "catName",
+		width: 250,
+	},{
+		headerName : "Time in hours",
+		field : "hours",
+		width: 240,
+		cellRenderer : function(params) {
+			index=index+1;
+				return '<input type="number" class="totalHour" name="numHour" value="0" min="0" placeholder="Enter total hour" id="'+window.index+'">';
+		},
+	}
+
+	];
+
+	
+	// specify the data(Assign Training)
+	var rowData = [];
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowSelection : 'multiple',
+		suppressRowClickSelection : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 135,
+			height : 10
+		},
+		onSelectionChanged : rowSelectId,
+
+	};
+
+	// specify the data(Schedule Training)
+	var rowData1 = [];
+
+	var gridOptionsSchedule = {
+		columnDefs : columnDefsSchedule,
+		rowSelection : 'multiple',
+		suppressRowClickSelection : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 135,
+			height : 10
+		}
+
+	};
+
+	
+	// specify the data(Schedule timing)
+	var rowData1 = [];
+
+	var gridOptionsTime = {
+		columnDefs : columnDefsTime,
+		rowSelection : 'multiple',
+		suppressRowClickSelection : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 135,
+			height : 10
+		}
+	};
+	
+	$(document).ready(function() {
+		$("#scheduleTrainingSection").hide();
+	//Assign Training 
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		gridOptions.api.setRowData(rowData);
+		
+		agGrid.simpleHttpRequest({
+			url : 'assign-materials-get-employee-listing'
+		}).then(function(data) {
+			var resp=JSON.parse(data.body[0]);
+			var len = resp.EmployeeList.length;
+			$('#totalEmp').find('span').html(len);
+			gridOptions.api.setRowData(resp.EmployeeList);
+		});
+	
+		
+	
+			//Schedule Training 
+			var gridDiv1 = document.querySelector('#myGridSchedule');
+			new agGrid.Grid(gridDiv1, gridOptionsSchedule);
+			gridOptionsSchedule.api.setRowData(rowData);
+		
+			agGrid.simpleHttpRequest({
+				url : 'assign-materials-assigned-emp-listing'
+			}).then(function(data) {
+				// var resp=JSON.parse(data.body);
+				if(data.body[0] === null) {
+					gridOptionsSchedule.api.setRowData(null);
+				} else {
+					gridOptionsSchedule.api.setRowData(JSON.parse(data.body));
+				}
+			});
+			//Schedule Timing 
+			var gridDiv = document.querySelector('#myGridTime');
+			new agGrid.Grid(gridDiv, gridOptionsTime);
+			gridOptionsTime.api.setRowData(rowData);
+			var data =[];
+			gridOptionsTime.api.setRowData(data);
+		
+
+		$("#assignTrainingBtn").attr("disabled", true);
+		$("#myModal").modal('hide');
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		//employee search section
+		$("#fromDateCalender").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#fromDate').val($(this).val());
+		})
+
+		$('#fromDate').blur(function() {
+			$("#fromDateCalender").val($(this).val());
+		})
+
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#toDate').val($(this).val());
+		})
+
+		$('#toDate').blur(function() {
+			$("#toDateCalendar").val($(this).val());
+		})
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#date').val($(this).val());
+		})
+
+		
+		//time date
+		$("#fromDateCalenderTime").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+			minDate: 0,
+		}).on("change", function() {
+			$('#fromDateTime').val($(this).val());
+		})
+
+		$('#fromDateTime').blur(function() {
+			$("#fromDateCalenderTime").val($(this).val());
+		})
+
+		$("#toDateCalendarTime").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+			minDate: 0,
+		}).on("change", function() {
+			$('#toDateTime').val($(this).val());
+		})
+
+		$('#toDateTime').blur(function() {
+			$("#toDateCalendarTime").val($(this).val());
+		})
+		$("#dateDateTime").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#date').val($(this).val());
+		})
+		
+		$("#backBtn").hide();
+		$("#scheduleBtn").hide();
+		$("#scheduleTime").hide();
+
+	})
+
+	function rowSelectId() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+			if (selectedRows.length > 0) {
+				$("#assignTrainingBtn").attr("disabled", false);
+			}else{
+				$("#assignTrainingBtn").attr("disabled", true);
+			}
+	}
+	
+	var selectedRows;
+	var empDet=[];
+	function viewAssignModal() {
+		$("#costCeneterCBDiv").empty();
+		empDet=[];
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var selectedRowsString = '';
+		selectedRows.forEach(function(selectedRow, index) {
+			if (index + 1 > 0) {
+				empDet.push(selectedRow.employeeId)
+			}
+		});
+		
+		$("#myModal").modal('show');
+		getCategoryList()
+	}
+
+	function closeModal() {
+		$("#myModal").modal("hide");
+	}
+
+	function getCategoryList() {
+		
+		$('.loader').show();
+		$("body").addClass("overlay");
+		$.ajax({
+					type : "POST",
+					url : "assign-materials-training-category-list",
+					dataType : "json",
+					contentType : "application/json",
+					success : function(response) {
+						if (response.message == "Success") {
+							for (var i = 0; i < response.body.length; i++) {
+								var row = "";
+								if (response.body[i].categoryId == response.body[i].parentId) {
+									if (response.body[i].nodeCount > 0) {
+										row = '<tr data-node-id="'+response.body[i].categoryId+'" class="abc" id="'+response.body[i].categoryId+'">'
+												+ '<td class="firstnode" id=lbl_'+response.body[i].categoryId+'>'
+												+ response.body[i].categoryName
+												+ '</td></tr>';
+									} else {
+										row = '<tr data-node-id="'+response.body[i].categoryId+'" class="abc" id="'+response.body[i].categoryId+'">'
+												+ '<td class="firstnode" id=lbl_'+response.body[i].categoryId+'>';
+												
+												if(response.body[i].contentStatus==1){
+													row=row+'<input class="benefitChk pc1-box" type="checkbox" id="ccCheck_'+
+												response.body[i].categoryId
+												+ '" value="'
+												+ response.body[i].categoryId
+												+ '" name="'
+												+"catCheck"
+												+ '">';
+												}
+												row=row + response.body[i].categoryName
+												+ '</td></tr>';
+									}
+
+								} else {
+									if (response.body[i].nodeCount > 0) {
+										row = '<tr data-node-id="'+response.body[i].categoryId+'" data-node-pid="'+response.body[i].parentId+'" class="abc" id="'+response.body[i].categoryId+'">'
+												+ '<td class="firstnode" id=lbl_'+response.body[i].categoryId+'>'
+												+ response.body[i].categoryName
+												+ '</td></tr>';
+									} else{
+
+										row = '<tr data-node-id="'+response.body[i].categoryId+'" data-node-pid="'+response.body[i].parentId+'" class="abc" id="'+response.body[i].categoryId+'">'
+												+ '<td class="firstnode" id=lbl_'+response.body[i].categoryId+'>';
+										if(response.body[i].contentStatus==1){
+											row=row+'<input class="benefitChk pc1-box" type="checkbox" id="ccCheck_'+
+										response.body[i].categoryId
+										+ '" value="'
+										+ response.body[i].categoryId
+										+ '" name="'
+										+"catCheck"
+										+ '">';
+										}
+										row=row + response.body[i].categoryName
+										+ '</td></tr>';
+									}
+								}
+									$("#costCeneterCBDiv").append(row);
+							}
+
+							var pcat = $("#prCategoryId").val();
+							$(".benefitChk").prop("checked", false);
+							$("#ccCheck_" + pcat).prop("checked", true);
+
+							$('.loader').hide();
+							$("body").removeClass("overlay");
+
+							$('#basic').simpleTreeTable({
+								expander : $('#expander'),
+								collapser : $('#collapser'),
+								store : 'session',
+								storeKey : 'simple-tree-table-basic'
+							});
+						}
+					},
+					error : function(data) {
+						$('.loader').hide();
+						$("body").removeClass("overlay");
+						$("#productDiv").modal("show");
+					}
+				});
+	}
+
+		
+	function getTrainingMaterialsByCategory(empList) {
+		$("#select_product").empty();
+		var valor = "";
+		var allDetails=[];
+		emp ={};
+		emp.emplist=empList;
+		
+		$('input.pc1-box[type=checkbox]').each(function() {
+			if (this.checked)
+				valor = valor + $(this).val() + ",";
+		});
+		emp.categoryList =valor;
+		allDetails.push(emp);
+
+		if (valor && empList) {
+			$("#select_product").empty();
+			
+			$.ajax({
+						type : "POST",
+						url : "assign-materials-get-training-materials",
+						dataType : "json",
+						contentType : "application/json",
+						data : valor,
+						success : function(response) {
+							if (response.message == "Success") {
+								$("#select_product").empty();
+								var content = '';
+								for (var i = 0; i < response.body.length; i++) {
+									content += '<div class="autocompletedata cp product-item" id="'
+											+ response.body[i].categoryId
+											+ "_"
+											+ response.body[i].categoryName
+											+ '" onClick=selectActive("'
+											+ response.body[i].parentName
+											+ "_"
+											+ response.body[i].categoryName
+											+ '","'
+											+ response.body[i].sku
+											+ '","'
+											+ response.body[i].productId
+											+ '","'
+											+ encodeURIComponent(response.body[i].productName)
+											+ '","'
+											+ response.body[i].brandId
+											+ '","'
+											+ response.body[i].brandName
+											+ '","'
+											+ response.body[i].productCatId
+											+ '","'
+											+ response.body[i].productCatName
+											+ '")>'
+											+ response.body[i].sku
+											+ " - "
+											+ response.body[i].categoryName
+											+ " - "
+											+ response.body[i].categoryId
+											+ '</div>';
+								}
+								content += '</ul>';
+								$("#select_product").show();
+								$("#select_product").append(content);
+
+								var itemId = $("#itemId").val();
+								var skuId = $("#sku").html();
+
+								if (itemId) {
+									$("#" + itemId + "_" + skuId).addClass(
+											'productActive');
+								}
+
+							}
+						},
+						error : function(data) {
+						}
+
+					});
+		}
+	}
+
+	//For Employee Table Search Bar
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+ 
+	function viewSearchDt() {
+		validation = true;
+		var date1 = $('#fromDate').val();
+		var date2 = $('#toDate').val();
+
+		if (date1 == null || date1 == "") {
+			validation = validationUpdated("Please choose From Date",
+					"fromDate");
+
+		}
+		if (date2 == null || date2 == "") {
+			validation = validationUpdated("Please choose To Date", "toDate");
+
+		}
+		
+		dateChange();
+			
+		if (validation) {
+			$.ajax({
+				type : "GET",
+				url : "assign-materials-get-employee-list?toDate=" + date1
+						+ "&&frmDate=" + date2,
+				dataType : 'json',
+				contentType : 'application/json',
+				success : function(data) {
+						var resp=JSON.parse(data.body[0]);
+						if(resp.EmployeeList===null){
+							var len='0';
+							$('#totalEmp').find('span').html(len);
+						}else{
+							var len = resp.EmployeeList.length;
+							$('#totalEmp').find('span').html(len);
+						}
+						gridOptions.api.setRowData(resp.EmployeeList);
+				},
+				error : function(data) {
+					console.log(data);
+				}
+			})
+		} else {
+			$("#subDept").empty();
+			$("#subDept").append("<option value=''>Select</option>");
+		}
+	}
+
+	function cancelModalProductBtn() {
+
+		$("#deleteModalBtn").removeAttr("disabled");
+		$('#deleteProduct').modal('hide');
+	}
+	function cancelModalBtn() {
+		$("#costCeneterCBDiv").empty();
+		$('#myModal').modal('hide');
+		$("#assignTrainingBtn").attr("disabled", true);
+		
+		agGrid.simpleHttpRequest({
+			url : 'assign-materials-get-employee-listing'
+		}).then(function(data) {
+			var resp=JSON.parse(data.body[0]);
+			var len = resp.EmployeeList.length;
+			$('#totalEmp').find('span').html(len);
+			gridOptions.api.setRowData(resp.EmployeeList);
+		});
+	}
+	
+	//for date wise emp list search validation
+	function dateChange(){
+		var fromdate = $('#fromDate').val();
+		var todate = $('#toDate').val();
+		dateValidation(fromdate,todate)
+	}
+
+	
+	//for schedule date validation
+	function dateChangeSchedule(){
+		var fromdate = $('#fromDateTime').val();
+		var todate = $('#toDateTime').val();
+		dateValidation(fromdate,todate)
+	}
+	
+	function calculateHoursBetweenDates(st_dt,end_dt) {
+
+	    let s = new Date(st_dt.split("-").reverse().join("-"));
+	    let e = new Date(end_dt.split("-").reverse().join("-"));
+	    let total_hr = 0;
+	    let d = new Date(), 
+	        month = '' + (d.getMonth() + 1) >= 10 ? (d.getMonth() + 1) : '0' + (d.getMonth() + 1), 
+	        day = '' + (d.getDate()) >= 10 ? d.getDate() : '0' + d.getDate(), 
+	        year = d.getFullYear(), hour = d.getHours();
+	    let c = new Date([year, month, day].join('-'))
+	    let diffHours = Math.ceil(Math.abs(e - s) / (1000 * 60 * 60));
+
+	    if(s.getTime() === e.getTime()) {
+	      if(s.getTime() === c.getTime()) {
+	        total_hr = 23 - Math.ceil(hour);
+	        $(totalHour).val(total_hr);
+	      } else {
+	        total_hr = 24;
+	        $(totalHour).val(total_hr);
+	      }
+	    } else {
+	      if(s.getTime() === c.getTime()) {
+	        total_hr = (23 - Math.ceil(hour)) + diffHours;
+	        $(totalHour).val(total_hr);
+	      } else {
+	        total_hr = diffHours+24;
+	        $(totalHour).val(total_hr);
+	      } 
+	    }
+	}
+	
+	//date validation function
+	function dateValidation(fromdate,todate) {
+		
+		if (fromdate != '' && todate != '') {
+			var fd = fromdate.split("-");
+			var td = todate.split("-");
+			
+			if(fd[2]==td[2]){
+				if(fd[1]==td[1]){
+					if(fd[0]<=td[0]){
+						calculateHoursBetweenDates(fromdate,todate);
+					}else{
+						setFromToDate();
+					}
+				}else if(fd[1]<td[1]){
+					calculateHoursBetweenDates(fromdate,todate);
+				}else{
+					setFromToDate();
+				}
+			}else if(fd[2]<td[2]){
+						calculateHoursBetweenDates(fromdate,todate);
+			}else{
+				setFromToDate();
+			}
+		}else{
+			
+		}
+	}
+	function setFromToDate() {
+		$("#messageParagraph").text("Please choose to date greater than or equal to from date ");
+		$("#msgOkModal").removeClass("btn3");
+		$("#msgOkModal").addClass("btn1");
+		$("#msgModal").modal('show');
+		$("#fromDate").val("");
+		$("#toDate").val("");
+		$("#fromDateTime").val("");
+		$("#toDateTime").val("");
+		$("#totalHour").val("");
+		
+	}
+	
+	function saveEmployeeDraft() {
+		categoryList =[];
+		var markedCheckbox = document.getElementsByName('catCheck');  
+		  for (var checkbox of markedCheckbox) {
+		    if (checkbox.checked)  
+		    categoryList.push(checkbox.value)
+		  }  
+		
+		 var date=getDateTime();
+		  
+		alldataTraining=[];
+		for(var i =0;i<empDet.length;i++){
+			for(var j=0;j<categoryList.length;j++){
+				alldata={}
+				alldata.employeeId=empDet[i];
+				alldata.categoryId=categoryList[j];
+				alldata.status="Assigned";
+				alldata.assignedDate=date;
+				alldataTraining.push(alldata)
+			}
+		}  
+		 if (alldataTraining) {
+			$('.loader').show();
+			$.ajax({
+				type : "POST",
+				url : "assign-materials-save-employee-training",
+				dataType : "json",
+				contentType : "application/json",
+				data : JSON.stringify(alldataTraining),
+				success : function(response) {
+					
+					if (response.message == "Success") {
+						$('.loader').hide();
+						$('#myModal').modal('hide');
+						$("#messageParagraph").text("Data saved successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$("#assignTrainingBtn").attr("disabled", true);
+					
+						agGrid.simpleHttpRequest({
+							url : 'assign-materials-get-employee-listing'
+						}).then(function(data) {
+							var resp=JSON.parse(data.body[0]);
+							var len = resp.EmployeeList.length;
+							$('#totalEmp').find('span').html(len);
+							gridOptions.api.setRowData(resp.EmployeeList);
+						});
+
+					} else {
+						$('.loader').hide();
+						$('#myModal').modal('hide');
+						$("#messageParagraph").text(response.message);
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$("#assignTrainingBtn").attr("disabled", true);
+						agGrid.simpleHttpRequest({
+							url : 'assign-materials-get-employee-listing'
+						}).then(function(data) {
+							var resp=JSON.parse(data.body[0]);
+							var len = resp.EmployeeList.length;
+							$('#totalEmp').find('span').html(len);
+							gridOptions.api.setRowData(resp.EmployeeList);
+						});
+					}
+				},
+				error : function(data) {
+					console.log(data)
+				}
+			})
+		}
+		
+	}
+	
+	//function to get current date time 
+	  function getDateTime(){
+		  var currentdate = new Date();
+			
+			month = '' + (currentdate.getMonth() + 1);
+			day   = '' + currentdate.getDate();
+			year  = currentdate.getFullYear();
+			
+			hour =''+currentdate.getHours();
+			minute=''+currentdate.getMinutes();
+			second=currentdate.getSeconds();
+			 
+			  if (month.length < 2) {
+				  month = '0' + month;
+			  }
+			  if (day.length < 2){
+				  day = '0' + day;
+			  }
+			  if (hour.length < 2){
+				  day = '0' + hour;
+			  }
+			  if (minute.length < 2){
+				  day = '0' + minute;
+			  }
+			  if (second.length < 2){
+				  day = '0' + second;
+			  }
+			  
+		  var datetime =year+"-"+month+"-"+day+" "
+		  + hour + ":" 
+		  + minute + ":" + second;
+		  
+		  return datetime
+	  } 
+	   
+	//List of assigned employee to schedule
+	 function scheduleTrainingBtn(){
+		 window.index=-1;
+		 showScheduleGrid();
+		 $('#myModal10').modal('show');
+		 $("#totalEmp").hide()
+		 agGrid.simpleHttpRequest({
+				url : 'assign-materials-assigned-emp-listing'
+			}).then(function(data) {
+				if(data.body[0] === null) {
+					gridOptionsSchedule.api.setRowData(null);
+				} else {
+					gridOptionsSchedule.api.setRowData(JSON.parse(data.body));
+				}
+				
+				
+			});
+		
+	  }
+	
+	 //it will show an aggrid to set hours for training
+var details=[];
+	 function setTimeEmpTraining(){
+
+		$("#totalHour").val("");
+		$("#fromDateTime").val("");
+		$("#toDateTime").val("");
+	    var selectedRows = gridOptionsSchedule.api.getSelectedRows();
+		if(selectedRows.length>0){
+		    var selectedRows; 	
+			var empDetSchedule=[];
+			var empCatSchedule=[];
+			var empAssignId=[];
+		
+			
+			var catDetails1 =[];
+			 
+				
+				var selectedRowsString = '';
+				
+				selectedRows.forEach(function(selectedRow, index) {
+					if (index + 1 > 0) {
+						details.push(selectedRow)
+						
+						empDetSchedule.push(selectedRow.employeeId)
+						empCatSchedule.push(selectedRow.assignedCategoryId)
+						empAssignId.push(selectedRow.assign_id)
+						
+						var catDetails={};
+						//all selected categories and their names
+						catDetails.catId=selectedRow.assignedCategoryId;
+						catDetails.catName=selectedRow.assignedCategoryName;
+						catDetails1.push(catDetails);
+						
+					}
+				});
+				const key = 'catId';
+
+				const arrayUniqueByKey = [...new Map(catDetails1.map(item =>
+				   [item[key], item])).values()];
+				gridOptionsTime.api.setRowData(arrayUniqueByKey);
+				
+				
+				
+				if(arrayUniqueByKey.length > 0) {
+						$("#nextBtn").hide();
+						$("#backBtn").show();
+						$("#scheduleBtn").show();
+						$("#assignedEmpDetails").hide();
+						$("#scheduleTime").show();
+					} else {
+						$("#nextBtn").show();
+						$("#backBtn").hide();
+						$("#scheduleBtn").hide();
+						$("#assignedEmpDetails").show();
+						$("#scheduleTime").hide();
+					}
+		
+		}else{
+			$("#messageParagraph").text("Please select atleast one row to schedule");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			 }
+}
+	 
+	 
+	 function saveEmployeeSchedule(empDetSchedule,empCatSchedule,empAssignId) {
+		 validation = true;
+		    var fromdate = $('#fromDateSchedule').val();
+			var todate = $('#toDateSchedule').val();
+			
+			if (fromdate == null || fromdate == "") {
+				validation = validationUpdated("Please Choose From Date To Schedule",
+						"fromDateSchedule");
+
+			}
+			if (todate == null || todate == "") {
+				validation = validationUpdated("Please Choose To Date To Schedule", "toDateSchedule");
+
+			}
+			alldataTraining=[];
+	if(validation){
+			var date=getDateTime();
+			for(var i =0;i<empDetSchedule.length;i++){
+				alldata={}
+				alldata.employeeId=empDetSchedule[i];
+				alldata.categoryId=empCatSchedule[i];
+				alldata.assignId=empAssignId[i];
+				alldata.status="Scheduled";
+				alldata.scheduledDate=date;
+				alldata.scheduledFromDate=fromdate;
+				alldata.scheduledToDate=todate;
+				alldataTraining.push(alldata)
+			}  
+	}			
+			
+			 if (alldataTraining) {
+				$('.loader').show();
+				$.ajax({
+					type : "POST",
+					url : "assign-materials-schedule-emp-training",
+					dataType : "json",
+					contentType : "application/json",
+					data : JSON.stringify(alldataTraining),
+					success : function(response) {
+						
+						if (response.message == "Success") {
+							$('.loader').hide();
+							$('#myModal10').modal('hide');
+							$("#assignTrainingBtn").attr("disabled", true);
+							$('#fromDateSchedule').val('');
+						    $('#toDateSchedule').val();
+							$("#messageParagraph").text("Training Scheduled Successfully");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							
+							
+							agGrid.simpleHttpRequest({
+								url : 'assign-materials-get-employee-listing'
+							}).then(function(data) {
+								var resp=JSON.parse(data.body[0]);
+								var len = resp.EmployeeList.length;
+								$('#totalEmp').find('span').html(len);
+								gridOptions.api.setRowData(resp.EmployeeList);
+							});
+
+						} else {
+							$('.loader').hide();
+							$('#myModal10').modal('hide');
+							$("#messageParagraph").text(response.message);
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							$("#assignTrainingBtn").attr("disabled", true);
+							$('#fromDateSchedule').val('');
+							$('#toDateSchedule').val();
+							 
+							agGrid.simpleHttpRequest({
+								url : 'assign-materials-get-employee-listing'
+							}).then(function(data) {
+								var resp=JSON.parse(data.body[0]);
+								var len = resp.EmployeeList.length;
+								$('#totalEmp').find('span').html(len);
+								gridOptions.api.setRowData(resp.EmployeeList);
+							});
+						}
+					},
+					error : function(data) {
+						console.log(data)
+					}
+				})
+			}
+			
+		}
+		
+	 function showScheduleGrid(){
+		 window.index=-1;
+		 $("#nextBtn").show();
+			$("#backBtn").hide();
+			$("#scheduleBtn").hide();
+			$("#assignedEmpDetails").show();
+			$("#scheduleTime").hide();
+	 }
+	 function extractNumericValue(inputString) {
+		  // Remove all non-numeric characters from the input string
+		  let numericString = inputString.replace(/\D/g, '');
+		  
+		  // Convert the numeric string to a number and return it
+		  return parseInt(numericString);
+		}	 
+	 function saveTrainingSchedule(){
+		 var allSchedule1=[]
+		 var ttlhour=0;
+		 var bla = numericValue = extractNumericValue($('#totalHour').val());
+		// if (index + 1 > 0) {
+		 var schedData;
+		 gridOptionsTime.api.forEachNode(function(rowNode, index) {
+			 
+		 var allSchedule={}
+		 allSchedule.fromDate=$("#fromDateCalenderTime").val();
+		 allSchedule.toDate=$("#toDateCalendarTime").val();
+		 allSchedule.catId=rowNode.data.catId;
+		 allSchedule.catName=rowNode.data.catName;
+		 allSchedule.hours=rowNode.data.hours;
+		 allSchedule1.push(allSchedule)
+		 
+			}); 
+		 for(i=0;i<allSchedule1.length;i++){
+			 ttlhour=ttlhour+parseInt($('#'+i).val());
+		 }
+		validation = true;
+		var date1 = $('#fromDateTime').val();
+		var date2 = $('#toDateTime').val();
+
+		if (date1 == null || date1 == "") {
+			validation = validationUpdated("Please choose From Date To Schedule",
+					"fromDateTime");
+
+		}
+		if (date2 == null || date2 == "") {
+			validation = validationUpdated("Please choose To Date Schedule", "toDateTime");
+
+		}
+		if ( bla<ttlhour) {
+			validation = false;
+			$("#messageParagraph").text("Number of hour exceeds that of the scheduled hour ");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+
+		}
+		var date=getDateTime();
+		var allDetailsSc=[];
+		if(validation){
+		 for(i=0;i<allSchedule1.length;i++){
+			 allSchedule1[i].hours=$('#'+i).val();
+		 }
+		 for(var i=0;i<details.length;i++){
+			for(var j=0;j<allSchedule1.length;j++){
+				 if(details[i].assignedCategoryId==allSchedule1[j].catId){
+					 var allDetails={};
+
+					 allDetails.assignId=details[i].assign_id;
+					 allDetails.employeeId=details[i].employeeId;
+					 allDetails.categoryId=details[i].assignedCategoryId; 
+					 allDetails.status="Scheduled";
+					 allDetails.scheduledFromDate=allSchedule1[j].fromDate;
+					 allDetails.scheduledToDate=allSchedule1[j].toDate;
+					 allDetails.scheduledOn=date;
+					 allDetails.scheduledHours=allSchedule1[j].hours;
+					 allDetailsSc.push(allDetails)
+					 
+					 }
+				}
+			}
+		
+		 if(details){
+				$('.loader').show();
+				$.ajax({
+					type : "POST",
+					url : "assign-materials-schedule-emp-training",
+					dataType : "json",
+					contentType : "application/json",
+					data : JSON.stringify(allDetailsSc),
+					success : function(response) {
+						
+						if (response.message == "Success") {
+							$('.loader').hide();
+							$('#myModal10').modal('hide');
+							$("#assignTrainingBtn").attr("disabled", true);
+							$('#fromDateSchedule').val('');
+						    $('#toDateSchedule').val();
+							$("#messageParagraph").text("Training Scheduled Successfully");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							allDetailsSc=[];
+							// location.reload();
+							agGrid.simpleHttpRequest({
+								url : 'assign-materials-get-employee-listing'
+							}).then(function(data) {
+								var resp=JSON.parse(data.body[0]);
+								var len = resp.EmployeeList.length;
+								$('#totalEmp').find('span').html(len);
+								gridOptions.api.setRowData(resp.EmployeeList);
+							});
+
+						} else {
+							$('.loader').hide();
+							$('#myModal10').modal('hide');
+							$("#messageParagraph").text(response.message);
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							$("#assignTrainingBtn").attr("disabled", true);
+							$('#fromDateSchedule').val('');
+							$('#toDateSchedule').val();
+							 
+							agGrid.simpleHttpRequest({
+								url : 'assign-materials-get-employee-listing'
+							}).then(function(data) {
+								var resp=JSON.parse(data.body[0]);
+								var len = resp.EmployeeList.length;
+								$('#totalEmp').find('span').html(len);
+								gridOptions.api.setRowData(resp.EmployeeList);
+								allDetailsSc=[];
+							});
+						}
+					},
+					error : function(data) {
+						console.log(data)
+					}
+				})
+		 
+		 }
+		 
+	 }
+		 
+	} 
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<!-- 	Assign Training section     -->
+
+						<div class="row" id="viewTrainingScreen">
+
+							<div class="d-flex justify-content-between  mb-20 ">
+								<div class="d-flex col-md-8 justify-content-between">
+									<div class="btn-hs">
+										<div class="font-design" id="totalEmp">
+											Employee(<span></span>)
+										</div>
+									</div>
+									<div id="searchDiv">
+										<div class="input-style-search ">
+											<input type="text" placeholder="Search.." name="search"
+												class="searchboxinput" onkeyup="cancelBar()"
+												oninput="onQuickFilterChanged()" id="quickFilter"
+												autocomplete="off">
+
+											<div class="searchicon">
+												<a href="javascript: void(0)"><span
+													style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+													id="closeKey"
+													onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+													class="close_i"><i class="ti-close srchicon"></i></span></a><a
+													href="javascript: void(0)"><i
+													class="ti-search srchicon"></i></a>
+											</div>
+										</div>
+									</div>
+									<div class="col-md-2  btn-hs">
+										<!-- <label>From Date</label> -->
+										<div class="form-group calendar_box">
+											<input type="text" id="fromDate" value=""
+												class="form-control cldr" placeholder="From Date.."
+												th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+												readonly> <i class="ti-calendar picker_calendar"
+												id="fromDateCalender" style="top: 14px; right: 0px;"
+												onchange="dateChange()"></i>
+										</div>
+									</div>
+									<div class="col-md-2  btn-hs search">
+										<!-- <label>To Date</label> -->
+										<div class="form-group calendar_box">
+											<input type="text" id="toDate" value=""
+												class="form-control cldr" placeholder="To Date.."
+												th:attr="onkeyup=|formatDate('toDate','${session.DATEFORMAT_JS}')|"
+												readonly> <i class="ti-calendar picker_calendar"
+												id="toDateCalendar" style="top: 14px; right: 0px;"
+												onchange="dateChange()"></i>
+										</div>
+
+									</div>
+
+									<button class="btn1" id="searchDtBtn" onclick="viewSearchDt()">Search</button>
+								</div>
+								<div class="buttonsec btn-hs" id="btndiv">
+									<button class="btn1" id="scheduleTrainingBtn"
+										onclick="scheduleTrainingBtn()">Schedule Training</button>
+									<button class="btn1" id="assignTrainingBtn"
+										onclick="viewAssignModal()">Assign Training</button>
+
+								</div>
+							</div>
+
+							<div id="myGrid" style="width: 100%; height: 500px;"
+								class="ag-theme-alpine"></div>
+						</div>
+
+						<!--   Assign training modal start	 -->
+
+						<div class="modal fade" id="myModal">
+							<div class="modal-dialog modal-lg" style="margin-top: 130px;">
+								<div class="modal-content">
+
+									<!-- Modal Header -->
+									<div class="modal-header">
+										<h4 class="modal-title md-color">Select Training Category</h4>
+										<button type="button" class="close cp" data-dismiss="modal"
+											onclick="cancelModalBtn()">&times;</button>
+									</div>
+
+									<!-- Modal body -->
+									<div class="modal-body modal-cat">
+										<div class="row">
+											<div class="col-md-6" df="0" style="height: 300px;">
+												<table id="basic">
+													<tbody id="costCeneterCBDiv"></tbody>
+												</table>
+											</div>
+										</div>
+									</div>
+
+									<!-- Modal footer -->
+									<div class="modal-footer">
+										<div class="chartbtnsec">
+											<button class="btn1" onclick="saveEmployeeDraft()">SAVE
+												AS DRAFT</button>
+											<button class="btn4" data-dismiss="modal"
+												onclick="cancelModalBtn()">CANCEL</button>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+
+						<div class="modal fade" id="myModal10">
+							<div class="modal-dialog modal-lg" style="max-width: 1100px">
+								<div class="modal-content" style="width: 100%">
+
+									<!-- Modal Header -->
+									<div class="modal-header">
+										<h4 class="modal-title" style="font-size: 16px">
+											<b>Schedule Your Training: <span></span></b>
+										</h4>
+										<button type="button" class="close" data-bs-dismiss="modal"
+											style="font-size: 25px">
+											<i class="ti-close"></i>
+										</button>
+
+									</div>
+									<!-- Modal body -->
+									<div class="modal-body"
+										style="height: 415px; overflow-y: scroll;">
+										<div class="vertical-line">
+
+											<div class="row" id="assignedEmpDetails">
+
+												<div id="myGridSchedule" style="width: 100%; height: 300px;"
+													class="ag-theme-alpine"></div>
+
+											</div>
+
+											<div class="row" id="scheduleTime">
+												<div class="row  justify-content-center">
+													<div class="col-md-2  btn-hs">
+														<!-- <label>From Date</label> -->
+														<div class="form-group calendar_box">
+															<input type="text" id="fromDateTime" value=""
+																class="form-control cldr" placeholder="From Date.."
+																th:attr="onkeyup=|formatDate('fromDateTime','${session.DATEFORMAT_JS}')|"
+																readonly> <i class="ti-calendar picker_calendar"
+																id="fromDateCalenderTime" style="top: 14px; right: 0px;"
+																onchange="dateChangeSchedule()"></i>
+														</div>
+													</div>
+													<div class="col-md-2  btn-hs search">
+														<!-- <label>To Date</label> -->
+														<div class="form-group calendar_box">
+															<input type="text" id="toDateTime" value=""
+																class="form-control cldr" placeholder="To Date.."
+																th:attr="onkeyup=|formatDate('toDateTime','${session.DATEFORMAT_JS}')|"
+																readonly> <i class="ti-calendar picker_calendar"
+																id="toDateCalendarTime" style="top: 14px; right: 0px;"
+																onchange="dateChangeSchedule()"></i>
+														</div>
+
+													</div>
+													<div class="col-md-2  btn-hs search">
+														<input type="text" id="totalHour" value=""
+															class="form-control cldr" placeholder="Total Hours"
+															readonly>
+													</div>
+												</div>
+												<div class="row  justify-content-center">
+													<div class="col-md-6">
+														<div id="myGridTime" style="width: 100%; height: 250px;"
+															class="ag-theme-alpine"></div>
+													</div>
+												</div>
+												<div></div>
+											</div>
+											<!-- Modal footer -->
+											<div class="modal-footer">
+												<div class="col-md-2  btn-hs">
+													<button class="btn1" onclick="setTimeEmpTraining()"
+														id="nextBtn">Next</button>
+
+													<button class="btn1" onclick="saveTrainingSchedule()"
+														id="scheduleBtn">Schedule</button>
+													<button class="btn1" onclick="showScheduleGrid()"
+														id="backBtn">Back</button>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+
+
+
+								<!--<div class="modal fade" id="myModalTime">
+							<div class="modal-dialog modal-lg"
+								style="max-width: 600px; top: 100px">
+								<div class="modal-content" style="width: 100%">
+
+									Modal Header
+									<div class="modal-header">
+										<h4 class="modal-title">
+											<b>Add Your Training Time: <span></span></b>
+										</h4>
+										<button type="button" class="close" data-bs-dismiss="modal"
+											style="font-size: 25px">
+											<i class="ti-close"></i>
+										</button>
+									</div>
+									Modal body
+									<div class="modal-body"
+										style="height: 300px; overflow-y: scroll;">
+										<div class="vertical-line">
+											<div class="row">
+												<div class="col-md-3">
+													<label>From Date</label>
+													<div class="form-group calendar_box">
+														<input type="text" id="fromDateSchedule" value=""
+															class="form-control cldr" placeholder="From Date.."
+															th:attr="onkeyup=|fromDateSchedule('fromDateSchedule','${session.DATEFORMAT_JS}')|"
+															readonly> <i class="ti-calendar picker_calendar"
+															id="fromDateCalenderSchedule"
+															style="top: 14px; right: 0px;" onchange="dateChange()"></i>
+													</div>
+												</div>
+												<div class="col-md-3 search">
+													<label>To Date</label>
+													<div class="form-group calendar_box">
+														<input type="text" id="toDateSchedule" value=""
+															class="form-control cldr" placeholder="To Date.."
+															th:attr="onkeyup=|toDateSchedule('toDateSchedule','${session.DATEFORMAT_JS}')|"
+															readonly> <i class="ti-calendar picker_calendar"
+															id="toDateCalendarSchedule"
+															style="top: 14px; right: 0px;" onchange="dateChange()"></i>
+													</div>
+												</div>
+
+
+											</div>
+											<table id="catTbl" cellspacing="7" cellpadding="7">
+												<thead>
+													<tr class="tr_clone">
+														<th align="center"></th>
+
+														<th width="320" style="font-weight: 700">Category
+															Name</th>
+														<th width="380" style="font-weight: 700">Time</th>
+													</tr>
+												</thead>
+												<tbody id="timetbodyData">
+												</tbody>
+											</table>
+										</div>
+									</div>
+									Modal footer
+									<div class="modal-footer">
+
+																			</div>
+								</div>
+									<!------------------------------------------------>
+							</div>
+						</div>
+					</div>
+
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+/* .form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+} */
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+</style>
+
+<script type="text/javascript">
+	function openNav() {
+		 $("#subItem").val(null);
+		 $("#itemUnitName").val(null);		 
+		 $("#actualQunt").val('');
+		 $("#standardQunt").val('');
+		 $("#scrapQunt").val('');
+		  $("#itemSubId").val(null);
+		document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:200px;";
+
+		document.getElementById("main").style.width = "75%";
+	}
+
+	function closeNav() {
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main").style.width = "100%";
+		$("#subItem").val(null);
+		$("#inputSubId").val(null);
+		//$("#itemUnitName").val(null);
+		$("#itemUnitId").val('');
+		$("#actualQunt").val('');
+		$("#standardQunt").val('');
+		$("#scrapQunt").val('');
+		
+		//$("#toPlace").val('');
+		$("#rowEdit").val(null);
+	}
+	
+
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#searchBar').val() == null || $('#searchBar').val() == "") {
+			id.style.display = "none";
+		}
+	}
+</script>
+
+
+<script type="text/javascript">
+	$(document).ready(function() {
+		
+		gridOptions.api.setRowData();
+		agGrid.simpleHttpRequest({
+			url : 'manage-bom-view'
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body[0]);
+			var allData=jsonData.Bom;
+			var len = allData.length;
+			$('#totalReq').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+		});
+		
+		
+		activityOptions.api.setRowData();
+
+ 
+		//changeOpt();
+		
+		$('#active').attr('disabled', true);
+		$('#inactive').attr('disabled', true);
+
+		$("#statusDiv").hide();
+		$('#reqDltBtn').attr('disabled', true);
+		$('#approve').attr('disabled', true);
+		$('#reject').attr('disabled', true);
+		$('#deleteChild').attr('disabled', true);
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+		$('.collapse').on('hide.bs.collapse', function() {
+			$(this).siblings('.panel-heading').removeClass('active');
+		});
+		$("#newBtn").click(function() {
+			$("#myGrid").hide();
+			$("#reqTable").hide();
+			$("#searchDiv").hide();
+			$(".btn-hs").show();
+			$("#btndiv").hide();
+			$("#listdiv").hide();
+			$("#totalReq").hide();
+			$("#searchRowDiv").hide();
+			$("#ttbtn").hide();
+			$("#demo").show();
+		})
+		
+	
+		
+		
+
+	});
+	
+	/* -------------------search bar for mygrid------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+		var totalRowCount = gridOptions.api.getDisplayedRowCount();
+		$('#totalReq').find('span').html(totalRowCount);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+		var totalRowCount = gridOptions.api.getDisplayedRowCount();
+		$('#totalReq').find('span').html(totalRowCount);
+	}
+ function cancel() {
+	 $(".formValidation").remove();
+		//$("#reqTable").show();
+		//$("#searchDiv").show();
+		$(".btn-hs").show();
+		$("#myGrid").show();
+		$("#demo").hide();
+		$("#reqDltBtn").attr('disabled', true);
+		$("#newBtn").attr('disabled', false);
+		$("#totalReq").show();
+		$("#searchRowDiv").show();
+		$('#active').attr('disabled', true);
+		$('#inactive').attr('disabled', true); 
+		
+		gridOptions.api.setRowData();
+		agGrid.simpleHttpRequest({
+			url : 'manage-bom-view'
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body[0]);
+			var allData=jsonData.Bom;
+			var len = allData.length;
+			gridOptions.api.setRowData(allData);
+
+			var totalRowCount = gridOptions.api.getDisplayedRowCount();
+			$('#totalReq').find('span').html(totalRowCount);
+		});
+		$("#itemId").val('');
+		$("#itemName").val('');
+		$("#description").val('');
+		$("#subItem").val('');
+		$("#itemUnitName").val('');
+		$("#actualQunt").val('');
+		$("#standardQunt").val('');
+		$("#scrapQunt").val('');
+		
+		activityOptions.api.setRowData();
+ 
+	};
+</script>
+
+
+<script type="text/javascript">
+ function validFormData(){
+	 var valid= true;
+	 var itemId = $("#itemId").val();
+       	if (itemId == null || itemId == "") {
+			valid = validationUpdated("*Item Name is Required", "itemName");
+			return false;
+		}else{
+			return true;
+		}
+ }
+//master save data
+
+function masterSaveData() {
+if (validFormData()) { 
+		$(".formValidation").remove();
+	
+	var datas = [];
+	var rowCount = activityOptions.api.getDisplayedRowCount();
+	
+	if(rowCount > 0){
+
+	activityOptions.api.forEachNode(function(rowNode, index) {
+		
+		var item = rowNode.data;
+        
+		item.bomid = $("#bomid").val();
+		item.itemName = $("#itemName option:selected").text();
+		item.itemId = $("#itemId").val();
+		item.description = $("#description").val();
+			datas.push(item);
+		});
+		saveBomDetails(datas);
+	} else {
+		$("#messageParagraph").text(
+		"Add Other Services Details First");
+		$("#msgOkModal").removeClass("btn3");
+		$("#msgOkModal").addClass("btn1");
+		$("#msgModal").modal('show');
+	}
+  }
+}
+
+function saveBomDetails(datas) {
+	//console.log(datas);
+	$('.loader').show();
+	//$("body").addClass("overlay");
+	$.ajax({
+		type : "POST",
+		url : "manage-bom-add-bom-details",
+		dataType : "json",
+		contentType : "application/json",
+		data : JSON.stringify(datas),
+		success : function(response) {
+			$('.loader').hide();
+			if (response.code == "success") {
+				cancel();
+				$("#messageParagraph").text(response.message);
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				closeNav()
+			} else {
+				$('.loader').hide();
+				$("#messageParagraph").text(response.message);
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+			}
+		},
+		error : function(data) {
+			$('.loader').hide();
+		}
+	}) //ajax ends
+}
+
+	$("#newBtn").click(function() {
+		$("#myGrid").hide();
+		$("#reqTable").hide();
+		$(".btn-hs").hide();
+		$("#demo").show();
+		$("#totalReq").hide();
+		$("#searchRowDiv").hide();
+		$("#ttbtn").hide();
+	})
+
+	var columnDefs = [
+			{
+				headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : false,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+
+			},
+			{
+				headerName : 'Bom Id',
+				width : 100,
+				field : "bomid",
+ 				cellRenderer : function(params) {
+					return '<a id="bomid" onclick=editBom("'
+					+params.data.bomid
+					+ '") href="javascript:void(0)">'
+					+ params.data.bomid + '</a>';
+
+				}
+
+			}, {
+				headerName : 'Item Code',
+				width : 110,
+				field : "item_id",
+			}, {
+				headerName : 'Item Name',
+				width : 280,
+				field : "item_name",
+			}, {
+				headerName : 'status',
+				field : "bom_status",
+				width : 150,
+				cellStyle : {
+					textAlign : 'center'
+				},
+			
+			cellRenderer : function(params) {
+				 if (params.data.bom_status == "Active") {
+					return '<div style="color:#0642f5">Active</div>';
+				} else {
+					return '<div style="color:#ff8242">Inactive</div>';
+				}	
+			}
+			},
+			{
+				headerName : 'brand',
+				field : "item_brand",
+				width : 150,
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : 'category',
+				field : "item_category",
+				width : 150,
+				 cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : 'description',
+				field : "bom_description",
+				width : 400,
+			},
+
+			 ];
+
+	
+
+	// let the grid know which columns and what data to use
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 120
+		},
+		onSelectionChanged : onSelectionChanged,
+	};
+	// for activity table
+
+	var activityDefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				sortable : false,
+				filter : false,
+				resizable : true,
+				width : 30
+			},
+			{
+				headerName : "Item Id",
+				field : "itemSubId",
+				width : 100,
+				cellRenderer : function(params) {
+					return '<a onclick=editRow("'  + params.data.itemSubId
+							+ '","' + params.data.itemUnitId+'","' + params.data.actualQunt+'","' + params.data.standardQunt+'","' + params.data.scrapQunt+'") href="javascript:void(0)">'
+							+ params.data.itemSubId + '</a>';
+				}
+			}, {
+				headerName : "Item",
+				field : "subItem",
+				width : 350,
+				cellStyle : {
+					textAlign : 'center'
+				},
+			}, {
+				headerName : "Unit",
+				field : "itemUnitName",
+				width : 150,
+				cellStyle : {
+					textAlign : 'center'
+				},
+			}, {
+				headerName : "Unit",
+				field : "itemUnitId",
+				hide:true,
+			}, {
+				headerName : "Actual Quantity",
+				field : "actualQunt",
+				width : 200,
+				cellStyle : {
+					textAlign : 'center'
+				},
+			},{
+				headerName : "Standard Quantity",
+				field : "standardQunt",
+				width : 200,
+				cellStyle : {
+					textAlign : 'center'
+				},
+			},{
+				headerName : "Scrap Quantity (%)",
+				field : "scrapQunt",
+				width : 200,
+				cellStyle : {
+					textAlign : 'center'
+				},
+			},];
+
+
+	// let the grid know which columns and what data to use product table
+	var activityOptions = {
+		columnDefs : activityDefs,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 200
+		},
+		onSelectionChanged : onSelectionChangeChild,
+		getRowNodeId : function(data) {
+			return data.itemSubId;
+		}
+	};
+	
+	var id = "";
+	var creq="";
+	function onSelectionChangeChild() { 
+		 var selectedNodes = activityOptions.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		 childid= selectedData.map(node => node.itemSubId);
+		var selectedRows = activityOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#newchild').attr('disabled', true);
+			$('#deleteChild').attr('disabled', false);
+		}else{
+			$('#newchild').attr('disabled', false);
+			$('#deleteChild').attr('disabled', true);
+		}
+	}
+	
+	// for selecting parents.
+	var id = "";
+	function onSelectionChanged() {
+		var selectedNodes = gridOptions.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		 id= selectedData.map(node => node.bomid);
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+		
+		
+
+		if (rowCount > 0) {
+			$('#newBtn').attr('disabled', true);
+			$('#reqDltBtn').attr("disabled", false);
+			
+			if (selectedData.map(node => node.bom_status) =="Active") {
+				$('#active').attr('disabled', true);
+				$('#inactive').attr('disabled', false);
+	        } else {
+	        	$('#active').attr('disabled', false);
+				$('#inactive').attr('disabled', true);
+	        }
+			
+			
+		}else {
+			$('#reqDltBtn').attr("disabled", true);
+			$('#newBtn').attr('disabled', false);
+			$('#inactive').attr('disabled', true);
+			$('#active').attr('disabled', true);
+		}
+	}
+	// for editing child table of shift 
+
+	function editRow(id,unit,aqty,sqty,scrp) {
+			openNav();
+			$("#rowEdit").val(id);
+			$("#subItem").val(id);
+			$("#itemSubId").val(id);
+			$("#itemUnitName").val(unit);
+			$("#actualQunt").val(aqty);
+			$("#standardQunt").val(sqty);
+			$("#scrapQunt").val(scrp);
+
+	}
+
+	//editing the employee shift details parent table
+
+	function editBom(bomid) {
+		agGrid.simpleHttpRequest(
+				{
+					url : 'manage-bom-edit?id='+ bomid
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body[0]);
+					var allData=jsonData.Bom;
+				if(allData.length>0){
+					$("#myGrid").hide();
+				switchPage()
+				$("#bomid").val(bomid);
+				$("#trReqId").text(bomid);
+				$("#itemName").val(allData[0].item_id);
+				$("#itemId").val(allData[0].item_id);
+				$("#description").val(allData[0].bom_description);
+				activityOptions.api.setRowData(allData);
+				$("#tdiv").hide();
+				$("#searchRowDiv").hide();
+				$("#totalReq").hide();
+				$("#ttbtn").hide();
+				}else{
+					$("#messageParagraph").text("Something went to wrong!");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+				}
+							
+				});
+ 
+	}
+
+	// delete  
+
+	function deleteOnclick() {
+		if (id) {
+			$.ajax({
+				type : "GET",
+				url : 'manage-bom-delete-bom?id='+ id,
+				success : function(response) {
+					if (response.message == "Success") {
+						cancel();
+						$("#messageParagraph").text("Bom deleted sucessfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$('#delete').modal('hide');
+					} else {
+						$("#messageParagraph").text("Something went to wrong!");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+					}
+				},
+				error : function(data) {
+					console.log(data)
+				}
+			})
+		} else {
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+	}
+
+	// delete selected record from ag grid
+	function deleteDetailsOnclick() {
+		$('.modal').hide();
+		var selectedRows = activityOptions.api.getSelectedRows();
+		activityOptions.api.applyTransaction({
+			remove : selectedRows
+		});
+		//$('#newchild').show();
+		//$('#deletechild').hide;
+		cancelModalProductBtn();
+		
+	}
+
+	//for closeing modal box for dlt  product
+	function cancelModalProductBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+		$('#deleteDetails').modal('hide');
+		//$('#newchild').show();
+		//$('#deletechild').hide;
+	}
+
+	function deleteFun() {
+		$('#delete').modal('show');
+	}
+
+	function deleteDetails() {
+		$('#deleteDetails').modal('show');
+		closeNav();
+	}
+
+	function cancelModalBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+	}
+
+	// save data in aggrid table sidenav save
+
+	   function saveTableData() {
+		var datas = [];
+		var item = {};
+		var valid = true;
+		var rowEdit = $("#rowEdit").val();
+		if (true) {
+			//item.subItem = $("#subItem").val();
+			item.subItem = $("#subItem option:selected").text();
+			item.itemSubId = $("#subItem").val();
+			item.itemUnitName = $("#itemUnitName option:selected").text();
+			item.itemUnitId = $("#itemUnitName").val();
+			item.actualQunt = $("#actualQunt").val();
+			item.standardQunt = $("#standardQunt").val();
+			item.scrapQunt = $("#scrapQunt").val();
+
+			
+			
+			 if (item.itemSubId == null || item.itemSubId == "") {
+				valid = validationUpdated("*Item Name is Required", "subItem");
+				
+			}
+			if (item.itemUnitId == null || item.itemUnitId == "") {
+				valid = validationUpdated("*Unit Required", "itemUnitName");
+			}
+			if (item.actualQunt == null || item.actualQunt == "") {
+				valid = validationUpdated("*Actual Quantity Required", "actualQunt");
+			}
+			if (item.standardQunt == null || item.standardQunt == "") {
+				valid = validationUpdated("*Standard Quantity Required", "standardQunt");	
+			}
+			if (item.scrapQunt == null || item.scrapQunt == "") {
+				valid = validationUpdated("*Scrap Quantity Required", "scrapQunt");	
+			}
+			
+			
+			if (valid) {
+			if (rowEdit) {
+				var rowNode = activityOptions.api.getRowNode(rowEdit);
+				rowNode.setData(item);
+				closeNav();
+			} else {
+				var rowCount = activityOptions.api.getDisplayedRowCount();
+				if(rowCount>0){
+				activityOptions.api.forEachNode(function(rowNode, index) {
+					var iid= rowNode.data.itemSubId;
+					if(item.itemSubId!=iid){
+						datas.push(rowNode.data);
+						closeNav();
+					}else{
+						datas.push(rowNode.data);
+						$("#messageParagraph").text("Item Is Already Selected");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+					}
+				});
+				datas.push(item)
+				}else{
+					datas.push(item)
+					closeNav();
+				}
+				activityOptions.api.setRowData(datas); 
+			}
+			} else{
+				$('#mySidenav').show();
+				
+			}
+		}
+	} 
+	
+	
+	// setup the grid after the page has finished loading
+	document.addEventListener('DOMContentLoaded', function() {
+
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		var gridDiv = document.querySelector('#activity');
+		new agGrid.Grid(gridDiv, activityOptions);
+
+	});
+
+	function switchPage() {
+		$("#demo").show();
+		$("#itemId").val('');
+		$("#itemName").val("");
+		$("#description").val('');
+		$("#deleteChild").attr('disabled', true);
+		$("#newchild").attr('disabled', false);
+
+		$("#trReqId").text("");
+		
+		activityOptions.api.setRowData();
+		
+	}
+	
+
+	function downloadDetails() { 
+		  var dataset = [];
+		  gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		        dataset.push(rowNode.data);
+		    });
+		  gridOptions.api.exportDataAsCsv(dataset);
+		}
+	
+	function getparentItemId(){
+		var itemId = $("#itemName").val();
+		$('#itemId').val(itemId);
+	}
+	function getItemId(){
+		var itemSubId1 = $("#subItem").val();
+		$('#itemSubId').val(itemSubId1);	
+	}
+	function getUnitId(){
+		var itemUnitId = $("#itemUnitName").val();
+		$('#itemUnitId').val(itemUnitId);	
+	}
+	
+	// Change Status.
+	
+	function changeStatusFun(status){
+			$.ajax({
+				type : "GET",
+				url : "manage-bom-change-bom-status?status="+ status + "&id=" + id,
+				success : function(response) {
+					if (response.message == "Success") {
+						cancel();
+						$("#messageParagraph").text("Status Changed Sucessfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$('#delete').modal('hide');
+					} else {
+						$("#messageParagraph").text("Something went to wrong!");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+					}
+				},
+				error : function(data) {
+					console.log(data)
+				}
+			})
+
+	}
+	
+	 //Amount validation
+	 function checkAmount(fieldId) {   
+		var myField = document.getElementById(fieldId)
+		 var reg = /^\d{0,8}(\.\d{0,4})?$/;   
+		 if (reg.test(myField.value))
+		 {       
+			 $("#" + fieldId).val();
+			 reg = '';  
+		 }else{        
+			 $("#" + fieldId).val(null);     } 
+		 }  
+	 
+	 
+</script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="d-flex flex-wrap justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalReq">
+									BOM LIST(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';cancelBar();"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+								<button class="download-btn" id="download"
+									onclick="downloadDetails()">Download</button>
+								<button class="delete-btn" id="reqDltBtn" onclick="deleteFun()">DELETE</button>
+								<button class="new-btn" id="newBtn" onclick="switchPage()">NEW</button>
+								<button class="delete-btn" id="inactive"
+									onclick="changeStatusFun('0')">INACTIVE</button>
+								<button class="new-btn" id="active"
+									onclick="changeStatusFun('1')">ACTIVE</button>
+							</div>
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" />
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innercontent">
+								<div class="innerstickybg">
+									<div class="row">
+
+										<div class="col-md-6">
+											BOM Id: <span id="trReqId"></span>
+										</div>
+
+										<div class="col-md-6" align="right">
+											<button class="cancel-btn" id="cancelBtn" onclick="cancel()">Cancel</button>
+											<button class="approve-btn" id="save"
+												onclick="masterSaveData()">Save</button>
+										</div>
+									</div>
+
+								</div>
+								<div class="row innersticky_contentgap">
+									<input type="hidden" id="bomid">
+
+									<div class="col-md-4">
+										<div class="form-group">
+											<label> Item Name </label>
+											<div class="select" onchange="getparentItemId()">
+												<select id="itemName">
+													<option value="">Select</option>
+													<option th:each="c:${itemList}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select> <span class="focus"></span>
+											</div>
+										</div>
+									</div>
+									<div class="col-md-4">
+										<div class="form-group">
+											<label> Item Id </label> <input type="text"
+												class="form-control" id="itemId" readonly>
+										</div>
+									</div>
+
+									<div class="col-md-4">
+										<div class="form-group">
+											<label> Description </label>
+											<textarea class="form-control" id="description"
+												onblur="removeValid(event)"></textarea>
+										</div>
+									</div>
+								</div>
+								<div id="main" class="mt-4">
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingOne">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseOne"
+												aria-expanded="false" aria-controls="collapseOne">
+												BOM Details</button>
+										</h2>
+
+										<div id="collapseOne" class="accordion-collapse collapse show"
+											aria-labelledby="headingOne"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+
+												<div id="mySidenav" class="sidenav">
+													<div class="slidebox">
+														<div class="row">
+															<div class="col-md-10 edit">BOM Details</div>
+															<div class="col-md-2">
+																<div class="arrow">
+																	<a href="javascript:void(0)" class="closebtn"
+																		onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+																</div>
+															</div>
+														</div>
+														<div style="clear: both;"></div>
+														<div class="chartbtnsec">
+															<div align="right">
+																<button class="cancel-btn" onclick="closeNav()">CANCEL</button>
+																<!-- <button class="btn3" onclick="deleteProductIndConfirm()">DELETE</button> -->
+																<button class="approve-btn" id="save1"
+																	onclick="saveTableData()">SAVE</button>
+															</div>
+
+														</div>
+														<div class="clearfix"></div>
+														<div class="row">
+															<div class="col-lg-12">
+																<div class="form-group">
+																	<input type="hidden" class="form-control" id="rowEdit">
+																</div>
+															</div>
+
+															<div class="col-lg-12">
+																<div class="form-group">
+																	<label>Item Name</label>
+																	<div class="select">
+																		<select id="subItem" onchange="getItemId()">
+																			<option value="">Select</option>
+																			<option th:each="c:${itemSubList}"
+																				th:value='${c.key}' th:text="${c.name}"></option>
+																		</select> <span class="focus"></span>
+																	</div>
+																</div>
+															</div>
+															<div class="col-lg-12">
+																<div class="form-group">
+																	<label>Item Id</label> <input type="text"
+																		class="form-control" id="itemSubId" readonly>
+																</div>
+															</div>
+															<div class="col-lg-12">
+																<div class="form-group">
+																	<label>Unit</label>
+																	<div class="select">
+																		<select id="itemUnitName" onchange="getUnitId()">
+																			<option th:value="NULL">Select</option>
+																			<option th:each="c:${unitList}" th:value='${c.key}'
+																				th:text="${c.name}"></option>
+																		</select> <span class="focus"></span>
+																	</div>
+																</div>
+															</div>
+															<div class="col-lg-12">
+																<div class="form-group">
+																	<label>Actual Quantity</label> <input type="text"
+																		class="form-control transparenttxtbox" id="actualQunt"
+																		onblur="removeValid(event)"
+																		onkeyup="checkAmount('actualQunt');">
+																</div>
+															</div>
+															<div class="col-lg-12">
+																<div class="form-group">
+																	<label>Standard Quantity</label> <input type="text"
+																		class="form-control transparenttxtbox"
+																		id="standardQunt" onblur="removeValid(event)"
+																		onkeyup="checkAmount('standardQunt');">
+																</div>
+															</div>
+															<div class="col-lg-12">
+																<div class="form-group">
+																	<label>Scrap Quantity (%)</label> <input type="text"
+																		class="form-control transparenttxtbox" id="scrapQunt"
+																		onblur="removeValid(event)"
+																		onkeyup="checkAmount('scrapQunt');">
+																</div>
+															</div>
+														</div>
+													</div>
+												</div>
+
+
+												<div class="row">
+													<div class="col-md-12 buttonsec btn-hs">
+														<button class="delete-btn" id="deleteChild"
+															onclick="deleteDetails()">DELETE</button>
+														<button class="new-btn" id="newchild"
+															onclick="openNav();">NEW</button>
+													</div>
+													<div id="activity" style="width: 100%; height: 200px;"
+														class="ag-theme-alpine"></div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+						</div>
+					</div>
+				</div>
+
+
+				<!-- delete modal start -->
+				<div id="delete" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column"></div>
+							<div class="modal-body">
+								<p>Do you really want to delete these records? This process
+									cannot be undone.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: 0px;">
+
+								<button type="button" class="cancel-btn" data-bs-dismiss="modal"
+									onclick="cancelModalBtn();">Cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="deleteOnclick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- delete product modal start -->
+				<div id="deleteDetails" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column"></div>
+							<div class="modal-body">
+								<p>Do you really want to delete these records? This process
+									cannot be undone.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: -30px;">
+
+								<button type="button" class="cancel-btn" data-bs-dismiss="modal"
+									onclick="cancelModalBtn();">Cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="deleteDetailsOnclick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+
+
+
+				<!-- alert modal start -->
+				<div id="alert" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column">
+								<button type="button" class="close" data-bs-dismiss="modal"
+									aria-hidden="true" onclick="cancelModalBtn()">
+									<i class="ti-close modal-close"></i>
+								</button>
+							</div>
+							<div class="modal-body">
+								<p id="textId"></p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: 0px;">
+
+								<button type="button" class="btn1" data-bs-dismiss="modal">SELECT</button>
+								<button type="button" class="btn3" onclick="deleteOnclick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>

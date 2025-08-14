@@ -1,0 +1,495 @@
+
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<style>
+#myReq .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff;
+	text-indent: 10px !important;
+}
+
+#myReq .ag-row-selected::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 3px;
+	right: 4px;
+}
+
+/* #staticEmail {
+	margin-left: -45px;
+} */
+</style>
+<script>
+	//Multiple Document Upload Ends
+
+	$(function() {
+
+		agGrid.simpleHttpRequest({
+			url : 'view-candidate-view-ajax'
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalCandidate').find('span').html(len);
+			gridOptions.api.setRowData(data);
+		});
+	});
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+
+	var columnDefs = [
+		{
+			headerCheckboxSelection : true,
+			headerCheckboxSelectionFilteredOnly : true,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true
+		},
+
+		{
+			headerName : "Rent Id",
+			field : "rentId",
+			width : 150
+		} ,{
+			headerName : "Property No",
+			field : "propNo",
+			width : 150
+		}, {
+			headerName : "month",
+			field : "month",
+			width : 150
+		}, {
+			headerName : "Due Rent",
+			field : "duerent",
+		}, {
+			headerName : "Total O/S",
+			field : "total",
+			width : 150
+		}, {
+			headerName : "Received Amount",
+			field : "amount",
+			width : 180
+		}, {
+			headerName : "Balance O/S (If any)",
+			field : "balance",
+			width : 180
+		} ];
+
+	$("#stationId").click(function() {
+		$("#a").css("display", "block");
+		$("#b").css("display", "block");
+	});
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 277,
+			height : 20
+		},
+		rowSelection : 'multiple',
+		onSelectionChanged : onSelectionChanged
+	};
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function addCandidate() {
+
+		$('#hideTbl').hide();
+		$('#buttonDetails').hide();
+		$('#myGrid').hide();
+		$('#demo').show();
+		$("#btn1").show();
+		$('#candidateId').val("");
+
+		$("#collapseOne").collapse({
+			toggle : false
+		}).collapse('show');
+
+	}
+
+	/* APPLY FOR REQUISITION ENDS */
+
+	// setup the grid after the page has finished loading
+	$(document).ready(function() {
+
+		var today = new Date();
+		var dd = String(today.getDate()).padStart(2, '0');
+		var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+		var yyyy = today.getFullYear();
+
+		today = dd + '-' + mm + '-' + yyyy;
+
+		$('#fromDate').val(today);
+		$('#toDate').val(today);
+
+		$('#reqDltBtn').attr('disabled', true);
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#fromDate').val($(this).val());
+		})
+
+		$('#fromDate').blur(function() {
+			$("#fromDateCalendar").val($(this).val());
+		})
+
+		//     date format TO date
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#toDate').val($(this).val());
+		})
+
+		$('#toDate').blur(function() {
+			$("#toDateCalendar").val($(this).val());
+		})
+
+		search();
+
+	});
+	
+	function search() {
+		var fromDate=$("#fromDate").val();
+		var toDate=$("#toDate").val();
+		var fromDate=fromDate.split('-');
+		var fromDate=fromDate[2]+'-'+fromDate[1]+'-'+fromDate[0];
+		var toDate=toDate.split('-');
+		var toDate=toDate[2]+'-'+toDate[1]+'-'+toDate[0];
+		
+		
+		var userid = $("#sessionId").val();
+
+		agGrid.simpleHttpRequest({
+			url : "ledger-details-view?userid="+userid+"&fromDate="+fromDate+"&toDate="+toDate,
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+			if (len > 0) {
+				gridOptions.api.setRowData(data);
+			} else {
+				gridOptions.api.setRowData();
+			}
+		});
+				
+	}
+
+	function cancelbtn() {
+		$('#reqDltBtn').attr('disabled', true);
+		$("#myGrid").show();
+		$("#btn1").hide();
+		$("#demo").hide();
+		$("#hideTbl").show();
+		$("#buttonDetails").show();
+	}
+	function saty() {
+		window.open();
+	}
+
+	function onSelectionChanged() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			$('#reqDltBtn').attr('disabled', false);
+		} else {
+			$('#reqDltBtn').attr('disabled', true);
+		}
+
+	}
+	function editId(stationId) {
+		addCandidate();
+	}
+</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="row">
+							<div class="col-md-6  btn-hs">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter">
+									<div class="searchicon">
+										<a href="javascript: void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptionsEmployee.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript: void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+
+							</div>
+							<div class="col-md-2">
+								<div class="form-group calendar_box">
+									<label>From Date</label> <input type="text" id="fromDate"
+										value="" class="form-control" onblur="removeValid(event)"
+										th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+										readonly> <i class="ti-calendar picker_calendar"
+										id="fromDateCalendar" onchange="dateChange(); validate();"></i>
+								</div>
+
+							</div>
+							<div class="col-md-2">
+								<div class="form-group calendar_box">
+									<label>To Date</label> <input type="text" id="toDate" value=""
+										class="form-control" onblur="removeValid(event)"
+										th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+										readonly> <i class="ti-calendar picker_calendar"
+										id="toDateCalendar" onchange="dateChange(); validate();"></i>
+								</div>
+							</div>
+
+
+							<div class="col-md-1" align="right">
+								<button class="btn2" onclick="search()">Search</button>
+							</div>
+							<input type="hidden" id="sessionId" th:value="${userId}" />
+						</div>
+
+						<div class="row">
+							<div class="col-md-4"></div>
+						</div>
+						<div class="row">
+							<div class="innerstickybg">
+								<div class="row">
+									<div class="col-md-6 btn-hs">
+										<h3>LEDGER</h3>
+										<input type="hidden" id="sessionId" th:value="${userId}" />
+									</div>
+									<div class="col-md-12" align="right"></div>
+								</div>
+							</div>
+						</div>
+
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+
+
+						<div class="collapse" id="demo">
+							<div class="innerstickybg">
+
+								<div class="row">
+
+									<div class="col-md-4"></div>
+									<div class="col-md-4"></div>
+									<div class="col-md-4" align="right" id="btn1">
+										<button class="btn3" id="cancelBtn" onclick="cancelbtn()">Cancel
+										</button>
+
+									</div>
+								</div>
+
+							</div>
+							<div class="innercontent">
+								<div class="row">
+
+									<div class="col-md-9" id="candidateDetailsBar">
+
+
+										<div class="name" id="nameDtls"></div>
+
+										<div class="mt-0">
+											<div class="details" id="locationDtls"></div>
+										</div>
+
+										<div class="mt-20">
+											<div class="details" id="mobileNoDtls"></div>
+
+											<div class="details" id="emailDtls"></div>
+										</div>
+
+
+
+
+
+									</div>
+								</div>
+							</div>
+							<div id="main">
+
+								<div class="wrapper center-block">
+									<div class="row">
+										<div class="col-lg-4">
+
+											<b><label>Property Details </label></b>
+
+										</div>
+										<div class="col-lg-4">
+											<div class="form-group"></div>
+										</div>
+										<div class="col-lg-4">
+											<b><label>Property Name </label></b><span id="reqHeadId">:
+												OSRTC001</span>
+										</div>
+									</div>
+								</div>
+
+								<div id="collapseOne" class="accordion-collapse collapse"
+									aria-labelledby="headingOne" data-bs-parent="#accordionExample">
+									<div class="accordion-body">
+										<div class="row">
+
+
+
+											<div class="col-lg-4">
+												<div class="form-group">
+													<input type="hidden" class="form-control" id="stationId"
+														autocomplete="off"> <label>Property No</label> <input
+														type="text" name="Company Name" value="OSRTC001"
+														class="form-control" id="contactNumber">
+												</div>
+											</div>
+
+											<div class="col-lg-4">
+												<div class="form-group">
+													<label>Property Type</label> <input type="text"
+														name="Company Name" value="FLAT" placeholder=""
+														class="form-control" id="contactNumber">
+
+												</div>
+											</div>
+
+
+											<div class="col-lg-4">
+												<div class="form-group calendar_box">
+													<label>Property Name</label> <input type="text"
+														class="form-control" id="stationName" value="DUPLEX HOUSE">
+
+
+												</div>
+											</div>
+											<div class="col-lg-6">
+												<div class="form-group">
+													<label>Address</label> <input id="stationName" type="text"
+														class="form-control" value="BHUBANESWAR">
+												</div>
+											</div>
+
+											<div class="col-lg-4">
+												<div class="form-group">
+													<label>Area/Location</label><input type="text"
+														id="stationCode" class="form-control" value="PATIA">
+												</div>
+											</div>
+											<div class="col-lg-4">
+												<div class="form-group calendar_box">
+													<label>Lease Start Date</label> <input type="text"
+														id="fromDate" value="19-04-2022" class="form-control"
+														onblur="removeValid(event)"
+														th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+														readonly> <i class="ti-calendar picker_calendar"
+														id="fromDateCalendar" onchange="dateChange(); validate();"></i>
+												</div>
+
+											</div>
+
+											<div class="col-lg-4">
+												<div class="form-group calendar_box">
+													<label>Lease End Date</label> <input type="text"
+														id="fromDate" value="19-04-2029" class="form-control"
+														onblur="removeValid(event)"
+														th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+														readonly> <i class="ti-calendar picker_calendar"
+														id="fromDateCalendar" onchange="dateChange(); validate();"></i>
+												</div>
+											</div>
+											<div class="col-lg-4">
+												<div class="form-group">
+													<label>Area (Sq.Ft.)</label> <input type="text"
+														id="authorizePerson" class="form-control" value="2000">
+												</div>
+											</div>
+											<div class="col-lg-4">
+												<div class="form-group">
+													<label>Property Value</label> <input type="text"
+														id="authorizePerson" class="form-control" value="1200000">
+												</div>
+											</div>
+											<div class="col-lg-4">
+												<div class="form-group">
+													<label>Rent</label> <input type="text" id="authorizePerson"
+														class="form-control" value="20000">
+												</div>
+											</div>
+											<div class="col-lg-4">
+												<div class="form-group">
+													<label>Security Deposite</label> <input type="text"
+														id="authorizePerson" class="form-control" value="200000">
+												</div>
+											</div>
+											<div class="col-lg-4">
+												<div class="form-group">
+													<label>Tenant Name</label> <input type="text"
+														id="authorizePerson" class="form-control"
+														value="Mr. Satya Brata Mallick">
+												</div>
+											</div>
+											<div class="col-lg-4">
+												<div class="form-group">
+													<label>Agreement Doc</label> <input type="text"
+														id="authorizePerson" class="form-control" onclick="saty()"
+														value="agreement.pdf">
+												</div>
+											</div>
+
+											<div class="col-lg-4">
+												<div class="form-group">
+													<label>Tenant Email</label> <input type="text"
+														id="authorizePerson" class="form-control"
+														value="satyamallick610@gmail.com">
+												</div>
+											</div>
+
+										</div>
+									</div>
+								</div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	</div>
+</body>
+
+</html>

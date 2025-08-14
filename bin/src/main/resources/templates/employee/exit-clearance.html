@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<meta charset="ISO-8859-1">
+<title></title>
+<style>
+
+.mod-size{
+
+width: 670px;padding: 0 19px;height: 380px;
+}
+</style>
+
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(
+			function() {
+				$("#clearanceBtn").attr("disabled",true);
+				
+				var gridDiv = document.querySelector('#myGrid');
+				new agGrid.Grid(gridDiv, gridOptions);
+				
+				viewExitsAgGrig();
+			});
+	
+	
+	//Function for view Exit
+	function viewExitsAgGrig(){
+		var userid = $("#sessionId").val();
+		
+		agGrid.simpleHttpRequest(
+				{
+					url : "exit-clearance-view",
+				}).then(function(data) {
+					
+					if(data.body[0] != null){
+						var jsonData = JSON.parse(data.body);
+						var len = jsonData.length; 
+						$('#totalReq').find('span').html(len);
+						  gridOptions.api.setRowData(jsonData);
+					}else{
+						$('#totalReq').find('span').html('0');
+						 gridOptions.api.setRowData([]);
+					}
+					
+		});
+	}
+	
+	
+	
+	//Exit Management
+	const columnDefs = [
+			{
+				headerCheckboxSelection : false,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				pinned : 'left',
+				filter : false,
+				resizable : true
+
+			},{
+				headerName : 'Clearance ID',
+				field : "clearanceId",
+				width : 130,
+				pinned : 'left',
+			}, {
+				headerName : 'Exit ID',
+				field : "exitId",
+				pinned : 'left',
+				width : 100,
+			},{
+				headerName : 'Employee ID',
+				field : "clearanceEmployeeId",
+				pinned : 'left',
+				width : 130,
+			},{
+				headerName : 'Clearance Employee Name',
+				field : "clearanceEmployeeName",
+				pinned : 'left',
+				width : 230,
+			},{
+				headerName : 'Clearance Department',
+				field : "clearanceDeptName",
+				width : 210,
+			},{
+				headerName : 'Clearance Deadline',
+				field : "clearanceBefore",
+				cellStyle : {
+					textAlign : 'center'
+				},
+				width : 190,
+			},{
+				headerName : 'Overview',
+				field : "overview",
+				width : 110,
+				cellStyle : {
+					textAlign : 'center'
+				},cellRenderer : function(params) {
+						let encodedLogData = encodeURIComponent(JSON.stringify(params.data));
+
+					       return '<a id="id" onclick="openOverViewModal(decodeURIComponent(\'' + encodedLogData + '\'))" href="javascript:void(0)">'
+				             + '<i class="bi bi-clock-history"> Overview </i>'
+				             + '</a>';
+				}
+
+			},{
+				headerName : 'Clearance By',
+				field : "clearanceEmployees",
+			},{
+				headerName : 'Clearance Comment',
+				field : "clearanceComment",
+			},{
+				headerName : 'Clearance Status',
+				field : "clearanceStatus",
+			}];
+	
+	function openFinalModal(){
+		$("#agGridDiv").hide();
+		$("#finalModalDiv").show();
+	}
+	
+	
+	function cancelModalBtnOverview() {
+		$('#overViewModal').modal('hide');
+	}
+	function openOverViewModal(data) {
+		$('#overViewModal').modal('show');
+		
+	    let allData = JSON.parse(decodeURIComponent(data));
+	    
+	    console.log('allData.clearanceRemarksByHr',allData.clearanceRemarksByHr)
+	    if (allData) {
+	        $("#exitIdModal").text(allData.exitId || 'N/A');
+	        $("#empIdModal").text(allData.clearanceEmployeeId || 'N/A');
+	        $("#empNameModal").text(allData.clearanceEmployeeName || 'N/A');
+	        $("#empDeptModal").text(allData.empDeptName || 'N/A');
+	        $("#regToModal").text(allData.toEmp || 'N/A');
+	        $("#regCCModal").text(allData.toCC || 'N/A');
+	        $("#resignDateModal").text(allData.resignDate || 'N/A');
+	        $("#releaseDateModal").text(allData.releaseDate || 'N/A');
+	        $("#remarksByHrModal").text(allData.clearanceRemarksByHr || 'N/A');
+	    } else {
+	        $("#overviewDetails").html('<div style="color:#D2042D">No Data Available As Of Now</div>');
+	    } 
+
+	    
+	}
+	
+	
+	//Exit management
+	const gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 220,
+			height : 10
+		},
+		rowSelection : 'single',
+		pagination:true,
+		paginationPageSize: 15,
+		onSelectionChanged : initiateClearance,
+		suppressRowClickSelection : true,
+		getRowNodeId : function(data) {
+			return data.clearanceId;
+		}
+	};
+	
+	function initiateClearance() {
+	    var selectedRows = gridOptions.api.getSelectedRows();
+	    var rowCount = selectedRows.length; 
+
+	    if (rowCount > 0) {
+	        var firstRow = selectedRows[0];
+	        $("#exitModalId").text(firstRow.clearanceId);
+	        $("#releaseDate").val(firstRow.releaseDate);
+	        $("#resignDate").val(firstRow.resignDate);
+	        $("#employeeNameModal").val(firstRow.clearanceEmployeeName);
+	        $("#employeeIdModal").val(firstRow.clearanceEmployeeId);
+
+	        var clearanceStatus = firstRow.clearanceStatus;
+	        
+	        if (clearanceStatus == "PENDING") {
+	            $("#clearanceBtn").attr("disabled", false);
+	        } else {
+	            $("#clearanceBtn").attr("disabled", true);
+	        }
+
+	    } else {
+	        $("#clearanceBtn").attr("disabled", true);
+	        $("#exitModalId").text("");
+	        $("#releaseDate").val("");
+	        $("#resignDate").val("");
+	        $("#employeeNameModal").val("");
+	        $("#employeeIdModal").val("");
+	    }
+	}
+
+	
+	
+	function proceedModal(){
+		$("#clearanceRemarks").val("");
+		$("#recoveryAmount").val("");
+		$('#proceedClearanceModal').modal('show');
+	}
+	
+	function addProceedClearance(){
+		
+		var details = {};
+		var allValid = true;
+		
+			if (!validationUpdated("Remarks Can't Be Blank", 'clearanceRemarks'))
+				allValid = false;
+			
+			
+			var details;
+			/* details.clearanceId = $("#exitModalId").html();
+			details.noticeRemarks = $("#clearanceRemarks").val();
+			details.recovery = $("#recoveryAmount").val(); */
+			
+			var clearanceId = $("#exitModalId").html();
+			var remarks = $("#clearanceRemarks").val();
+			var recoveryAmount = $("#recoveryAmount").val();
+
+		if (allValid) {
+			saveProceedDetails(clearanceId, remarks, recoveryAmount)
+		}
+	}
+	
+	function saveProceedDetails(clearanceId, remarks, recoveryAmount){
+			$('.loader').show();
+			$.ajax({
+                type: 'GET',
+                url: 'exit-clearance-update?id=' + clearanceId +"&remarks="+remarks+"&recoveryAmount="+recoveryAmount, 
+                contentType: false,
+                async: false,
+                success: function(response) {
+						
+						if (response.code == "success") {
+							$('.loader').hide();
+							$('#demo').hide();
+							$("#messageParagraph").text(response.message);
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							$('#proceedClearanceModal').modal('hide');
+							$("#clearanceBtn").attr("disabled", true);
+							viewExitsAgGrig();
+
+						} else {
+							$('.loader').hide();
+							$("#messageParagraph").text("Something Went Wrong");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							$("#clearanceBtn").attr("disabled", true);
+						}
+                },
+                error: function(e) {
+                    console.log("error");
+                }
+			});
+		}
+	 
+</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="maincontentsec">
+			<div id ="agGridDiv">
+				<div class="row" id="btnDtls">
+					<div class="d-flex justify-content-between mb-2">
+						<div class="btn-hs">
+							<div class="font-design" id="totalReq">
+								Employee List For Clearance(<span></span>)
+							</div>
+						</div>
+
+						<div id="searchRowDiv">
+							<div class="input-style">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter"
+									autocomplete="off">
+								<div class="searchicon">
+									<a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalReq').find('span').html(gridOptions.api.getModel().getRowCount());"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+						</div>
+
+						<div class="buttonsec btn-hs" id="btndiv">
+
+							<button class="approve-btn" id="clearanceBtn"
+								onclick="proceedModal()">Clearance</button>
+							<!-- <button class="delete-btn" id="rejectBtn" onclick="clearanceModal()">Reject</button> -->
+
+						</div>
+					</div>
+
+				</div>
+				<div id="main">
+				<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+					type="hidden" id="sessionName" th:value="${userName}" /> <input
+					type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+					type="hidden" id="adRole" th:value="${adRole}" /> <input
+					type="hidden" id="mrRole" th:value="${mrRole}" /> <input
+					type="hidden" id="empRole" th:value="${empRole}" />
+
+				<div id="myGrid" style="width: 100%; height: 500px;"
+					class="ag-theme-alpine"></div>
+			</div>
+			</div>
+
+		</div>
+		
+			<div class="modal fade" id="proceedClearanceModal" aria-modal="true"
+						data-bs-backdrop="static" data-bs-keyboard="false">
+						<div class="modal-dialog modal-lg"
+							style="margin-top: 130px; height: 900px; max-width: 800px">
+							<div id="formulaDiv">
+								<div class="modal-content" style="background-color: #f0f2fa;">
+									<div class="loader-modal"></div>
+									<!-- Modal Header -->
+									<div class="modal-header">
+										<h6 class="modal-title"
+											style="font-size: 24px; font-weight: 349;">
+											<b>Clearance Id : </b><span id="exitModalId"></span>
+										</h6>
+									</div>
+									<!-- Modal body -->
+									<div class="modal-body">
+										<div class="row">
+											<div class="col-md-6">
+												<div class="form-group">
+													<label>Employee Id</label> <input type="text"
+														class="form-control" id="employeeIdModal"
+														autocomplete="off" onblur="removeValid(event)" readonly />
+												</div>
+											</div>
+	
+											<div class="col-lg-6">
+												<div class="form-group">
+													<label>Employee Name</label> <input type="text"
+														class="form-control" id="employeeNameModal"
+														autocomplete="off" onblur="removeValid(event)" readonly />
+												</div>
+											</div>
+	
+											<div class="col-lg-6">
+												<div class="form-group">
+													<label>Resignation Date</label> <input type="text"
+														class="form-control" id="resignDate"
+														autocomplete="off" onblur="removeValid(event)" readonly />
+												</div>
+											</div>
+											<div class="col-lg-6">
+												<div class="form-group">
+													<label>Release Date</label> <input type="text"
+														class="form-control" id="releaseDate"
+														autocomplete="off" onblur="removeValid(event)" readonly />
+												</div>
+											</div>
+											<div class="col-lg-6">
+												<div class="form-group">
+													<label>Recovery Amount</label> <input type="number"
+														class="form-control" id="recoveryAmount"
+														autocomplete="off" onblur="removeValid(event)" />
+												</div>
+											</div>
+											
+									<div class="col-lg-12">
+												<div class="form-group">
+													<label>Remarks</label>
+													<textarea class="form-control" id="clearanceRemarks"
+														onblur="removeValid(event)" rows="4"
+														placeholder="Enter clearance remarks here..."></textarea>
+												</div>
+											</div>
+										</div>
+										<div class="modal-footer mt-3">
+											<button class="delete-btn" id="cancel" data-bs-dismiss="modal">CANCEL</button>
+											<button class="btn1" id="save" onclick="addProceedClearance()">Proceed</button>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+			
+					<div class="modal fade show" id="overViewModal">
+					<div class="modal-dialog modal-lg" style="margin-top: 130px;">
+						<div class="modal-content">
+							<!-- Modal Header -->
+							<div class="modal-header">
+								<h4 class="modal-title md-color">
+									<b>Exit Process ID : <span id="exitIdModal"></span></b>
+								</h4>
+							</div>
+
+							<!-- Modal Body -->
+							<div class="modal-body-overview modal-cat">
+								<div id="overviewDetails" class="row">
+
+									<div class="col-md-6 mt-2">
+										<p>
+											<strong>Resign Date:</strong> <span id="resignDateModal"></span>
+										</p>
+									</div>
+									<div class="col-md-6 mt-2">
+										<p>
+											<strong>Release Date:</strong> <span id="releaseDateModal"></span>
+										</p>
+									</div>
+
+									<div class="col-md-6">
+										<p>
+											<strong>Employee Id:</strong> <span id="empIdModal"></span>
+										</p>
+									</div>
+
+									<div class="col-md-6">
+										<p>
+											<strong>Employee Name:</strong> <span id="empNameModal"></span>
+										</p>
+									</div>
+									<div class="col-md-6">
+										<p>
+											<strong>Department:</strong> <span id="empDeptModal"></span>
+										</p>
+									</div>
+								
+
+									<div class="col-md-6">
+										<p>
+											<strong>To:</strong> <span id="regToModal"></span>
+										</p>
+									</div>
+
+									<div class="col-md-6">
+										<p>
+											<strong>CC:</strong> <span id="regCCModal"></span>
+										</p>
+									</div>
+									<div class="col-md-6">
+										<p>
+											<strong>Remarks By HR:</strong> <span id="remarksByHrModal"></span>
+										</p>
+									</div>
+
+									
+								</div>
+							</div>
+
+							<!-- Modal Footer -->
+							<div class="modal-footer">
+								<button class="delete-btn" data-dismiss="modal"
+									onclick="cancelModalBtnOverview()">CLOSE</button>
+							</div>
+						</div>
+					</div>
+				</div>
+		</div>
+	</div>
+</body>
+</html>

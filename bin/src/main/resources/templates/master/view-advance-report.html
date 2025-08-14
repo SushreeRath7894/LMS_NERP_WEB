@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+#myReq .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff;
+	text-indent: 10px !important;
+}
+
+#myReq .ag-row-selected::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 3px;
+	right: 4px;
+}
+
+.formValidation1 {
+	font-size: 10px;
+	font-weight: 100;
+	color: #f60909f7;
+	background-color: transparent;
+	position: relative;
+	top: -1px;
+	padding: 3px 0px;
+}
+
+.sugg-cls ul {
+	height: 150px;
+	overflow-x: scroll;
+	position: relative;
+}
+
+ul#autocomplete-list1 {
+	position: relative;
+	z-index: 999;
+}
+
+ul#autocomplete-list1 li {
+	position: relative;
+	color: #fff;
+	padding-left: 6px;
+	background-color: #1f57a8;
+	border-bottom: solid 1px #6189c2;
+	padding-top: 5px;
+	padding-bottom: 5px;
+}
+</style>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ag-grid/26.2.0/ag-grid.min.noStyle.js"></script>
+
+<script>
+$(document).ready(function() {
+	var curDate = new Date();
+    var curYear = curDate.getFullYear();
+    var financialYearStart = curYear;
+    var financialYearEnd = curYear + 1;
+
+    // Check if the current month is April or later
+    if (curDate.getMonth() < 3) {
+        financialYearStart -= 1; // If the current month is before April, start year is last year
+        financialYearEnd -= 1; // If the current month is before April, end year is this year
+    }
+
+    // Set the financial year value dynamically
+    var financialYear = financialYearStart + '-' + financialYearEnd;
+    $("#attndyear").val(financialYear);
+    getCurrentDateMonthYear();
+
+    var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+
+	var gridEMI1 = document.querySelector('#emiGrid1');
+	new agGrid.Grid(gridEMI1, emiGridOptions1);
+	
+
+	var gridEMI2 = document.querySelector('#emiGrid2');
+	new agGrid.Grid(gridEMI2, emiGridOptions2);
+	
+	// Ensure the createMonthCols function is called to generate the columns
+	gridOptions.columnDefs[2].children = createMonthColsAdv();
+	gridOptions.api.setColumnDefs(gridOptions.columnDefs);
+	
+	gridOptions.columnDefs[3].children = createMonthColsRec();
+	gridOptions.api.setColumnDefs(gridOptions.columnDefs);
+	
+	gridOptions.columnDefs[4].children = [
+        {
+            headerName: "Total Advance",
+            field: "tot_adv",
+    	//	pinned: 'right',
+            cellStyle: {
+                textAlign: 'left'
+            },
+            width: 150,
+        },
+        {
+            headerName: "Total Recovery",
+            field: "tot_rec",
+    	//	pinned: 'right',
+            cellStyle: {
+                textAlign: 'left'
+            },
+            width: 150,
+        },
+        {
+            headerName: "Balance",
+            field: "balance",
+    	//	pinned: 'right',
+            cellStyle: {
+                textAlign: 'left'
+            },
+            width: 150,
+        }
+    ];
+	gridOptions.api.setColumnDefs(gridOptions.columnDefs);
+	
+    ShowGridforSalary();
+});
+
+/* document.addEventListener('DOMContentLoaded', function() {
+	
+	
+}); */
+
+
+function getCurrentDateMonthYear() {
+    var curDate = new Date();
+    var selectedYear = $("#attndyear").val();
+    var selectedMonth = $("#attndmonth").val();
+    var startDay = $("#startDayForAtten").val();
+    
+    if (!selectedYear) {
+        selectedYear = curDate.getFullYear();
+    }
+    selectedYear = selectedYear.split("-")[0];
+
+    var fromDate, toDate;
+
+    if (selectedMonth === "0") {
+        fromDate = "01-04-" + selectedYear;
+        toDate = "31-03-" + (parseInt(selectedYear) + 1);
+    } else {
+        var month = parseInt(selectedMonth);
+        if (startDay > 1 && curDate.getDate() > startDay) {
+            month = curDate.getMonth() + 1;
+        }
+        fromDate = startDay + "-" + String(month).padStart(2, '0') + "-" + selectedYear;
+        toDate = startDay + "-" + String(month + 1).padStart(2, '0') + "-" + selectedYear;
+    }
+    $("#fromDate").val(fromDate);
+    $("#fromDateCalendar").val(fromDate);
+    $("#endDate").val(toDate);
+    $("#endDateCalendar").val(toDate);
+}
+//changeStaff
+function changeStaff() {
+	ShowGridforSalary();
+	
+}
+
+function cancelBar() {
+	var id = document.getElementById("closeKey");
+	id.style.display = "block";
+	if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+		id.style.display = "none";
+	}
+}
+
+function createMonthColsAdv() {
+	var selectedFinancialYear = $("#attndyear").val(); // Example selected year
+	// Split the financial year to get the start and end years
+	var [startYear, endYear] = selectedFinancialYear.split('-').map(Number);
+	// Define the months in order
+	var months = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+	// Generate the column definitions dynamically
+	var monthColumns = months.map((month, index) => {
+		// Calculate the correct year for each month
+		var year = index <= 9 ? startYear : endYear; // Apr to Dec use startYear, Jan to Mar use endYear
+		return {
+			headerName: `${month}-${year.toString().slice(-2)}`, // Format "mon-yr"
+			field: `${month.toLowerCase()}_adv`, // Assumes fields like 'apr_adv', 'may_adv', etc.
+			width: 85,
+		};
+	});
+	return monthColumns;
+}
+function createMonthColsRec() {
+    var monthColumns = [];
+    var selectedFinancialYear = $("#attndyear").val(); // Example selected year
+    var curDate = new Date();
+    var curMonth = curDate.getMonth(); // Get current month (0 = Jan, 11 = Dec)
+    var curYear = curDate.getFullYear();
+    var selectedMonth=$("#attndmonth").val();
+    var selectedMonth1=$("#attndmonth").text();
+    // Extract the start year and end year from the selected financial year
+    var [startYear, endYear] = selectedFinancialYear.split('-').map(Number);
+
+    // Define the months in order finance
+    var months = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+    // Define the months in order regular
+    var months1 = [ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    // Determine if the selected financial year is the current financial year
+    var isCurrentFinancialYear = (curYear === startYear && curMonth >= 3) || (curYear === endYear && curMonth < 3);
+
+
+    if (selectedMonth > 0) {
+        // If a specific month is selected, return only that month's column
+        var monthIndex = selectedMonth - 1; // Adjust for zero-based index
+        var monthName = months1[monthIndex];
+        var year = (selectedMonth >= 4 && selectedMonth <= 12) ? startYear : endYear; // Apr to Dec use startYear, Jan to Mar use endYear
+
+        monthColumns = [
+            {
+                headerName: `${monthName}-${year.toString().slice(-2)}`, // Format "mon-yr"
+                field: `${monthName.toLowerCase()}_rec`, // Assumes fields like 'apr_rec', 'may_rec', etc.
+                width: 85,
+            }
+        ];
+    } else if (isCurrentFinancialYear) {
+    	monthColumns = [];
+        // If the selected financial year is the current year, limit columns to the current month
+        var monthLimit;
+        if (curMonth >= 3) {
+            // Current month is April or later
+            monthLimit = curMonth - 3; // Adjust to match index of the months array (Apr = 0)
+        } else {
+            // Current month is Jan, Feb, or Mar
+            monthLimit = 9 + curMonth; // Adjust to include Jan, Feb, Mar in the next financial year
+        }
+
+        // Generate columns up to the current month
+        monthColumns = months.slice(0, monthLimit + 1).map((month, index) => {
+            var year = index <= 9 ? startYear : endYear; // Apr to Dec use startYear, Jan to Mar use endYear
+            return {
+                headerName: `${month}-${year.toString().slice(-2)}`, // Format "mon-yr"
+                field: `${month.toLowerCase()}_rec`, // Assumes fields like 'apr_rec', 'may_rec', etc.
+                width: 85,
+            };
+        });
+    }else {
+    	monthColumns = [];
+        // If the selected financial year is a past year, generate columns for all 12 months
+        monthColumns = months.map((month, index) => {
+            var year = index >= 9 ? startYear : endYear; // Apr to Dec use startYear, Jan to Mar use endYear
+            return {
+                headerName: `${month}-${year.toString().slice(-2)}`, // Format "mon-yr"
+                field: `${month.toLowerCase()}_rec`, // Assumes fields like 'apr_rec', 'may_rec', etc.
+                width: 85,
+            };
+        });
+    }
+
+    return monthColumns;
+}
+
+var columnDefs = [
+	{
+		headerName: "Employee ID",
+		field: "empId",
+		pinned: 'left',
+		cellStyle: {
+			textAlign: 'left'
+		},
+		width: 150,
+	}, 
+	{
+		headerName: "Employee Name",
+		field: "empName",
+		pinned: 'left',
+		cellStyle: {
+			textAlign: 'left'
+		},
+		width: 220,
+		cellRenderer : function(params) {
+				return '<a onclick=viewAllEmiDetails("'
+				+ params.data.empId 
+				+ '") href="javascript:void(0)">'
+				+ params.data.empName + '<i class="bi bi-box-arrow-in-right"></i></a>';
+		}
+	}, 
+	{
+		headerName: "Salary Advance",
+		headerClass: 'header-center',
+		children: [] // Will be populated by createMonthCols function
+	},{
+		headerName: "Recovered Advance",
+		headerClass: 'header-center',
+		children: [] // Will be populated by createMonthCols function
+	},{
+		headerName: "Status",
+		headerClass: 'header-center',
+		children: []},
+];
+
+var gridOptions = {
+	columnDefs: columnDefs,
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 149,
+		height: 10
+	},
+	rowSelection: 'multiple',
+	suppressRowClickSelection: true,
+};
+
+
+
+function ShowGridforSalary() {
+    var staff = $("#designation").val();
+    var fromDate = $("#fromDate").val();
+    var toDate = $("#endDate").val();
+    var employedBy = $("#employedBy").val();
+    
+    // var rowData = [];
+  //  gridOptions.api.setRowData();
+    $('.loader').show();
+    $("body").addClass("overlay");
+    agGrid.simpleHttpRequest({
+        url : "view-advance-report-view?fromDate="
+            + fromDate + "&toDate=" + toDate
+            + "&staff=" + staff+"&employedBy="+employedBy
+    }).then(function(data) {
+        var jsonData = JSON.parse(data.body);
+        var allData = jsonData.reportAdvance;
+        if(allData == null || allData == 'null'){
+            allData = [];
+        }
+
+        gridOptions.api.setRowData(allData);
+        var len = allData.length;
+        $('#totalReq').text(len);
+        $('.loader').hide();
+        $("body").removeClass("overlay");
+    });
+}
+
+function changeMonthYear() {
+    var selectedYear = parseInt($("#attndyear").val());
+    var month = parseInt($("#attndmonth").val());
+    var sday = parseInt($("#startDayForAtten").val());
+
+    if (month === 0) { // If "All" is selected
+        // Set start date to April 1st of the selected financial year
+        var fromDate = new Date(selectedYear, 3 - 1, 1); // Set to April 1st
+
+        // Adjust the "To" date to March 31st of the next year
+        var toDate = new Date(selectedYear + 1, 3 - 1, 31); // Set to March 31st of the next year
+        $("#fromDate").val(formatDate(fromDate));
+        $("#fromDateCalendar").val(formatDate(fromDate));
+        $("#endDate").val(formatDate(toDate));
+        $("#endDateCalendar").val(formatDate(toDate));
+        getCurrentDateMonthYear();
+    } else {
+        var fromDate, toDate;
+
+        if (month >= 4) {
+            fromDate = new Date(selectedYear, month - 1, 1);
+            toDate = new Date(selectedYear, month, 0); 
+        }else if (month <= 3) {
+            fromDate = new Date(selectedYear+1, month - 1, 1);
+            toDate = new Date(selectedYear+1, month, 0);
+        }
+
+        $("#fromDate").val(formatDate(fromDate));
+        $("#fromDateCalendar").val(formatDate(fromDate));
+        $("#endDate").val(formatDate(toDate));
+        $("#endDateCalendar").val(formatDate(toDate));
+       
+    }
+    updateGridColumns(selectedYear, month);
+    ShowGridforSalary();
+    
+}
+function formatDate(date) {
+    // Format date as DD-MM-YYYY
+    var day = date.getDate();
+    var month = date.getMonth() + 1; // Months are zero-indexed
+    var year = date.getFullYear();
+
+    return (day < 10 ? '0' : '') + day + '-' + (month < 10 ? '0' : '') + month + '-' + year;
+}
+	function updateGridColumns(selectedYear, month){
+      //  gridOptions.api.refreshClientSideRowModel();
+	    // Update the Salary Advance columns
+	    
+	   
+	    var columnDefs1 =[
+	    	{
+	    		headerName: "Employee ID",
+	    		field: "empId",
+	    		pinned: 'left',
+	    		cellStyle: {
+	    			textAlign: 'left'
+	    		},
+	    		width: 150,
+	    	}, 
+	    	{
+	    		headerName: "Employee Name",
+	    		field: "empName",
+	    		pinned: 'left',
+	    		cellStyle: {
+	    			textAlign: 'left'
+	    		},
+	    		width: 220,
+	    		cellRenderer : function(params) {
+	    				return '<a onclick=viewAllEmiDetails("'
+	    				+ params.data.empId 
+	    				+ '") href="javascript:void(0)">'
+	    				+ params.data.empName + '<i class="bi bi-box-arrow-in-right"></i></a>';
+	    		}
+	    	}, 
+	    	{
+	    		headerName: "Salary Advance",
+	    		headerClass: 'header-center',
+	    		children: [] // Will be populated by createMonthCols function
+	    	},{
+	    		headerName: "Recovered Advance",
+	    		headerClass: 'header-center',
+	    		children: [] // Will be populated by createMonthCols function
+	    	},{
+	    		headerName: "Status",
+	    		headerClass: 'header-center',
+	    		children: []},
+	    ];
+
+	    gridOptions.columnDefs = columnDefs1;
+	    gridOptions.api.setColumnDefs(gridOptions.columnDefs);
+	    
+	    
+	     gridOptions.columnDefs[2].children = createMonthColsAdv();
+	    gridOptions.api.setColumnDefs(gridOptions.columnDefs);
+	    
+	    // Update the Recovered Advance columns
+	    gridOptions.columnDefs[3].children = createMonthColsRec();
+	    gridOptions.api.setColumnDefs(gridOptions.columnDefs);  
+        gridOptions.api.refreshClientSideRowModel();
+	    // Update the Total Advance, Total Recovery, and Balance column
+	    gridOptions.columnDefs[4].children = [
+	        {
+	            headerName: "Total Adv.",
+	            field: "tot_adv",
+	    	//	pinned: 'right',
+	            cellStyle: {
+	                textAlign: 'left'
+	            },
+	            width: 150,
+	        },
+	        {
+	            headerName: "Total Recovery",
+	            field: "tot_rec",
+	    	//	pinned: 'right',
+	            cellStyle: {
+	                textAlign: 'left'
+	            },
+	            width: 150,
+	        },
+	        {
+	            headerName: "Balance",
+	            field: "balance",
+	    	//	pinned: 'right',
+	            cellStyle: {
+	                textAlign: 'left'
+	            },
+	            width: 150,
+	        }
+	    ];
+	    gridOptions.api.setColumnDefs(gridOptions.columnDefs);
+        gridOptions.api.refreshClientSideRowModel();
+
+	}
+	
+	function onQuickFilterChanged() {
+		gridOptions.api.setQuickFilter(document.getElementById('quickFilter').value);
+		var totalRowCount = gridOptions.api.getModel().getRowCount();
+
+        $('#totalReq').text(totalRowCount);
+	}
+	function getListForEmp() {
+		gridOptions.api.setQuickFilter(document.getElementById('empSort').value);
+		var totalRowCount = gridOptions.api.getModel().getRowCount();
+
+        $('#totalReq').text(totalRowCount);
+	}
+	
+	function downloadApproveCSV() {
+	    var rowCount = 0;
+	    gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+	        if (rowNode.data.empId) {
+	            rowCount++;
+	        }
+	    });
+
+	    if (rowCount > 0) {
+	        var name = "Advance Report-" + $("#attndmonth option:selected").text();
+	        var allColumns = gridOptions.columnApi.getAllColumns();
+
+	        // Capitalize all headers for CSV
+	        allColumns.forEach(col => {
+	            if (col.getColDef().headerName) {
+	                col.getColDef().headerName = col.getColDef().headerName.toUpperCase();
+	            }
+	        });
+
+	        // Filter visible columns
+	        var visibleColumns = allColumns.filter(col => {
+	            const headerName = col.getColDef().headerName;
+	            const isColumnVisible = !col.getColDef().hide;
+	            return headerName !== undefined && headerName !== null && isColumnVisible;
+	        });
+
+	        // Map visible column IDs for export
+	        var visibleColumnIds = visibleColumns.map(col => col.getColId());
+
+	        // CSV Export Parameters
+	        const params = {
+	            skipHeader: false,          // Include header row
+	            columnGroups: true,         // Export column groups (parent-child headers)
+	            skipFooters: false,         
+	            skipGroups: false,          
+	            skipPinnedTop: false,       
+	            skipPinnedBottom: false,    
+	            allColumns: false,          // Export only visible columns
+	            onlySelected: false,        
+	            suppressQuotes: false,      
+	            fileName: name + '.csv',    // File name for CSV
+	            sheetName: 'Sheet1',        
+	            customHeader: null,         
+	            customFooter: null,         
+	            columnKeys: visibleColumnIds // Use only the visible column keys
+	        };
+
+	        // Perform export
+	        gridOptions.api.exportDataAsCsv(params);
+	    } else {
+	        // Display message if no data available
+	        $("#messageParagraph").text("NO DATA AVAILABLE FOR DOWNLOAD!");
+	        $("#msgOkModal").removeClass("btn3");
+	        $("#msgOkModal").addClass("btn1");
+	        $("#msgModal").modal('show');
+	    }
+	}
+	
+	var dataset="";
+
+	function viewAllEmiDetails(id){
+		emiGridOptions1.api.setRowData();
+		 var empId;
+		 var advanceId;
+		 $("#emiId").val(id);
+		 if(id == ''){
+			var selectedRows = gridOptions.api.getSelectedRows();
+			 empId = selectedRows[0].empID;
+			 advanceId=$("#advanceId1").val();
+		 }else{
+			 var data = id.split(","); 
+			 empId = data[0];
+			 advanceId = data[1];
+		 }
+
+		    $('.loader').show();
+		    $("body").addClass("overlay");
+			agGrid.simpleHttpRequest({
+				url : "view-advance-report-view-emiAllDetails?empId="+empId,
+			}).then(function(data) {
+				 var jsonData = JSON.parse(data.body);
+			     var allData1 = jsonData.emiData;
+				emiGridOptions1.api.setRowData(allData1);
+				$("#emiGrid1").show();
+			    $("#precloseGrid").hide();
+				$("#emiModal").modal('show');
+		        $('.loader').hide();
+		        $("body").removeClass("overlay");
+		        $("#empIdNo").val(id);
+			     var allData2 = JSON.stringify(jsonData.allData);
+					dataset=JSON.parse(allData2);
+				console.log("view dataset===="+JSON.stringify(dataset));
+			});
+	 }
+		var emiGridDefs1 = [{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : true,
+		    checkboxSelection: function(params) {
+		        return params.data.status === 1 || params.data.status === '1';
+		    },
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			pinned: 'left'
+		},{
+			headerName : "Advance Id",
+			field : "advanceId",
+			hide : true,
+			/*   cellRenderer : function(params) {
+		    	      
+		    	  var adRole=$("#adRole").val();
+					if (adRole == "admin") {
+						 return '<a onclick=editEmi("'
+			               +params.data.advanceId+'","'+params.data.dueDateE
+			               + '") href="javascript:void(0)">'
+			               + params.data.advanceId + '</a>';
+					}else{
+						return '<div>'+params.data.advanceId+'</div>';
+					}
+		     }  */
+
+		},{
+			headerName : "date",
+			field : "date",
+		//	hide : true,
+		}, {
+			headerName : "Due Month",
+			field : "dueDate",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		}, {
+			headerName : "Emi Amount",
+			field : "emi",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		}, {
+		    headerName: "Status",
+		    field: "status",
+		    cellStyle: {
+		        textAlign: 'center'
+		    },
+		    cellRenderer: function(params) {
+		        if (params.value === 0 || params.value === '0') {
+		            // Return the green check icon
+		            return '<i class="fa-sharp fa-regular fa-circle-check" style="color: green;"></i>';
+		        } else if (params.value === 1 || params.value === '1') {
+		            // Return the red cross icon
+		            return '<i class="fa-sharp fa-regular fa-circle-xmark" style="color: red;"></i>';
+		        }
+		    }
+		} ];
+
+		var emiGridOptions1 = {
+				columnDefs : emiGridDefs1,
+				defaultColDef : {
+					sortable : true,
+					filter : true,
+					resizable : true,
+					width : 175
+				},
+				rowSelection: 'multiple',
+				onSelectionChanged : rowSelectOnchange,
+			};
+
+		function rowSelectOnchange(){
+			 var selectedRows = emiGridOptions1.api.getSelectedRows();
+				var rowCount = 0;
+				selectedRows.forEach(function(i) {
+					rowCount = rowCount + 1;
+				});
+				
+				if (rowCount > 0) {
+				    var disableButton = true;
+				    if (disableButton) {
+				    	 $('#preClose').attr('disabled', false);
+						 $('#preClose').attr('disabled', true);
+				    }else{
+						$('#preClose').attr('disabled', true);
+						$('#downloadEMI').attr('disabled', false);
+					}
+				}
+		}
+		function DateCellEditor() {}
+
+		DateCellEditor.prototype.init = function(params) {
+		    this.params = params;
+		    this.eInput = document.createElement('input');
+		    this.eInput.type = 'date';
+
+		    // Set the value to the ISO format (yyyy-mm-dd) if there's an existing value
+		    this.eInput.value = params.value ? this.toIsoFormat(params.value) : '';
+		    
+		    // Set the width of the input to 100%
+		    this.eInput.style.width = '100%';
+		    
+		    // Stop editing when the user presses 'Enter'
+		    this.eInput.addEventListener('keydown', function(event) {
+		        if (event.key === 'Enter') {
+		            event.stopPropagation();
+		        }
+		    });
+
+		    // Stop editing when the date is selected from the calendar
+		    this.eInput.addEventListener('change', () => {
+		        this.params.stopEditing();  // Stop editing on date selection
+		    });
+		};
+
+		DateCellEditor.prototype.getGui = function() {
+		    return this.eInput;
+		};
+
+		DateCellEditor.prototype.afterGuiAttached = function() {
+		    this.eInput.focus();
+		    this.eInput.select();
+		};
+
+		DateCellEditor.prototype.getValue = function() {
+		    // Return the value formatted as dd-mm-yyyy
+		    return this.formatDate(this.eInput.value);
+		};
+
+		DateCellEditor.prototype.destroy = function() {};
+
+		DateCellEditor.prototype.isPopup = function() {
+		    return false;
+		};
+
+		// Helper function to format the date as dd-mm-yyyy
+		DateCellEditor.prototype.formatDate = function(isoDateStr) {
+		    if (!isoDateStr) return '';
+
+		    const date = new Date(isoDateStr);
+		    const day = String(date.getDate()).padStart(2, '0');
+		    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
+		    const year = date.getFullYear();
+
+		    return `${day}-${month}-${year}`;
+		};
+
+		// Helper function to convert dd-mm-yyyy to ISO format (yyyy-mm-dd)
+		DateCellEditor.prototype.toIsoFormat = function(dateStr) {
+		    if (!dateStr) return '';
+
+		    const [day, month, year] = dateStr.split('-');
+		    return `${year}-${month}-${day}`;
+		};
+var emiGridDefs2 = [{
+	    headerName: "Advance Id",
+	    field: "advanceId",
+	},{
+	    headerName: "Date",
+	    field: "date",
+	    editable: true,
+	    singleClickEdit: true,
+	    stopEditingWhenCellsLoseFocus: true,
+	    cellEditor: DateCellEditor,  // Use the custom date editor
+	    cellStyle: (params) => {
+	        if (params.colDef.editable) {
+	            return { backgroundColor: '#d3d3d3' };  // Gray background for editable cells
+	        }
+	        return null;
+	    },
+	    onCellValueChanged: onDateChanged
+	}, {
+	    headerName: "Due Month",
+	    field: "dueDate",
+	    cellStyle: { textAlign: 'center' }
+	}, {
+	    headerName: "Emi Amount",
+	    field: "emi",
+	    cellStyle: { textAlign: 'center' }
+	}, {
+		headerName: "Loan Amount",
+	    field: "loanAmt",
+	    cellStyle: { textAlign: 'center' }
+	}, {
+		headerName: "Tenure",
+	    field: "tenure",
+	    cellStyle: { textAlign: 'center' },
+	    hide: true,
+	}
+];
+
+var emiGridOptions2 = {
+columnDefs: emiGridDefs2,
+defaultColDef: {
+    sortable: true,
+    filter: true,
+    resizable: true,
+    width: 145
+},
+onCellEditingStopped: function(event) {
+    var lastRowIndex = emiGridOptions2.api.getDisplayedRowCount() - 1;
+    var lastColumnField = emiGridDefs2[emiGridDefs2.length - 1].field; // Get the last column field
+    if (event.rowIndex === lastRowIndex && event.column.getColId() === lastColumnField) {
+        
+        // Ensure the new row is created before setting focus
+        setTimeout(function() {
+            var newRowIndex = emiGridOptions2.api.getDisplayedRowCount() - 1;
+            emiGridOptions2.api.startEditingCell({
+                rowIndex: newRowIndex,
+                colKey: emiGridDefs2[0].field // first column field (speedFM)
+            });
+        }, 100);
+    }
+},
+};
+
+		function onDateChanged(event) {
+
+		        const dueDate = calculateDueMonth(event.newValue);
+		        event.data.dueDate = dueDate;
+		        emiGridOptions2.api.refreshCells({ columns: ['dueDate'], rowNodes: [event.node] });
+
+		}
+
+
+		function calculateDueMonth(dateStr) {
+
+		    const [day, month, year] = dateStr.split('-').map(Number);
+		    const date = new Date(year, month - 1, day);
+
+		    if (isNaN(date.getTime())) {
+		        return "Invalid Date";
+		    }
+
+		    const monthName = date.toLocaleString('default', { month: 'long' });
+		    const yearStr = date.getFullYear();
+
+		    return `${monthName} ${yearStr}`;
+		}
+
+	function preClose(){
+		var selectedRows = emiGridOptions1.api.getSelectedRows();
+		var empId = selectedRows[0].empID;
+		var id="";
+		var total = 0;
+		var months="";
+		for (var i = 0; i < selectedRows.length; i++) {
+			id = id +  selectedRows[i].advanceId+ ',';
+			total = total + selectedRows[i].emi;
+			months = months +  selectedRows[i].date+ ',';
+		}
+		id = id.substring(0, id.length - 1);
+		months = months.substring(0, months.length - 1);
+		processData(id, months)
+	}
+	function processData(idsssssssssssss, dates) {
+	    console.log("dataset==", JSON.stringify(dataset));
+	    const ids = idsssssssssssss.split(',');
+	    const dateArray = dates.split(',');
+	    const selectedDates = new Set(dateArray);
+	    const result = {};
+	    dataset.forEach(item => {
+	        const { emi, date, dueDate, advanceId ,loanAmt ,tenure } = item;
+	        if (ids.includes(advanceId) && selectedDates.has(date)) {
+	            if (!result[advanceId]) {
+	                result[advanceId] = { advanceId, emi: 0, date: '', dueDate: '', loanAmt: '', tenure: '' };
+	            }
+	            result[advanceId].emi += emi;
+	            if (dueDate > result[advanceId].date) {
+	                result[advanceId].date = date;
+	                result[advanceId].dueDate = dueDate;
+	                result[advanceId].loanAmt = loanAmt;
+	                result[advanceId].tenure = tenure;
+	            }
+	        }
+	    });
+	    const response = Object.values(result);
+	    console.log("response====", response);
+	    emiGridOptions2.api.setRowData(response);
+	    $("#precloseGrid").show();
+	}
+
+	function updateEmiDetails(){
+		var selectedRows = emiGridOptions1.api.getSelectedRows();
+	    var displayRowCount = emiGridOptions2.api.getDisplayedRowCount();
+
+	    var empId= $("#empIdNo").val();
+	    var data = []; 
+	    var advanceIds = "";
+	    var dates = "";
+	    for (var i = 0; i < selectedRows.length; i++) {
+	    	dates = dates  + chnageFormat(selectedRows[i].date) + ',';
+	    }
+	    dates =  dates.substring(0, dates.length - 1) ;
+		console.log("dates",dates)
+		
+	    for (var i = 0; i < displayRowCount; i++) {
+	        var rowData = emiGridOptions2.api.getDisplayedRowAtIndex(i).data;
+	        advanceIds = advanceIds +  rowData.advanceId + ',';
+			var item={};
+	        item.advanceId = rowData.advanceId;
+	        item.empID = empId;
+	        item.loanamt=rowData.loanAmt;
+	        item.emi = rowData.emi;
+	        item.ternure = rowData.tenure;
+	        item.month = chnageFormat(rowData.date); 
+	        data.push(item);
+	    }
+	    advanceIds =  advanceIds.substring(0, advanceIds.length - 1) ;
+
+		console.log("advanceIds",advanceIds)
+	    var obj1 = {};
+	    obj1.advanceIdList=advanceIds;
+	    obj1.dateList=dates;
+	    data.push(obj1);
+	    addNewEmi(data)
+	}
+	function addNewEmi(obj){
+
+	    console.log("addNewEmi Data:", JSON.stringify(obj));
+	    
+	    var empId= $("#empIdNo").val();
+		$.ajax({
+			type : "POST",
+			url : "view-advance-report-add",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(obj),
+			success : function(response) {
+				if (response.message == "Success") {
+					$("#messageParagraph").text("Added Successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+				}else{
+					$("#messageParagraph").text("Already Approved");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+				}
+				viewAllEmiDetails(empId);
+			},
+			error : function(response) {
+				console.log(response)
+			}
+		});
+	}
+	
+	function chnageFormat(dateStr){
+		const [day, month, year] = dateStr.split('-');
+	    return `${year}-${month}-${day}`;
+	}
+
+	function downloadEMIDetails() {
+
+	    var empId= $("#empIdNo").val();
+		var rowCount = 0;
+		emiGridOptions1.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		    if (rowNode.data.date) {
+		        rowCount++;
+		    }
+		});
+		if (rowCount > 0) {
+		    var name = "ADVANCE EMI Report for employee-" +  $("#emiId").val();
+		    var allColumns = emiGridOptions1.columnApi.getAllColumns();
+
+		    allColumns.forEach(col => {
+		        if (col.getColDef().headerName) {
+		            col.getColDef().headerName = col.getColDef().headerName.toUpperCase();
+		        }
+		    });
+
+		    var visibleColumns = allColumns.filter(col => {
+		        const headerName = col.getColDef().headerName;
+		        const isColumnVisible = !col.getColDef().hide;
+		        return headerName !== undefined && headerName !== null && isColumnVisible;
+		    });
+
+		    var visibleColumnIds = visibleColumns.map(col => col.getColId());
+
+		    const params = {
+		        skipHeader: false,
+		        columnGroups: false,
+		        skipFooters: false,
+		        skipGroups: false,
+		        skipPinnedTop: false,
+		        skipPinnedBottom: false,
+		        allColumns: true,
+		        onlySelected: false,
+		        suppressQuotes: false,
+		        fileName: name + '.csv',
+		        sheetName: 'Sheet1',
+		        customHeader: null,
+		        customFooter: null,
+		        columnKeys: visibleColumnIds
+		    };
+		    emiGridOptions1.api.exportDataAsCsv(params);
+		} else {
+		    $("#messageParagraph").text("NO DATA AVAILABLE FOR DOWNLOAD!");
+		    $("#msgOkModal").removeClass("btn3");
+		    $("#msgOkModal").addClass("btn1");
+		    $("#msgModal").modal('show');
+		}
+	}
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<div id="grid">
+						<div class="row">
+							<input type="hidden" id="startDayForAtten" th:value="${startDayForAtten}" />
+							<div class="col-md-2">
+								<div class="form-group" id="type1">
+									<label>Staff Type</label>
+									<div class="select">
+										<select id="designation" class="form-control" onchange="changeStaff()">
+											<option value="All">All</option>
+											<option th:each="c,iter:${staffType}" th:value="${c.key}" th:text="${c.name}"></option>
+										</select>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-2">
+								<div class="form-group">
+									<label>Employed By</label>
+									<div class="select">
+										<select class="form-control bandclssls" id="employedBy" onchange="changeStaff()">
+											<option value="All">All</option>
+											<option th:each="c,iter:${employedByList}" th:value="${c.key}" th:text="${c.name}"></option>
+										</select>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-2">
+								<div class="form-group" id="finYearData">
+									<label>Year</label>
+									<div class="select">
+										<select id="attndyear" class="form-control" onchange="changeMonthYear()">
+											<option th:each="c,iter:${yearList}" th:value="${c.name}" th:text="${c.name}"></option>
+										</select>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-2">
+								<div class="form-group" id="finMonthData">
+									<label>Month Name</label>
+									<div class="select">
+										<select id="attndmonth" class="form-control" onchange="changeMonthYear()">
+											<option value="0">All</option>
+											<option value="4" text="APRIL">APRIL</option>
+											<option value="5" text="MAY">MAY</option>
+											<option value="6" text="JUNE">JUNE</option>
+											<option value="7" text="JULY">JULY</option>
+											<option value="8" text="AUGUST">AUGUST</option>
+											<option value="9" text="SEPTEMBER">SEPTEMBER</option>
+											<option value="10" text="OCTOBER">OCTOBER</option>
+											<option value="11" text="NOVEMBER">NOVEMBER</option>
+											<option value="12" text="DECEMBER">DECEMBER</option>
+											<option value="1" text="JANUARY">JANUARY</option>
+											<option value="2" text="FEBRUARY">FEBRUARY</option>
+											<option value="3" text="MARCH">MARCH</option>
+										</select>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-2">
+								<label>From Date</label>
+								<div class="form-group calendar_box">
+									<input type="text" id="fromDate" value="" class="form-control" th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|" readonly>
+								</div>
+							</div>
+							<div class="col-md-2">
+								<label>To Date</label>
+								<div class="form-group calendar_box">
+									<input type="text" id="endDate" value="" class="form-control" th:attr="onkeyup=|formatDate('endDate','${session.DATEFORMAT_JS}')|" readonly>
+								</div>
+							</div>
+						</div>
+						<div class="d-flex justify-content-between mt-4">
+											<div class="btn-hs">
+								<div class="font-design">Advance Report (<span id="totalReq"></span>)</div>
+							</div>
+											<div class="col-md-3  btn-hs" id="searchDiv">
+												<div class="input-style">
+													<input type="text" placeholder="Search.." name="search"
+														class="searchboxinput" onkeyup="cancelBar()"
+														oninput="onQuickFilterChanged()" id="quickFilter"
+														autocomplete="off">
+													<div class="searchicon">
+														<a href="javascript: void(0)"><span
+															style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+															id="closeKey"
+															onclick="closekey()"
+															class="close_i"><i class="ti-close srchicon"></i></span></a><a
+															href="javascript: void(0)"><i
+															class="ti-search srchicon"></i></a>
+													</div>
+												</div>
+
+											</div>
+											<div class="  btn-hs" id="empList">
+												<div  class="form-group" >
+													<div class="select">
+														<select id="empSort" class="form-control"
+															onchange="getListForEmp()">
+															<option value="">All Employee</option>
+															<option th:each="c,iter:${EmployeeList}" th:value="${c.key}"
+																th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="buttonsec btn-hs" id="btndiv">
+												<button class="btn4" onclick="downloadApproveCSV()">Download</button>
+											</div>
+										</div>
+						<div id="myGrid" style="width: 100%; height: 400px;" class="ag-theme-alpine"></div>
+					</div>
+				</div>
+				
+				<div class="modal fade" id="emiModal">
+					<div class="modal-dialog modal-lg"
+						style="margin-top: 130px; height: 900px;">
+						<div class="modal-content">
+
+							<!-- Modal Header -->
+							
+							<div id="emiGrid">
+								<div class="modal-header buttonsec btn-hs">
+								<input type="hidden" id="empIdNo">
+									<h4 class="modal-title md-color">View EMI Details</h4>
+									<input type="hidden" id="emiId" value="">
+									 <button style="margin-left: 380px;" class="approve-btn" id="preClose"
+										onclick="preClose()">Pre-Close</button> 
+									<button class="download-btn" id="downloadEMI"
+										onclick="downloadEMIDetails()">Download</button>
+									<button type="button" class="close cp" data-bs-dismiss="modal">&times;</button>
+								</div>
+								<!-- Modal body -->
+								<div class="modal-body d-flex" id="modifyEmi">
+										<div id="emiGrid1" style="width: 100%; height: 250px;" class="ag-theme-alpine"></div>
+								</div>
+							</div>
+							<div id="precloseGrid">
+								<div class="modal-header buttonsec btn-hs">
+	
+									<h4 class="modal-title md-color">Pre-Close EMI Details</h4>
+									 <button style="margin-left: 400px;" class="approve-btn"
+										onclick="updateEmiDetails()">Update</button> 
+								</div>
+								<div class="modal-body d-flex" id="modifyEmi2">
+											
+										<div id="emiGrid2" style="width: 100%; height: 150px;"
+											class="ag-theme-alpine"></div>
+	
+								</div>
+							</div>
+
+							<!-- Modal footer -->
+							<div class="modal-footer">
+								<div class="chartbtnsec"></div>
+							</div>
+
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

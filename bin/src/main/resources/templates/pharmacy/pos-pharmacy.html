@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+.counter-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background: #b881ff;
+	padding: 10px;
+	background: #b881ff;
+}
+
+.counter-heading {
+	font-size: 18px;
+	color: #fff;
+	font-weight: 600;
+}
+
+.counter-heading i {
+	margin-right: 10px;
+}
+
+.counter-main {
+	display: flex;
+	margin: 20px 0px;
+}
+
+.top-left {
+	width: 30%;
+}
+
+.top-right {
+	width: 80%;
+}
+
+.top-left table thead {
+	background: #dcdcdc;
+}
+
+.top-left table th, td {
+	font-size: 14px;
+	font-weight: 600;
+	padding: 8px;
+}
+
+.top-left table tr td:first-child {
+	text-align: left;
+}
+
+.top-left table tr th:first-child {
+	text-align: left;
+}
+
+.top-left table tr th, td {
+	text-align: right;
+}
+
+.butn-counter {
+	margin: 20px 0px;
+	background: #ccc;
+	padding: 20px;
+}
+
+.butn-counter button {
+	font-weight: 600;
+	width: 50px;
+}
+
+.btn-name {
+	font-size: 12px;
+	font-weight: 600;
+	margin-bottom: 10px;
+}
+
+.left-timer {
+	margin: 10px 0px;
+}
+
+.food-sec {
+	border: 3px solid #ccc;
+	padding: 20px;
+	margin: 0px 0px 10px 10px;
+}
+
+.item-name {
+	font-size: 20px;
+	font-weight: 600;
+}
+
+.item {
+	border-bottom: 2px solid #ccc;
+	font-size: 25px;
+	font-weight: 600;
+}
+
+.item-heading {
+	display: flex;
+	justify-content: space-between;
+	border-bottom: 2px solid #ccc;
+}
+
+.ht {
+	height: 280px;
+}
+
+.food-name {
+	background: var(--primary);
+	padding: 10px;
+	margin: 10px 4px;
+	color: #fff;
+	width: 160px;
+	text-align: center;
+	font-weight: 500;
+	cursor: pointer;
+	font-size: 20px;
+}
+
+.item {
+	border-bottom: 2px solid #ccc;
+	font-size: 20px;
+	font-weight: 600;
+}
+
+.brd-right {
+	border-right: 2px solid #ccc;
+}
+
+.top-right button {
+	color: var(--primary);
+	border-color: var(--primary);
+	margin-bottom: 10px;
+}
+
+.top-right button:hover {
+	color: #fff;
+	background-color: var(--primary);
+	border-color: var(--primary);
+}
+.scrollbar{
+    overflow-x: scroll;
+    height: 200px;
+    }
+    .time{
+    font-size:15px;
+    }
+</style>
+<!-- <script src="../javascript/pharmacy/pos-pharmacy.js"></script> -->
+<script>
+let selectedCategory = ''; // Global variable to store selected category
+$(document).ready(function () {
+	   $('#setCustomer').attr('disabled', false);
+	   $('#empId').attr('disabled', false);
+	   $('#empName').attr('disabled', true);
+	   $('#empMobNo').attr('disabled', true);
+	   var gridDiv = document.querySelector('#pharmacyGrid');
+		  new agGrid.Grid(gridDiv, pharmacyGridOptions);
+		  pharmacyGridOptions.api.setRowData("");
+		//  getPharmacyView();
+	   var userid = $("#sessionId").val();
+		  var orgName = $("#sessionOrg").val();
+		  var orgDiv = $("#sessionOrgDiv").val();
+	   getData();
+	   window.dataArray = [];
+   // Add event listeners to the radio buttons
+    document.querySelectorAll('input[name="flexRadioDefault"]').forEach(radio => {
+        radio.addEventListener('change', toggleFields);
+    });
+    
+
+        const categories = document.querySelectorAll('.category');
+
+        // Add click event listener to each category
+        categories.forEach(category => {
+            category.addEventListener('click', function() {
+                // Fetch the selected category from data attribute
+                selectedCategory = this.getAttribute('data-category');
+                console.log('Selected Category:', selectedCategory);
+            });
+        });
+	});
+var columnDef = [
+	{
+		headerName: "Pharmacy Id",
+		field: "pharmacyId",
+		pinned: 'left',
+		width: 150,
+		checkboxSelection: true,
+		headerCheckboxSelection: true,
+		headerCheckboxSelectionFilteredOnly: true,
+		sortable: false,
+		filter: false,
+		resizable: true,
+		
+	},
+	{
+		headerName: 'Patient Id',
+		field: "patientId",
+		width: 150,
+		pinned: 'left',
+	},{
+		headerName: 'Patient Name',
+		field: "patientName",
+		width: 150,
+		pinned: 'left',
+	},
+
+	{
+		headerName: 'CGST',
+		field: "cgst",
+		width: 150,
+		cellStyle : {
+			textAlign : 'Right'
+		}
+	},
+	{
+ 	headerName: 'SGST',
+ 	field: "sgst",
+ 	width: 150,
+ 	cellStyle : {
+		textAlign : 'Right'
+	}
+ },
+ {
+      headerName: 'Total Amount',
+      field: "totalAmount",
+      width: 200,
+      cellStyle : {
+			textAlign : 'Right'
+		}
+
+ },
+ {
+		headerName : 'Approve Status',
+		field : "status",
+		width :125,
+		cellStyle : {
+			textAlign : 'center'
+		}
+	},
+	{
+		headerName : 'Receipt',
+		field : "action",
+		cellStyle : {
+			textAlign : 'center'
+		},cellRenderer : function(params) {
+			return '<a  onclick=reportDownload("'
+			+params.data.pharmacyId
+			+ '") href="javascript:void(0)"><i class="bi bi-cloud-download">Download</i></a>';
+			
+		}
+	}
+
+];
+
+var pharmacyGridOptions = {
+	columnDefs: columnDef,
+	//rowSelection: 'single',
+	groupSelectsChildren: true,
+	suppressRowClickSelection: true,
+	suppressAggFuncInHeader: true,
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 251
+	},
+	
+//onSelectionChanged : onSelectionChanged,
+};
+	function getData() {
+	   $.ajax({
+	      type: "GET",
+	      url: "pos-sale-getData",
+	      success: function (response) {
+	         console.log(response);
+	         if (response.message == "Success") {
+	            var data = JSON.parse(response.body);
+	            console.log("Success response", data);
+	            // Clear existing items
+	            $("#categoryData").empty();
+	            $("#subCategoryData").empty();
+	            $("#variantData").empty();
+	            // Define arrays for category, subcategory, and variant data
+	            let categoryDatas = [];
+	            let subcategoryDatas = [];
+	            let variantDatas = [];
+	            // Populate the arrays with data
+	            for (var i = 0; i < data.length; i++) {
+	               // Category
+	               if (data[i].categoryId) {
+	                  let categoryAllData = `
+		                            <input type="hidden" id="category-${data[i].categoryId}">
+		                            <div class="food-name" onclick="selectData(${i}, '${data[i].categoryId}', null, null)">${data[i].categoryName}</div>
+		                        `;
+	                  categoryDatas.push(categoryAllData);
+	               }
+	               // Subcategory
+	               if (data[i].subCategoryId) {
+	                  let subcategoryAllData = `
+		                            <input type="hidden" id="subcategory-${data[i].subCategoryId}">
+		                            <div class="food-name" onclick="selectData(${i}, null, '${data[i].subCategoryId}', null)">${data[i].subCategoryName}</div>
+		                        `;
+	                  subcategoryDatas.push(subcategoryAllData);
+	               }
+	               // Variant
+	               if (data[i].variantId) {
+	                  let variantAllData = `
+		                            <input type="hidden" id="variant-${data[i].variantId}">
+		                            <div class="food-name" onclick="selectData(${i}, null, null, '${data[i].variantId}')">${data[i].variantName}</div>
+		                        `;
+	                  variantDatas.push(variantAllData);
+	               }
+	            }
+	            // Append the arrays to their respective containers
+	            $("#categoryData").append(categoryDatas);
+	            $("#subCategoryData").append(subcategoryDatas);
+	            $("#variantData").append(variantDatas);
+	         } else {
+	            console.log("Data fetch unsuccessful");
+	         }
+	      },
+	      error: function (status, error) {
+	         console.error("AJAX error:", status, error);
+	      }
+	   });
+	}
+	
+	
+	let selectedIds = [null, null, null]; // Initialize array to store selected IDs
+	function selectData(index, categoryId, subCategoryId, variantId) {
+	   // Update selected IDs array only if new values are provided
+	   selectedIds[0] = categoryId !== null ? categoryId : selectedIds[0];
+	   selectedIds[1] = subCategoryId !== null ? subCategoryId : selectedIds[1];
+	   selectedIds[2] = variantId !== null ? variantId : selectedIds[2];
+
+	   $.ajax({
+	      type: "GET",
+	      url: "pos-sale-getItem?cId=" + selectedIds[0] + "&sId=" + selectedIds[1] + "&vId=" + selectedIds[2],
+	      success: function (response) {
+	         console.log(response);
+	         if (response.message == "Success") {
+	            var itemList = JSON.parse(response.body);
+	            console.log("Success response itemList", itemList);
+	            var container = $("#itemData");
+	            container.empty(); // Clear existing items
+	            let itemDatas = [];
+	            for (var i = 0; i < itemList.length; i++) {
+	               let itemAllData = `
+			                        <input type="hidden" id="${itemList[i].itemId}">
+			                        <input type="hidden" id="${itemList[i].price}">
+			                        <input type="hidden" id="${itemList[i].categoryId}">
+			                        <input type="hidden" id="${itemList[i].subCategoryId}">
+			                        <input type="hidden" id="${itemList[i].variantId}">
+			                        <div class="food-name" onclick="selectItem('${itemList[i].itemId}','${itemList[i].price}',
+			                        		'${itemList[i].itemName}', '${itemList[i].categoryId}', '${itemList[i].subCategoryId}', 
+			                        		'${itemList[i].variantId}')">${itemList[i].itemName}</div>
+			                    `;
+	               itemDatas.push(itemAllData);
+	            }
+	            container.append(itemDatas);
+	         } else {
+	            console.log("Data fetch unsuccessful");
+	         }
+	      },
+	      error: function (status, error) {
+	         console.error("AJAX error:", status, error);
+	      }
+	   });
+	}
+
+	function pushToList(newItem) {
+	   console.log("pushToList function called");
+	   var found = false;
+	   $.each(window.dataArray, function (index, item) {
+	      if (item.id === newItem.id) {
+	         // If item with the same id exists, increment its count
+	         item.count += newItem.count;
+	         item.price = item.count * newItem.price; // Update item price based on count and unit price
+	         found = true;
+	         return false; // Exit the loop
+	      }
+	   });
+	   if (!found) {
+	      // Add the new item without modifying its quantity and price
+	      window.dataArray.push(newItem);
+	   }
+	}
+	
+	//autosearch
+	function getEmployeeId() {
+	   $('#empName').attr('disabled', false);
+	   $('#empMobNo').attr('disabled', false);
+	   $('#empName').val('');
+	   $('#empMobNo').val('');
+	   var search = $("#empId").val();
+	   if (search) {
+	      $.ajax({
+	         type: "POST",
+	         url: "pos-sale-empIdAutoSearch",
+	         dataType: 'json',
+	         contentType: 'application/json',
+	         data: search,
+	         success: function (response) {
+	            if (response.message == "success") {
+	               console.log("auto--------------", response)
+	               if (response.body.length != 0) {
+	                  $("#search").css("background", "#FFF");
+	                  var content = '<ul id="autocomplete-list" >';
+	                  for (var i = 0; i < response.body.length; i++) {
+	                     content += '<li style="margin-left:-30px; font-weight:100; font-size:12px;"   class="autocompletedata cp" onClick="selectAutocompleteValue(\'' +
+	                        response.body[i].key +
+	                        '\',\'' +
+	                        response.body[i].name +
+	                        '\',\'' +
+	                        response.body[i].code +
+	                        '\')">' +
+	                        response.body[i].name +
+	                        '</li>';
+	                  }
+	                  content += '</ul>';
+	                  //console.log("content " + content)
+	                  $("#suggesstion-box").show();
+	                  $("#suggesstion-box").html(content);
+	               } else {
+	                  $("#search").css("background", "#FFF");
+	                  var content = '<ul id="autocomplete-list">';
+	                  content += '<li style="margin-left:-30px; font-weight:100; font-size:14px; color:#ccc;     background-color: #0909e4;" onClick="selectAutocompleteValue()">' +
+	                     "ADD NEW" +
+	                     '</li>';
+	                  content += '</ul>';
+	                  $("#suggesstion-box").show();
+	                  $("#suggesstion-box").html(content);
+	               }
+	            }
+	         },
+	         error: function (data) {
+	            console.log(data);
+	         }
+	      })
+	   } else {
+	      $("#suggesstion-box").hide();
+	   }
+	}
+
+	function selectAutocompleteValue(empToId, empId, mob) {
+	   if (empToId) {
+	      $("#empToId").val(empToId);
+	      $("#empId").val(empId);
+	      //$("#empName").val(empId);
+	      //$("#empMobNo").val(mob);
+	      $("#search").val(empId);
+	      $("#search").attr('data-procat', empToId);
+	      $("#suggesstion-box").hide();
+	      $('#empName').attr('disabled', true);
+	      $('#empMobNo').attr('disabled', true);
+	   } else {
+	      $("#empToId").val("");
+	      $("#empName").val("");
+	      //$("#empMobNo").val(""); 
+	      $("#search").val("");
+	      $("#search").attr('data-procat', "");
+	      $("#suggesstion-box").hide();
+	      $("#empId").val("");
+	      $('#empId').attr('disabled', true);
+	   }
+	}
+	
+	
+
+
+
+	
+
+	function validateMobNo() {
+	   var tempVal = $("#empMobNo").val().replace(/[^0-9 ]/g, '');
+	   $("#empMobNo").val(tempVal);
+	}
+  function toggleFields() {
+        // Get all the divs by their IDs
+        const checkField = document.getElementById("checkField");
+        const onlineField = document.getElementById("onlineField");
+        const upiField = document.getElementById("upiField");
+        const cashField = document.getElementById("cashField");
+
+        // Get selected radio button
+        const selectedPaymentType = document.querySelector('input[name="flexRadioDefault"]:checked').id;
+
+        // Hide all divs initially
+        checkField.style.display = "none";
+        onlineField.style.display = "none";
+        upiField.style.display = "none";
+        cashField.style.display = "none"; // Hide cashField initially
+
+        // Show the respective div based on the selected radio button
+        if (selectedPaymentType === "flexRadioDefault1") {
+            cashField.style.display = "block"; // Show cashField for Cash
+        } else if (selectedPaymentType === "flexRadioDefault2") {
+            checkField.style.display = "block"; // Show checkField for Cheque
+        } else if (selectedPaymentType === "flexRadioDefault3") {
+            onlineField.style.display = "block"; // Show onlineField for Online
+        } else if (selectedPaymentType === "flexRadioDefault4") {
+            upiField.style.display = "block"; // Show upiField for UPI
+        }
+    }
+
+  
+	function openmodalCall() {
+		toggleFields();
+		let grandTotalValue = $('#itemAddDiv').find('tr:last-child td:last-child').text();
+		 $("#totalAmount").text(grandTotalValue);
+	   $("#modalCall").modal("show");
+		
+	    
+	}
+  
+	function closeModalCall() {
+	   $("#modalCall").modal("hide");
+	   $("#empId").val("");
+	   $("#empName").val("");
+	   $("#empMobNo").val("");
+	   $('#empId').attr('disabled', false);
+	   $('#empName').attr('disabled', true);
+	   $('#empMobNo').attr('disabled', true);
+	}
+	
+	/* function pageRedirct() {
+		window.location.href = "/food/pos-sale-view"	
+	} */
+	function pageRedirct() {
+		//alert("hiii")
+		$("#pharmacyGridModal").modal('show');
+		//$("#pharmacyGrid").show();
+		getPharmacyView();
+	}
+
+	function getPharmacyView(){
+		agGrid.simpleHttpRequest({
+		    url: 'pos-pharmacy-view'
+		}).then(function(data) {
+		    var jsonData = JSON.parse(data.body);
+			var allData=jsonData.pharmacy;
+			console.log(allData)
+			pharmacyGridOptions.api.setRowData(allData);
+		});
+	}
+	var qrId="";
+	function viewQr(qr) {
+		qrId = qr;
+		var path = "/document/document/";
+		var showPath = path + qr;
+
+		$("#qr").attr("src", showPath);
+		
+	}
+	
+	
+	
+	// Define items for each medicine category
+	const itemsByCategory = {
+	    "Antibiotics": ["Amoxicillin", "Ciprofloxacin", "Azithromycin", "Doxycycline", "Cephalexin", "Clindamycin", "Metronidazole", "Levofloxacin"],
+	    "Analgesics": ["Paracetamol", "Ibuprofen", "Aspirin", "Diclofenac", "Ketorolac", "Codeine"],
+	    "Antiviral Drugs": ["Acyclovir", "Oseltamivir", "Remdesivir", "Zanamivir", "Valacyclovir", "Sofosbuvir"],
+	    "Statins": ["Atorvastatin", "Simvastatin", "Rosuvastatin", "Lovastatin", "Cerivastatin"],
+	    "Antacids": ["Magnesium Hydroxide", "Aluminum Hydroxide", "Calcium Carbonate", "Ranitidine", "Bismuth Subsalicylate"]
+	};
+
+	// Global variable for item prices
+	const itemPrices = {
+	    "Amoxicillin": 10,
+	    "Ciprofloxacin": 12,
+	    "Azithromycin": 15,
+	    "Doxycycline": 20,
+	    "Cephalexin": 10,
+	    "Clindamycin": 25,
+	    "Metronidazole": 18,
+	    "Levofloxacin": 22,
+	    "Paracetamol": 5,
+	    "Ibuprofen": 8,
+	    "Aspirin": 6,
+	    "Diclofenac": 12,
+	    "Ketorolac": 15,
+	    "Codeine": 30,
+	    "Acyclovir": 25,
+	    "Oseltamivir": 35,
+	    "Remdesivir": 100,
+	    "Zanamivir": 28,
+	    "Valacyclovir": 30,
+	    "Sofosbuvir": 75,
+	    "Atorvastatin": 10,
+	    "Simvastatin": 12,
+	    "Rosuvastatin": 15,
+	    "Lovastatin": 10,
+	    "Cerivastatin": 18,
+	    "Magnesium Hydroxide": 8,
+	    "Aluminum Hydroxide": 10,
+	    "Calcium Carbonate": 12,
+	    "Ranitidine": 15,
+	    "Bismuth Subsalicylate": 20
+	};
+
+	// Object to track item quantities and amounts
+	let selectedItems = {};
+
+	// Global variable to store the last selected item name
+	let lastSelectedItemName = "";
+
+	// Function to handle quantity multiplier buttons
+    function itemMultiple(multiplier) {
+    const selectedItemName = getSelectedItemName();  
+    console.log("selectedItemName= ", selectedItemName);
+
+    if (selectedItemName && selectedItems[selectedItemName]) {
+        selectedItems[selectedItemName].quantity *= multiplier;
+
+        const basePrice = getItemBasePrice(selectedItemName);
+        selectedItems[selectedItemName].amount = basePrice * selectedItems[selectedItemName].quantity;
+
+        updateItemTable();
+    }
+}
+
+
+
+	// Function to return the last selected item
+	function getSelectedItemName() {
+	    return lastSelectedItemName;
+	}
+
+	// Static prices for each item
+	function getItemBasePrice(itemName) {
+	    return itemPrices[itemName] || 0; // Default to 0 if not found
+	}
+
+	// Event listener for category click (for filtering items by category)
+	$(document).on('click', '.category', function () {
+	    const category = $(this).data('category');
+	    const items = itemsByCategory[category];
+
+	    // Clear existing items in the item box
+	    $('#itemData').empty();
+
+	    // Loop through items and append them to the itemData div
+	    items.forEach(item => {
+	        $('#itemData').append(`<div class="food-name item" data-item="${item}">${item}</div>`);
+	    });
+	});
+
+	// Event listener for item click
+	$(document).on('click', '.item', function () {
+	    const itemName = $(this).data('item');
+	    const itemPrice = getItemBasePrice(itemName);
+
+	    console.log("itemName= ", itemName);
+	    console.log("itemPrice= ", itemPrice);
+
+	    // Store the last selected item
+	    lastSelectedItemName = itemName;
+
+	    // Check if item already exists in the selectedItems
+	    if (selectedItems[itemName]) {
+	        // Increment the quantity
+	        selectedItems[itemName].quantity += 1;
+	        selectedItems[itemName].amount = selectedItems[itemName].quantity * itemPrice;
+	    } else {
+	        // Add new item with quantity 1 and the corresponding amount
+	        selectedItems[itemName] = {
+	            quantity: 1,
+	            amount: itemPrice
+	        };
+	    }
+
+	    // Update the table with selected items
+	    updateItemTable();
+	});
+
+
+
+
+function updateItemTable() {
+    // Clear existing rows except the header
+    $('#itemAddDiv').find("tr:gt(0)").remove();
+
+    let totalAmount = 0;
+
+    // Arrays to store item details
+    const itemNames = [];
+    const quantities = [];
+    const amounts = [];
+
+    // Loop through selectedItems and add them to the table
+    for (const itemName in selectedItems) {
+        const item = selectedItems[itemName];
+        totalAmount += item.amount;
+
+        // Store item details in arrays
+        itemNames.push(itemName);
+        quantities.push(item.quantity);
+        amounts.push(item.amount.toFixed(2));
+
+        $('#itemAddDiv').append(`
+            <tr>
+                <td>${itemName}</td>
+                <td>${item.quantity}</td>
+                <td>${item.amount.toFixed(2)}</td>
+                <td><button class="delete-item btn btn-danger" data-item="${itemName}">Del</button></td>
+            </tr>
+        `);
+    }
+
+    // Calculate CGST and SGST (2.5% each)
+    const cgst = totalAmount * 0.025;
+    const sgst = totalAmount * 0.025;
+
+    // Calculate Grand Total
+    const grandTotal = totalAmount + cgst + sgst;
+
+    // Update total amount and tax fields in the DOM
+    $('#itemAddDiv').append(`
+        <tr>
+            <td colspan="2" style="background: #dcdcdc; text-align: right;">Total</td>
+            <td style="background: #dcdcdc;">${totalAmount.toFixed(2)}</td>
+        </tr>
+    `);
+
+    $('#itemAddDiv').append(`
+        <tr>
+            <td colspan="2" style="background: #dcdcdc; text-align: right;">CGST (2.5%)</td>
+            <td style="background: #dcdcdc;">${cgst.toFixed(2)}</td>
+        </tr>
+    `);
+
+    $('#itemAddDiv').append(`
+        <tr>
+            <td colspan="2" style="background: #dcdcdc; text-align: right;">SGST (2.5%)</td>
+            <td style="background: #dcdcdc;">${sgst.toFixed(2)}</td>
+        </tr>
+    `);
+
+    $('#itemAddDiv').append(`
+        <tr>
+            <td colspan="2" style="background: #dcdcdc; text-align: right;">Grand Total</td>
+            <td style="background: #dcdcdc;">${grandTotal.toFixed(2)}</td>
+        </tr>
+    `);
+
+    // Store the values in hidden inputs for later use in saveData
+    $("#itemNames").val(JSON.stringify(itemNames));
+    $("#quantities").val(JSON.stringify(quantities));
+    $("#amounts").val(JSON.stringify(amounts));
+    $("#totalAmount").val(totalAmount.toFixed(2));
+    $("#cgst").val(cgst.toFixed(2));
+    $("#sgst").val(sgst.toFixed(2));
+    $("#grandTotal").val(grandTotal.toFixed(2));
+
+    // Attach delete event handler to the dynamically generated buttons
+    $('.delete-item').on('click', function () {
+        const itemName = $(this).data('item');
+        deleteItem(itemName);
+    });
+}
+
+
+	
+	
+function deleteItem(itemName) {
+    if (selectedItems[itemName]) {
+        selectedItems[itemName].quantity -= 1;
+        if (selectedItems[itemName].quantity <= 0) {
+            delete selectedItems[itemName];
+        } else {
+            const itemPrice = getItemBasePrice(itemName);
+            selectedItems[itemName].amount = selectedItems[itemName].quantity * itemPrice;
+        }
+        updateItemTable();
+    }
+}
+    
+
+        
+        function saveData() {
+     		
+    	var datas = {};
+    	datas.pharmacyId = $("#pharmacyId").val();
+    	
+        // Retrieve and parse item data arrays safely
+		    datas.patientId = $("#patientId").val();
+		    datas.totalAmount = $("#totalAmount").val();
+		    datas.itemNames = JSON.parse($("#itemNames").val() || "[]");
+		    datas.quantities = JSON.parse($("#quantities").val() || "[]");
+		    datas.amounts = JSON.parse($("#amounts").val() || "[]");
+		    datas.cgst = $("#cgst").val();
+		    datas.sgst = $("#sgst").val();
+		    datas.grandTotal = $("#grandTotal").val();
+		    
+		    console.log($("#itemNames").val());
+		    console.log($("#quantities").val());
+		    console.log($("#amounts").val());
+
+
+        // Determine payment method
+        if ($("#flexRadioDefault1").is(":checked")) { // Cash
+            datas.paymentMethod = "Cash";
+            datas.cashRemark = $("#cashRemark").val();
+        } 
+        else if ($("#flexRadioDefault2").is(":checked")) { // Cheque
+            datas.paymentMethod = "Cheque";
+            datas.chequeNumber = $("#checkId").val();
+            datas.bankName = $("#bankName").val();
+            datas.branchName = $("#branchName").val();
+            datas.accountNumber = $("#accountNumber").val();
+            datas.remark = $("#remark").val();
+        } 
+        else if ($("#flexRadioDefault3").is(":checked")) { // Online
+            datas.paymentMethod = "Online";
+            datas.transactionNumber = $("#transactionId").val();
+            datas.receiverBankName = $("#receiverbankName").val();
+            datas.receiverBranchName = $("#receiverBranchName").val();
+            datas.receiverIfsc = $("#receiverIfsc").val();
+            datas.receiverAccountNumber = $("#receiverAccountNumber").val();
+            datas.onlineRemark = $("#onlineRemark").val();
+        } 
+        else if ($("#flexRadioDefault4").is(":checked")) { // UPI
+            datas.paymentMethod = "UPI";
+            datas.upiId = $("#upiId").val();
+            datas.receiverUpiId = $("#receiverUpiId").val();
+            datas.upiTransactionId = $("#upiTransactionId").val();
+            datas.upiRemark = $("#upiRemark").val();
+        }
+    	
+   	    var userid = $("#sessionId").val();
+   	    var orgName = $("#sessionOrg").val();
+   	    var orgDiv = $("#sessionOrgDiv").val();
+    	datas.userid=userid;
+    	datas.orgName=orgName;
+    	datas.orgDiv=orgDiv;
+    	 
+    	console.log("DATASS------------------",datas);
+    	savePharmacyData(datas);
+
+
+     		
+    }
+    function savePharmacyData(datas) {
+       		$('.loader').show();
+       		$("body").addClass("overlay");
+    		$.ajax({
+    			type : "POST",
+    			url : "pos-pharmacy-add",
+    			contentType : "application/json",
+    			data : JSON.stringify(datas),
+    			success : function(response) {
+    		if (response.code == "Success") {
+    			$('.loader').hide();
+    			$("body").removeClass("overlay");
+    			$("#messageParagraph").text("Data Saved Successfully");
+    			$("#msgOkModal").removeClass("btn3");
+    			$("#msgOkModal").addClass("btn1");
+    			$("#msgModal").modal('show');
+    			$("#modalCall").modal('hide');
+    			location.reload();
+    		}
+
+    	},
+    	error : function(datas) {
+    		console.log(datas)
+    	}
+    })
+
+    }
+ function cancel() {
+	 $("#pharmacyGridModal").modal('hide');
+ }
+
+ function reportDownload(id) {
+ 	window.open("/pharmacy/pharmacy-pdf-downloads?id="+window.btoa(id), '_blank');  
+ }
+
+</script>
+</head>
+
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="maincontentsec">
+				<div class="counter-header">
+					<div class="counter-heading">
+						<i class="fa fa-home" aria-hidden="true"></i>Pharmacy
+					</div>
+					<div class="buttonsec">
+						<button class="btn1" style="height: 35px;" onclick="pageRedirct()">Order
+							List</button>
+					</div>
+				</div>
+						 <input type="hidden" id="pharmacyId">
+						 <input type="hidden" id="sessionId" th:value="${userId}" /> 
+						<input type="hidden" id="sessionOrg" th:value="${organization}" />
+						<input type="hidden" id="sessionOrgDiv" th:value="${orgDivision}" />
+						<input type="hidden" id="itemNames" value="" />
+						<input type="hidden" id="quantities" value="" />
+						<input type="hidden" id="amounts" value="" />
+						<!-- <input type="hidden" id="totalAmount" value="" /> -->
+						<input type="hidden" id="cgst" value="" />
+						<input type="hidden" id="sgst" value="" />
+						<input type="hidden" id="grandTotal" value="" />
+						
+				<div class="counter-main">
+					<div class="top-left">
+						<table style="width: 100%" id="itemAddDiv">
+							<thead>
+								<tr>
+									<th>Items</th>
+									<th>Quantity</th>
+									<th>Amount</th>
+								</tr>
+							</thead>
+
+
+							<tr>
+								<td colspan="3" style="background: #dcdcdc; text-align: right;">0</td>
+							</tr>
+						</table>
+
+						<div class="left-down">
+
+
+
+							<div class="butn-counter">
+								<div class="row">
+									<div class="col-md-3">
+										<button type="button" class="btn btn-primary" id="singleBtn"
+											onclick="itemMultiple(1)">Q</button>
+										<div class="btn-name">Qty</div>
+									</div>
+
+									<div class="col-md-3">
+										<button type="button" class="btn btn-primary" id="doubleBtn"
+											onclick="itemMultiple(2)">2</button>
+										<div class="btn-name">2xQty</div>
+									</div>
+									<div class="col-md-3">
+										<button type="button" class="btn btn-primary" id="tripleBtn"
+											onclick="itemMultiple(3)">3</button>
+										<div class="btn-name">3xQty</div>
+									</div>
+									<div class="col-md-3">
+										<button type="button" class="btn btn-primary" id="quarterBtn"
+											onclick="itemMultiple(4)">4</button>
+										<div class="btn-name">4xQty</div>
+									</div>
+									<div class="col-md-3">
+										<button type="button" class="btn btn-primary" id="fiveBtn"
+											onclick="itemMultiple(5)">5</button>
+										<div class="btn-name">5xQty</div>
+									</div>
+
+									<div class="col-md-3">
+										<button type="button" class="btn btn-primary" id="setCustomer"
+											onclick="openmodalCall()">C</button>
+										<div class="btn-name">Set Customer</div>
+									</div>
+
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="top-right">
+						<div class="food-sec">
+							<div class="item-heading">
+								<div class="item-name">Item</div>
+								<button type="button" class="btn btn-outline-primary">Search</button>
+							</div>
+							<div class="scrollbar">
+								<div class="d-flex flex-wrap" id="itemData"></div>
+							</div>
+						</div>
+						<div class="food-sec ht">
+							<div class="row">
+								<div class="col-md-12">
+									<div class="item">Category</div>
+									<div class="scrollbar">
+										<div class="d-flex flex-wrap" id="categoryData">
+											<div class="food-name category" data-category="Antibiotics">Antibiotics</div>
+											<div class="food-name category" data-category="Analgesics">Analgesics</div>
+											<div class="food-name category"
+												data-category="Antiviral Drugs">Antiviral Drugs</div>
+											<div class="food-name category" data-category="Statins">Statins</div>
+											<div class="food-name category" data-category="Antacids">Antacids</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+				</div>
+
+				<!-- Modal -->
+
+				<div class="modal fade" id="modalCall" tabindex="-1" role="dialog"
+					aria-labelledby="exampleModalCenterTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+					<div class="modal-dialog modal-lg" role="document">
+						<div class="modal-content">
+							<div class="modal-header">
+								<h5 class="modal-title">Confirm Comestibles</h5>
+								<button type="button" class="btn-close"
+									onclick="closeModalCall()" aria-label="Close"></button>
+							</div>
+							<div class="modal-body">
+								<div id="empInfo">
+
+									<div class="row row-cols-1 g-3">
+										<div class="col">
+											<div class="row row-cols g-3 justify-content-between">
+												<div class="col">
+													<div class="row row-cols-auto g-3">
+														<div class="form-group">
+															<label>Select Patient</label>
+															<div class="select">
+																<select id="patientId" class="form-control"
+																	style="height: unset;">
+																	<option value="NULL">Select Patient</option>
+																	<option th:each="c,iter:${patientList}"
+																		th:value="${c.key}" th:text="${c.name}"></option>
+																</select>
+															</div>
+														</div>
+
+														<div class="form-group">
+															<label>Total Amount</label> <input type="text"
+																class="form-control" id=totalAmount
+																onblur="removeValid(event)" autocomplete="off" readonly>
+														</div>
+													</div>
+												</div>
+
+												<div class="col">
+													<div class="row row-cols-auto g-3 justify-content-end">
+														<div class="form-check">
+															<input class="form-check-input" type="radio"
+																name="flexRadioDefault" id="flexRadioDefault1" checked>
+															<label class="form-check-label" for="flexRadioDefault1">
+																Cash </label>
+														</div>
+														<div class="form-check">
+															<input class="form-check-input" type="radio"
+																name="flexRadioDefault" id="flexRadioDefault2">
+															<label class="form-check-label" for="flexRadioDefault2">
+																Cheque </label>
+														</div>
+														<div class="form-check">
+															<input class="form-check-input" type="radio"
+																name="flexRadioDefault" id="flexRadioDefault3">
+															<label class="form-check-label" for="flexRadioDefault3">
+																Online </label>
+														</div>
+														<div class="form-check">
+															<input class="form-check-input" type="radio"
+																name="flexRadioDefault" id="flexRadioDefault4">
+															<label class="form-check-label" for="flexRadioDefault4">
+																UPI </label>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+
+										<!-- add new fields after this -->
+										<!-- Cash Div -->
+										<div class="col" id="cashField">
+											<div class="row row-cols-2 g-3">
+												<div class="col">
+													<label>Remark</label> <input type="text"
+														class="form-control" id="cashRemark">
+												</div>
+											</div>
+										</div>
+										<!--Cheque Div  -->
+										<div class="col" id="checkField">
+											<div class="row row-cols-2 g-3">
+												<div class="col">
+													<label>Cheque Number</label> <input type="text"
+														class="form-control" id="checkId">
+													<div id="suggesstion-box" class="sugg-cls"></div>
+												</div>
+
+												<div class="col">
+													<label>Bank Name</label> <input type="text"
+														class="form-control" id="bankName">
+												</div>
+												<div class="col">
+													<label>Bank Branch</label> <input type="text"
+														class="form-control" id="branchName">
+												</div>
+												<div class="col">
+													<label>Account Number</label> <input type="text"
+														class="form-control" id="accountNumber">
+												</div>
+												<div class="col">
+													<label>Remark</label> <input type="text"
+														class="form-control" id="remark">
+												</div>
+											</div>
+										</div>
+										<!-- Online Div -->
+										<div class="col" id="onlineField">
+											<div class="row row-cols-2 g-3">
+												<div class="col">
+													<label>Transaction Number</label> <input type="text"
+														class="form-control" id="transactionId">
+													<div id="suggesstion-box" class="sugg-cls"></div>
+												</div>
+
+												<div class="col">
+													<label>Receiver Bank Name</label> <input type="text"
+														class="form-control" id="receiverbankName">
+												</div>
+												<div class="col">
+													<label>Receiver Bank Branch</label> <input type="text"
+														class="form-control" id="receiverBranchName">
+												</div>
+												<div class="col">
+													<label>Receiver IFSC</label> <input type="text"
+														class="form-control" id="receiverIfsc">
+												</div>
+												<div class="col">
+													<label>Receiver Account Number</label> <input type="text"
+														class="form-control" id="receiverAccountNumber">
+												</div>
+												<div class="col">
+													<label>Remark</label> <input type="text"
+														class="form-control" id="onlineRemark">
+												</div>
+											</div>
+										</div>
+										<!-- UPI Div -->
+										<div class="col" id="upiField">
+											<div class="row row-cols-2 g-3">
+												<div class="col">
+													<label>UPI Id</label> <input type="text"
+														class="form-control" id="upiId">
+													<div id="suggesstion-box" class="sugg-cls"></div>
+												</div>
+
+												<div class="col">
+													<label>Receiver Upi Id</label> <input type="text"
+														class="form-control" id="receiverUpiId">
+												</div>
+												<div class="col">
+													<label>Upi Transaction Id</label> <input type="text"
+														class="form-control" id="upiTransactionId">
+												</div>
+												<div class="col">
+													<label>Remark</label> <input type="text"
+														class="form-control" id="upiRemark">
+												</div>
+											</div>
+										</div>
+										<!-- buttons cancel & save -->
+										<div class="d-flex justify-content-end gap-3 mt-3">
+											<button type="button" class="btn btn-secondary"
+												data-dismiss="modal" id="closeModal"
+												onclick="closeModalCall()">Close</button>
+											<button type="button" class="btn btn-primary" id="saveModal"
+												onclick="saveData()">Save</button>
+										</div>
+									</div>
+
+								</div>
+
+								<div id="qrCodeShow" style="display: none;">
+									<div style="text-align: center">
+										<img id="qr" alt="QR" width="50%" height="250px">
+									</div>
+								</div>
+							</div>
+							
+						</div>
+					</div>
+				</div>
+
+ <div class="modal fade" id="pharmacyGridModal" tabindex="-1" role="dialog"
+					aria-labelledby="exampleModalCenterTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+					<div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+						<div class="modal-content">
+							<div class="modal-header">
+								<div class="innerstickybg">
+									<div class="row">
+										<div class="col-md-6">
+											Pharmacy List: <span id="pharmacybox"></span>
+										</div>
+									</div>
+								</div>
+
+							</div>
+							<div class="modal-body">
+							<div id="pharmacyGrid" style="height: 300px;" class="ag-theme-alpine w-100"></div>
+								
+							</div>
+							
+							<div class="modal-footer">
+								<button class="cancel-btn" id="cancelBtn" onclick="cancel()">Cancel</button>
+											
+							</div>
+						</div>
+					</div>
+				</div>
+
+			</div>
+		</div>
+	</div>
+</body>
+</html>

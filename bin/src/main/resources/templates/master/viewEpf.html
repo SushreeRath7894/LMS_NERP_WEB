@@ -1,0 +1,623 @@
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+.picker_calendar {
+	cursor: pointer;
+	position: absolute;
+	top: 10px;
+	right: 18px;
+}
+</style>
+<script>
+	$(document).ready(function() {
+		    getCurrentDateMonthYear();
+			var gridDiv = document.querySelector('#myGrid');
+			new agGrid.Grid(gridDiv, gridOptions);
+			viewAllEpfData();
+	})
+	var columnDefs = [
+	{
+		headerName : "Employee ID",
+		field : "empId",
+		width : 180,
+		pinned : 'left',
+	}, {
+		headerName : "Employee Name",
+		field : "empName",
+		pinned : 'left',
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 300,
+	}, {
+		headerName : "DepartMent",
+		field : "dept",
+		hide: true,
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 180,
+	}, {
+		headerName : "Sub Department",
+		field : "subDept",
+		hide: true,
+		cellStyle : {
+			textAlign : 'left'
+		},
+		width : 180,
+	}, {
+		headerName : "EPF No",
+		field : "uanNo",
+		cellStyle : {
+			textAlign : 'center'
+		},
+		width : 200,
+	}/* , {
+			headerName : "Working Day",
+			field : "workingDay",
+			cellStyle : {
+				textAlign : 'right'
+			},
+			width : 150,
+		} */, {
+		headerName : "Gross pay",
+		field : "totalEarning",
+		valueFormatter: indianNumberFormatter,
+		cellStyle : {
+			textAlign : 'right'
+		},
+		width : 180,
+	}, {
+		headerName : "Employee Epf",
+		field : "empEPF",
+		valueFormatter: indianNumberFormatter,
+		cellStyle : {
+			textAlign : 'right'
+		},
+		width : 180,
+	}, {
+		headerName : "Employer Epf",
+		field : "compEPF",
+		valueFormatter: indianNumberFormatter,
+		type : 'rightAligned',
+		width : 150,
+	}, {
+		headerName : "Admin Charges",
+		field : "adminCharge",
+		valueFormatter: indianNumberFormatter,
+		type : 'rightAligned',
+		width : 180,
+	}, {
+		headerName : "EDLI Charges",
+		field : "edliCharge",
+		valueFormatter: indianNumberFormatter,
+		type : 'rightAligned',
+		width : 180,
+	}, {
+		headerName : "Total Epf",
+		field : "total",
+		valueFormatter: indianNumberFormatter,
+		type : 'rightAligned',
+		width : 150,
+	}, {
+		headerName : 'Payment Status',
+		field : "paymentStatus",
+		cellStyle : {
+			textAlign : 'center'
+		},
+		width : 180,
+		cellRenderer : function(params) {
+			if (params.data.paymentStatus == 1) {
+				return '<div style="color:#0642f5">Paid</div>';
+			} else if (params.data.paymentStatus == 0) {
+				return '<div style="color:#a9a9a9">Pending</div>';
+			} else {
+				return '';
+			}
+		}
+
+	} ];
+
+	var rowData = [ {
+	    	empId: 'Total'
+	    },];
+	var gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 150,
+			height : 20
+		},
+		pinnedBottomRowData: rowData,
+		 getRowStyle: function (params) {
+			if (params.node.rowPinned) {
+		      return { background: '#EAE7FA !important', fontWeight: 'bold' };
+		    }
+		    return null;
+	  	}
+	};
+	/* -------------------search bar for mygrid------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+		countFilteredRows();
+		 const filteredRows = gridOptions.api.getDisplayedRowCount();
+		    $('#totalReq').find('span').html(filteredRows);
+	}
+	function countFilteredRows(){
+		var filteredRowCount = 0;
+        var data = [];
+        gridOptions.api.forEachNodeAfterFilter(function (node) {
+            filteredRowCount++;
+            data.push(node.data);
+        });
+		var totalEarning = data.reduce(function (sum, row) {
+	        return sum + parseFloat(row.totalEarning);
+	    }, 0);
+
+	    var empEPF = data.reduce(function (sum, row) {
+	        return sum + parseFloat(row.empEPF);
+	    }, 0);
+
+	    var compEPF = data.reduce(function (sum, row) {
+	        return sum + parseFloat(row.compEPF);
+	    }, 0);
+	    var adminCharge = data.reduce(function (sum, row) {
+	        return sum + parseFloat(row.adminCharge);
+	    }, 0);
+	    var edliCharge = data.reduce(function (sum, row) {
+	        return sum + parseFloat(row.edliCharge);
+	    }, 0);
+	    var total = data.reduce(function (sum, row) {
+	        return sum + parseFloat(row.total);
+	    }, 0);
+	    var totalRow = [{
+	    		empId: 'Total',
+	    		totalEarning: totalEarning.toFixed(2),
+	    		empEPF: empEPF.toFixed(2),
+	    		compEPF:compEPF.toFixed(2),
+	    		adminCharge: adminCharge.toFixed(2),
+	    		edliCharge: edliCharge.toFixed(2),
+	    		total: total.toFixed(2)
+	    }];
+	    console.log("addedData",totalRow);
+	    gridOptions.api.setPinnedBottomRowData(totalRow);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+function getCurrentDateMonthYear(){
+	var curdate = new Date();
+	var date = curdate.getDate();
+	var mnth = curdate.getMonth();
+	$("#attndyear").val(curdate.getFullYear())
+	var sday = $("#startDayForAtten").val();
+	if (parseInt(sday) > 1) {
+		if (parseInt(date) > parseInt(sday)) {
+			var month = (curdate.getMonth() + 1);
+			var year = curdate.getFullYear();
+		} else {
+			var month = curdate.getMonth();
+			if (month == 0) {
+				var year = curdate.getFullYear() - 1;
+				month = 12;
+			} else {
+				var month = curdate.getMonth();
+				var year = curdate.getFullYear();
+			}
+		}
+	} else {
+		var month = (curdate.getMonth() + 1);
+		var year = curdate.getFullYear();
+	}
+
+	var nextmonth = month + 1;
+	if (parseInt(sday) > 1) {
+		$("#attndmonth").val(month + 1);
+	} else {
+		$("#attndmonth").val(month);
+	}
+
+	var fromdate = sday + "-"
+			+ String(month).padStart(2, '0') + "-" + year;
+	const lastDayOfMonth = new Date(year, month, 0)
+			.getDate();
+	if (sday > 1) {
+		if (month == "12") {
+			var todate = (parseInt(sday) - 1) + "-"
+					+ String(1).padStart(2, '0') + "-"
+					+ (year + 1);
+		} else {
+			var todate = (parseInt(sday) - 1) + "-"
+					+ String(nextmonth).padStart(2, '0')
+					+ "-" + year;
+		}
+	} else {
+		var todate = lastDayOfMonth + "-"
+				+ String(month).padStart(2, '0') + "-"
+				+ year;
+	}
+
+	$("#fromDate").val(fromdate);
+	$("#fromDateCalendar").val(fromdate);
+	$("#endDate").val(todate);
+	$("#endDateCalendar").val(todate);
+}
+//viewAllEpfData
+function viewAllEpfData(){
+	var stafftype = $("#stafftype").val();
+	var employedBy = $("#employedBy").val();
+	var fromDate = $("#fromDate").val();
+	var toDate = $("#endDate").val();
+	$('.loader').show();
+	agGrid.simpleHttpRequest(
+			{
+				url : "view-epf-view-details?fromDate=" + fromDate
+						+ "&toDate=" + toDate + "&stafftype=" + stafftype+ "&employedBy=" + employedBy
+			}).then(function(data) {
+				$('.loader').hide();
+		var len = data.length;
+		$('#totalReq').find('span').html(len);
+		gridOptions.api.setRowData(data);
+		countFilteredRows();
+	});
+}
+//changeType
+function changeType() {
+	viewAllEpfData();
+}
+//getEpfData
+function getEpfYrMtData(){
+	var curdate = new Date();
+	var month = $("#attndmonth").val();
+	var sday = $("#startDayForAtten").val();
+	var attnyear = $("#attndyear").val();
+	if (parseInt(sday) > 1) {
+		if (month == 1) {
+			var year = attnyear - 1;
+			month = 12;
+		} else {
+			var year = attnyear;
+			month = month - 1;
+		}
+	} else {
+		var year = attnyear;
+	}
+
+	var nextmonth = parseInt(month) + 1;
+
+	var fromdate = sday + "-" + String(month).padStart(2, '0') + "-" + year;
+	const lastDayOfMonth = new Date(year, month, 0).getDate();
+	if (sday > 1) {
+		if (month == "12") {
+			var todate = (parseInt(sday) - 1) + "-"
+					+ String(1).padStart(2, '0') + "-" + (year + 1);
+		} else {
+			var todate = (parseInt(sday) - 1) + "-"
+					+ String(nextmonth).padStart(2, '0') + "-" + year;
+		}
+	} else {
+		var todate = lastDayOfMonth + "-" + String(month).padStart(2, '0')
+				+ "-" + year;
+	}
+
+	$("#fromDate").val(fromdate);
+	$("#fromDateCalendar").val(fromdate);
+	$("#endDate").val(todate);
+	$("#endDateCalendar").val(todate);
+}
+//changeMonthYear
+function changeMonthYear(){
+		var curdate = new Date();
+		var attnyear = $("#attndyear").val();
+		var month = $("#attndmonth").val();
+		var date = curdate.getDate();
+		var mnth = curdate.getMonth();
+		var sday = $("#startDayForAtten").val();
+		var mt=month-1;
+	if(attnyear>curdate.getFullYear()){
+			$("#messageParagraph").text("Please Choose Current Year Or Previous Year!");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			$("#attndyear").val(curdate.getFullYear())
+			getCurrentDateMonthYear();
+			viewAllApproveData();
+	}else{	
+		if(attnyear==curdate.getFullYear()){
+		if(mt>curdate.getMonth()){
+			$("#messageParagraph").text("Please Choose Current month Or Previous Month!");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');	
+
+			if (parseInt(sday) > 1) {
+				if (parseInt(date) > parseInt(sday)) {
+					var month = (curdate.getMonth() + 1);
+					var year = attnyear;
+				} else {
+					var month = curdate.getMonth();
+					if (month == 0) {
+						var year = attnyear - 1;
+						month = 12;
+					} else {
+						var month = curdate.getMonth();
+						var year = attnyear;
+					}
+				}
+			} else {
+				var month = (curdate.getMonth() + 1);
+				var year = attnyear;
+			}
+
+			var nextmonth = month + 1;
+			if (parseInt(sday) > 1) {
+				$("#attndmonth").val(month + 1);
+			} else {
+				$("#attndmonth").val(month);
+			}
+
+			var fromdate = sday + "-"
+					+ String(month).padStart(2, '0') + "-" + year;
+			const lastDayOfMonth = new Date(year, month, 0)
+					.getDate();
+			if (sday > 1) {
+				if (month == "12") {
+					var todate = (parseInt(sday) - 1) + "-"
+							+ String(1).padStart(2, '0') + "-"
+							+ (year + 1);
+				} else {
+					var todate = (parseInt(sday) - 1) + "-"
+							+ String(nextmonth).padStart(2, '0')
+							+ "-" + year;
+				}
+			} else { 
+				var todate = lastDayOfMonth + "-"
+						+ String(month).padStart(2, '0') + "-"
+						+ year;
+			}
+
+			$("#fromDate").val(fromdate);
+			$("#fromDateCalendar").val(fromdate);
+			$("#endDate").val(todate);
+			$("#endDateCalendar").val(todate);
+		}else{
+			getEpfYrMtData();
+			viewAllEpfData();
+			}
+		}else{
+			getEpfYrMtData();
+			viewAllEpfData();
+		}
+	}
+}
+ 
+	function downloadEpfCSV() {
+		var rowCount = 0;
+		gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		    if (rowNode.data.empId) {
+		        rowCount++;
+		    }
+		});
+		if (rowCount > 0) {
+			var name = "EPF Details-" + $("#attndmonth option:selected").text();
+		    var allColumns = gridOptions.columnApi.getAllColumns();
+
+		    allColumns.forEach(col => {
+		        if (col.getColDef().headerName) {
+		            col.getColDef().headerName = col.getColDef().headerName.toUpperCase();
+		        }
+		    });
+
+		    var visibleColumns = allColumns.filter(col => {
+		        const headerName = col.getColDef().headerName;
+		        const isColumnVisible = !col.getColDef().hide;
+		        return headerName !== undefined && headerName !== null && isColumnVisible;
+		    });
+
+		    var visibleColumnIds = visibleColumns.map(col => col.getColId());
+
+		    const params = {
+		        skipHeader: false,
+		        columnGroups: false,
+		        skipFooters: false,
+		        skipGroups: false,
+		        skipPinnedTop: false,
+		        skipPinnedBottom: false,
+		        allColumns: true,
+		        onlySelected: false,
+		        suppressQuotes: false,
+		        fileName: name + '.csv',
+		        sheetName: 'Sheet1',
+		        customHeader: null,
+		        customFooter: null,
+		        columnKeys: visibleColumnIds
+		    };
+		    gridOptions.api.exportDataAsCsv(params);
+		} else {
+		    $("#messageParagraph").text("NO DATA AVAILABLE FOR DOWNLOAD!");
+		    $("#msgOkModal").removeClass("btn3");
+		    $("#msgOkModal").addClass("btn1");
+		    $("#msgModal").modal('show');
+		}
+	}
+</script>
+
+
+</head>
+
+<body>
+
+	<div layout:fragment="content">
+		<div class="content-wrap">
+			<div class="container-fluid">
+				<div class="maincontent">
+					<div class="row">
+
+						<div class="maincontentsec">
+							<div class="content_padding">
+
+								<div id="main_content">
+
+									<div class="panel-body">
+
+
+										<div class="row">
+											<input type="hidden" id="startDayForAtten"
+												th:value="${startDayForAtten}" />
+											<!-- 		<div class="col-md-3">
+												<div class="form-group">
+												<label>Band Name</label>
+													<div class="select">
+														<select id=designation class="form-control"
+															onchange="changeType()">
+															<option value="">--SELECT--</option>
+															<option th:each="c,iter:${bandType}" th:value="${c.key}"
+																th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div> -->
+
+											<div class="col-md-2">
+												<div class="form-group">
+													<label>Type</label>
+													<div class="select">
+														<select id="stafftype" class="form-control" onchange="changeType()">
+															<option value="All"> All </option>
+															<option th:each="c,iter:${typeList}" th:value="${c.key}"
+																th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+
+											<div class="col-md-2">
+												<div class="form-group">
+													<label>Employed By</label>
+													<div class="select">
+														<select class="form-control bandclssls" id="employedBy" onchange="changeType()">
+															<option value="All"> All </option>
+															<option th:each="c,iter:${employedByList}"
+																th:value="${c.key}" th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-2">
+												<div class="form-group">
+													<label>Year</label>
+													<div class="select">
+														<select id="attndyear" class="form-control"
+															onchange="changeMonthYear()">
+															<option th:each="c,iter:${yearList}" th:value="${c.name}"
+																th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-2">
+												<div class="form-group">
+													<label>Month Name</label>
+													<div class="select">
+														<select id="attndmonth" class="form-control"
+															onchange="changeMonthYear()">
+															<option value="">--SELECT--</option>
+															<option value="1">JANUARY</option>
+															<option value="2">FEBRUARY</option>
+															<option value="3">MARCH</option>
+															<option value="4">APRIL</option>
+															<option value="5">MAY</option>
+															<option value="6">JUNE</option>
+															<option value="7">JULY</option>
+															<option value="8">AUGUST</option>
+															<option value="9">SEPTEMBER</option>
+															<option value="10">OCTOBER</option>
+															<option value="11">NOVEMBER</option>
+															<option value="12">DECEMBER</option>
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-2">
+												<label>From Date</label>
+												<div class="form-group calendar_box">
+													<input type="text" id="fromDate" value=""
+														class="form-control"
+														th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+														readonly>
+													<!-- <i class="ti-calendar picker_calendar"
+														id="fromDateCalendar"></i> -->
+												</div>
+											</div>
+											<div class="col-md-2">
+												<label>To Date</label>
+												<div class="form-group calendar_box">
+													<input type="text" id="endDate" value=""
+														class="form-control"
+														th:attr="onkeyup=|formatDate('endDate','${session.DATEFORMAT_JS}')|"
+														readonly>
+													<!--  <i class="ti-calendar picker_calendar"
+														id="endDateCalendar"></i> -->
+												</div>
+											</div>
+
+										</div>
+										<div class="d-flex justify-content-between mt-4">
+											<div class="btn-hs">
+												<div class="font-design" id="totalReq">
+													Employee EPF Details(<span></span>)
+												</div>
+											</div>
+											<div id="searchRowDiv">
+												<div class="input-style">
+													<input type="text" placeholder="Search.." name="search"
+														class="searchboxinput" onkeyup="cancelBar()"
+														oninput="onQuickFilterChanged()" id="quickFilter"
+														autocomplete="off">
+													<div class="searchicon">
+														<a href="javascript:void(0)"><span
+															style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+															id="closeKey"
+															onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+															class="close_i"><i class="ti-close srchicon"></i></span></a><a
+															href="javascript:void(0)"><i
+															class="ti-search srchicon"></i></a>
+													</div>
+												</div>
+											</div>
+											<div class="buttonsec btn-hs" id="btndiv">
+												<button class="btn4" onclick="downloadEpfCSV()">Download</button>
+											</div>
+										</div>
+
+										<div id="myGrid" style="width: 100%; height: 450px;"
+											class="ag-theme-alpine"></div>
+
+									</div>
+								</div>
+
+							</div>
+
+
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</html>

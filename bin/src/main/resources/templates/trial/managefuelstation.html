@@ -1,0 +1,485 @@
+
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<style>
+#myReq .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff;
+	text-indent: 10px !important;
+}
+
+#myReq .ag-row-selected::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 3px;
+	right: 4px;
+}
+</style>
+<script>
+	
+	$(document).ready(function() {
+	$('#reqDltBtn').attr('disabled', true);
+	var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+
+	gridOptions.api.setRowData();
+
+	agGrid.simpleHttpRequest({
+		url : "manage-fuel-station-view"
+	}).then(function(data) {
+		gridOptions.api.setRowData(data);
+		console.log(JSON.stringify(data));
+	});
+
+});
+
+			
+		function cancelBar() {
+			var id = document.getElementById("closeKey");
+			id.style.display = "block";
+			if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+				id.style.display = "none";
+			}
+		}
+	
+
+		var columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+			
+			{
+				headerName : "Station ID ",
+				field : "stationId",
+				width:80, cellRenderer : function(params) {
+					return '<a stationId="editId" onclick=editId("'
+					+ params.data.stationId
+					+ '") href="javascript:void(0)">'
+					+ params.data.stationId + '</a>';
+		},cellStyle : {
+			textAlign : 'center'
+		}
+			}, {
+				headerName : "Station Name",
+				field : "stationName",
+				width:150
+			}, 
+			{
+				headerName : "Vendor name",
+				field : "vendorName",
+			},{
+				headerName : "Authorize Person",
+				field : "authorizePerson",
+				width:150
+			}, {
+				headerName : "Contact Number",
+				field : "contactNumber",
+				width:150
+			}, {
+				headerName : "Is Authorize",
+				field : "authorize",
+				width:180,cellRenderer : function(params) {
+					if (params.data.authorize == "1") {
+						return '<div style="color:green">' + 'Active'
+								+ '</div>';
+					} else {
+						return '<div>' + 'Inactive' + '</div>';
+					}
+				}
+			},{
+				headerName : "Action",
+			field : "Action"
+			}];
+	
+		$("#stationId").click(function() {
+			$("#a").css("display", "block");
+			$("#b").css("display", "block");
+		});
+
+
+		var gridOptions = {
+			columnDefs : columnDefs,
+			
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 190,
+				height : 10
+			},rowSelection : 'multiple',
+			onSelectionChanged : onSelectionChanged
+			};
+
+	
+	
+	
+		function onQuickFilterChanged() {
+			gridOptions.api
+					.setQuickFilter(document.getElementById('quickFilter').value);
+		}
+	
+		function addCandidate() {
+			
+	
+			$('#hideTbl').hide();
+			$('#buttonDetails').hide();
+			$('#myGrid').hide();
+			$('#demo').show();
+			$("#btn1").show();
+			$('#candidateId').val("");
+	
+			$("#collapseOne").collapse({
+				toggle : false
+			}).collapse('show');
+				
+		}
+		
+	
+		
+		function cancelbtn()
+		{
+			$('#reqDltBtn').attr('disabled', true);
+			$("#myGrid").show();
+			$("#btn1").hide();
+			$("#demo").hide();
+			$("#hideTbl").show();
+			$("#buttonDetails").show();
+		}
+		
+		function candidateSave()
+		{
+			alert("Details Added Successfully!");
+			
+			var obj = {};
+			obj.stationId=$('#stationId').val();
+			obj.vendorName = $('#vendorName').val();
+			obj.contactNumber = $('#contactNumber').val();
+			obj.stationName = $('#stationName').val();
+			obj.stationCode = $('#stationCode').val();
+			obj.authorizePerson = $('#authorizePerson').val();
+			obj.authorize = $("#authorize:checkbox:checked").val();
+			
+			if (obj.authorize == undefined) {
+
+				obj.authorize = "0";
+
+			} else {
+				obj.authorize = "1";
+			}
+			
+			
+			$.ajax({
+				type : "POST",
+				url : "manage-fuel-station-add",
+				dataType : 'json',
+				contentType : 'application/json',
+				data : JSON.stringify(obj),
+
+				success : function(response) {
+					if (response.message == "Success") {
+
+						agGrid.simpleHttpRequest({
+							url : "manage-fuel-station-view"
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+						cancelbtn();
+					}
+				},
+				error : function(data) {
+					console.log(data)
+				}
+			});
+		}
+		
+		function onSelectionChanged() {
+			var selectedRows = gridOptions.api.getSelectedRows();
+			var rowCount = 0;
+			selectedRows.forEach(function(selectedRow, index) {
+				rowCount = rowCount + 1;
+			});
+
+			if (rowCount > 0) {
+				$('#reqDltBtn').attr('disabled', false);
+			} else {
+				$('#reqDltBtn').attr('disabled', true);
+			}
+
+		}
+		function editId(stationId) {
+	
+			addCandidate();
+
+			$.ajax({
+				type : "GET",
+				url : "manage-fuel-station-edit?stationId=" + stationId,
+				dataType : 'json',
+				contentType : 'application/json',
+				data : stationId,
+				success : function(response) {
+					if (response.message == "Success") {
+						addCandidate();
+						console.log("edit", response.body)
+						$('#stationId').val(response.body.stationId);
+						$('#vendorName').val(response.body.vendorName);
+						$('#contactNumber').val(response.body.contactNumber);
+						$('#stationName').val(response.body.stationName);
+						$('#stationCode').val(response.body.stationCode);
+						$('#authorizePerson').val(response.body.authorizePerson);
+						var status = response.body.authorize;
+						if (status === '1') {
+
+							$('#authorize').prop('checked', true)
+
+						} else {
+							$('#authorize').prop('checked', false)
+						}
+					}
+				},
+				error : function(data) {
+					console.log(data)
+					$('#stationId').val("");
+					$('#vendorName').val("");
+					$('#contactNumber').val("");
+					$('#stationName').val("");
+					$('#stationCode').val("");
+					$('#authorizePerson').val();
+					$('#authorize').val("");
+
+				}
+			});
+		}
+		
+		function deletefn()
+		{
+			var selectedRows = gridOptions.api.getSelectedRows();
+			var stationId = selectedRows[0].stationId;
+			
+			alert("Deleted Successfully!"); 
+			
+			$.ajax({
+				type : "POST",
+				url : "manage-fuel-station-delete?stationId=" + stationId,
+				success : function(response) {
+					if (response.message == "Success") {
+					//	location.reload();
+						agGrid.simpleHttpRequest({
+							//url : "view-salary-revision-view?userid="+userid,
+							url : 'manage-fuel-station-view'
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+						cancelBtn();
+					}
+				},
+				error : function(data) {
+					console.log(data);
+				}
+				
+			})
+			
+		}
+
+	
+		
+		
+	</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="row margin_topbot" id="hideTbl">
+
+							<div class="input-style row">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter">
+								<div class="searchicon">
+									<a href="javascript: void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript: void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+
+						</div>
+						<div class="col-md-12 padding-7" id="buttonDetails">
+							<div class="row mt-20">
+								<div class="col-md-4  btn-hs">
+									<div class="font-design" id="totalReq">Fuel Station List
+										(4)</div>
+								</div>
+								<div class="col-md-6 btn-hs">
+									<div class=""></div>
+								</div>
+								<div class="col-md-2 btn-hs">
+
+
+									<button class="btn3" id="reqDltBtn" onclick="deletefn()">DELETE</button>
+									<button class="btn1" onclick="addCandidate()" id="add100">NEW</button>
+
+
+								</div>
+
+
+							</div>
+						</div>
+
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+
+
+						<div class="collapse" id="demo">
+							<div class="innerstickybg">
+
+								<div class="row">
+
+									<div class="col-md-4"></div>
+									<div class="col-md-4"></div>
+									<div class="col-md-4" align="right" id="btn1">
+										<button class="btn4" id="cancelBtn" onclick="cancelbtn()">Cancel
+										</button>
+										<button class="btn1" id="saveVendor" onclick="candidateSave()">Save</button>
+									</div>
+								</div>
+
+							</div>
+							<div class="innercontent">
+								<div class="row">
+
+									<div class="col-md-9" id="candidateDetailsBar">
+
+
+										<div class="name" id="nameDtls"></div>
+
+										<div class="mt-0">
+											<div class="details" id="locationDtls"></div>
+										</div>
+
+										<div class="mt-20">
+											<div class="details" id="mobileNoDtls"></div>
+
+											<div class="details" id="emailDtls"></div>
+										</div>
+
+
+
+
+
+									</div>
+								</div>
+							</div>
+							<div id="main">
+
+								<div class="wrapper center-block">
+
+									<div class="accordion" id="accordionExample">
+										<div class="accordion-item">
+											<h2 class="accordion-header" id="headingOne">Add Fuel
+												Station</h2>
+											<div id="collapseOne" class="accordion-collapse collapse"
+												aria-labelledby="headingOne"
+												data-bs-parent="#accordionExample">
+												<div class="accordion-body">
+													<div class="row">
+
+
+
+														<div class="col-lg-6">
+															<div class="form-group">
+															<input type="hidden" class="form-control" id="stationId"
+															autocomplete="off">
+																<label>Vendor Name</label> <div class='select'>
+																	<select class="select" id="vendorName">
+																		<option value="">Please Select One</option>
+																		<option th:each="c,iter:${vendorList}"
+																			th:value="${c.name}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+														</div>
+
+														<div class="col-lg-6">
+															<div class="form-group">
+																<label>Contact Number</label> <input type="text"
+																	name="Company Name" value=""
+																	placeholder="Contact Number" class="form-control"
+																	id="contactNumber">
+
+															</div>
+														</div>
+
+
+														<div class="col-lg-6">
+															<div class="form-group calendar_box">
+																<label>Station Name</label>
+																
+																<input type="text" id="stationName" class="form-control"
+																	placeholder="Station Name">
+
+
+															</div>
+														</div>
+														<div class="col-lg-6">
+															<div class="form-group">
+																<label>Is Authorize</label><input id="authorize"
+																	type="checkbox" name="" class="" value="1">
+															</div>
+														</div>
+														<div class="col-lg-6">
+															<div class="form-group">
+																<label>Station Code</label><input type="text" id="stationCode"
+																	class="form-control" placeholder="Station Code">
+															</div>
+														</div>
+														<div class="col-lg-6">
+															<div class="form-group">
+																
+															</div>
+														</div>
+														<div class="col-lg-6">
+															<div class="form-group">
+																<label>Authorize Person</label> <input type="text"
+																	id="authorizePerson" class="form-control"
+																	placeholder="Authorize Person">
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+
+</body>
+
+</html>
