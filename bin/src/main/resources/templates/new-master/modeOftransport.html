@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:fragment="modeoftransport">
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+<script>
+$(document).ready(() => {
+    var gridDiv = document.querySelector('#myGridTransport');
+    new agGrid.Grid(gridDiv, gridOptionsTransporttyp);
+    getTransportType();
+});
+
+var columnDefsTransporttyp = [
+    {
+        headerName: "Transport Type",
+        field: "transportId",
+        flex: 1,
+        hide: true
+    },
+    {
+        headerName: "Name",
+        field: "transportName",
+        flex: 2,
+        width: 80
+    },
+    {
+        headerName: "Description",
+        field: "transportDesc",
+        width: 175,
+        flex: 3,
+        type: "centerAligned"
+
+    }
+    ];
+
+var gridOptionsTransporttyp = {
+	    columnDefs: columnDefsTransporttyp,
+	    defaultColDef: {
+	        sortable: true,
+	        filter: true,
+	        resizable: true,
+	        width: 195,
+	        height: 10
+	    },
+	    rowSelection: 'single',
+	    rowMultiSelectWithClick: true,
+	    onSelectionChanged: onSelectionChangedTransport,
+	    onRowClicked: (event) => {
+	        const selectedNode = event.node;
+	        if (!selectedNode.isSelected()) {
+	            selectedNode.setSelected(true);
+	        }
+	    },
+	    getRowNodeId : function(data) {
+			return data.transportId;
+		}
+
+	};
+	
+function onSelectionChangedTransport() {
+    
+    var selectedNodes = gridOptionsTransporttyp.api.getSelectedNodes();
+    var selectedData = selectedNodes.map(node => node.data);
+    
+    if(selectedData && selectedData.length > 0) {
+    	$('#transportDesc').val(selectedData.map(node => node.transportDesc));
+        $('#transportName').val(selectedData.map(node => node.transportName));
+        $('#transportId').val(selectedData.map(node => node.transportId));
+
+        $("#resetTransportBtn").attr("disabled",true);
+        $("#deleteTransportTypeBtn").attr("disabled",false);
+    }
+
+}
+	
+	function getTransportType() {
+	agGrid.simpleHttpRequest({
+        url: '/master/view-transport-type'
+    }).then(function(data) {
+        let dataSet = [];
+        if (data.length > 0) {
+        	gridOptionsTransporttyp.api.setRowData(data);
+        	gridOptionsTransporttyp.api.getRowNode(data[0].transportId).setSelected(true);
+        } else {
+        	gridOptionsTransporttyp.api.setRowData(dataSet);
+        	$("#deleteTransportTypeBtn").attr("disabled",true);
+        }
+    });
+    
+    $('#transportName,#transportDesc').attr('disabled',true);
+}
+	
+	function enableFieldsTransport() {
+		$('#transportName,#transportDesc').attr('disabled',false);
+	}
+	
+	function openAddSectionTransport(){
+		enableFieldsTransport();
+		$('#transportId,#transportName,#transportDesc').val('');
+		//$('#insuranceStatus').val('1');
+		$("#resetTransportBtn").attr("disabled",false);
+		$("#deleteTransportTypeBtn").attr("disabled",true);
+		gridOptionsTransporttyp.api.deselectAll();
+		
+	}
+	
+	function resetTransporttyp() {
+		if(!$("#transportId").val()) {
+			$('#transportId,#transportName,#transportDesc').val('');
+			//$('#insuranceStatus').val('1');
+		}
+	}
+function saveTransportType() {
+		
+		var data3 = {};
+		data3.transportId = $("#transportId").val();
+	    data3.transportName = $("#transportName").val();
+	    data3.transportDesc = $("#transportDesc").val();
+	    
+	    $.ajax({
+	        type: "POST",
+	        url: "/master/add-transport-type",
+	        dataType: "json",
+	        contentType: "application/json",
+	        data: JSON.stringify(data3),
+	        success: function(response) {
+	            if (response.message == "Success") {
+	            	if ($("#transportId").val() == null || $("#transportId").val() == "" || $("#transportId").val() == undefined) {
+	                    toastr.success('Data saved successfully')
+	                } else {
+	                    toastr.success('Data updated successfully')
+	                }
+	            	getTransportType();
+	            	resetTransporttyp();
+	            }
+	        },
+	        error: function(response) {
+	            console.log(response);
+	        }
+	    })
+	}
+	
+	function deleteTransportType() {
+		
+		Swal.fire({
+	        title: 'Are you sure?',
+	        text: 'Do you want to delete this?',
+	        icon: 'warning',
+	        showCancelButton: true,
+	        confirmButtonText: 'Yes, delete it!',
+	        cancelButtonText: 'No, keep it',
+	        confirmButtonColor: 'var(--mainColor)',
+	    }).then((result) => {
+	        if (result?.value) {
+	    
+			    var id = $('#transportId').val();
+			
+			    $.ajax({
+			        type: "GET",
+			        url: "/master/transport-type-delete?id=" + id,
+			        dataType: "json",
+			        contentType: "application/json",
+			        success: function(response) {
+			            if (response.message == "Success") {
+			            	getTransportType();
+			            	toastr.success('Data deleted successfully')
+			            }
+			        },
+			        error: function(response) {
+			            console.log(response);
+			        }
+			    })
+		    
+	        }
+		    
+	       });
+	}
+</script>
+</head>
+<body>
+	<h6>Mode Of Transport</h6>
+	<div class="mb-2">
+		<table class="table  mb-0" width="100%">
+			<tr valign="middle">
+				<td width="50%"><strong id="pName"></strong></td>
+				<td>
+					<div class="d-flex justify-content-end">
+						<div class="mr-2">
+							<button id="newBtn" class="btn  edit-btn"
+								onclick="openAddSectionTransport()" type="button">Add</button>
+						</div>
+						<div class="mr-2">
+							<button id="next" class="btn  edit-btn" type="button"
+								onclick="enableFieldsTransport()">Edit</button>
+						</div>
+						<div class="mr-0">
+							<button id="deleteTransportTypeBtn" class="btn  edit-btn"
+								onclick="deleteTransportType()" type="button">Delete</button>
+						</div>
+					</div>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<div class="box_reference" style="margin-bottom: 10px !important;">
+		<div id="myGridTransport" style="width: 100%; height: 190px;"
+			class="ag-theme-alpine"></div>
+	</div>
+
+	<h6>Add Transport</h6>
+	<div class="mb-2">
+		<table class="table  mb-0" width="100%">
+			<tr valign="middle">
+				<td width="50%"><div style="color: red; font-weight: bold;">
+						Note: All fields marked with <span>*</span> are mandatory.
+					</div></td>
+				<td>
+					<div class="d-flex justify-content-end">
+						<div class="mr-2">
+							<button id="newBtn" class="btn  edit-btn"
+								onclick="saveTransportType()" type="button">Save</button>
+						</div>
+						<div class="mr-0">
+							<button id="resetTransportBtn" class="btn  edit-btn"
+								onclick="resetTransporttyp()" type="button">Reset</button>
+						</div>
+					</div>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<div class="row">
+
+		<div class="col-md-4">
+			<div class="form-group">
+				<label>Transport Name <span class="mandatory">*</span></label> <input
+					type="text" class="form-control transparenttxtbox"
+					placeholder="Name" id="transportName"> <input type="hidden"
+					id="transportId">
+			</div>
+		</div>
+		<div class="col-md-4">
+			<div class="form-group">
+				<label>Description <span class="mandatory">*</span></label> <input
+					type="text" class="form-control transparenttxtbox"
+					placeholder="Desc" id="transportDesc">
+			</div>
+		</div>
+
+<!-- 
+		<div class="col-md-4">
+			<div class="form-group">
+				<label>Status <span class="mandatory">*</span></label>
+				<div class="select">
+					<select id="transportStatus" class="form-control">
+						<option value="">Select</option>
+						<option value="1">Active</option>
+						<option value="0">Inactive</option>
+					</select>
+				</div>
+			</div>
+		</div> -->
+
+	</div>
+</body>
+</html>

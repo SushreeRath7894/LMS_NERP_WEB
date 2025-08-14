@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+
+<head>
+<meta charset="ISO-8859-1">
+
+<style type="text/css">
+
+/* .searchBox:hover>.searchInput {
+	width: 180px;
+	padding: 0 6px;
+	margin-right: 10px;
+} */
+.button-right {
+	display: flex;
+	justify-content: space-between;
+}
+
+.mr-2{
+    margin-right: 4px;
+ }
+</style>
+
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(
+			function() {
+
+				var dateFormat = localStorage.getItem("dateFormat");
+				$("#fromDateCalender").datetimepicker({
+					format : dateFormat,
+					closeOnDateSelect : true,
+					timepicker : false,
+				}).on("change", function() {
+					$('#filterFromDate').val($(this).val());
+				})
+
+				$('#filterFromDate').blur(function() {
+					$("#fromDateCalender").val($(this).val());
+				})
+
+				$("#toDateCalendar").datetimepicker({
+					format : dateFormat,
+					closeOnDateSelect : true,
+					timepicker : false,
+				}).on("change", function() {
+					$('#filterToDate').val($(this).val());
+				})
+
+				$('#filterToDate').blur(function() {
+					$("#toDateCalendar").val($(this).val());
+				})
+
+				var toDayDate = (new Date()).toISOString().split('T')[0];
+				var newDate = changeDateFormat(toDayDate);
+
+				$("#filterFromDate").val(newDate);
+				$("#filterToDate").val(newDate);
+				
+				$("#fromDateCalender").val(newDate);
+				$("#toDateCalendar").val(newDate);
+				
+
+				var gridDiv = document.querySelector('#myGrid');
+				new agGrid.Grid(gridDiv, gridOptions);
+				var rowData = [];
+				gridOptions.api.setRowData(rowData);
+				$('.loader').show();
+				agGrid.simpleHttpRequest({
+					url : "staff-report-view?fromdate=" + newDate + "&todate=" + newDate  
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData = jsonData.viewStaffRegData;
+					console.log(allData);
+					var len;
+					if(allData == "" || allData == null || allData == "null" ){
+						len = 0;
+						allData = [];
+					}else{
+						 len = allData.length;
+					}
+					$('#totalReq').find('span').html(len);
+					gridOptions.api.setRowData(allData);
+					$('.loader').hide();
+				});
+
+
+			});
+
+
+	
+	const gridOptions = {
+			  columnDefs: [
+				  {
+						headerName : 'Employee  Id',
+						field : "empId",
+						pinned: 'left',
+						
+						cellRenderer : function(params) {
+							return '<span  style="color:#4169E1;font-weight: bold">'
+							+ params.data.empId + '</span>';
+							
+						}
+						
+
+					},
+					{
+						headerName : 'Employee  Name',
+						width : 200,
+						field : "empName",
+						pinned: 'left',
+						
+						cellRenderer : function(params) {
+							return '<span  style="color:#0096FF;font-weight: bold;">'
+							+ params.data.empName + '</span>';
+							
+						}
+						
+
+					},
+					{
+						headerName : 'Department',
+						field : "deptName",
+						
+					},
+					{
+						headerName : 'Sub-Department',
+						field : "subDeptName",
+						
+					},
+					{
+						headerName : 'Duration',
+						field : "totalduration",
+						cellStyle : {
+							textAlign : 'center'
+						},
+						cellRenderer : function(params) {
+							return secondsToHhMmSs(params.data.totalduration)
+							
+						}
+						
+					},
+					{
+						headerName : 'Punching Details',
+						field : "punch",
+						cellStyle : {
+							textAlign : 'center'
+						},
+						cellRenderer : function(params) {
+							return '<a id="id" onclick=viewAssignModal("'
+							+ params.data.empId + '","'
+							+ window.btoa(params.data.empName) + '","'
+							+ window.btoa(secondsToHhMmSs(params.data.totalduration)) + '") href="javascript:void(0)">'
+							+ '<i class="bi bi-ticket-detailed" style="color:#355E3B"> Show</i>'
+							+ '</a>';
+
+						}
+						
+					}
+				
+			
+			   ],
+
+			  defaultColDef: {
+			    width: 225,
+			    filter: 'agTextColumnFilter',
+			    floatingFilter: true,
+			    resizable: true,
+			  },
+
+			  defaultColGroupDef: {
+			    marryChildren: true,
+			  },
+			  columnTypes: {
+			    numberColumn: { width: 130, filter: 'agNumberColumnFilter' },
+			    medalColumn: { width: 100, columnGroupShow: 'open', filter: false },
+			    nonEditableColumn: { editable: false },
+			    dateColumn: {
+			      filter: 'agDateColumnFilter',
+
+			      filterParams: {
+			        comparator: (filterLocalDateAtMidnight, cellValue) => {
+			          const dateParts = cellValue.split('-');
+			          const day = Number(dateParts[0]);
+			          const month = Number(dateParts[1]) - 1;
+			          const year = Number(dateParts[2]);
+			          const cellDate = new Date(year, month, day);
+
+			          if (cellDate < filterLocalDateAtMidnight) {
+			            return -1;
+			          } else if (cellDate > filterLocalDateAtMidnight) {
+			            return 1;
+			          } else {
+			            return 0;
+			          }
+			        },
+			      },
+			    },
+			  },
+			  rowData: null,
+			};
+
+
+	function downloadDetails() {
+		var dataset = [];
+		gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+		gridOptions.api.exportDataAsCsv(dataset);
+		
+	}
+
+	//for activity table
+	var activityDefs = [
+	 {
+				headerName : 'Date',
+				field : "date",
+				cellStyle : {
+					textAlign : 'center'
+				},
+			type: ['dateColumn', 'nonEditableColumn'], width: 150 
+			},
+
+			{
+				headerName : 'Punch In Time',
+				field : "punchInTime",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			},
+			 {
+				headerName : 'Punch Out Time',
+				field : "punchOutTime",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			},				
+			{
+				headerName : 'Duration',
+				field : "timeDuration",
+				cellStyle : {
+					textAlign : 'center'
+				}
+				
+			}];
+
+
+	// let the grid know which columns and what data to use product table
+	var activityOptions = {
+		columnDefs : activityDefs,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 180
+		},
+
+
+	};
+
+
+	function filter(){
+		var fromdatex = $("#filterFromDate").val();
+		var fd = fromdatex.split("-");
+		var todatex = $("#filterToDate").val();
+		var td = todatex.split("-");
+
+		if (fromdatex != '' && todatex != '') {
+			if (fd[2] == td[2]) {
+				if (fd[1] == td[1]) {
+					if (fd[0] <= td[0]) {
+						filterData();
+					} else {
+						setFromToDate();
+					}
+				} else if (fd[1] < td[1]) {
+					filterData();
+				} else {
+					setFromToDate();
+				}
+			}else if (fd[2] < td[2]) {
+				filterData();
+			}else {
+				setFromToDate();
+			}
+		}
+	}
+	function setFromToDate() {
+		$("#messageParagraph").text(
+				"Please choose to date greater than or equal to from date ");
+		$("#msgOkModal").removeClass("btn3");
+		$("#msgOkModal").addClass("btn1");
+		$("#msgModal").modal('show');
+		var date = (new Date()).toISOString().split('T')[0];
+		var newToDate = changeDateFormat(date);
+		var newFromDate = changeDateFormat(date);
+		$("#filterFromDate").val(newToDate);
+		$("#filterToDate").val(newToDate);
+		
+		$("#fromDateCalender").val(newDate);
+		$("#toDateCalendar").val(newDate);
+	}
+
+	function filterData() {
+		var len;
+		var secx = $("#sec").val();
+		var fromDate = $("#filterFromDate").val();
+		var toDate = $("#filterToDate").val();
+		$("#tod").val($("#filterToDate").val());
+		$("#fod").val($("#filterFromDate").val());
+		
+		$('.loader').show();
+		
+		gridOptions.api.setRowData();
+
+		agGrid.simpleHttpRequest({
+			url : "staff-report-view?fromdate=" + fromDate + "&todate=" + toDate  
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData = jsonData.viewStaffRegData;
+			console.log(allData);
+			var len;
+			if(allData == "" || allData == null || allData == "null" ){
+				len = 0;
+				allData = [];
+			}else{
+				 len = allData.length;
+			}
+			
+			$('#totalReq').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+			$('.loader').hide();
+
+		});
+
+		
+	}
+
+	function changeDateFormat(inputDate) { // expects Y-m-d
+		var splitDate = inputDate.split('-');
+		if (splitDate.count == 0) {
+			return null;
+		}
+		var year = splitDate[0];
+		var month = splitDate[1];
+		var day = splitDate[2];
+
+		return day + '-' + month + '-' + year;
+	}
+	
+	function viewAssignModal(empid,empname,duration) {
+		$('#assetGrid').empty();
+		$('#totalduration').html(window.atob(duration));
+		var gridDiv = document.querySelector('#assetGrid');
+		new agGrid.Grid(gridDiv, activityOptions);
+		$("#modalTitle").html(window.atob(empname)+" ("+empid+")");
+		$("#myModal").modal('show');
+		var fromDate = $("#fod").val();
+		var toDate = $("#tod").val();
+		agGrid.simpleHttpRequest(
+				{
+					url : "staff-report-list?id="+ empid+"&fromdate=" + fromDate + "&todate=" + toDate
+				}).then(function(data) {
+					
+					var jsonData = JSON.parse(data.body[0]);
+					var allData=jsonData.Asset;
+					console.log("edit",jsonData)
+					activityOptions.api.setRowData(allData);
+
+				});
+	}
+	function secondsToHhMmSs(seconds) {
+	    const hours = Math.floor(seconds / 3600);
+	    const minutes = Math.floor((seconds % 3600) / 60);
+	    const remainingSeconds = seconds % 60;
+	    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+	}
+	
+	function cancelModalBtn() {
+		$('#myModal').modal('hide');
+	}
+	
+	
+</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div id="main_content">
+							<div class="d-flex flex-wrap justify-content-between" id="tdiv">
+								<div class="btn-hs">
+									<div class="font-design" id="totalReq">
+										TOTAL LIST(<span></span>) <input type="hidden" id="sec">
+										<input type="hidden" id="tod" th:value="${userId}" />
+										 <input type="hidden" id="fod" th:value="${userName}" />
+									</div>
+								</div>
+	
+								<div class="button-right flex-wrap">
+									<div>
+									
+<!-- 										<div class="form-group d-flex">
+										<label style = "margin: 5px 5px 0px 0px;">Department:</label>
+											<div class="select" style="margin-right: 15px;">
+												<select id="dept" class="form-control"
+													onblur="removeValid(event)"
+													style="width: 170px; padding-left: 7px;">
+													<option value="all">All</option>
+													<option th:each="c:${deptList}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select><span class="focus"></span>
+											</div>
+										</div> -->
+									</div>
+									<div id="dateDiv1" class="d-flex form-group">
+									<label style = "margin: 5px 8px 0px 0px;">From Dt:</label>
+										<div class="form-group calendar_box" id='fdate'
+											style="margin-right: 15px;">
+											<input type="text" id="filterFromDate" value=""
+												class="form-control" placeholder="from date.."
+												th:attr="onkeyup=|formatDate('filterFromDate','${session.DATEFORMAT_JS}')|"
+												readonly> <i class="ti-calendar picker_calendar"
+												id="fromDateCalender" style="top: 14px; right: 0px;"></i>
+										</div>
+									</div>
+									<div id="dateDiv2" class="d-flex form-group">
+									<label style = "margin: 5px 8px 0px 0px;">To Dt:</label>
+										<div class="form-group calendar_box" id="tdate"
+											style="margin-right: 15px;">
+											<input type="text" id="filterToDate" value=""
+												class="form-control" placeholder="to date.."
+												th:attr="onkeyup=|formatDate('filterToDate','${session.DATEFORMAT_JS}')|"
+												readonly> <i class="ti-calendar picker_calendar"
+												id="toDateCalendar" style="top: 14px; right: 0px;"></i>
+										</div>
+									</div>
+
+									<div class="buttonsec btn-hs" id="ttbtn">
+										<button class="new-btn" id="filterBtn" onclick="filter()">
+											<i class="bi bi-search"></i> Search
+										</button>
+									</div>
+									<div class="buttonsec btn-hs" id="ttbtn">
+										<button class="download-btn" id="download"
+											onclick="downloadDetails()">Download</button>
+									</div>
+								</div>
+							</div>
+
+
+						</div>
+
+						
+							<div id="myGrid" style="width: 100%; height: 500px;"
+								class="ag-theme-alpine"></div>
+						
+						
+
+
+
+
+					</div>
+				</div>
+				<!--   Assign training modal start	 -->
+
+				<div class="modal fade" id="myModal">
+					<div class="modal-dialog modal-lg" style="margin-top: 130px;">
+						<div class="modal-content">
+
+							<!-- Modal Header -->
+							<div class="modal-header">
+								<h4 class="modal-title md-color" id="modalTitle">Asset Details</h4>
+								<button type="button" class="close cp" data-dismiss="modal"
+									onclick="cancelModalBtn()">&times;</button>
+							</div>
+
+							<!-- Modal body -->
+							<div class="modal-body modal-cat" id="assetGrid" style="width: 100%; height: 250px;">
+
+							</div>
+
+							<!-- Modal footer -->
+							<div class="modal-footer" style="font-size:12px; text-align: right; color:#355E3B;">
+								<div class="chartbtnsec">
+									Total Duration : <span id="totalduration"></span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+		</div>
+	</div>
+
+</body>
+
+</html>

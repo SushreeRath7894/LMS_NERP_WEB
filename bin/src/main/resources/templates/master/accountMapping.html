@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<script>
+$(document).ready(function() {
+    var toggler = document.getElementsByClassName("caret");
+    var i;
+
+    for (i = 0; i < toggler.length; i++) {
+        toggler[i].addEventListener("click", function() {
+            this.parentElement.querySelector(".nested").classList.toggle("active");
+            this.classList.toggle("caret-down");
+        });
+    }
+   
+    getCategoryList();
+
+    
+})
+
+function getCategoryList() {
+	$.ajax({
+        type: "POST",
+        url: "cost-center-get-total-list",
+        dataType: "json",
+        contentType: "application/json",
+        success: function(response) {
+            if (response.message == "Success") {
+            	
+            	
+            	
+            	if(response.body.length > 0) {
+            		
+            		var c = 0;
+            		var x = 0;
+            		$("#totalPCat").text(c);
+            		//console.log("status"+response.body.length)
+        			//console.log("status"+response.body[6].ccrProfitStatus)
+            		for(var i = 0; i < response.body.length; i++) {
+            			//console.log("level"+response.body[0].level)
+            				c = c + 1;
+            			x=x+1;
+            			//console.log("count"+response.body[i].nodeCount);
+            			
+            			
+            				var tbl = '<ul id="myUL_'+response.body[i].ccId+'" class="level" value="'+x+'"><li id="li_'+response.body[i].ccId+'"><span class="caret" value="0" id="spanA_'+response.body[i].ccId+'" onclick=getRootLeafNodes("'+response.body[i].ccId+'")></span> '+
+							'<span value="'+x+'" id="lbl_'+response.body[i].ccId+'" class="leveltxt">'+response.body[i].ccCode+' - '+response.body[i].ccName+'</span> '+
+							'<label for="cost" class="costlabel" id="labelEd_'+response.body[i].ccId+'"></label>'+
+							'<ul class="nested" id="ul_'+response.body[i].ccId+'"></ul>'+
+							'</li></ul>';
+            			
+            			
+			            	$(".flowsection").append(tbl);
+			            	
+			            	getRootLeafNodes(response.body[i].ccId)	
+            		}
+            		for(var i = 0; i < response.body.length; i++){	        			
+	   					 var myEle = document.getElementById("costId_"+response.body[i].ccId);
+	   					 
+	   				        if(myEle){
+	   				        
+	   				        	$("#labelEd_"+response.body[i].ccId).addClass("costlabel");
+	   		        			$("#labelEd_"+response.body[i].ccId).removeClass("costRedlabel");
+	   		        		
+	   		        		}else{
+	   		        			
+	   		        			$("#labelEd_"+response.body[i].ccId).addClass("costRedlabel");
+	   							$("#labelEd_"+response.body[i].ccId).removeClass("costlabel");
+	   		        		}
+	   	            		
+	   	            	}
+            		$("#totalCatCount").val(x);
+    				
+            			
+		            	for(var i = 0; i < response.body.length; i++){
+		        			
+		        			if(response.body[i].nodeCount==0){
+		        				
+		        				var id = "#spanA_"+response.body[i].ccId;
+		        				$(id).removeClass("caret");
+		        				$(id).addClass("caret-margin");
+		        				var labelEdId= "#labelEd_"+response.body[i].ccId;
+		        				$(labelEdId).html("&nbsp;&nbsp;<a href='javascript:void(0)'><i title='Edit Category' id='editCostId_"+response.body[i].ccId+"' class='ti-pencil' onclick=openchartAcc('"+response.body[i].ccId+"')></i></a>");
+		        				
+		        			}else{
+		        				var id = "#spanA_"+response.body[i].ccId;
+		        				$(id).addClass("caret");
+		        			}
+				            	
+				            	
+		        		}
+		            	
+            		$("#totalPCat").text(c);
+            	}
+            } else {
+                swal({
+                    title: response.code,
+                    text: response.message,
+                    type: "warning"
+                })
+            }
+        },
+        error: function(response) {
+            console.log(response);
+        }
+    })
+}
+
+function getRootLeafNodes(id) {
+	$("#ul_"+id).empty();
+	var value = $("#spanA_"+id).attr("value");
+	var y=$("#myUL_"+id).attr("value");
+	
+	if(value == "0") {
+		
+		
+		$.ajax({
+	        type: "POST",
+	        url: "cost-center-get-leaf-list-by-id",
+	        dataType: "json",
+	        contentType: "application/json",
+	        data: id,
+	        success: function(response) {
+	            if (response.message == "Success") {
+	            	if(response.body.length > 0) {
+	            	
+	            		var x=0;
+	            		for(var i = 0; i < response.body.length; i++) {
+	            			var pId = response.body[i].parentId.split("-");
+		            		var parentId =pId[0];
+		            		var parentName=pId[1];
+		            		x=x+1;
+		            
+		            		
+		            		var tbl = '<li id="li_'+response.body[i].ccId+'" value="'+y+'.'+x+'"><span class="caret" value="0" id="span_'+response.body[i].ccId+'" onclick=getLeafNodes("'+response.body[i].ccId+'")></span><span class="leveltxt" value="'+y+'.'+x+'" id="lbl_'+response.body[i].ccId+'"> '+response.body[i].ccCode+' - '+response.body[i].ccName+' </span>'+
+		            		'<label for="cost" class="costlabel" id="labelEd_'+response.body[i].ccId+'"></label>'+'<ul class="nested" id="ul_'+response.body[i].ccId+'"></ul>'+
+		    				'</li>';
+		         
+	            			
+		    				
+				    		$("#spanA_"+id).attr("value","1");
+				    		$("#spanA_"+id).addClass("caret-down");
+				    		$("#ul_"+id).addClass("active");
+				    		$("#ul_"+id).append(tbl);
+				    		getLeafNodes(response.body[i].ccId)
+	            		}
+						for(var i = 0; i < response.body.length; i++){	        			
+		        		
+							if(response.body[i].nodeCount==0){    				
+		        				
+		        				var newid = "#span_"+response.body[i].ccId;
+		        				$(newid).removeClass("caret");
+			    				$(newid).addClass("caret-margin");
+			    				var labelEdId= "#labelEd_"+response.body[i].ccId;
+		        				$(labelEdId).html("&nbsp;&nbsp;<a href='javascript:void(0)'><i title='Edit Category' class='ti-pencil' onclick=openchartAcc('"+response.body[i].ccId+"')></i></a>");
+		        				
+		        			}else{
+		        				var newid = "#span_"+response.body[i].ccId;
+		        				$(newid).addClass("caret");
+		        			}
+				            	
+							
+		        		}
+						for(var i = 0; i < response.body.length; i++){	        			
+		   					 var myEle = document.getElementById("costId_"+response.body[i].ccId);
+		   					 
+		   				        if(myEle){
+			   				     	$("#labelEd_"+response.body[i].ccId).addClass("costlabel");
+		   		        			$("#labelEd_"+response.body[i].ccId).removeClass("costRedlabel");
+	   		        		
+		   		        		}else{
+		   		        			$("#labelEd_"+response.body[i].ccId).addClass("costRedlabel");
+		   							$("#labelEd_"+response.body[i].ccId).removeClass("costlabel");
+		   		        		}
+		   	            		
+		   	            	}
+	            	}/* else{
+	            		
+	            		console.log("last data"+id)
+	            		var newid = "#span_"+id;
+	    				$(newid).removeClass("caret");
+	    				$(newid).addClass("caret-margin");
+	            	} */
+	            }
+	            	
+	        }, error: function(data) {
+	        	console.log(data)
+	        	$("#spanA_"+id).attr("value","0");
+	    		$("#spanA_"+id).removeClass("caret-down");
+	    		$("#ul_"+id).removeClass("active");
+	    		$("#ul_"+id).empty();
+	        }
+		});
+	} else {
+		$("#spanA_"+id).attr("value","0");
+		$("#spanA_"+id).removeClass("caret-down");
+		$("#ul_"+id).removeClass("active");
+		$("#ul_"+id).empty();
+	}
+}
+
+function getLeafNodes(id) {
+	
+	$("#ul_"+id).empty();
+	var value = $("#span_"+id).attr("value");
+	var y=$("#lbl_"+id).attr("value");
+
+var x=id;
+	//lbl_
+	if(value == "0") {
+		
+		$.ajax({
+	        type: "POST",
+	        url: "cost-center-get-leaf-list-by-id",
+	        dataType: "json",
+	        contentType: "application/json",
+	        data: id,
+	        success: function(response) {
+	        	 console.log("first"+response.message)
+	        	if (response.message == "Success") {
+	            	if(response.body.length > 0) {
+	            		var x=0;
+	            		for(var i = 0; i < response.body.length; i++) {
+		            		//console.log(i);
+		            		 x=x+1;
+		            		
+		            		var pId = response.body[i].parentId.split("-");
+		            		var parentId =pId[0];
+		            		var parentName=pId[1];
+		            		
+					            	var tbl = '<li id="li_'+response.body[i].ccId+'"><span class="caret" value="0" id="span_'+response.body[i].ccId+'" onclick=getLeafNodes("'+response.body[i].ccId+'")></span><span class="leveltxt" value="'+y+'.'+x+'" id="lbl_'+response.body[i].ccId+'"> '+response.body[i].ccCode+' - '+response.body[i].ccName+' </span>'+
+			            			'<label for="cost" class="costlabel" id="labelEd_'+response.body[i].ccId+'"></label>'+'<ul class="nested" id="ul_'+response.body[i].ccId+'"></ul>'+
+				    				'</li>';
+				    		
+				    		$("#span_"+id).attr("value","1");
+				    		$("#span_"+id).addClass("caret-down");
+				    		$("#ul_"+id).addClass("active");
+				    		$("#ul_"+id).append(tbl);
+				    		getLeafNodes(response.body[i].ccId)
+	            		}
+	            		for(var i = 0; i < response.body.length; i++){	        			
+			        		
+							if(response.body[i].nodeCount==0){    				
+		        				
+		        				var newid = "#span_"+response.body[i].ccId;
+		        				$(newid).removeClass("caret");
+			    				$(newid).addClass("caret-margin");
+			    				var labelEdId= "#labelEd_"+response.body[i].ccId;
+		        				$(labelEdId).html("&nbsp;&nbsp;<a href='javascript:void(0)'><i title='Edit Category' class='ti-pencil' onclick=openchartAcc('"+response.body[i].ccId+"')></i></a>");
+		        				
+		        			}else{
+		        				var newid = "#span_"+response.body[i].ccId;
+		        				$(newid).addClass("caret");
+		        			}
+				            	
+				            	
+		        		}
+	            		for(var i = 0; i < response.body.length; i++){	        			
+	   					 var myEle = document.getElementById("costId_"+response.body[i].ccId);
+	   					 
+	   				        if(myEle){
+		   				     	$("#labelEd_"+response.body[i].ccId).addClass("costlabel");
+	   		        			$("#labelEd_"+response.body[i].ccId).removeClass("costRedlabel");
+	   				        	
+	   		        		}else{
+	   		        			$("#labelEd_"+response.body[i].ccId).addClass("costRedlabel");
+	   							$("#labelEd_"+response.body[i].ccId).removeClass("costlabel");
+	   		        		}
+	   	            		
+	   	            	}
+	            		
+	            	}/* else{
+	            		
+	            		console.log("last data"+id)
+	            		var newid = "#span_"+id;
+	    				$(newid).removeClass("caret");
+	    				$(newid).addClass("caret-margin");
+	            	} */
+	            }
+	            
+	        }, error: function(data) {
+	        	console.log(data)
+	        	$("#span_"+id).attr("value","0");
+	    		$("#span_"+id).removeClass("caret-down");
+	    		$("#ul_"+id).removeClass("active");
+	    		$("#ul_"+id).empty();
+	    		$("#ul_"+id).empty();
+	        }
+		});
+	} else {
+		$("#span_"+id).attr("value","0");
+		$("#span_"+id).removeClass("caret-down");
+		$("#ul_"+id).removeClass("active");
+		$("#ul_"+id).empty();
+		$("#ul_"+id).empty();
+	}
+}
+
+
+</script>
+<script>
+/* for chart of account data */
+function openchartAcc(id){
+	$("#productCategoryCBDiv").empty();
+	if($("#costId_"+id).html()){
+		getCAList("1",id);
+	}else{
+		getCAList("0",id);
+	}
+	$("#costId").val(id);
+	$("#myModal").modal('show');
+	
+	
+	
+	//var editcostData= $("#costId_"+id).html();
+	
+	
+}
+function getCAList(value,costid) {
+
+
+		$.ajax({
+        type: "POST",
+        url: "chart-account-get-total-list",
+        dataType: "json",
+        contentType: "application/json",
+        success: function(response) {
+            if (response.message == "Success") {
+            	
+            	
+            	
+            	if(response.body.length > 0) {
+            		
+            		var c = 0;
+            		var x = 0;
+            		$("#totalPCat").text(c);
+            		
+            		for(var i = 0; i < response.body.length; i++) {
+            			
+            				c = c + 1;
+            				x=x+1;
+            		
+            				var tbl = '<ul id="myUL_'+response.body[i].ccId+'" class="level" value="'+x+'"><li id="li_'+response.body[i].ccId+'"><span class="caret" value="0" id="spanA_'+response.body[i].ccId+'" onclick=getCARootLeafNodes("'+response.body[i].ccId+'")></span> '+
+							'<span value="'+x+'" id="lbl_'+response.body[i].ccId+'" class="leveltxt">'+response.body[i].ccCode+' - '+response.body[i].ccName+'</span> '+'<span class="category" id="checkId_'+response.body[i].ccId+'"></span>'+
+							'<ul class="nested" id="ul_'+response.body[i].ccId+'"></ul>'+
+							'</li></ul>';
+            		
+            			
+			            	//$(".flowsection").append(tbl);
+            			$("#productCategoryCBDiv").append(tbl);
+            			getCARootLeafNodes(response.body[i].ccId,value,costid);
+			            	
+            		}
+					var prCategoryId = $("#prCategoryId").val();	
+            		$("#cat_"+prCategoryId).prop("checked",true);
+            		
+            		$("#totalCatCount").val(x);
+            		
+            			for(var i = 0; i < response.body.length; i++){
+		        			console.log(response.body[i].nodeCount)
+		        			if(response.body[i].nodeCount==0){
+		        				
+		        				var id = "#spanA_"+response.body[i].ccId;
+		        				$(id).removeClass("caret");
+		        				$(id).addClass("caret-margin");
+		        				var checkId="#checkId_"+response.body[i].ccId;
+		        				$(checkId).html('<input type="checkbox" id="cat_'+response.body[i].ccId+'" name="'+response.body[i].ccId+'"  class="pc1-box" onchange=selectCheckBox("'+response.body[i].ccId+'","'+response.body[i].level+'")>');
+		        				
+		        			}else{
+		        				var id = "#spanA_"+response.body[i].ccId;
+		        				$(id).addClass("caret");
+		        			}
+				            	
+				            	
+		        		}
+            		
+            			if(value!="0"){
+            				$("#main > #costId_"+costid+" > div").each(function(){
+                				var l = $(this).prop('id').split("_");
+                				var caId = l[1];
+                				$("#cat_"+caId).prop("checked", true);
+                				$("#cat_"+caId).prop("value", '1');
+                			})
+            	
+            		}
+		        	
+            		$("#totalPCat").text(c);
+            		
+            	}
+            } else {
+                swal({
+                    title: response.code,
+                    text: response.message,
+                    type: "warning"
+                })
+            }
+        },
+        error: function(response) {
+            console.log(response);
+        }
+    })
+    
+}
+
+function getCARootLeafNodes(id,costvalue,costid) {
+	$("#ul_"+id).empty();
+	var value = $("#spanA_"+id).attr("value");
+	var y=$("#myUL_"+id).attr("value");
+
+	if(value == "0") {
+		
+		
+		$.ajax({
+	        type: "POST",
+	        url: "chart-account-get-leaf-list-by-id",
+	        dataType: "json",
+	        contentType: "application/json",
+	        data: id,
+	        success: function(response) {
+	            if (response.message == "Success") {
+	            	if(response.body.length > 0) {
+	            	
+	            		var x=0;
+	            		for(var i = 0; i < response.body.length; i++) {
+	            			var pId = response.body[i].parentId.split("-");
+		            		var parentId =pId[0];
+		            		var parentName=pId[1];
+		            		x=x+1;
+		        
+			            		var tbl = '<li id="li_'+response.body[i].ccId+'" value="'+y+'.'+x+'"><span class="caret" value="0" id="span_'+response.body[i].ccId+'" onclick=getCALeafNodes("'+response.body[i].ccId+'")></span><span class="leveltxt" value="'+y+'.'+x+'" id="lbl_'+response.body[i].ccId+'"> '+response.body[i].ccCode+' - '+response.body[i].ccName+' </span>'+'<span class="category" id="checkId_'+response.body[i].ccId+'"></span>'+	    				
+			    				'<ul class="nested" id="ul_'+response.body[i].ccId+'"></ul>'+
+			    				'</li>';
+		    				
+				    		$("#spanA_"+id).attr("value","1");
+				    		$("#spanA_"+id).addClass("caret-down");
+				    		$("#ul_"+id).addClass("active");
+				    		$("#ul_"+id).append(tbl);
+				    		getCALeafNodes(response.body[i].ccId,costvalue,costid);
+				    			
+	            		}
+					for(var i = 0; i < response.body.length; i++){	        			
+		        		
+							if(response.body[i].nodeCount==0){    				
+		        				
+		        				var newid = "#span_"+response.body[i].ccId;
+		        				$(newid).removeClass("caret");
+			    				$(newid).addClass("caret-margin");
+			    				var checkId="#checkId_"+response.body[i].ccId;
+		        				$(checkId).html('<input type="checkbox" id="cat_'+response.body[i].ccId+'" name="'+response.body[i].ccId+'" class="pc1-box" onchange=selectCheckBox("'+response.body[i].ccId+'","'+response.body[i].level+'")>');
+		        				
+		        			}else{
+		        				var newid = "#span_"+response.body[i].ccId;
+		        				$(newid).addClass("caret");
+		        			}
+				            	
+				            	
+		        		}
+					if(costvalue!="0"){
+        				
+						$("#main > #costId_"+costid+" > div").each(function(){
+            				var l = $(this).prop('id').split("_");
+            				var caId = l[1];
+            				$("#cat_"+caId).prop("checked", true);
+            				$("#cat_"+caId).prop("value", '1');
+            			})
+        	
+        		}
+					
+	            	}/* else{
+	            		
+	            		console.log("last data"+id)
+	            		var newid = "#span_"+id;
+	    				$(newid).removeClass("caret");
+	    				$(newid).addClass("caret-margin");
+	            	} */
+	            }
+	            	
+	        }, error: function(data) {
+	        	console.log(data)
+	        	$("#spanA_"+id).attr("value","0");
+	    		$("#spanA_"+id).removeClass("caret-down");
+	    		$("#ul_"+id).removeClass("active");
+	    		$("#ul_"+id).empty();
+	        }
+		});
+	} else {
+		$("#spanA_"+id).attr("value","0");
+		$("#spanA_"+id).removeClass("caret-down");
+		$("#ul_"+id).removeClass("active");
+		$("#ul_"+id).empty();
+	}
+}
+
+function getCALeafNodes(id,costvalue,costid) {
+	
+	$("#ul_"+id).empty();
+	var value = $("#span_"+id).attr("value");
+	var y=$("#lbl_"+id).attr("value");
+
+var x=id;
+	//lbl_
+	if(value == "0") {
+		
+		$.ajax({
+	        type: "POST",
+	        url: "chart-account-get-leaf-list-by-id",
+	        dataType: "json",
+	        contentType: "application/json",
+	        data: id,
+	        success: function(response) {
+	        	 console.log("first"+response.message)
+	        	if (response.message == "Success") {
+	            	if(response.body.length > 0) {
+	            		var x=0;
+	            		for(var i = 0; i < response.body.length; i++) {
+		            		//console.log(i);
+		            		 x=x+1;
+		            		
+		            		var pId = response.body[i].parentId.split("-");
+		            		var parentId =pId[0];
+		            		var parentName=pId[1];
+		            	
+		            			var tbl = '<li id="li_'+response.body[i].ccId+'"><span class="caret" value="0" id="span_'+response.body[i].ccId+'" onclick=getLeafNodes("'+response.body[i].ccId+'")></span><span class="leveltxt" value="'+y+'.'+x+'" id="lbl_'+response.body[i].ccId+'"> '+response.body[i].ccCode+' - '+response.body[i].ccName+' </span>'+'<span class="category" id="checkId_'+response.body[i].ccId+'"></span>'+
+			    				'<ul class="nested" id="ul_'+response.body[i].ccId+'"></ul>'+
+			    				'</li>';
+		            		
+	            			
+		    		
+				    		$("#span_"+id).attr("value","1");
+				    		$("#span_"+id).addClass("caret-down");
+				    		$("#ul_"+id).addClass("active");
+				    		$("#ul_"+id).append(tbl);
+	            		}
+	            		for(var i = 0; i < response.body.length; i++){	        			
+			        		
+							if(response.body[i].nodeCount==0){    				
+		        				
+		        				var newid = "#span_"+response.body[i].ccId;
+		        				$(newid).removeClass("caret");
+			    				$(newid).addClass("caret-margin");
+			    				var checkId="#checkId_"+response.body[i].ccId;
+		        				$(checkId).html('<input type="checkbox" id="cat_'+response.body[i].ccId+'" name="'+response.body[i].ccId+'" class="pc1-box" onchange=selectCheckBox("'+response.body[i].ccId+'","'+response.body[i].level+'")>');
+		        				
+		        			}else{
+		        				var newid = "#span_"+response.body[i].ccId;
+		        				$(newid).addClass("caret");
+		        			}
+				            	
+				            	
+		        		}
+	            		if(costvalue!="0"){
+	        				
+							$("#main > #costId_"+costid+" > div").each(function(){
+	            				var l = $(this).prop('id').split("_");
+	            				var caId = l[1];
+	            				$("#cat_"+caId).prop("checked", true);
+	            				$("#cat_"+caId).prop("value", '1');
+	            			})
+	        	
+	        		}
+	            		
+	            	}/* else{
+	            		
+	            		console.log("last data"+id)
+	            		var newid = "#span_"+id;
+	    				$(newid).removeClass("caret");
+	    				$(newid).addClass("caret-margin");
+	            	} */
+	            }
+	            
+	        }, error: function(data) {
+	        	console.log(data)
+	        	$("#span_"+id).attr("value","0");
+	    		$("#span_"+id).removeClass("caret-down");
+	    		$("#ul_"+id).removeClass("active");
+	    		$("#ul_"+id).empty();
+	    		$("#ul_"+id).empty();
+	        }
+		});
+	} else {
+		$("#span_"+id).attr("value","0");
+		$("#span_"+id).removeClass("caret-down");
+		$("#ul_"+id).removeClass("active");
+		$("#ul_"+id).empty();
+		$("#ul_"+id).empty();
+	}
+}
+/* for chart of account data end */
+function selectCheckBox(id,lvl) {
+	//alert(id+lvl)
+	//$(".pc1-box").prop("checked", false);
+	if($("#cat_"+id).val()=='1'){
+		
+		$("#cat_"+id).prop("checked", false);
+		$("#cat_"+id).prop("value", '0');
+	}else{
+		
+		$("#cat_"+id).prop("checked", true);
+		$("#cat_"+id).prop("value", '1');
+	}
+	//$("#cat_"+id).prop("checked", true);
+	
+	
+	
+	$("#tempCategoryId").val(id);
+	$("#prLevelId").val(lvl);
+	 
+}
+$(document).ready(function() {
+	 getMappingList();
+	$("#selectCategory").click(function(){ 
+    	
+    	var costId=$("#costId").val();
+    	var dataset = [];
+    	
+    	$(".pc1-box:checkbox:checked").each(function(){
+    		item = {};
+    		item['chartOfAcId']=$(this).attr("name");
+    		item['costCenterId']=$("#costId").val();
+    		dataset.push(item);
+    		
+    	})
+    
+    	submitAccountMapping(dataset);
+    	
+   /*  	
+    	var id = $("#tempCategoryId").val();
+		var lvl = $("#prLevelId").val();
+		
+		if(id && lvl) {
+			$("#prCategoryId").val(id);
+			if(lvl == 'L1') {
+				var textDesc = $("#lbl_"+id).text();
+				$("#catDesc").text(textDesc);
+			} else {
+				var res = lvl.substring(1, 1000000);
+				
+				var lastText = $("#lbl_"+id).text();
+				var textDesc = "";
+				for(i = res; i > 1; i--) {
+					var pUL = $("#lbl_"+id).parents("ul").attr("id");
+					pUL = pUL.substring(3, 10000000000000);
+					var newText = $("#lbl_"+pUL).text();
+					console.log(newText+" "+i)
+					textDesc =  newText+" <i class='ti-angle-right' style='font-size: 7px;'></i> "+textDesc ; 
+					id = pUL;
+				}
+				textDesc = textDesc + lastText;
+				$("#catDesc").html(textDesc);
+			}
+		}
+		$("#myModal").modal("hide");
+		closeModal(); */
+    })
+});
+function submitAccountMapping(dataset) {
+	$.ajax({
+        type: "POST",
+        url: "account-mapping-save",
+        dataType: "json",
+        contentType: "application/json",
+        data: JSON.stringify(dataset),
+        success: function(response) {
+            if (response.message == "Success") {
+            	$("#main").empty();
+            	getMappingList();
+            	$("#myModal").modal("hide");
+        		closeModal();
+        		
+            } else {
+                swal({
+                    title: response.code,
+                    text: response.message,
+                    type: "warning"
+                })
+            }
+        },
+        error: function(response) {
+            console.log(response);
+        }
+    })
+}
+function getMappingList(){
+
+	$.ajax({
+        type: "POST",
+        url: "account-mapping-list",
+        dataType: "json",
+        contentType: "application/json",
+       
+        success: function(response) {
+        	 console.log("first"+response.message)
+        	if (response.message == "Success") {
+            	console.log("costList"+response.body[0].costcenterCode)
+        		if(response.body.length > 0) {
+            		var x=0;
+            		for(var i = 0; i < response.body.length; i++) {
+	            		//console.log(i);
+	            		
+	            		var value = response.body[i].costcenterCode;
+						var data = '<div class="treeviewtxt" name="mappedCost_'+response.body[i].costCenterId+'" id="costId_'+response.body[i].costCenterId+'">'+value+'</div>';
+						getmappingdataList(response.body[i].costCenterId);
+						$("#main").append(data);
+						
+						
+            		}
+            	
+            		
+            	}
+            }
+            
+        }, error: function(data) {
+        	console.log(data)
+        	
+        }
+	});
+}
+function getmappingdataList(id){
+
+			$.ajax({
+		        type: "POST",
+		        url: "account-mapping-list-by-id",
+		        dataType: "json",
+		        contentType: "application/json",
+		        data: id,
+		        success: function(response) {
+		        	
+		        	if (response.message == "Success") {
+		            	if(response.body.length > 0) {
+		            		var x=0;
+		            		for(var i = 0; i < response.body.length; i++) {
+			            		//console.log(i);
+			            		var value = response.body[i].caCode;
+			            		
+								//var data = '<div style="padding-left:30px;" class="treeviewtxt" id="costData_'+id+'">'+value+'</div>';
+								
+								$("#costId_"+id).append('<div style="padding-left:30px;" id="caData_'+response.body[i].chartOfAcId+'">'+value+'</div>');
+								
+								
+								// console.log("ca"+response.body[i].chartOfAcId)
+			            		
+		            		}
+		            	
+		            		
+		            	}
+		            }
+		            
+		        }, error: function(data) {
+		        	console.log(data)
+		        	
+		        }
+			});
+		
+	
+}
+</script>
+<style>
+#myModal .active {
+	background: transparent !important;
+}
+</style>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="row margin_topbot" id="searchRowDiv"></div>
+						<div class="row">
+	<div class="col-md-12  btn-hs" style="margin-bottom: 15px;">
+	<div class="row">
+	<div class="col-md-6">
+								<div class="font-design ft-lt" id="totalReq">
+									Departments<!-- (<span id="totalPCat">2</span>) -->
+								</div>
+								</div>
+								<div class="col-md-6">
+								<div class="font-design ft-lt color_greentxt" id="totalReq">
+									Mapped Accounts<!-- (<span id="totalPCat">2</span>) -->
+								</div>
+								<!-- <div class="roomdetails2">
+									<div class="cat_plusbtn cp" title="Add Category"
+										onclick="openCat()"></div>
+								</div> -->
+							</div>
+							</div>
+							</div>
+							
+							
+							
+							
+							<div class="col-md-2 btn-hs">
+								<!-- <div class="row">
+									<button class="btn1" id="newBtn" onclick="openCat();">NEW</button>
+									<button class="btn3" id="locdeletebtn" onclick="deleteLocation()" >DELETE</button>
+								</div> -->
+							</div>
+
+						</div>
+						<!-- <div class="row">
+							<div class="col-md-2">
+								<div class="roomdetails">
+									<div class="cat_plusbtn cp" title="Add Child"
+										onclick="openCat()">+</div>
+								</div>
+							</div>
+						</div> -->
+
+						<!--  </div> -->
+						<div class="wrapper center-block">
+							<div class="panel-group" id="accordion" role="tablist"
+								aria-multiselectable="true">
+								<div class="panel panel-default">
+									<div id="demo_11" class="panel-collapse collapse show"
+										role="tabpanel" aria-labelledby="headingOne">
+										<!-- show -->
+										<div class="row">
+											<div class="col-md-6">
+												<div class="flowsection"
+													style="border-right: 0px solid #ccc !important">
+													<!-- code start for second tree -->
+													<!-- code end for second tree -->
+												</div>
+											</div>
+											<div class="col-md-6">
+												<div class="roomdetails roomListDiv" id="main">
+												<!-- <div id="costData_">xyz
+												<div style="padding-left:30px;" id="caData_">123<br>234</div>
+												</div> -->
+												</div>
+												<!-- <div class="slidearrow" onclick="openNav()">
+													<i class="ti-arrow-left"></i>
+												</div> -->
+												<div id="mySidenav" class="sidenav">
+												
+												<!-- Add Section -->
+												<div id="mySidenavCat" class="sidenav">
+													<div class="slidebox">
+														<div class="row">
+															<div class="col-md-10">
+																<div class="edit" id="sectionNavText">Department</div>
+															</div>
+															<div class="col-md-2">
+																<div class="arrow">
+																	<a href="javascript:void(0)" class="closebtn"
+																		onclick="closeCat()"><i class="ti-arrow-right"></i></a>
+																</div>
+															</div>
+															<div class="chartbtnsec">
+																<div align="right">
+																	<button class="btn4" onclick="closeCat()">CANCEL</button>
+																	<!-- <button class="btn3" id="deleteSlideCat">DELETE</button> -->
+																	<button class="btn1" id="accountSave">SAVE</button>
+																</div>
+															</div>
+															<div class="col-md-12">
+																<div class="form-group">
+																	<label>Code</label> <input type="text"
+																		class="form-control transparenttxtbox" placeholder=""
+																		id="categoryCode">
+																		<input type="hidden"
+																		class="form-control transparenttxtbox" placeholder=""
+																		id="totalCatCount">
+																</div>
+															</div>
+															<div class="col-md-12">
+																<div class="form-group">
+																	<label>Name</label> <input type="hidden"
+																		id="categoryId"> <input type="text"
+																		class="form-control transparenttxtbox" placeholder=""
+																		id="categoryName">
+																</div>
+															</div>
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label style="position: relative; top: 1px;">Profit Center</label>
+																	<input type="checkbox" name="isProfitActive"
+																		id="catStatus" value="1">
+																</div>
+															</div>
+															<div class="col-md-12">
+																<div class="form-group">
+																	<label>Cost Nature</label>  
+																		<div class="select">
+																				<select id="ccNature">
+																					  <option th:value="NULL">Select</option>
+																				    <option th:each="c:${costNatureList}" th:value='${c.key}'
+																					 th:text="${c.name}"></option>
+																				</select> 
+																			</div>
+																</div>
+															</div>
+															
+															<div class="col-md-12">
+																<div class="form-group">
+																	<label>Labour Type</label> 
+																			<div class="select">
+																				<select id="ccLabourType">
+																					  <option th:value="NULL">Select</option>
+																				    <option th:each="c:${costLabourList}" th:value='${c.key}'
+																					 th:text="${c.name}"></option>
+																				</select> 
+																			</div>
+																</div>
+															</div>
+															<!-- <div class="col-md-12">
+																<div class="form-group">
+																	<label>Balance</label>
+																	<input type="checkbox" class="loc-chb" name="isActive"
+																		id="catStatus" value="1" checked> <label>Active</label>
+																</div>
+															</div> -->
+															<!-- <siv class="col-md-12"> -->
+														<!-- <div class="row " style="padding: 0px 15px;"> -->
+											<!-- <div class="col-md-6">
+												<div class="form-group">
+													<label style="position: relative; top: 1px;">Debit</label>
+													<input type="checkbox" name="isDebitActive"
+														id="debitStatus" value="1">
+												</div>
+											</div> -->
+											
+										<!-- </div> -->
+										</div>
+														</div>
+													</div>
+													<div class="slidebox">
+														<div class="row">
+															<div class="col-md-10">
+																<div class="edit" id="roomLevelText"></div>
+															</div>
+															<div class="col-md-2">
+																<div class="arrow">
+																	<a href="javascript:void(0)" class="closebtn"
+																		onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+																</div>
+															</div>
+															<div class="chartbtnsec">
+																<div align="right">
+																	<button class="btn4" onclick="closeNav()">CANCEL</button>
+																<!-- 	<button class="btn3" id="dltRoom"
+																		onclick="deleteRoom()">DELETE</button> -->
+																	<button class="btn1" id="roomSave">SAVE</button>
+																</div>
+															</div>
+															<div class="col-md-12">
+																<div class="form-group">
+																	<label>Code</label> <input type="text"
+																		class="form-control transparenttxtbox"
+																		placeholder="Room Code" id="roomCode"> <input
+																		type="hidden" id="sectionRoomId"> <input
+																		type="hidden" id="roomDBId"> <input
+																		type="hidden" id="rFloorSlNo"> <input
+																		type="hidden" id="rSectionSlNo">
+																</div>
+															</div>
+															<div class="col-md-12">
+																<div class="form-group">
+																	<label>Name</label> <input type="text"
+																		class="form-control transparenttxtbox"
+																		placeholder="Room Name" id="roomName"
+																		onblur="checkCharLengthOfString('roomName','10');">
+																</div>
+															</div>
+															<div class="col-md-12">
+																<div class="form-group">
+																	<label>Room Type</label>
+																	<div class="select">
+																		<select id="roomType" class="transparenttxtbox">
+																			<option th:each="c,iter:${roomTypeList}"
+																				th:value="${c.key}" th:text="${c.name}"></option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+														</div>
+													</div>
+												</div>
+
+												<!-- Add Floor -->
+												<div id="mySidenavSubCat" class="sidenav">
+													<div class="slidebox">
+														<div class="row">
+															<div class="col-md-10">
+																<div class="edit" id="floorNavText">Department</div>
+															</div>
+															<div class="col-md-2">
+																<div class="arrow">
+																	<a href="javascript:void(0)" class="closebtn"
+																		onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+																</div>
+															</div>
+															<div class="chartbtnsec">
+																<div align="right">
+																	<button class="btn4" onclick="closeNav()">CANCEL</button>
+																<!-- 	<button class="btn3" id="dltSlideSubCat" onclick="">DELETE</button> -->
+																	<button class="btn1" id="subCatSave">SAVE</button>
+																</div>
+															</div>
+															<div class="col-md-12">
+																<div class="form-group">
+																	<span class="slide-span">Parent:</span><span id="subCatParentSpan" class="slide-span-text"></span>
+																</div>
+															</div>
+															
+															
+															
+															<div class="col-md-12">
+																<div class="form-group">
+																	<label>Code</label> <input type="text"
+																		class="form-control transparenttxtbox" placeholder=""
+																		id="subcategoryCode">
+																</div>
+															</div>
+															<div class="col-md-12">
+																<div class="form-group">
+																	<label>Name</label> <input type="hidden"
+																		id="subCatId"> <input type="text"
+																		class="form-control transparenttxtbox" placeholder=""
+																		id="subCatName"> <input type="hidden" id="parentCat"> 
+																		<input type="hidden" id="slnoval">
+																</div>
+															</div>
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label style="position: relative; top: 1px;">Profit center</label>
+																	<input type="checkbox" name="issubProfitActive"
+																		id="subcatStatus" value="1">
+																</div>
+															</div>
+															<div class="col-md-12">
+																<div class="form-group">
+																	<label>Cost Nature</label>  
+																		<div class="select">
+																				<select id="subccNature">
+																					  <option th:value="NULL">Select</option>
+																				    <option th:each="c:${costNatureList}" th:value='${c.key}'
+																					 th:text="${c.name}"></option>
+																				</select> 
+																			</div>
+																</div>
+															</div>
+															
+															<div class="col-md-12">
+																<div class="form-group">
+																	<label>Labour Type</label> 
+																			<div class="select">
+																				<select id="subccLabourType">
+																					  <option th:value="NULL">Select</option>
+																				    <option th:each="c:${costLabourList}" th:value='${c.key}'
+																					 th:text="${c.name}"></option>
+																				</select> 
+																			</div>
+																</div>
+															
+															
+														</div>
+													</div>
+												</div>
+
+												
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id="delete" class="modal fade show" aria-modal="true">
+			<div class="modal-dialog modal-confirm">
+				<div class="modal-content">
+					<div class="modal-header flex-column">
+						<button type="button" class="close" data-dismiss="modal"
+							aria-hidden="true" onclick="cancelModalBtn()">
+							<i class="ti-close modal-close"></i>
+						</button>
+					</div>
+					<div class="modal-body">
+						<p>Do you really want to delete these records? This process
+							cannot be undone.</p>
+					</div>
+					<div class="modal-footer justify-content-center"
+						style="margin-top: -30px;">
+						<button type="button" class="btn1" data-dismiss="modal"
+							onclick="cancelModalBtn();">Cancel</button>
+						<button type="button" class="btn3" id="deleteModalBtn">Delete</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id="deleteFile" class="modal fade show" aria-modal="true">
+			<div class="modal-dialog modal-confirm">
+				<div class="modal-content">
+					<div class="modal-header flex-column">
+						<!-- <div class="icon-box">
+							<i class="ti-close"></i>
+						</div> -->
+						<!-- <h4 class="modal-title w-100">Are you sure?</h4> -->
+						<button type="button" class="close" data-dismiss="modal"
+							aria-hidden="true" onclick="cancelModalBtn()">
+							<i class="ti-close modal-close"></i>
+						</button>
+					</div>
+					<div class="modal-body">
+						<p>Do you really want to delete this image? This process
+							cannot be undone.</p>
+					</div>
+					<div class="modal-footer justify-content-center"
+						style="margin-top: -30px;">
+						<button type="button" class="btn1" data-dismiss="modal"
+							onclick="cancelModalBtn();">Cancel</button>
+						<button type="button" class="btn3" onclick="deleteLocFile()">Delete</button>
+						<!-- <img src="../assets/gif/loader.gif">  -->
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		<!-- for open ca popup -->
+		<div class="modal fade" id="myModal">
+			<div class="modal-dialog modal-lg" style="margin-top: 130px;">
+				<div class="modal-content">
+
+					<!-- Modal Header -->
+					<div class="modal-header">
+						<h4 class="modal-title md-color">Select Chart Of Account</h4>
+						<button type="button" class="close cp" onclick="closeModal();"
+							data-dismiss="modal">&times;</button>
+					</div>
+
+					<!-- Modal body -->
+					<div class="modal-body modal-cat">
+						<div class="row">
+							<div class="col-md-12" id="productCategoryCBDiv" df="0"></div>
+							<div><input type="hidden" id="costId"/> <input
+														type="hidden" id="tempCategoryId"> <input
+														type="hidden" id="prLevelId"></div>
+							
+						</div>
+					</div>
+
+					<!-- Modal footer -->
+					<div class="modal-footer">
+						<button class="btn4" data-dismiss="modal" onclick="closeModal();">Cancel</button>
+						<button class="btn1" id="selectCategory">Select</button>
+					</div>
+
+				</div>
+			</div>
+		</div>
+		
+	</div>
+</body>
+</html>

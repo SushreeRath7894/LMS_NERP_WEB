@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+
+<head>
+<style>
+.picker_calendar {
+	cursor: pointer;
+	position: absolute;
+	top: 17px !important;
+	right: 5px !important;
+}
+</style>
+<script>
+	$(document).ready(
+			function() {
+				$("#myGrid").show();
+				$("#allDataDetails").hide();
+				$("#reqTable").show();
+				$("#edit").hide();
+				$("#submit").hide();
+				var gridDiv = document.querySelector('#myGrid');
+				new agGrid.Grid(gridDiv, gridOptions);
+				$('.loader').show();
+				gridOptions.api.setRowData()
+				agGrid.simpleHttpRequest({
+					url : "investment-declaration-view-through-ajax"
+				}).then(function(data) {
+					var len = data.length;
+					$('#totalCandidate').find('span').html(len);
+					gridOptions.api.setRowData(data);
+					$('.loader').hide();
+				});
+				var employeeId = $("#sessionId").val();
+				var empId = $("#empId").val(employeeId);
+				var dateFormat = localStorage.getItem("dateFormat");
+				$("#toDateCalendar").datetimepicker({
+					format : dateFormat,
+					closeOnDateSelect : true,
+					timepicker : false,
+				}).on("change", function() {
+					$('#formDate_').val($(this).val());
+				})
+				$('#formDate_').blur(function() {
+					$("#toDateCalendar").val($(this).val());
+				})
+
+				$("#endDateCalendar").datetimepicker({
+					format : dateFormat,
+					closeOnDateSelect : false,
+					timepicker : true,
+				}).on("change", function() {
+					$('#toDate_').val($(this).val());
+				})
+				$('#toDate_').blur(function() {
+					$("#endDateCalendar").val($(this).val());
+				})
+
+				var financial_year = "";
+				var today = new Date();
+				if ((today.getMonth() + 1) <= 3) {
+					financial_year = (today.getFullYear() - 1) + "-"
+							+ today.getFullYear()
+				} else {
+					financial_year = today.getFullYear() + "-"
+							+ (today.getFullYear() + 1)
+				}
+				$("#financialyr").val(financial_year)
+				checkEditAvailable();
+			});
+	function setFromToDate() {
+		$("#messageParagraph").text("Please choose to date greater than or equal to from date ");
+		$("#msgOkModal").removeClass("btn3");
+		$("#msgOkModal").addClass("btn1");
+		$("#msgModal").modal('show');
+		$("#fromDate_").val("");
+		$("#toDate_").val("");
+	}
+	function dateChange() {
+		
+		var fromdate = $('#fromDate_').val();
+		var todate = $('#toDate_').val();
+		var fd = fromdate.split("-");
+		var td = todate.split("-");
+		
+		if (fromdate != '' && todate != '') {
+			if(fd[2]<=td[2]){
+				if(fd[1]==td[1]){
+					if(fd[0]<=td[0]){
+						
+					}else{
+						setFromToDate();
+					}
+				}else if(fd[1]<td[1]){
+					
+				}
+				else{
+					setFromToDate();
+				}
+				
+			}else{
+				setFromToDate();
+			}
+		}else{
+			
+		}
+	}
+	function addTaxDeclare() {
+		if ($("#addReq").val() == '0') {
+			$("#myGrid").hide();
+			$("#allDataDetails").show();
+			$("#reqTable").hide();
+			$("#edit").hide();
+			$("#submit").show();
+			$('.loader').show();
+			$.ajax({
+						type : "GET",
+						url : "investment-declaration-details",
+						success : function(response) {
+							if (response.message == "Success") {
+								$("#acoordian").empty();
+								var dataset6 = [];
+								dataset6 = response.body;
+								for (var i = 0; i < dataset6.length; i++) {
+									var accData = "";
+									var accData1 = "";
+									var accData2 = "";
+									var headerid = dataset6[i].headerid
+									accData = '<div class="accordion-item">'
+											+ '<h2 class="accordion-header" id="heading_'+i+'">'
+											+ '<a class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse'+i+'" aria-expanded="false" aria-controls="collapse'+i+'">'
+											+ dataset6[i].headerid
+											+ '</a></h2>'
+											+ '<div id="collapse'+i+'" class="accordion-collapse collapse" aria-labelledby="heading_'+i+'" data-bs-parent="#accordionExample">'
+											+ '<div class="accordion-body">'
+											+ '<div class="row form-box mb-10">';
+
+									accData1 = '<table id="docTbl" cellspacing="7" cellpadding="7">'
+											+ '<thead>'
+											+ '<tr class="tr_clone">'
+											+ '<th  width="90"></th>'
+											+ '<th  width="90"></th>'
+											+ '<th  width="90"></th>' 
+											+ '<th  width="90"></th>'
+											+ '<th  width="90"></th>'
+											+ '<th width="90" class="lbltxt">Amount</th>'
+											+ '<th width="90" class="lbltxt">Maximum Capacity</th>'
+											+ '</tr>'
+											+ '</thead>'
+											+ '<tbody id="doctbodyData_'+i+'">';
+									//	console.log(dataset6[i].investDetails)
+									var temptd = "";
+									for (var j = 0; j < dataset6[i].investDetails.length; j++) {
+										if (dataset6[i].investDetails[j].subheader == "Rent to be Paid from") {
+											accData3 = '<tr>'
+													+ '<td style="width: 17%;">'
+													+ '<label><input type="hidden" name="subheader" value='+dataset6[i].investDetails[j].subheaderid+' id="subheaderid_'+i+'_'+j+'">'
+													+ dataset6[i].investDetails[j].subheader
+													+ '</label>'
+													+ '</td>'
+													+ '<td style="width: 15%;"><div class ="form-group calendar_box"><input type="text" id="fromDate_" class="form-control" th:attr="onkeyup=|formatDate("fromDate_","${session.DATEFORMAT_JS}")|" readonly><i class="ti-calendar picker_calendar" id="toDateCalendar" onchange="dateChange()"></i></div>'
+													+ '</td>'
+													+ '<td style="width: 3%;">To'
+													+ '</td>'
+													+ '<td style="width: 15%;"><div class ="form-group calendar_box"><input type="text" id="toDate_" class="form-control" th:attr="onkeyup=|formatDate("toDate_","${session.DATEFORMAT_JS}")|" readonly><i class="ti-calendar picker_calendar" id="endDateCalendar" onchange="dateChange()"></i></div>'
+													+ '</td>'
+													+ '<td style="width: 20%;">'
+													+ '</td>'
+													+ '<td style="width: 15%;">'
+													+ '<div class="form-group"><input type="text" name="Amount" value="" placeholder="Enter amount" class="form-control ploicyNoclss" id="amntno_'+i+'_'+j+'" onkeyup="checkAmount('+i+','+j+')">'
+													+ '</div>'
+													+ '</td>'
+													+ '<td style="width: 15%;">'
+													+ '<div class="form-group"  ><input type="text" name="Max Cap"  readonly value='+dataset6[i].investDetails[j].maxPayment+' class="form-control ploicyNoclss" id="maxcap_'+i+'_'+j+'">'
+													+ '</div>' + '</td>' + '</tr>';
+										} else {
+											accData3 = '<tr>'
+													+ '<td style="width: 17%;">'
+													+ '<label><input type="hidden" name="subheader" value='+dataset6[i].investDetails[j].subheaderid+' id="subheaderid_'+i+'_'+j+'">'
+													+ dataset6[i].investDetails[j].subheader
+													+ '</label>'
+													+ '</td>'
+													+ '<td style="width: 15%;">'
+													+ '</td>'
+													+ '<td style="width: 3%;">'
+													+ '</td>'
+													+ '<td style="width: 15%;">'
+													+ '</td>'
+													+ '<td style="width: 20%;">'
+													+ '</td>'
+													+ '<td style="width: 15%;">'
+													+ '<div class="form-group"><input type="text" name="Amount" value="" placeholder="Enter amount" class="form-control ploicyNoclss" id="amntno_'+i+'_'+j+'" onkeyup="checkAmount('+i+','+j+')">'
+													+ '</div>'
+													+ '</td>'
+													+ '<td style="width: 15%;">'
+													+ '<div class="form-group"  ><input type="text" name="Max Cap" readonly value="'+dataset6[i].investDetails[j].maxPayment+'" class="form-control ploicyNoclss" id="maxcap_'+i+'_'+j+'">'
+													+ '</div>' + '</td>' + '</tr>';
+										}
+
+										temptd = temptd + accData3;
+									}
+									accData1 = accData1 + temptd;
+									accData4 = +'</tbody>' + '</table>';
+ 
+									accData = accData + accData1 
+									$("#acoordian").append(accData);
+								}
+
+								var dateFormat = localStorage.getItem("dateFormat");
+								$("#toDateCalendar").datetimepicker({
+									format : dateFormat,
+									closeOnDateSelect : true,
+									timepicker : false,
+								}).on("change", function() {
+									$('#fromDate_').val($(this).val());
+								})
+								$('#fromDate_').blur(function() {
+									$("#toDateCalendar").val($(this).val());
+								})
+
+								$("#endDateCalendar").datetimepicker({
+									format : dateFormat,
+									closeOnDateSelect : true,
+									timepicker : false,
+								}).on("change", function() {
+									$('#toDate_').val($(this).val());
+								})
+								$('#toDate_').blur(function() {
+									$("#endDateCalendar").val($(this).val());
+								})
+								$('.loader').hide();
+							}else{
+								$("#messageParagraph").text(
+								"Something went to wrong");
+								$("#msgOkModal").removeClass("btn3");
+								$("#msgOkModal").addClass("btn1");
+								$("#msgModal").modal('show');
+								$('.loader').hide();
+							}
+
+						}
+
+					});
+		} else {
+			$("#messageParagraph").text("you are already declare investment declaration form for Financial Year "+$("#financialyr").val());
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+
+		}
+
+	}
+	 //Amount validation
+	 function checkAmount(i,j) {   
+		var myField = document.getElementById('amntno_'+i+'_'+j+'');
+		 var reg = /^\d{0,8}(\.\d{0,2})?$/;   
+		 if (reg.test(myField.value))
+		 {       
+			 $("#amntno_"+i+'_'+j).val();
+			 reg = '';  
+		 }else{        
+			 $("#amntno_"+i+'_'+j).val(null);   
+			} 
+		 }  
+	 function checkActualAmount(i,j) {   
+		var myField = document.getElementById('actualamntno_'+i+'_'+j+'');
+		 var reg = /^\d{0,8}(\.\d{0,2})?$/;   
+		 if (reg.test(myField.value))
+		 {       
+			 $("#actualamntno_"+i+'_'+j).val();
+			 reg = '';  
+		 }else{        
+			 $("#actualamntno_"+i+'_'+j).val(null);   
+			} 
+		 }  
+	function saveMultiFile(event, i) {
+		var empId1 = $("#empId").val();
+		var financialyr1 = $("#financialyr").val();
+
+		var AssignItemQty = event.currentTarget.value;
+		var currentFldId = event.currentTarget.getAttribute('id');
+		var l = currentFldId.split("_");
+		var counter = l[1];
+		var currentFldId = "#" + currentFldId;
+
+		var uFile = $(currentFldId)[0].files[0];
+		var fileName = event.currentTarget.value;
+		var lastIndex = fileName.lastIndexOf("\\");
+		if (lastIndex >= 0) {
+			fileName = fileName.substring(lastIndex + 1);
+		}
+		var extension = fileName.split(".");
+
+		var iURL = URL.createObjectURL(uFile);
+		$("#uploadedBillDiv_" + i + "" + counter).html("");
+
+		if (extension[1] == "jpg" || extension[1] == "png") {
+			var LightImg = "<div class='uploadicon position-l"+i+"'><a class='example-image-link"+i+"' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-picture-o"+i+"'></i></a></div>";
+		} else if (extension[1] == "pdf") {
+			var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-pdf-o'></i> </a></div>";
+		} else if (extension[1] == "xls" || extension[1] == "xlsx") {
+			var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-excel-o'></i></a></div>";
+		} else if (extension[1] == "doc" || extension[1] == "dox"
+				|| extension[1] == "docx") {
+			var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-word-o'></i></a></div>";
+		} else {
+			var LightImg = "<div class='uploadicon position-l'> </div>";
+		}
+		$("#uploadedBillDiv_" + i + "" + counter).html(LightImg);
+		$("#imageName_" + counter).html(fileName);
+
+		$("#imgLoc_" + i).attr('src', '');
+		$("#imgLoc_" + i).attr('src', iURL);
+		var fileData = new FormData();
+		fileData.append('file', uFile);
+		fileData.append('path', 'none');
+
+		$.ajax({
+			type : "POST",
+			url : "investment-declaration-upload-file?id=" + i,
+			enctype : "multipart/form-data",
+			contentType : false,
+			data : fileData,
+			processData : false,
+			cache : false,
+			success : function(response) {
+			},
+			error : function(e) {
+			}
+		});
+	}
+	function saveDetails() {
+		var fromdate = $('#fromDate_').val();
+		var todate = $('#toDate_').val();
+ 
+		if (fromdate != '' && todate != '') {
+		$('.loader').show();
+		$.ajax({
+					type : "GET",
+					url : "investment-declaration-details",
+					success : function(response) {
+						if (response.message == "Success") {
+							var mainDataSet = [];
+							dataset6 = response.body;
+							console.log(dataset6.length)
+
+							for (var i = 0; i < dataset6.length; i++) {
+								var data = {};
+								var listItem = [];
+								$(" #doctbodyData_" + i + " > tr")
+										.each(function(j) {
+												item = {};
+													if ($("#subheaderid_" + i+ '_' + j).val() == 1) {
+														item.subheader = $("#subheaderid_"+ i+ '_'+ j).val();
+														item.ampount = $("#amntno_" + i+ '_'+ j).val();
+														item.actualAmt = $("#actualamntno_" +i + '_'+ j).val();
+														item.maxPayment = $("#maxcap_" + i+ '_'+ j).val();
+													} else {
+														item.subheader = $("#subheaderid_"+ i+ '_'+ j).val();
+														item.ampount = $("#amntno_" + i+ '_'+ j).val();
+														item.actualAmt = $("#actualamntno_" +i+ '_'+ j).val();
+														item.maxPayment = $("#maxcap_" + i+ '_'+ j).val();
+													}
+													listItem.push(item);
+												});
+											data.declarId = $("#declarId").val();
+											data.headerid = dataset6[i].headerid;
+											data.financialyr = $("#financialyr").val();
+											data.empId = $("#empId").val();
+											data.fromDate = $("#fromDate_").val();
+											data.toDate = $("#toDate_").val();
+											data.investmentDetails = listItem;
+											if(data.declareId!="" || data.declareId!="null"){
+												data.docFile = $("#imageName_" + i).html();
+												data.docName = $("#docname_" + i).val();
+												data.headerLength = dataset6.length;
+											}
+			
+											mainDataSet.push(data)
+								console.log(mainDataSet)
+
+							}
+
+							$.ajax({
+										type : "POST",
+										url : "investment-declaration-details-adds",
+										dataType : "json",
+										contentType : "application/json",
+										data : JSON.stringify(mainDataSet),
+										success : function(response) {
+											if (response.code == "success") {
+												$("#myGrid").show();
+												$("#allDataDetails").hide();
+												$("#reqTable").show();
+												agGrid.simpleHttpRequest( {
+													 url : "investment-declaration-view-through-ajax" })
+													 .then(function(data) {
+													var len = data.length;
+													$('#totalCandidate').find('span').html(len);
+													gridOptions.api.setRowData(data);
+													$('.loader').hide();
+													$("#messageParagraph").text("Data saved successfully");
+													$("#msgOkModal").removeClass("btn3");
+													$("#msgOkModal").addClass("btn1");
+													$("#msgModal").modal('show');
+													});
+											}
+										},
+										error : function(response) {
+											console.log(response);
+										}
+									})
+						}else{
+							$("#messageParagraph").text(
+							"Something went to wrong");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							$('.loader').hide();
+						}
+
+					}
+
+				});
+		}else{
+			if(fromdate == ''){
+				$("#messageParagraph").text(
+				"Rent to be Paid From Date required");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+			}else{
+				$("#messageParagraph").text(
+				"Rent to be Paid To Date required");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');	
+			}
+			
+		}
+
+	}
+	var columnDefs = [
+			/* 		{
+			 headerCheckboxSelection : true,
+			 headerCheckboxSelectionFilteredOnly : true,
+			 checkboxSelection : true,
+			 width : 10,
+			 sortable : false,
+			 filter : false,
+			 resizable : true
+
+			 }, */
+			{
+				headerName : "Declare ID",
+				field : "declarId",
+				cellRenderer : function(params) {
+					return '<a onclick=vewTaskDetails("' + params.data.declarId
+							+ '") href="javascript:void(0)">'
+							+ params.data.declarId + '</a>';
+				}
+			}, {
+
+				headerName : 'Employee Id',
+				field : "empId"
+			}, {
+				headerName : 'Employee Name',
+				field : "empName",
+
+			}, {
+				headerName : 'Financial Year',
+				field : "financialyr"
+			}, {
+				headerName : 'Department',
+				field : "deptName"
+			}, {
+				headerName : 'Sub Department',
+				field : "subDeptName"
+			} ];
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowSelection : 'multiple',
+
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 225,
+			height : 10
+		},
+
+	//onSelectionChanged : rowSelect,
+	/* getRowNodeId : function(data) {
+		return data.quotationId; 
+	}*/
+	};
+	function vewTaskDetails(declarId) {
+		$("#myGrid").hide();
+		$("#allDataDetails").show();
+		$("#reqTable").hide();
+		$("#acoordian").empty();
+		if ($("#addReq").val() == '0') {
+			$("#edit").hide();
+			$("#submit").hide();
+		}else{
+			$("#edit").show();
+			$("#submit").hide();
+		}
+		$('.loader').show();
+		$.ajax({
+					type : "GET",
+					url : "investment-declaration-alldata-details?id="
+							+ declarId,
+					success : function(response) {
+						if (response.message == "Success") {
+
+							var dataset6 = [];
+							dataset6 = response.body;
+							console.log(dataset6)
+
+							$("#financialyr").val(response.body[0].financialyr);
+							$("#empId").val(response.body[0].empId);
+							$("#empName").val(response.body[0].empName);
+							$("#declarId").val(response.body[0].declarId);
+
+							for (var i = 0; i < dataset6.length; i++) {
+								$("#docname_" + i).val(dataset6[i].docName);
+								$("#imgLoc_" + i).attr('src',dataset6[i].docFile);
+								$("#imageName_" + i).html(dataset6[i].docFile1);
+								$("#imgLoc_" + i).attr('onclick','viewImage("'+dataset6[i].docFile+'");');
+
+								for (var j = 0; j < dataset6[i].investDetails.length; j++) {
+									$("#fromDate_").val(dataset6[i].investDetails[j].fromDate);
+									$("#toDate_").val(dataset6[i].investDetails[j].toDate);
+									$("#actualamntno_" + i + '_' + j).val(dataset6[i].investDetails[j].ampount);
+									$("#amntno_" + i + '_' + j).val(dataset6[i].investDetails[j].ampount);
+ 									$("#maxcap_" + i + '_' + j).val(dataset6[i].investDetails[j].maxPayment)
+						  			$("input").attr('disabled','disabled');
+						  			$(".custom-file-upload").hide();
+						  			$("#toDateCalendar").hide();
+						  			$("#endDateCalendar").hide();
+								}
+							}
+							$('.loader').hide();
+						}else{
+							$("#messageParagraph").text(
+							"Something went to wrong");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							$('.loader').hide();
+						}
+					}
+
+				});
+		$
+				.ajax({
+					type : "GET",
+					url : "investment-declaration-details",
+					success : function(response) {
+						if (response.message == "Success") {
+							var dataset6 = [];
+							dataset6 = response.body;
+							for (var i = 0; i < dataset6.length; i++) {
+								var accData = "";
+								var accData1 = "";
+								var accData2 = "";
+								var headerid = dataset6[i].headerid
+								accData = '<div class="accordion-item">'
+										+ '<h2 class="accordion-header" id="heading_'+i+'">'
+										+ '<a class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse'+i+'" aria-expanded="false" aria-controls="collapse'+i+'">'
+										+ dataset6[i].headerid
+										+ '</a></h2>'
+										+ '<div id="collapse'+i+'" class="accordion-collapse collapse" aria-labelledby="heading_'+i+'" data-bs-parent="#accordionExample">'
+										+ '<div class="accordion-body">'
+										+ '<div class="row form-box mb-10">';
+
+								accData1 = '<table id="docTbl" cellspacing="7" cellpadding="7">'
+										+ '<thead>'
+										+ '<tr class="tr_clone">'
+										+ '<th  width="90"></th>'
+										+ '<th  width="90"></th>'
+										+ '<th  width="90"></th>' 
+										+ '<th  width="90"></th>' 
+										+ '<th  width="90"></th>'
+										+ '<th width="90">Amount</th>'
+										+ '<th width="90">Maximum Capacity</th>'
+										+ '</tr>'
+										+ '</thead>'
+										+ '<tbody id="doctbodyData_'+i+'">';
+								//	console.log(dataset6[i].investDetails)
+								var temptd = "";
+								for (var j = 0; j < dataset6[i].investDetails.length; j++) {
+									if (dataset6[i].investDetails[j].subheader == "Rent to be Paid from") {
+										accData3 = '<tr>'
+												+ '<td style="width: 17%;">'
+												+ '<label><input type="hidden" name="subheader" value='+dataset6[i].investDetails[j].subheaderid+' id="subheaderid_'+i+'_'+j+'">'
+												+ dataset6[i].investDetails[j].subheader
+												+ '</label>'
+												+ '</td>'
+												+ '<td style="width: 15%;"><div class ="form-group calendar_box"><input type="text" id="fromDate_" class="form-control" th:attr="onkeyup=|formatDate("fromDate_","${session.DATEFORMAT_JS}")|"><i class="ti-calendar picker_calendar" id="toDateCalendar" onchange="dateChange()"></i></div>'
+												+ '</td>'
+												+ '<td style="width: 3%;">To'
+												+ '</td>'
+												+ '<td style="width: 15%;"><div class ="form-group calendar_box"><input type="text" id="toDate_" class="form-control" th:attr="onkeyup=|formatDate("toDate_","${session.DATEFORMAT_JS}")|"><i class="ti-calendar picker_calendar" id="endDateCalendar" onchange="dateChange()"></i></div>'
+												+ '</td>'
+												+ '<td style="width: 20%;">'
+												+ '</td>'
+												+ '<td style="width: 15%;">'
+												+ '<div class="form-group"><input type="text" name="Amount" value="" placeholder="Amount" class="form-control ploicyNoclss" id="actualamntno_'+i+'_'+j+'" onkeyup="checkActualAmount('+i+','+j+')"><input type="hidden" name="Amount" value="" placeholder="Amount" class="form-control ploicyNoclss" id="amntno_'+i+'_'+j+'" onkeyup="checkAmount('+i+','+j+')">'
+												+ '</div>'
+												+ '</td>'
+												+ '<td style="width: 15%;">'
+												+ '<div class="form-group" ><input type="text" name="Max Cap" value='+dataset6[i].investDetails[j].maxPayment+' readonly  class="form-control ploicyNoclss" id="maxcap_'+i+'_'+j+'">'
+												+ '</div>' + '</td>' + '</tr>';  
+									} else {
+										accData3 = '<tr>'
+												+ '<td style="width: 17%;">'
+												+ '<label><input type="hidden" name="subheader" value='+dataset6[i].investDetails[j].subheaderid+' id="subheaderid_'+i+'_'+j+'">'
+												+ dataset6[i].investDetails[j].subheader
+												+ '</label>'
+												+ '</td>'
+												+ '<td style="width: 15%;">'
+												+ '</td>'
+												+ '<td style="width: 3%;">'
+												+ '</td>'
+												+ '<td style="width: 15%;">'
+												+ '</td>'
+												+ '<td style="width: 20%;">'
+												+ '</td>'
+												+ '<td style="width: 15%;">'
+												+ '<div class="form-group"><input type="text" name="Amount" value="" placeholder="Amount" class="form-control ploicyNoclss" id="actualamntno_'+i+'_'+j+'" onkeyup="checkActualAmount('+i+','+j+')"><input type="hidden" name="Amount" value="" placeholder="Amount" class="form-control ploicyNoclss" id="amntno_'+i+'_'+j+'" onkeyup="checkAmount('+i+','+j+')">'
+												+ '</div>'
+												+ '</td>'
+												+ '<td style="width: 15%;">'
+												+ '<div class="form-group"  ><input type="text" name="Max Cap"  readonly value='+dataset6[i].investDetails[j].maxPayment+'  class="form-control ploicyNoclss" id="maxcap_'+i+'_'+j+'">'
+												+ '</div>' + '</td>' + '</tr>';
+										
+									}
+									temptd = temptd + accData3;
+								}
+								accData1 = accData1 + temptd;
+								accData4 = +'</tbody>' + '</table>';
+
+								accData2 = '<div class="row">'
+										+ '<table id="docTbl_'+i+'" cellspacing="7" cellpadding="7">'
+										+ '<thead>'
+										+ '<tr class="tr_clone">'
+										+ '<th width="175">Document Type</th>'
+										+ '<th width="380">Attachment</th>'
+										+ '</tr>'
+										+ '</thead>'
+										+ '<tbody id="doctbodyData1_'+i+'">'
+										+ '<tr>'
+										+ '<td><div class="form-group">'
+										+ '<div class="form-group"><input type="text" name="Document Name" value="" placeholder="Enter Document Name" class="form-control ploicyNoclss'+i+'" id="docname_'+i+'">'
+										+ '</div></td>'
+										+ '<td>'
+										+ '<div class="control-group position-r"><img th:src="${taskdocument}" id="imgLoc_'+i+'"style="height: 50px; weight: 50px;cursor:pointer" ></img>'
+										+ '<label class="custom-file-upload" for="uploadDoc_'+i+'" id="uploadFor_'+i+'"> <i class="ti-plus"></i> </label>'
+										+ '<div class="controls"><input type="file" class="document'
+										+ i
+										+ '" id="uploadDoc_'
+										+ i
+										+ '" name="userImage" accept="image/*" onchange="saveMultiFile(event,'
+										+ i
+										+ ')" />'
+										+ '</div>'
+										+ '</div> <input type="hidden" id="uploadHidden_'+i+'" class="uploadHidCls'+i+'">'
+										+ '<div id="uploadedBillDiv_'+i+'" align="center" class="uploadedBillCls'+i+'"></div>'
+										+ '<div id="imageName_'+i+'" class="imageName'+i+'" style="display: none;"></div>'
+										+ '</td>'
+										+ '</tr>' + '</div>' + '</div>'
+										+ '</div>' + '</div>';
+								accData = accData + accData1 + accData2
+								$("#acoordian").append(accData);
+
+							}
+							
+						}else{
+							$("#messageParagraph").text(
+							"Something went to wrong");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							$('.loader').hide();
+						}
+
+					}
+
+				});
+	}
+	function viewImage(id){
+		window.open(id,'_blank');
+	}	
+	function cancelData() {
+		$("#myGrid").show();
+		$("#allDataDetails").hide();
+		$("#reqTable").show();
+		$("#financialyr").val('');
+		$("#acoordian").empty();
+	}
+	function editTaxDetails(){
+		$("#edit").hide();
+		$("#submit").show();
+		$("input").removeAttr('disabled');
+		$("#toDateCalendar").show();
+  		$("#endDateCalendar").show();
+		$(".custom-file-upload").show();
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#fromDate_').val($(this).val());
+		})
+		$('#fromDate_').blur(function() {
+			$("#toDateCalendar").val($(this).val());
+		})
+
+		$("#endDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#toDate_').val($(this).val());
+		})
+		$('#toDate_').blur(function() {
+			$("#endDateCalendar").val($(this).val());
+		})
+	}
+	function checkEditAvailable() {
+		$("#addReq").val('');
+		$("#editReq").val('');
+		var financialYear = $("#financialyr").val();
+		$.ajax({
+			type : 'GET',
+			url : 'investment-declaration-checkEditAvailable?financialYear='
+					+ financialYear,
+			contentType : false,
+			success : function(response) {
+				if (response.message == "Success") {
+					console.log(response.body)
+					$("#addReq").val(response.body.name);
+					$("#editReq").val(response.body.code);
+				}
+			},
+			error : function(e) {
+				alert("error");
+			}
+		});
+	}
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row" id="allDataDetails">
+				<div class="maincontentsec">
+					<div class="row">
+						<div class="buttonsec btn-hs" id="btndiv">
+							<button class="new-btn" id="edit" onclick="editTaxDetails()">Edit</button>
+							<button class="approve-btn" id="submit" onclick="saveDetails()">SAVE</button>
+							<button class="cancel-btn" id="cancel" onclick="cancelData()">Cancel</button>
+						</div>
+					</div>
+
+					<div class="row">
+						<input type="hidden" id="addReq"> <input type="hidden"
+							id="editReq">
+						<div class="col-md-4">
+							<input type="hidden" id="declarId"> <input type="hidden"
+								id="sessionId" th:value="${session.USER_ID}">
+							<div class="form-group">
+								<label>Financial Year</label> <input type="text"
+									name="financialyr" placeholder="Financiyal Year"
+									class="form-control" id="financialyr" readonly>
+							</div>
+						</div>
+						<div class="col-md-4">
+							<div class="form-group">
+
+								<label>Employee Id</label> <input type="text" name="emp name"
+									placeholder="Employee No" class="form-control ploicyNoclss"
+									id="empId" readonly>
+
+							</div>
+						</div>
+
+						<div class="col-md-4">
+							<div class="form-group">
+
+								<label>Employee Name</label> <input type="text"
+									placeholder="Employee No" th:value="${session.USER_NAME}"
+									class="form-control ploicyNoclss" id="empName" readonly>
+
+							</div>
+						</div>
+
+					</div>
+					<div id="acoordian" class="mt-4"></div>
+				</div>
+
+			</div>
+			<div class="row" id="reqTable">
+
+				<div class="col-md-7 btn-hs">
+					<div class="font-design" id="totalCandidate">
+						Tax Declaration List (<span></span>)
+					</div>
+				</div>
+				<div class="col-md-5 buttonsec btn-hs">
+
+
+					<button onclick="addTaxDeclare()" class="new-btn" id="add">New</button>
+
+				</div>
+				<div id="myGrid" style="height: 500px; width: 100%;"
+					class="ag-theme-alpine"></div>
+			</div>
+
+
+		</div>
+	</div>
+
+</body>
+
+</html>

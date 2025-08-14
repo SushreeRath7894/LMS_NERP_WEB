@@ -1,0 +1,5066 @@
+
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+  <style>
+    .accordion-w {
+      width: 700px;
+    }
+    
+    .modal-w
+    {
+    	/* height: 845px; */
+    	height: auto;
+    }
+  </style>
+<link rel="stylesheet"
+	href="../assets/css/projects/project-creation.css" />
+ <!-- <script src="../assets/js/projects/project-cretaion.js"> </script> -->
+ 
+ 
+ <script>
+ $(document).ready(function() {
+		$("#demo").hide();
+		
+		
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions1);
+		
+		var gridDivReq = document.querySelector('#myGridReq');
+		new agGrid.Grid(gridDivReq, gridOptionsReq);
+		
+		var gridDivPo = document.querySelector('#myGridPo');
+		new agGrid.Grid(gridDivPo, gridOptionsPo);
+		
+		var gridDivProduct = document.querySelector('#myGridProduct');
+		new agGrid.Grid(gridDivProduct, gridOptionsProduct);
+		
+		var gridDivSku = document.querySelector('#myGridSku');
+		new agGrid.Grid(gridDivSku, gridOptionsSku);
+		
+		var gridDivProductSku = document.querySelector('#myGridProductSku');
+		new agGrid.Grid(gridDivProductSku, gridOptionsProductSku);
+		
+		/* var gridDivVender = document.querySelector('#myGridVender');
+		new agGrid.Grid(gridDivVender, gridOptionsVender); */
+		
+	/* 	var gridDivMaterialIssue = document.querySelector('#myGridMaterialIssue');
+		new agGrid.Grid(gridDivMaterialIssue, gridOptionsMaterialIssue);
+		
+		 */
+		var gridDiv = document.querySelector('#activity');
+		new agGrid.Grid(gridDiv, activityOptions);
+		
+		gridOptionsReq.api.setRowData();
+		activityOptions.api.setRowData();
+		gridOptionsPo.api.setRowData();
+		gridOptionsProduct.api.setRowData();
+		gridOptionsSku.api.setRowData();
+		gridOptionsProductSku.api.setRowData();
+	//	gridOptionsVender.api.setRowData();
+		//gridOptionsMaterialIssue.api.setRowData();
+		
+		$('#docTbl').on('click', '.rmv1', function() {
+			openDeleteConfirm();
+			var value = $(this).parent("div").attr("id");
+			$("#dltValue").val(value);
+		});
+		
+		let x = []
+		gridOptions1.api.setRowData(x);
+
+		 agGrid.simpleHttpRequest({
+				url : "create-project-view"
+			}).then(function(data) {
+				var jsonData = JSON.parse(data.body);
+				var allData = jsonData.viewProjectData;
+				var len = allData.length;
+				$('#totalPrj').find('span').html(len);
+				gridOptions1.api.setRowData(allData);
+				 var firstRowNode = gridOptions1.api.getDisplayedRowAtIndex(0); // Get the first row node
+					  if (firstRowNode) {
+					    firstRowNode.setSelected(true); // Set the row as selected
+					  } 
+			});
+		 
+		 
+		 agGrid.simpleHttpRequest({
+				url : 'create-project-product-get-sku-listing?type='+"Purchase"
+			}).then(function(data) {
+				var len = data.length;
+				$('#totalProduct').find('span').html(len);
+				console.log(data)
+				gridOptionsProduct.api.setRowData(data);
+			});
+		 
+		 /* 
+			agGrid.simpleHttpRequest({
+				url : 'create-project-ProductSku-view'
+			}).then(function(data) {
+				console.log(data)
+				var jsonData = JSON.parse(data.body);
+				var allData = jsonData.viewPrductSkuData;
+				gridOptionsProductSku.api.setRowData(allData);
+			}); */
+		 
+		 
+			var productCount="";
+			 $("#saveSKUData").click(function() {
+			    	var skuIDD = $("#skuId").val();
+			    	
+			    	if(skuIDD == '' || skuIDD == "null"){
+			        var modelID = $("#model").val();
+			        var color = $("#color").val();
+			        var brand = $("#brand").val();
+
+			        $.ajax({
+			            type: "GET",
+			            url: "create-project-getValidation?modelID=" + modelID + "&color=" + color + "&brand=" + brand,
+			            success: function(response) {
+			                if (response.message == "success") {
+			                    // Assuming response.body contains the validation data
+			                    const jsonString = response.body.map(item => item.replace(/'/g, '"'));
+			                    const jsonArray = jsonString.map(item => JSON.parse(item));
+			                    
+			                    let productCount = jsonArray[0].count; // Accessing the count from the response
+
+			                    if (productCount >= 1) {
+			                        // If productCount is 1 or more, show duplicate entry message
+			                        $("#messageParagraph").text("Duplicate entry");
+			                        $("#msgOkModal").removeClass("btn3");
+			                        $("#msgOkModal").addClass("btn1");
+			                        $("#msgModal").modal('show');
+			                        closeNavFive();
+			                    } else {
+			                        // Proceed with form validation and submission
+			                    	validateAndSubmitForm();
+			                    }
+			                }
+			            }
+			        });
+			    	}else{
+			    		 validateAndSubmitForm();
+			    	}
+			    });
+		    
+		    
+		   /*  $("#saveProduct").click(function(){
+		    	 var selectedRowsProduct = gridOptionsProduct.api.getSelectedRows();
+		    	 var selectedRowsSku = gridOptionsSku.api.getSelectedRows();
+		    	obj = {};
+		    	item_sku_data = [];
+		    	obj.productSkuId = $("#productSkuId").val();
+		    	obj.skuList = selectedRowsSku;
+			    obj.productList = selectedRowsProduct;
+		    	
+		    	$(".formValidation").remove();
+				allValid = true;
+				
+				
+				if(allValid) {
+				//	submitProductSkuDetails(obj);
+					gridOptionsProductSku.api.forEachNode(function(rowNode, index) {
+			        	 item_sku_data.push(obj);
+				        });
+					 cancelModalProductSkuBtn();
+				}
+		    	
+		    }); */
+		    
+		    $("#skuPurchase").change(function(){
+    	var sku = $(this).val();
+    	$("#variantTypeSpan").text("");
+		$("#variantValueSpan").text("");
+		$("#variantUnitSpan").text("");
+    	if(sku) {
+    		obj = {};
+    		obj.key = $("#productId").val();
+    		obj.name = sku;
+    		$.ajax({
+				type : "POST",
+				url : "create-project-ProductList-get-variant-dtls",
+				dataType : 'json',
+				contentType : 'application/json',
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "success") {
+						$("#variantTypeSpan").text(response.body.key);
+			    		$("#variantValueSpan").text(response.body.name);
+			    		$("#variantUnitSpan").text(response.body.code);
+					}
+				}, error : function(data) {
+					console.log(data)
+				}
+    		});
+    	} else {
+    		$("#variantTypeSpan").text("");
+    		$("#variantValueSpan").text("");
+    		$("#variantUnitSpan").text("");
+    	}
+    })
+			
+		
+	});
+
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	
+	
+
+	function cancelBarReq() {
+		var id = document.getElementById("closeKeyReq");
+		id.style.display = "block";
+		if ($('#quickFilterReq').val() == null || $('#quickFilterReq').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	
+	function cancelBarPo() {
+		var id = document.getElementById("closeKeyPo");
+		id.style.display = "block";
+		if ($('#quickFilterPo').val() == null || $('#quickFilterPo').val() == "") {
+			id.style.display = "none";
+		}
+	}
+
+
+	var columnDefs = [
+			{
+				headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true,
+				
+			},
+			{
+				headerName : "Project ID",
+				field : "projectId",
+				type : 'leftAligned',
+				cellRenderer : function(params) {
+					return '<a onclick=editPage("' + params.data.projectId
+							+ '") href="javascript:void(0)">'
+							+ params.data.projectId + '</a>';
+				},
+				
+			}, {
+				headerName : "Project Name",
+				field : "projectName",
+				type : 'leftAligned',
+				width : 250,
+				
+			}, {
+				headerName : "Creation Date",
+				field : "creationDate",
+				type : 'leftAligned',
+				width : 250,
+			}, {
+				headerName : 'Location',
+				field : "location",
+				type : 'leftAligned',
+				width : 230,
+			}, {
+				headerName : 'Country',
+				field : "country2",
+				type : 'leftAligned',
+				width : 130,
+				hide : true
+			}, {	
+				headerName : "State",
+				field : "stateid2",
+				type : 'leftAligned',
+				width : 150,
+				hide : true
+			}, {
+				headerName : 'Pin',
+				field : "pPin",
+				type : 'leftAligned',
+				hide : true
+			}, {
+				headerName : 'Project Incharge',
+				field : "pIncharge",
+				type : 'leftAligned',
+				width : 250,
+			}, {
+				headerName : 'Billing Name',
+				field : "cName",
+				type : 'leftAligned',
+				hide : true
+			}, {
+				headerName : 'Billing Address',
+				field : "cAddress",
+				type : 'leftAligned',
+				hide:true
+			}, {
+				headerName : 'Billing Country',
+				field : "country",
+				width : 150,
+				type : 'leftAligned',
+				hide : true
+			}, {
+				headerName : 'Billing State',
+				field : "stateid",
+				width : 150,
+				type : 'leftAligned',
+				hide : true
+			}, {
+				headerName : 'Billing Pin',
+				field : "cPin",
+				width : 150,
+				hide : true,
+				type : 'leftAligned',
+				hide : true
+
+			}, {
+				headerName : 'Billing Email',
+				field : "email",
+				width : 150,
+				type : 'leftAligned',
+				hide : true
+
+			}, {
+				headerName : 'Billing Mobile',
+				field : "mobile",
+				width : 150,
+				type : 'leftAligned',
+				hide : true
+
+			}, {
+				headerName : 'Remarks',
+				field : "remark",
+				width : 150,
+				type : 'leftAligned',
+				hide : true
+
+			}, {
+				headerName : 'status',
+				field : "status",
+				width : 150,
+				type : 'leftAligned',
+				
+			} ];
+	
+	//for req
+	
+	var columnDefsReq = [
+			{
+			//	headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				sortable : false,
+				filter : false,
+				resizable : true,
+				width : 20
+			},
+			{
+				headerName : "Requisition Id",
+				field : "indentId",
+				cellRenderer : function(params) {
+					return '<a onclick=editIndent("' + params.data.indentId
+					+','+params.data.aprroveStatus + '") href="javascript:void(0)">'
+							+ params.data.indentId + '</a>';
+				}
+
+			}, {
+				headerName : "Department",
+				field : "deptName",
+				hide : "true"
+			},
+			{
+				headerName : "Department Id",
+				field : "deptId",
+				hide : "true"
+			}, 
+			{
+				headerName : "Purpose",
+				field : "desc",
+				width : 205,
+			},  {
+				headerName : "Receive By Date",
+				field : "receiveDate",
+				cellStyle : {
+					textAlign : 'center'
+				}
+
+			}, {
+				headerName : "Status",
+				field : "aprroveStatus",
+				cellStyle : {
+					textAlign : 'center'
+				},
+				cellRenderer : function(params) {
+					if (params.data.aprroveStatus =="Pending") { 
+						return '<div style="color:#a9a9a9">Pending</div>';
+					} else {
+						return '<div style="color:#0642f5">Approved</div>';
+					} 	
+				}
+			}, {
+				headerName : "Created By",
+				field : "createdBy",
+					cellStyle : {
+						textAlign : 'center'
+					}
+			},
+			{
+				headerName : "Project",
+				field : "project",
+				width : 190,
+				//hide : "true"
+			},
+			{
+				headerName : "Current Reply ",
+				field : "current",
+				width : 190,
+				hide : "true"
+			},
+			{
+				headerName : "Previous Reply",
+				field : "previous",
+				width : 190,
+				hide : "true"
+			},
+			{
+				headerName : "Created Date",
+				field : "date",
+				width : 175,
+				cellStyle : {
+					textAlign : 'center'
+				}
+
+			} ];
+	//FOR PO/WO
+	
+	var columnDefsPo = [
+			{
+				//headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+			{
+				headerName : "PO/WO Order",
+				field : "poId",
+				width : 170,
+				cellRenderer : function(params) {
+					return '<a onclick=editPo("' + params.data.poId
+					+','+params.data.appoveStatus
+					+ '") href="javascript:void(0)">'
+							+ params.data.poId + '</a>';
+				}
+			},
+			{
+
+				headerName : 'PO/WO Date',
+				field : "updatedOn",
+				width : 150,
+				cellStyle : {
+					textAlign : 'center'
+				}
+			},
+			{
+				headerName : 'Reference',
+				field : "reference",
+				width : 150,
+				cellStyle : {
+					textAlign : 'center'
+				}
+			},
+			{
+				headerName : 'PO/WO Status',
+				field : "poActive",
+				width : 150,
+				cellStyle : {
+					textAlign : 'center'
+				}
+			},
+			{
+				headerName : 'Vendor name',
+				field : "vendorName",
+				width : 150,
+			},
+			{
+
+				headerName : 'Amount',
+				field : "grandTotal",
+				width : 150,
+				type : 'rightAligned',
+			},
+			{
+				headerName : 'Approve Status',
+				field : "appoveStatus",
+				width : 150,
+				cellStyle : {
+					textAlign : 'center'
+				},
+				cellRenderer : function(params) {
+					if (params.data.appoveStatus =="Pending") { 
+						return '<div style="color:#a9a9a9">Pending</div>';
+					} else {
+						return '<div style="color:#0642f5">Approved</div>';
+					} 	
+				}
+			},
+			 {
+				headerName : "PO/WO PDF",
+				cellStyle : {
+					textAlign : 'center'
+				},
+				cellRenderer : function(params) {
+					var s = "";
+					var id = params.data.poId
+					var annex = params.data.annexureName ? true : false;
+					var terms = params.data.terms ? true : false;
+					
+					console.log('annex',params.data)
+					console.log('annexannex',annex)
+					console.log('terms',terms)
+					s = '<a href="#" class="grn-btn" onclick="poPdfDownload(\''+ id+ '\', ' + annex + ',' + terms +')"><i class="ti ti-download"></i> PO</a>';
+				
+							return s;
+				},
+				width : 150,
+
+			},
+			{
+				headerName : 'Invoice Status',
+				field : "invoiceStatus",
+				width : 150,
+				cellStyle : {
+					textAlign : 'center'
+				},
+				cellRenderer : function(params) {
+					if (params.data.invoiceStatus == "Generated") {
+						return '<div style="color:#008000">'
+								+ params.data.invoiceStatus + '</div>';
+					} else {
+						return '<div style="color:#a9a9a9">'
+								+ params.data.invoiceStatus + '</div>';
+					}
+				}
+			},
+			{
+				headerName : 'Expected Delivery Date',
+				field : "qutValidDate",
+				width : 230,
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}
+			
+			,{
+				headerName : 'Project',
+				field : "project",
+				width : 200,
+				
+			} 
+			
+			,{
+				headerName : 'Total Quantity',
+				field : "totalQty",
+				width : 150,
+				cellStyle : {
+					textAlign : 'center'
+				}
+			},
+			,{
+				headerName : 'Received Quantity',
+				field : "received",
+				width : 150,
+				hide : true,
+				cellStyle : {
+					textAlign : 'center'
+				}
+			},
+			,{
+				headerName : 'Pending Quantity',
+				field : "pending",
+				width : 150,
+				hide : true,
+				cellStyle : {
+					textAlign : 'center'
+				}
+			},{
+			headerName : 'SAP Purchase Order Id',
+			field : "sapPOId",
+			width : 150,
+			hide : true,
+			cellStyle : {
+				textAlign : 'center'
+			}
+		  },{
+			headerName : 'Created By',
+			field : "createdBy",
+			width : 150,
+			cellStyle : {
+				textAlign : 'center'
+			}
+		 },{
+				headerName : 'Requisition',
+				field : "reqId",
+				width : 150,
+				cellStyle : {
+					textAlign : 'center'
+				}
+			},
+			
+			];
+	var columnDefsProduct = [{
+	    headerCheckboxSelection: false,
+	    headerCheckboxSelectionFilteredOnly: true,
+	    checkboxSelection: true,
+	    width: 10,
+	    sortable: false,
+	    filter: false,
+	    resizable: true
+	},
+	{
+	    headerName: "Product Id",
+	    field: "productId",
+	    cellRenderer: function(params) {
+	        return '<a onclick=openDetails("' + params.data.productId + '") href="javascript:void(0)">' + params.data.productId + '</a>';
+	    }
+	},
+	{
+		 headerName: "Product Name",
+		    field: "productName",
+		    width: 200,
+	},
+	
+	{
+	   
+	    headerName: "Category",
+	    field: "productCategoryText",
+	    width: 200,
+	},
+	{
+	    headerName: "Mode",
+	    field: "mode",
+	    cellStyle: {textAlign: 'center'}
+	},
+	{
+		headerName: "Status",
+	    field: "productStatus",
+	    cellStyle: {textAlign: 'center'}
+	},
+	{
+	  
+	    headerName: "Created By",
+	    field: "createdBy",
+	    cellStyle: {textAlign: 'center'}
+	},
+	{
+	    headerName: "Create Date",
+	    field: "createdDate",
+	    cellStyle: {textAlign: 'center'}
+	}
+	];	
+	
+	
+
+	var columnSKUDefs = [{
+		headerCheckboxSelection: true,
+	    headerCheckboxSelectionFilteredOnly: true,
+	    checkboxSelection: true,
+	    width: 10,
+	    sortable: false,
+	    filter: false,
+	    resizable: true,
+	    pinned: 'left',
+	},
+	{
+	    headerName: "SKU",
+	    field: "sku",
+	    cellRenderer: function(params) {
+	        return '<a onclick=openSKUDetails("' + params.data.sku + '","'+params.data.productId+'") href="javascript:void(0)">' + params.data.sku + '</a>';
+	    },
+	    pinned: 'left',
+	},
+	{
+	    headerName: "Model",
+	    field: "model",
+	    pinned: 'left',
+	},
+	{
+	    headerName: "Manufacture Item",
+	    field: "manufacture",
+	    width: 260,
+	   
+	},
+	{
+	    headerName: "Brand",
+	    field: "brand",
+	    width: 220,
+	},
+	{
+	    headerName: "Color",
+	    field: "color"
+	},
+	{
+	    headerName: "UOM",
+	    field: "unit"
+	},
+	{
+	    headerName: "Unit Sale Price",
+	    field: "sPrice",
+	    hide:"true",
+	    cellStyle: {textAlign: 'right'}
+	},
+	{
+		headerName : "Image",
+		field : "docName",
+		width : 100,
+		cellRenderer : function(params) {
+			var div = "";
+			if (params.data.docName ){
+				var ext = params.data.docName.split(".");
+				if (ext[1] == "pdf") {
+					div = div
+					+ " "
+					+ '<div class ="fa fa-file-pdf-o" style="cursor: pointer; color: red;" onclick=viewImage("'+ params.data.docName + '")> </div>';
+				}else{
+					div = div
+					+ " "
+					+ '<div class ="fa fa-picture-o" style="cursor: pointer; color: blue;" onclick=viewImage("'+ params.data.docName + '")> </div>';
+				}
+			}
+		return div;
+		}
+	},
+	{
+	    headerName: "Create Date",
+	    field: "createdDate",
+	    width: 220,
+	    cellStyle: {textAlign: 'center'}
+	}
+	];
+	
+	var columnProductSKUDefs = [{
+	    headerCheckboxSelection: true,
+	    headerCheckboxSelectionFilteredOnly: true,
+	    checkboxSelection: true,
+	    width: 10,
+	    sortable: false,
+	    filter: false,
+	    resizable: true
+	    },{
+		    headerName: "Product Id",
+		    field: "productId",
+		    
+		},
+		{
+			 headerName: "Product Name",
+			    field: "productName",
+			    width: 200,
+	
+	},
+	{
+	    headerName: "SKU",
+	    field: "sku",
+	   
+	},
+	{
+	    headerName: "Model",
+	    field: "model"
+	},
+	{
+	    headerName: "Manufacture Item",
+	    field: "manufacture",
+	    width: 260,
+	},
+	{
+	    headerName: "Brand",
+	    field: "brand",
+	    width: 220,
+	},
+	{
+	    headerName: "Color",
+	    field: "color"
+	},{
+	    headerName: "UOM",
+	    field: "unit"
+	},
+	
+	
+	];
+	
+	var gridOptionsProduct = {
+			columnDefs: columnDefsProduct,
+			rowSelection: 'single',
+			defaultColDef: {
+				sortable: true,
+			    filter: true,
+			    resizable: true,
+			    width: 149,
+			    height: 10
+			},
+			rowSelection: 'single',
+			suppressRowClickSelection : true,
+			onSelectionChanged: onSelectionChangedproduct
+			};
+	
+
+
+	var gridOptionsSku = {
+	columnDefs: columnSKUDefs,
+	rowSelection: 'multiple',
+	defaultColDef: {
+		sortable: true,
+	    filter: true,
+	    resizable: true,
+	    width: 149,
+	    height: 10
+	},
+	rowSelection: 'multiple',
+	suppressRowClickSelection : true,
+	onSelectionChanged: onSelectionChangedsku 
+	};
+	
+	
+
+	var gridOptionsProductSku = {
+	columnDefs: columnProductSKUDefs,
+	rowSelection: 'multiple',
+	defaultColDef: {
+		sortable: true,
+	    filter: true,
+	    resizable: true,
+	    width: 149,
+	    height: 10
+	},
+	rowSelection: 'multiple',
+	suppressRowClickSelection : true,
+	};
+
+	
+	
+	/* //FOR MATERIAL ISSUE
+	
+	var columnDefsMaterialIssue = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true
+
+		},
+		{
+			headerName : 'Issue Slip No',
+			width : 150,
+			field : "issueSlip",
+				cellRenderer : function(params) {
+				return '<a id="qcId" onclick=editId("'
+				+params.data.issueSlip
+				+ '") href="javascript:void(0)">'
+				+ params.data.issueSlip + '</a>';
+
+			}
+
+		}, { 
+			headerName : 'Project Id',
+			width : 200,
+			field : "project",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		},{
+		headerName : 'Project Name',
+		field : "projectName",
+		width : 300,
+	
+		}, {
+			headerName : 'Reference No',
+			width : 150,
+			field : "refNo",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		}, {
+			headerName : 'Type of Material',
+			field : "type",
+			width : 150,
+			cellStyle : {
+				textAlign : 'center'
+			}
+		},{
+			headerName : 'Vendor Name',
+			field : "vendorName",
+			width : 200,
+			cellStyle : {
+				textAlign : 'center'
+			}
+		},{
+			headerName : 'Issue Date',
+			field : "date",
+			width : 150,
+			cellStyle : {
+				textAlign : 'center'
+			}
+		} ]; */
+			
+	//for shipping table
+	var activityDefs = [
+			{
+				//headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				sortable : false,
+				filter : false,
+				resizable : true,
+				width : 30
+			},
+			{
+				headerName : "SlNo",
+				field : "slNo",
+				width : 70,
+				cellRenderer : function(params) {
+					if (params.data.slNo) {
+						return '<a onclick=rowEdit("' + params.data.slNo
+								+ '") href="javascript:void(0)">'
+								+ params.data.slNo + '</a>';
+					} else {
+						return '<a onclick=rowEdit("' + params.data.slNo
+								+ '") href="javascript:void(0)">'
+								+ params.data.slNo + '</a>';
+					}
+				}
+			}, {
+				headerName : "Shipping Name",
+				field : "shippingName",
+				width : 500,
+				cellStyle : {
+					textAlign : 'center'
+				},
+			}, {
+				headerName : "Shipping Address",
+				field : "shippingAddress",
+				width : 200,
+				cellStyle : {
+					textAlign : 'center'
+				},
+				hide:true
+			},
+					{
+						headerName : 'Shipping Country',
+						field : "country1Name",
+						width : 120,
+					}, {
+						headerName : 'Country',
+						field : "country1",
+						hide : true,
+					},
+					
+					{
+						headerName : 'Shipping State',
+						field : "stateid1Name",
+						width : 120,
+					}, {
+						headerName : 'State',
+						field : "stateid1",
+						hide : true,
+					},
+					{
+							headerName : "Shipping City",
+							field : "shippingCity",
+							width : 200,
+							cellStyle : {
+								textAlign : 'center'
+							},
+							},{
+									headerName : "Street1",
+									field : "shippingStreet1",
+									width : 200,
+									cellStyle : {
+										textAlign : 'center'
+									},
+									
+									},{
+										headerName : "Street2",
+										field : "shippingStreet2",
+										width : 200,
+										cellStyle : {
+											textAlign : 'center'
+										},
+									
+										},{
+											headerName : "Gst No",
+											field : "shippingGstNo",
+											width : 200,
+											cellStyle : {
+												textAlign : 'center'
+											},
+									
+										},{
+											headerName : "Shipping Pin",
+											field : "shippingPin",
+											width : 200,
+											cellStyle : {
+												textAlign : 'center'
+											},
+											
+											},{
+												headerName : "Shipping Email",
+												field : "shippingEmail",
+												width : 200,
+												cellStyle : {
+													textAlign : 'center'
+												},
+												},{
+													headerName : "Shipping Mobile No.",
+													field : "shippingMobileNo",
+													width : 200,
+													cellStyle : {
+														textAlign : 'center'
+													},
+													
+					
+			},];
+
+
+	// let the grid know which columns and what data to use product table
+	var activityOptions = {
+		columnDefs : activityDefs,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 200
+		},
+		onSelectionChanged : onSelectionChangeChild,
+		getRowNodeId : function(data) {
+			return data.slNo;
+		}
+	};
+	
+	var gridOptions1 = {
+			columnDefs : columnDefs,
+			//rowData : rowData,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 200,
+				height : 20
+			},
+			rowSelection : 'single',
+			onSelectionChanged : onSelectionChanged
+		};
+		
+		var gridOptionsReq = {
+				columnDefs : columnDefsReq,
+				rowSelection : 'single',
+				groupSelectsChildren : true,
+				suppressRowClickSelection : true,
+				suppressAggFuncInHeader : true,
+				defaultColDef : {
+					sortable : true,
+					filter : true,
+					resizable : true,
+					width : 153
+				},
+			};
+
+		var gridOptionsPo = {
+				columnDefs : columnDefsPo,
+				rowSelection : 'multiple',
+
+				groupSelectsChildren : true,
+				suppressRowClickSelection : true,
+				suppressAggFuncInHeader : true,
+				defaultColDef : {
+					sortable : true,
+					filter : true,
+					resizable : true,
+					width : 251,
+					height : 10
+				},
+
+			};
+	/* 	
+		var gridOptionsMaterialIssue = {
+				columnDefs : columnDefsMaterialIssue,
+				rowSelection : 'single',
+				groupSelectsChildren : true,
+				suppressRowClickSelection : true,
+				suppressAggFuncInHeader : true,
+				defaultColDef : {
+					sortable : true,
+					filter : true,
+					resizable : true,
+					width : 120
+				},
+			};	 */
+
+	//function for row select parents
+	var id = "";
+		var creq="";
+		function onSelectionChangeChild() {
+			 var selectedNodes = activityOptions.api.getSelectedNodes();
+			 var selectedData = selectedNodes.map(node => node.data);
+			 creq= selectedData.map(node => node.shippingId);
+			 
+			var selectedRows = activityOptions.api.getSelectedRows();
+			id = "";
+			for (var i = 0; i < selectedRows.length; i++) {
+
+				id = id + '"' + selectedRows[i].projectId + '",';
+				console.log(selectedRows[i].status);
+			}
+			id = id.substring(0, id.length - 1);
+
+			var rowCount = 0;
+			selectedRows.forEach(function(i) {
+				rowCount = rowCount + 1;
+			});
+			if (rowCount > 0) {
+				$('#newchild').attr('disabled', true);
+				$('#deleteChild').attr('disabled', false);
+			
+		}else{
+			$('#newchild').attr('disabled', false);
+			$('#deleteChild').attr('disabled', true);
+			
+		}
+		}
+		
+		
+		
+
+	//function for openNav child	
+	function openNav() {
+		$("#shippingId").val('');
+		$("#shippingName").val('');
+		$("#shippingAddress").val('');
+		$("#shippingCountry").val('');
+		$("#shippingState").val('');
+		$("#shippingCity").val('');
+		$("#shippingStreet1").val('');
+		$("#shippingStreet2").val('');
+		$("#shippingPin").val('');
+		$("#shippingEmail").val('');
+		$("#shippingMobileNo").val('');
+		$("#country1").val('');
+		$("#stateid1").val('');
+		$("#rowEdit").val("");
+		$("#shippingContact").val("");
+		$('#saveId').attr('disabled', true);
+		
+	
+		
+		document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:430px;";
+		document.getElementById("main").style.width = "75%";
+		document.getElementById("mainProductsku").style.width = "75%";
+	}
+
+	//function for closeNav child
+	function closeNav() {
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main").style.width = "100%";
+		document.getElementById("mainProductsku").style.width = "100%";
+		$("#shippingId").val('');
+		$("#shippingName").val('');
+		$("#shippingAddress").val('');
+		$("#shippingCountry").val('');
+		$("#shippingState").val('');
+		$("#shippingCity").val('');
+		$("#shippingStreet1").val('');
+		$("#shippingStreet2").val('');
+		$("#shippingPin").val('');
+		$("#shippingEmail").val('');
+		$("#shippingMobileNo").val('');
+		$("#country1").val('');
+		$("#stateid1").val('');
+		$("#shippingContact").val("");
+		$("#rowEdit").val(null);
+		
+		$('#saveId').attr('disabled', false);
+		
+	}
+
+	//master save data
+
+	function addCreation() {
+		if (validFormData()) {
+			var datas = [];
+		    var imageValid=true;
+		    var uploadList = [];
+		    $("#doctbodyData > tr").each(function() {
+		        var uFile = $(this).find(".document")[0].files[0];
+		        var fileName = $(this).find(".document").val();
+		        var data = [];
+		        var x = [];
+		        if (fileName != '' && fileName != 'undefined' && fileName != null) {
+		            var lastIndex = fileName.lastIndexOf("\\");
+		            if (lastIndex >= 0) {
+		                fileName = fileName.substring(lastIndex + 1);
+		            }
+		            var reader = new FileReader();
+		            reader.readAsDataURL(uFile);
+
+		            reader.onload = function() {
+		                data = reader.result.split(",");
+		                x.push(data[1]);
+		            };
+		        } else {
+		            if ($("#projectId").val()) {
+		                fileName = $(this).find(".uploadHidCls").val();
+		            } else {
+		                x = [];
+		            }
+
+		        }
+		        uploadData = {};
+		        uploadData['projectId'] = $("#projectId").val();
+		        uploadData['documnentName'] = $(this).find(".docNoclss").val();
+		        uploadData['documentFile'] = x;
+		        uploadData['fileName'] = fileName;
+		        uploadData['imageNameEdit'] = $(this).find(".uploadHidCls").val();
+		        if($(this).find(".docNoclss").val()!="" && $(this).find(".docNoclss").val()!='null' && fileName!="" && fileName!="null"){
+		            uploadList.push(uploadData);
+		            console.log(uploadData)
+		        } 
+		        console.log('DOC', uploadData)
+		    });
+		    
+		     setTimeout(function() {
+	        var obj = {};
+	        var item_data = [];
+	        var item_sku_data = [];
+	        
+	        activityOptions.api.forEachNode(function(rowNode, index) {
+	            console.log(rowNode)
+	            var item_obj = {};
+	            item_obj.shippingId = rowNode.data.shippingId;
+	            item_obj.shippingName =  rowNode.data.shippingName;
+	            item_obj.shippingAddress =  rowNode.data.shippingAddress;
+	            item_obj.country1 =  rowNode.data.country1;
+	            item_obj.stateid1 =  rowNode.data.stateid1;
+	            item_obj.shippingCity =  rowNode.data.shippingCity;
+	            item_obj.shippingStreet1 =  rowNode.data.shippingStreet1;
+	            item_obj.shippingStreet2 =  rowNode.data.shippingStreet2;
+	            item_obj.shippingPin =  rowNode.data.shippingPin;
+	            item_obj.shippingEmail =  rowNode.data.shippingEmail;
+	            item_obj.shippingMobileNo =  rowNode.data.shippingMobileNo;
+	            item_obj.shippingGstNo =  rowNode.data.shippingGstNo;
+	            item_obj.shippingContact =  rowNode.data.shippingContact;
+	            
+	            item_data.push(item_obj);
+	       
+	         });
+	       
+	        
+	         gridOptionsProductSku.api.forEachNode(function(rowNode, index) {
+	        	 item_sku_data.push(rowNode.data);
+		        });
+	         console.log('sku', item_sku_data)
+	        
+	        
+	        obj.projectId = $("#projectId").val();
+	        obj.projectName = $("#projectname").val();
+	        obj.creationDate = $("#creationID").val();
+	        obj.location = $("#locationID").val();
+	        obj.country2 = $("#country2").val();
+	        obj.stateid2 = $("#stateid2").val();
+	        obj.pPin = $("#pinID").val();
+	        obj.pIncharge = $("#pIncharge").val();
+	        obj.cName = $("#cname").val();
+	        obj.cAddress = $("#caddress").val();
+	        obj.country = $("#country").val();
+	        obj.stateid = $("#stateid").val();
+	        obj.cityb = $("#cityb").val();
+	        obj.street1b = $("#street1b").val();
+	        obj.street2b = $("#street2b").val();
+	        obj.cPin = $("#cPin").val();
+	        obj.email = $("#email").val();
+	        obj.mobile = $("#mobile").val();
+	        obj.remark = $("#remarks").val();
+	        obj.status = $("#status").val();
+	        obj.billingStreet1 = $("#street1").val();
+	        obj.billingStreet2 = $("#street2").val();
+	        obj.billingGstNo = $("#gstNo").val();
+	        obj.documentList = uploadList;
+	        obj.shippingList = item_data;
+	        obj.productList = item_sku_data;
+	        obj.projectType = $("#projectType").val();
+	        
+	        datas.push(obj);
+	        console.log("dataset-------------------" + JSON.stringify(datas));
+
+	      saveAllQuotation(datas);
+	    }, 1000)
+		}
+	    
+	}
+
+	function validFormData() {
+		var allValid = true;
+
+		if (!validationUpdated("Project Name Required", 'projectname'))
+			allValid = false;
+		if (!validationUpdated("Creation Date Required",
+				'creationID'))
+			allValid = false;
+		
+		if (!validationUpdated("Type Required",
+		'projectType'))
+	allValid = false;
+		
+		return allValid;
+	}
+
+	/* function validProductData() {
+		var item = null;
+		activityOptions.api.forEachNode(function(rowNode, index) {
+			item = item + rowNode.data;
+		});
+		if (item) {
+			return true;
+		} else {
+			$("#messageParagraph").text("Please Add Shipping and Billing Details");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			return false;
+		}
+	} */
+
+
+	function saveAllQuotation(datas) {
+
+	    console.log("dastssss"+datas)
+		$.ajax({
+			type : "POST",
+			url : "create-project-add",
+			contentType : "application/json",
+			data : JSON.stringify(datas),
+			success : function(response) {
+				if (response.message == "Success") {
+					
+					$("#messageParagraph").text("Data Saved Successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+									
+					//$("#projectId").html(response.body[0].projectId);
+					closeNav1();
+					
+					agGrid.simpleHttpRequest({
+						url : "create-project-view"
+					}).then(function(data) {
+						var jsonData = JSON.parse(data.body);
+						var allData = jsonData.viewProjectData;
+						var len = allData.length;
+						$('#totalPrj').find('span').html(len);
+						gridOptions1.api.setRowData(allData);
+						 var firstRowNode = gridOptions1.api.getDisplayedRowAtIndex(0); // Get the first row node
+							  if (firstRowNode) {
+							    firstRowNode.setSelected(true); // Set the row as selected
+							  } 
+							  onQuickFilterChanged();
+					});
+					
+				}
+
+			},
+			error : function(datas) {
+				console.log(datas)
+			}
+		})
+
+	}
+
+	function addCandidate() {
+
+		$('#hideTbl').hide();
+		$('#buttonDetails').hide();
+		$('#myGrid').hide();
+		$('#demo').show();
+		$("#btn1").show();
+		$('#candidateId').val("");
+
+		$("#collapseOne").collapse({
+			toggle : false
+		}).collapse('show');
+	}
+
+	$("#budgetId").click(function() {
+		$("#a").css("display", "block");
+		$("#b").css("display", "block");
+	});
+
+	
+
+	$("#budgetId").click(function() {
+		$("#a").css("display", "block");
+		$("#b").css("display", "block");
+	});
+
+	/* APPLY FOR REQUISITION ENDS */
+
+	// setup the grid after the page has finished loading
+	$(document).ready(function() {
+		closeNav1();
+		activityOptions.api.setRowData();
+
+		$("#cancelFridTrial").attr('disabled', true);
+		$("#transportvalue").hide();
+
+		$('#delete').attr('disabled', true);
+
+		$("#reject").attr('disabled', true);
+		$("#approve").attr('disabled', true);
+		var today = new Date();
+		var dd = String(today.getDate()).padStart(2, '0');
+		var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+		var yyyy = today.getFullYear();
+
+		//today = dd + '-' + mm + '-' + yyyy;
+
+		today = dd + '-' + mm + '-' + yyyy;
+
+		$('#creationID').val(today);
+		$('#toDate').val(today);
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalendar").datetimepicker({
+			//format : dateFormat,
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#creationID').val($(this).val());
+		})
+
+		$('#creationID').blur(function() {
+			$("#fromDateCalendar").val($(this).val());
+		})
+
+	});
+
+	
+
+	function cancelbtn() {
+		$('#reqDltBtn').attr('disabled', true);
+		$("#myGrid").show();
+		$("#btn1").hide();
+		$("#demo").hide();
+		$("#hideTbl").show();
+		$("#buttonDetails").show();
+	}
+	var prjId ='';
+	var projectedId = '';
+	var projectedName ='';
+	var prjname ='';
+	function onSelectionChanged() {
+		var selectedRows = gridOptions1.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+		for (var i = 0; i < selectedRows.length; i++) {
+			prjId = prjId  + selectedRows[i].projectId; 
+			projectedName = projectedName  + selectedRows[i].projectName; 
+		}
+		prjname = projectedName;
+		projectedId =prjId; 
+		callThrghProject(prjId);
+
+		if (rowCount > 0) {
+			$('#delete').attr('disabled', false);
+			$("#reject").attr('disabled', false);
+			$("#approve").attr('disabled', false);
+			$("#add").attr('disabled', true);
+			$("#createReq").attr('disabled', false);
+			$("#createPo").attr('disabled', false);
+		} else {
+			$('#delete').attr('disabled', true);
+			$("#reject").attr('disabled', true);
+			$("#approve").attr('disabled', true);
+			$("#add").attr('disabled', false);
+			$("#createReq").attr('disabled', true);
+			$("#createPo").attr('disabled', true);
+		}
+		
+		prjId ='';
+		projectedName = '';
+		
+	}
+	function callThrghProject(prjId){
+		
+	 	agGrid.simpleHttpRequest({
+			url : "create-project-Requision?id=" + prjId,
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			if(jsonData == null){
+				$('#totalReq').find('span').html('0');
+				gridOptionsReq.api.setRowData();
+			}else{
+				var len = jsonData.length;
+				console.log('len',len)
+				$('#totalReq').find('span').html(len);
+				gridOptionsReq.api.setRowData(jsonData);
+				
+			}
+			
+		});
+		
+		
+		agGrid.simpleHttpRequest({
+			url : "create-project-Po?id=" + prjId,
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			if(jsonData == null){
+				$('#totalPo').find('span').html('0');
+				gridOptionsPo.api.setRowData();
+			}else{
+				var len = jsonData.length;
+				console.log('len',len)
+				$('#totalPo').find('span').html(len);
+				gridOptionsPo.api.setRowData(jsonData);
+				
+			}
+			
+		}); 
+		
+		
+		/* agGrid.simpleHttpRequest({
+			url : "create-project-MaterialIssue?id=" + prjId,
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var len = jsonData.length;
+			console.log('len',len)
+			$('#totalMaterialIssue').find('span').html(len);
+			gridOptionsMaterialIssue.api.setRowData(jsonData);
+			
+		});  */
+		
+		
+	}
+	
+	
+	function poPdfDownload(id,id1,id2) {
+		console.log('id',id)
+		console.log('id1',id1)
+		console.log('id2',id2)
+	 	if(!id1 && !id2){
+	 		console.log("if")
+		
+			window.open("/store/store-purchaseorder-pdf-downloads?invId="
+					+ window.btoa(id), '_blank');
+		}else{
+			console.log("else")
+			window.open("/store/view-store-merge-pdf?invId="
+					+ window.btoa(id), '_blank');
+		} 
+		
+
+	} 
+
+	function deleteCustonClick() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var selectedRowsString = '';
+		selectedRows.forEach(function(selectedRow, index) {
+			if (index > 0) {
+				selectedRowsString += ',';
+			}
+			selectedRowsString += selectedRow.budgetId;
+		});
+		var item = {};
+		item.budgetId = selectedRowsString;
+		//alert(JSON.stringify(item));
+		$.ajax({
+			type : "POST",
+			url : "create-project-delete",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(item),
+			success : function(response) {
+				if (response.message == "Success") {
+					cancelModalBtn();
+					//location.reload();
+					agGrid.simpleHttpRequest({
+						url : "create-project-view"
+					}).then(function(data) {
+						var jsonData = JSON.parse(data.body);
+						var allData = jsonData.viewProjectData;
+						var len = allData.length;
+						$('#totalPrj').find('span').html(len);
+						gridOptions1.api.setRowData(allData);
+						 var firstRowNode = gridOptions1.api.getDisplayedRowAtIndex(0); // Get the first row node
+							  if (firstRowNode) {
+							    firstRowNode.setSelected(true); // Set the row as selected
+							  } 
+					});
+
+				}
+			}
+
+		});
+		$('#delete').attr("disabled", true);
+	}
+
+	function onQuickFilterChanged() {
+		gridOptions1.api.setQuickFilter(document.getElementById('quickFilter').value);
+		let len = gridOptions1.api.getDisplayedRowCount();
+		$('#totalPrj').find('span').html(len);
+		let firstRowNode = gridOptions1.api.getDisplayedRowAtIndex(0);
+		let id = firstRowNode.data.projectId;
+		
+	}
+	
+	function onQuickFilterChangedReq() {
+		
+		gridOptionsReq.api.setQuickFilter(document.getElementById('quickFilterReq').value);
+		let len = gridOptionsReq.api.getDisplayedRowCount();
+		$('#totalReq').find('span').html(len);
+		let firstRowNode = gridOptionsReq.api.getDisplayedRowAtIndex(0);
+		let id = firstRowNode.data.indentId;
+		
+	}
+	
+	function onQuickFilterChangedPo() {
+		gridOptionsPo.api.setQuickFilter(document.getElementById('quickFilterPo').value);
+		let len = gridOptionsPo.api.getDisplayedRowCount();
+		$('#totalPo').find('span').html(len);
+		let firstRowNode = gridOptionsPo.api.getDisplayedRowAtIndex(0);
+		let id = firstRowNode.data.poId;
+		
+	}
+	
+	function onQuickFilterChangedProduct() {
+		gridOptionsProduct.api.setQuickFilter(document.getElementById('quickFilterProduct').value);
+		let len = gridOptionsProduct.api.getDisplayedRowCount();
+		$('#totalProduct').find('span').html(len);
+		let firstRowNode = gridOptionsProduct.api.getDisplayedRowAtIndex(0);
+		let id = firstRowNode.data.productId;
+		
+	}
+	
+	function onQuickFilterChangedSku() {
+		gridOptionsSku.api.setQuickFilter(document.getElementById('quickFilterSku').value);
+		let len = gridOptionsSku.api.getDisplayedRowCount();
+		$('#totalSku').find('span').html(len);
+		let firstRowNode = gridOptionsSku.api.getDisplayedRowAtIndex(0);
+		let id = firstRowNode.data.sku;
+		
+	}
+	
+	function cancelBarProduct(){
+		gridOptionsProduct.api.setQuickFilter(null);
+		$('#quickFilterProduct').val('');document.getElementById('closeKeyProduct').style.display='none';
+	}
+	
+	function cancelBarSku(){
+		gridOptionsSku.api.setQuickFilter(null);
+		$('#quickFilterSku').val('');document.getElementById('closeKeySku').style.display='none';
+	}
+
+	function addId() {
+		 $("#projectId").val("");
+		$("#projectname").val("");
+		$("#creationID").val("");
+		$("#locationID").val("");
+		$("#stateID").val("");
+		$("#pinID").val("");
+		$("#pIncharge").val("");
+		$("#cname").val("");
+		$("#caddress").val("");
+		$("#cstate").val("");
+		$("#cPin").val("");
+		$("#email").val("");
+		$("#mobile").val("");
+		$("#remarks").val("");
+		$("#status").val("");
+		$("#projectType").val("");
+		$("#stateid2").val("");
+		$("#country2").val("");
+		$("#country").val("");
+		$("#stateid").val("");
+		$("#cityb").val("");
+		$("#street1").val("");
+		$("#street2").val("");
+		$("#gstNo").val(""); 
+		//
+		 $("#shippingName").val("");
+		$("#shippingEmail").val("");
+		$("#shippingMobileNo").val("");
+		$("#shippingContact").val("");
+		$("#country1").val("");
+		$("#stateid1").val("");
+		$("#shippingCity").val("");
+		$("#shippingStreet1").val("");
+		$("#shippingStreet2").val("");
+		$("#shippingPin").val("");
+		$("#shippingGstNo").val(""); 
+		//$("#activity").empty();
+		
+		$("#mainPage").show();
+		$("#cancel").show();
+		$("#saveId").show();
+		$("#add").hide();
+		$("#delete").hide();
+		$("#upperOne").hide();
+		$("#upperReq").hide();
+		$("#upperPO").hide();
+		$("#upperMaterialIssue").hide();
+		activityOptions.api.setRowData();
+		gridOptionsProductSku.api.setRowData();
+		
+		var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+				+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+				+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_"></div></td>'
+				+ '<td> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+				+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+				+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div>'
+				+ '<input type="hidden" id="editId_0" value="">'
+				+ '<div id="dltImage_0" class="custom-file-delete"><i class="ti-close position-l rmv1" onclick="openDeleteConfirm()"></i></div> </td>'
+				+ '</tr>';
+		$("#doctbodyData").append(tbl);
+		closeNav();
+		
+		agGrid.simpleHttpRequest({
+			url : 'create-project-product-get-sku-listing?type='+"Purchase"
+		}).then(function(data) {
+			 var len = data.length;
+			$('#totalProduct').find('span').html(len); 
+			console.log(data)
+			gridOptionsProduct.api.setRowData(data);
+		});
+		/* 
+		agGrid.simpleHttpRequest({
+			url : 'create-project-ProductSku-view'
+		}).then(function(data) {
+			console.log(data)
+			var jsonData = JSON.parse(data.body);
+			var allData = jsonData.viewPrductSkuData;
+			gridOptionsProductSku.api.setRowData(allData);
+		}); */
+	}
+
+	/* function cancel() {
+		location.reload();
+	} */
+
+	function closeNav1() {
+		$("#myGrid").show();
+		$("#add").show();
+		$("#delete").show();
+		$("#upperOne").show();
+		$("#upperReq").show();
+		$("#upperPO").show();
+		$("#upperMaterialIssue").show();
+		
+		
+		$("#cancel").hide();
+		$("#saveId").hide();
+		$("#mainPage").hide();
+		$("#doctbodyData").empty();
+		$("#projectId").val("");
+		$("#projectname").val("");
+		$("#creationID").val("");
+		$("#locationID").val("");
+		$("#stateID").val("");
+		$("#pinID").val("");
+		$("#pIncharge").val("");
+		$("#cname").val("");
+		$("#caddress").val("");
+		$("#cstate").val("");
+		$("#cPin").val("");
+		$("#email").val("");
+		$("#mobile").val("");
+		$("#remarks").val("");
+		$("#status").val("");
+		$("#projectType").val("");
+		$("#stateid2").val("");
+		$("#country2").val("");
+		$("#country").val("");
+		$("#stateid").val("");
+		$("#cityb").val("");
+		$("#street1").val("");
+		$("#street2").val("");
+		$("#gstNo").val("");
+		
+		$("#shippingName").val("");
+		$("#shippingEmail").val("");
+		$("#shippingMobileNo").val("");
+		$("#shippingContact").val("");
+		$("#country1").val("");
+		$("#stateid1").val("");
+		$("#shippingCity").val("");
+		$("#shippingStreet1").val("");
+		$("#shippingStreet2").val("");
+		$("#shippingPin").val("");
+		$("#shippingGstNo").val("");
+		$("#projectIdvalue").html("");
+		//$("#activity").empty();
+		
+		agGrid.simpleHttpRequest({
+			url : 'create-project-product-get-sku-listing?type='+"Purchase"
+		}).then(function(data) {
+			 var len = data.length;
+			$('#totalProduct').find('span').html(len); 
+			console.log(data)
+			gridOptionsProduct.api.setRowData(data);
+		});
+		
+		
+	/* 	agGrid.simpleHttpRequest({
+			url : 'create-project-ProductSku-view'
+		}).then(function(data) {
+			console.log(data)
+			var jsonData = JSON.parse(data.body);
+			var allData = jsonData.viewPrductSkuData;
+			gridOptionsProductSku.api.setRowData(allData);
+		}); */
+	}
+
+	function checkEmpty() {
+		var infofileName = true;
+		$(".formValidation").remove();
+		$('.docNoclss').each(function() {
+			/* if ($(this).val() == null || $(this).val() == "") {
+				infofileName = false;
+				validationModal("Document Name Required", $(this).attr('id'));
+			} */
+		});
+
+		var mulDocInfo = true;
+		if (infofileName) {
+			$('#doctbodyData > tr').each(function() {
+				if ($(this).closest('tr').find('.imageName').text()) {
+					mulDocInfo = true;
+				} else {
+					mulDocInfo = false;
+					$("#messageParagraph").text("Please Choose a File ");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					return false;
+				}
+
+			});
+		}
+		if (infofileName && mulDocInfo) {
+			addMore1()
+		}
+	}
+
+	function saveMultiFile(event) {
+		var AssignItemQty = event.currentTarget.value;
+		var currentFldId = event.currentTarget.getAttribute('id');
+		var l = currentFldId.split("_");
+		var counter = l[1];
+		var currentFldId = "#" + currentFldId;
+
+		var uFile = $(currentFldId)[0].files[0];
+		var fileName = event.currentTarget.value;
+		var lastIndex = fileName.lastIndexOf("\\");
+		if (lastIndex >= 0) {
+			fileName = fileName.substring(lastIndex + 1);
+		}
+		var extension = fileName.split(".");
+
+		var iURL = URL.createObjectURL(uFile);
+		$("#uploadedBillDiv_" + counter).html("");
+		if (extension[1] != null && extension[1] != "") {
+			$("#uploadHidden_" + counter).val('');
+		}
+		if (extension[1] == "jpg" || extension[1] == "png"
+				|| extension[1] == "jpeg") {
+			var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-picture-o'></i></a></div>";
+		} else if (extension[1] == "pdf") {
+			var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-pdf-o'></i> </a></div>";
+		} else if (extension[1] == "xls" || extension[1] == "xlsx" || extension[1] == "csv") {
+			var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-excel-o'></i></a></div>";
+		} else if (extension[1] == "doc" || extension[1] == "dox"
+				|| extension[1] == "docx") {
+			var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-word-o'></i></a></div>";
+		} else {
+			var LightImg = "<div class='uploadicon position-l '> </div>";
+		}
+//		var dltImg = "<i class='ti-close position-l rmv1' ></i>";
+		$("#uploadedBillDiv_" + counter).html(LightImg);
+		$("#imageName_" + counter).html(fileName);
+//		$("#dltImage_" + counter).html(dltImg);
+
+		$("#clickImg_" + counter).removeClass("ti-plus");
+		$("#clickImg_" + counter).addClass("ti-pencil");
+
+	}
+
+
+	function addMore1() {
+
+		var lengthOfTableRow = $("#doctbodyData").children('tr').length;
+		var cloneHtml = $("#docTbl tbody tr:first").clone();
+
+		$("#docTbl tbody").append($("#docTbl tbody tr:first").clone());
+		$("#myTable tbody tr td:last").html("");
+		//var addMore = '<button type="button" class="btn btn-primary tr_clone_add" name="add" onclick="addMore1();"><span class="ti-plus"></span></button>&nbsp;'
+
+		$("#docTbl tbody tr:last").find(".documentclss").val("");
+		$("#docTbl tbody tr:last").find(".docNoclss").val("");
+		$("#docTbl tbody tr:last").find(".documentclssup").val("");
+		$("#docTbl tbody tr:last").find(".uploadedBillCls").empty();
+		$("#docTbl tbody tr:last").find(".uploadHidCls").empty();
+		$("#docTbl tbody tr:last").find(".uploadHidCls").val('');
+		$("#docTbl tbody tr:last").find(".imageName").empty();
+		var j = 0;
+		$("#docTbl > #doctbodyData > tr").each(function(i) {
+
+			var selectInput = $(this).find('select');
+			var textInput = $(this).find('input');
+			var fileInput = $(this).find('file');
+			var divInput = $(this).find('div');
+			var label = $(this).find('label');
+			var iInput = $(this).find('i');
+			selectInput.eq(0).attr('id', "docid_" + i);
+
+			textInput.eq(1).attr('id', "docnoid_" + i);
+			textInput.eq(2).attr('id', "uploadDoc_" + i);
+			label.eq(1).attr('for', "uploadDoc_" + i);
+			textInput.eq(3).attr('id', "uploadHidden_" + i);
+			divInput.eq(4).attr('id', "uploadedBillDiv_" + i);
+			divInput.eq(5).attr('id', "imageName_" + i);
+			//divInput.eq(6).attr('id', "dltImage_" + i);
+			iInput.eq(0).attr('id', "clickImg_" + i);
+			j++;
+		})
+		$("#clickImg_" + (j - 1)).removeClass("ti-pencil");
+		$("#clickImg_" + (j - 1)).addClass("ti-plus");
+
+	}
+
+	function openDeleteConfirm() {
+		$("#dltValue").val("");
+		$('#deleteAttachment').modal('show');
+	}
+
+	//for closing modal box for delete ind product
+	function closeDeleteConfirm() {
+		$("#dltValue").val("");
+		$('#deleteAttachment').modal('hide');
+	}
+
+	function deletAttachmentRow() {
+		var lengthOfTableRow1 = 0;
+		$("#docTbl > #doctbodyData > tr").each(function() {
+			lengthOfTableRow1 = lengthOfTableRow1 + 1;
+		})
+		var id = $("#dltValue").val();
+		$("#" + id).closest('tr').remove();
+		closeDeleteConfirm();
+		if (lengthOfTableRow1 == 1) {
+			var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+				+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+				+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_"></div></td>'
+				+ '<td> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+				+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+				+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div>'
+				+ '<input type="hidden" id="editId_0" value="">'
+				+ '<div id="dltImage_0" class="custom-file-delete"><i class="ti-close position-l rmv1" onclick="openDeleteConfirm()"></i></div> </td>'
+				+ '</tr>';
+		$("#doctbodyData").append(tbl);
+		}
+	}
+
+
+	//FOR EDIT 
+
+	function editPage(id) {
+		var editId = id.split(",");
+
+	    var projectId = editId[0];
+	    
+	    var shippingId = editId[1];
+	    
+	    $("#demo").show();
+		$('#delete1').attr("disabled", true);
+		$("#searchRowDiv").hide();
+		$("#myGrid").hide();
+		$("#upperOne").hide();
+		$("#upperReq").hide();
+		$("#upperPO").hide();
+		$("#upperMaterialIssue").hide();
+		//$(".btn-hs").hide();
+		$("#add").hide();
+		$("#save").show();
+		$("#Cancel").show();
+		$("#delete").hide();
+	     $("#mainPage").show();
+		$("#cancel").show();
+		$("#saveId").show();
+		$("#total").hide();
+		$("#searchRowDiv").hide(); 
+		
+	    
+		$.ajax({
+					type : "GET",
+					url : "create-project-edit?id=" + projectId,
+					success : function(response) {
+	                	
+						$("#projectId").val(response.body.projectId);					
+						$("#projectIdvalue").html(response.body.projectId);
+						$("#projectname").val(response.body.projectName);
+						$("#creationID").val(response.body.creationDate);
+						$("#locationID").val(response.body.location);
+	                    $("#country2").val(response.body.country2);
+						$("#stateid2").val(response.body.stateid2);
+						$("#pinID").val(response.body.pPin);
+						$("#pIncharge").val(response.body.pIncharge);					
+						$("#cname").val(response.body.cName);
+						$("#caddress").val(response.body.cAddress);
+						$("#country").val(response.body.country);
+						$("#stateid").val(response.body.stateid);
+						$("#cityb").val(response.body.cityb);
+						$("#street1b").val(response.body.street1b);
+						$("#street2b").val(response.body.street2b);
+						$("#cPin").val(response.body.cPin);
+						$("#email").val(response.body.email);
+						$("#mobile").val(response.body.mobile);
+						$("#remarks").val(response.body.remark);
+						$("#status").val(response.body.status);
+						$("#street1").val(response.body.billingStreet1);
+						$("#street2").val(response.body.billingStreet2);
+						$("#gstNo").val(response.body.billingGstNo);
+						$("#projectType").val(response.body.projectType);
+						//alert(response.body.stateid1);
+						getStateDataOnEdit(response.body.stateid2);
+						getBillingStateDataOnEdit(response.body.stateid);
+						getShippingStateDataOnEdit(response.body.stateid1);
+						activityOptions.api.setRowData(response.body.shippingList);
+						gridOptionsProductSku.api.setRowData(response.body.productList);
+						
+						console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@",response.body);
+						//addId();
+						
+						/* 
+						var selectedRowsString = projectId;
+				        agGrid.simpleHttpRequest({
+				            url: 'create-project-product-edit?id=' + selectedRowsString,
+				        }).then(function(dataas) {
+				        	console.log(dataas)
+				           var jsonData = JSON.parse(dataas.body);
+						   var allData = jsonData.viewPrductSkuData;
+						  // gridOptionsProductSku.api.setRowData(allData);
+							
+							if (allData == null) {
+								  	    $('.loader').hide();
+										$("body").removeClass("overlay");
+										gridOptionsProductSku.api.setRowData();
+									
+								} else {
+									gridOptionsProductSku.api.setRowData(allData);
+									gridOptionsProductSku.api.forEachNode((rowNode, index) => {
+											 
+												if (rowNode.data.projectId !== null) { 
+													gridOptionsProductSku.api.selectNode(rowNode, true);
+												}
+										 
+									});  
+								}
+				        	
+				        	
+				        });  */
+						
+						
+						$("#doctbodyData").empty();
+						var documentList = response.body.documentList;
+						if (documentList != null
+								&& documentList != "") {
+
+							for (var i = 0; i <documentList.length; i++) {
+								//console.log(JSON.stringify(data));
+
+								//console.log('in for loop documentList========>>>>'+JSON.stringify(data[0].documentList[i].documnentName));
+
+								var tbl = '<tr>'
+										+ '<td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+										+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option>  </select> </div></td>'
+										+ '<td><div class="form-group"> <input type="text" value="'+documentList[i].documnentName+'" class="form-control docNoclss" id="docnoid_'+i+'"> </div></td>'
+										+ '<td><div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_'+i+'" id="uploadFor_'+i+'"> <i class="ti-pencil" id="clickImg_'+i+'"></i> </label>'
+										+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_'
+										+ i
+										+ '"name="userImage" onchange="saveMultiFile(event)" /> </div>'
+										+ '</div> <input type="hidden" id="uploadHidden_'+i+'" value="'+documentList[i].fileName+'" class="uploadHidCls">'
+										+ '<div id="uploadedBillDiv_'+i+'" align="center" class="uploadedBillCls"><div class="uploadicon position-l">'
+										+ documentList[i].action
+										+ '</div></div>'
+										+ '<div id="imageName_'+i+'" class="imageName">'
+										+ documentList[i].fileName
+										+ '</div>'
+										+ '<input type="hidden" id="editId_'+i+'" value="'+ documentList[i].vendorRfqId+'">'
+										+ '<div id="dltImage_'+i+'" class="custom-file-delete"><i class="ti-close position-l rmv1" onclick="openDeleteConfirm()"></i></div> </td>'
+										+ '</tr>';
+
+								$("#doctbodyData").append(tbl);
+							}
+						} else {
+							var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+								+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+								+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_"></div></td>'
+								+ '<td> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+								+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+								+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div>'
+								+ '<input type="hidden" id="editId_0" value="">'
+								+ '<div id="dltImage_0" class="custom-file-delete"><i class="ti-close position-l rmv1" onclick="openDeleteConfirm()"></i></div> </td>'
+								+ '</tr>';
+						$("#doctbodyData").append(tbl);
+						}
+					}
+				});
+	}
+
+
+
+	function deleteProject() {
+
+		$('#deleteProject').modal('show');
+	}
+
+	function cancelModalBtn() {
+		$('#deleteProject').modal('hide');
+
+	}
+
+	//FOR DELETE
+
+	function deleteOnclick() {
+		var selectedRows = gridOptions1.api.getSelectedRows();
+		var id = selectedRows[0].projectId;
+		$.ajax({
+			type : "POST",
+			url : "create-project-delete?id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+
+					$('#deleteProject').modal('hide');
+
+					$('#delete').attr("disabled", true);
+					agGrid.simpleHttpRequest({
+						url : "create-project-view"
+					}).then(function(data) {
+						var jsonData = JSON.parse(data.body);
+						var allData = jsonData.viewProjectData;
+						var len = allData.length;
+						$('#totalPrj').find('span').html(len);
+						gridOptions1.api.setRowData(allData);
+						 var firstRowNode = gridOptions1.api.getDisplayedRowAtIndex(0); // Get the first row node
+							  if (firstRowNode) {
+							    firstRowNode.setSelected(true); // Set the row as selected
+							  } 
+					});
+
+				} else {
+
+				}
+			},
+			error : function(data) {
+				console.log(data)
+			}
+		})
+	}
+
+	function isNumberKey(evt) {
+		  var charCode = (evt.which) ? evt.which : evt.keyCode
+		  if (charCode > 31 && (charCode < 48 || charCode > 57))
+		    return false;
+		  return true;
+		}
+
+
+
+	// save data in aggrid table sidenav save
+
+	function saveTableData() {
+		    var rowEdit = $("#rowEdit").val();
+		    var item = {};
+		    var data = 1;
+
+		    item.slNo = data;
+		    activityOptions.api.forEachNode(function(rowNode, index) {
+		        if (!rowEdit) {
+		            data = data + 1;
+		            item.slNo = data;
+		        }
+		        else {
+		            item.slNo = rowEdit;
+		        }
+		    });
+		    item.shippingName = $("#shippingName").val();
+		    item.shippingAddress = $("#shippingAddress").val();
+		    item.country1 = $('#country1').val();
+		    item.country1Name = $("#country1 option:selected").text();
+		    item.stateid1 = $('#stateid1').val();
+		    item.stateid1Name = $("#stateid1 option:selected").text();
+
+		    item.shippingCity = $("#shippingCity").val();
+		    item.shippingStreet1 = $("#shippingStreet1").val();
+		    item.shippingStreet2 = $("#shippingStreet2").val();
+		    item.shippingGstNo = $("#shippingGstNo").val();
+		    item.shippingPin = $("#shippingPin").val();
+		    item.shippingEmail = $("#shippingEmail").val();
+		    item.shippingMobileNo = $("#shippingMobileNo").val();
+		    item.shippingContact = $("#shippingContact").val();
+		    
+		    
+
+		    var quot = [];
+
+		    if (rowEdit) {
+		        var rowNode = activityOptions.api.getRowNode(rowEdit);
+		        rowNode.setData(item);
+		    } else {
+		        activityOptions.api.forEachNode(function(rowNode, index) {
+		            quot.push(rowNode.data);
+		        });
+
+		        quot.push(item);
+		        activityOptions.api.setRowData(quot);
+		    }
+
+		    closeNav();
+		    $("#shippingName").val('');
+		    $("#shippingAddress").val('');
+		    $("#shippingCountry").val('');
+		    $("#shippingState").val('');
+		    $("#shippingCity").val('');
+		    $("#shippingStreet1").val('');
+		    $("#shippingStreet2").val('');
+		    $("#shippingPin").val('');
+		    $("#shippingEmail").val('');
+		    $("#shippingMobileNo").val('');
+		    $("#country1").val('');
+		    $("#stateid1").val('');
+		    $("#shippingGstNo").val('');
+		    $("#shippingContact").val('');
+
+		    $("#rowEdit").val(null);
+		    $('#deleteChild').attr('disabled', true);
+		    
+	}
+
+
+			/* 
+			Edit Shipping Details
+			 */
+			 
+			function rowEdit(slNo) {
+				
+				var rowNode = activityOptions.api.getRowNode(slNo);
+				//console.log(rowNode)
+				openNav();
+				$("#rowEdit").val(slNo);
+				$("#shippingId").val(rowNode.data.shippingId);
+				$("#shippingName").val(rowNode.data.shippingName);
+				$("#shippingAddress").val(rowNode.data.shippingAddress);
+				$("#shippingCountry").val(rowNode.data.shippingCountry);
+				
+				var sta=rowNode.data.stateid1;
+				var count=rowNode.data.country1;
+						
+				getShippingStateDataOnEdit11(sta,count);
+				
+				//$("#shippingState").val(rowNode.data.shippingState);
+				$("#shippingCity").val(rowNode.data.shippingCity);
+				$("#shippingStreet1").val(rowNode.data.shippingStreet1);
+				$("#shippingStreet2").val(rowNode.data.shippingStreet2);
+				$("#shippingGstNo").val(rowNode.data.shippingGstNo);
+				$("#shippingPin").val(rowNode.data.shippingPin);
+				$("#shippingEmail").val(rowNode.data.shippingEmail);
+				$("#shippingMobileNo").val(rowNode.data.shippingMobileNo);
+				$("#shippingContact").val(rowNode.data.shippingContact);
+				$("#country1").val(rowNode.data.country1);
+				$("#stateid1").val(rowNode.data.stateid1);
+			}
+
+
+
+
+	//for billing country dropdown
+
+		function stateList() {
+		    var countryId = $("#country").val();
+
+		    if (countryId) {
+		        $.ajax({
+		            type: "POST",
+		            url: "create-project-billing-state-list",
+		            dataType: 'json',
+		            contentType: 'application/json',
+		            data: countryId,
+		            success: function(response) {
+		            	 console.log("Response data:", response);
+		                if (response.message == "success") {
+		                    console.log(response);
+		                    $("#stateid").empty();
+		                    $("#stateid").append("<option value=''>Select</option>");
+
+		                    for (var i = 0; i < response.body.length; i++) {
+		                        var option = $("<option></option>");
+		                        $(option).val(response.body[i].key);
+		                        $(option).html(response.body[i].name);
+		                        $("#stateid").append(option);
+		                    }
+		                }
+		            },
+		            error: function(data) {
+		                console.log(data);
+		                $("#stateid").empty();
+		                $("#stateid").append("<option value=''>Select</option>");
+		            }
+		        })
+		    } else {
+		        $("#stateid").empty();
+		        $("#stateid").append("<option value=''>Select</option>");
+		    }
+		}
+
+		//for shipping country dropdown
+
+		function stateList1() {
+		    var countryId1 = $("#country1").val();
+		    if (countryId1) {
+		        $.ajax({
+		            type: "POST",
+		            url: "create-project-shipping-state-list",
+		            dataType: 'json',
+		            contentType: 'application/json',
+		            data: countryId1,
+		            success: function(response) {
+		            	 console.log("Response data:", response);
+		                if (response.message == "success") {
+		                    console.log(response);
+		                    $("#stateid1").empty();
+		                    $("#stateid1").append("<option value=''>Select</option>");
+
+		                    for (var i = 0; i < response.body.length; i++) {
+		                        var option = $("<option></option>");
+		                        $(option).val(response.body[i].key);
+		                        $(option).html(response.body[i].name);
+		                        $("#stateid1").append(option);
+		                    }
+		                }
+		            },
+		            error: function(data) {
+		                console.log(data);
+		                $("#stateid1").empty();
+		                $("#stateid1").append("<option value=''>Select</option>");
+		            }
+		        })
+		    } else {
+		        $("#stateid1").empty();
+		        $("#stateid1").append("<option value=''>Select</option>");
+		    }
+		}
+		
+		//for project country dropdown
+		
+	function stateList2() {
+		    var countryId2 = $("#country2").val();
+		    if (countryId2) {
+		        $.ajax({
+		            type: "POST",
+		            url: "create-project-state-list",
+		            dataType: 'json',
+		            contentType: 'application/json',
+		            data: countryId2,
+		            success: function(response) {
+		            	 console.log("Response data:", response);
+		                if (response.message == "success") {
+		                    console.log(response);
+		                    $("#stateid2").empty();
+		                    $("#stateid2").append("<option value=''>Select</option>");
+
+		                    for (var i = 0; i < response.body.length; i++) {
+		                        var option = $("<option></option>");
+		                        $(option).val(response.body[i].key);
+		                        $(option).html(response.body[i].name);
+		                        $("#stateid2").append(option);
+		                    }
+		                }
+		            },
+		            error: function(data) {
+		                console.log(data);
+		                $("#stateid2").empty();
+		                $("#stateid2").append("<option value=''>Select</option>");
+		            }
+		        })
+		    } else {
+		        $("#stateid2").empty();
+		        $("#stateid2").append("<option value=''>Select</option>");
+		    }
+		}
+		
+	//FOR PROJECT STATE EDIT 
+
+	function getStateDataOnEdit(stateid2) {
+		var country2 = $("#country2").val();
+		if (country2) { 
+			$.ajax({
+				type : "GET",  
+				url : "create-project-state-list-project?id=" + country2,
+				success : function(response) {
+					if (response.message == "success") {
+						$("#stateid2").empty();
+						var option = $("<option></option>");
+						$(option).val(null);
+						$(option).html("Select");
+						$("#stateid2").append(option);
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#stateid2").append(option);
+						}
+						$("#stateid2").val(stateid2);
+					}
+				},
+				error : function(e) { 
+				}
+			});
+		} else {
+			$("#stateid2").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#stateid2").append(option);
+		}
+	}
+
+	//FOR BILLING STATE EDIT 
+
+	function getBillingStateDataOnEdit(stateid) {
+		var country = $("#country").val();
+
+		if (country) { 
+			$.ajax({
+				type : "GET",  
+				url : "create-project-state-list-billing?id=" + country,
+				success : function(response) {
+					if (response.message == "success") {
+						$("#stateid").empty();
+						var option = $("<option></option>");
+						$(option).val(null);
+						$(option).html("Select");
+						$("#stateid").append(option);
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#stateid").append(option);
+						}
+						$("#stateid").val(stateid);
+					}
+				},
+				error : function(e) { 
+				}
+			});
+		} else {
+			$("#stateid").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#stateid").append(option);
+		}
+	}
+
+
+	//FOR SHIPPING STATE EDIT 
+
+	function getShippingStateDataOnEdit(stateid1) {
+		var country1 = $("#country1").val();
+
+		if (country1) { 
+			$.ajax({
+				type : "GET",  
+				url : "create-project-state-list-shipping?id=" + country1,
+				success : function(response) {
+					if (response.message == "success") {
+						$("#stateid1").empty();
+						var option = $("<option></option>");
+						$(option).val(null);
+						$(option).html("Select");
+						$("#stateid1").append(option);
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#stateid1").append(option);
+						}
+						$("#stateid1").val(stateid1);
+					}
+				},
+				error : function(e) { 
+				}
+			});
+		} else {
+			$("#stateid1").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#stateid1").append(option);
+		}
+	}
+
+
+
+	function getShippingStateDataOnEdit11(sta,countryid) {
+
+		if (countryid) { 
+			$.ajax({
+				type : "GET",  
+				url : "create-project-state-list-shipping?id=" + countryid,
+				success : function(response) {
+					if (response.message == "success") {
+						$("#stateid1").empty();
+						var option = $("<option></option>");
+						$(option).val(null);
+						$(option).html("Select");
+						$("#stateid1").append(option);
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#stateid1").append(option);
+						}
+						$("#stateid1").val(sta);
+					}
+				},
+				error : function(e) { 
+				}
+			});
+		} else {
+			$("#stateid1").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#stateid1").append(option);
+		}
+	}
+
+	/* 
+	Delete quotation
+	 */
+	function deleteQuotation() {
+
+		$('#deleteQuot').modal('show');
+	}
+	function deleteDetails() {
+
+		$('#deleteProduct').modal('show');
+	}
+
+	function cancelModalBtn() {
+		$('#deleteQuot').modal('hide');
+		//$("#deleteModalBtn").removeAttr("disabled");
+		
+	}
+
+	function cancelModalProductBtn() {
+
+		//$("#deleteModalBtn").removeAttr("disabled");
+		$('#deleteProduct').modal('hide');
+	}
+	
+	function deleteproductSku() {
+
+		$('#deleteProductSkuModal').modal('show');
+	}
+	
+	function cancelModalProductSkuDtls() {
+
+		$('#deleteProductSkuModal').modal('hide');
+	}
+	
+	
+	function deleteproductSkuDtls() {
+		var selectedRows = gridOptionsProductSku.api.getSelectedRows();
+		gridOptionsProductSku.api.applyTransaction({
+			remove : selectedRows
+
+		});
+		cancelModalProductSkuDtls();
+		
+	}
+	
+
+	function rowSelect() {
+		var selectedRows = activityOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+		 var selectedNodes = activityOptions.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		 var approveStatus= selectedData.map(node => node.approveStatus);
+		 
+		if (rowCount > 0) {
+			//$('#approveQuotation').attr("disabled", false);
+			$('#add').attr("disabled", true);
+			
+			if(approveStatus=='Approved'){
+				$('#approveQuotation').attr("disabled", true);
+				if(selectedData.map(node => node.qutStatus) == "Not Generated"){
+				$('#delete').attr("disabled", true);
+				$('#porder').attr("disabled", false);
+				$('#worder').attr("disabled", false);
+				}
+				else{
+					$('#delete').attr("disabled", true);
+					$('#porder').attr("disabled", true);
+					$('#worder').attr("disabled", true);
+				}
+			}else{
+				$('#delete').attr("disabled", false);
+				$('#approveQuotation').attr("disabled", false);
+				$('#porder').attr("disabled", true);
+				$('#worder').attr("disabled", true);
+			}
+		} else {
+			$('#approveQuotation').attr("disabled", true);
+			$('#add').attr("disabled", false);
+			$('#delete').attr("disabled", true);
+			$('#reqAppvBtn').attr("disabled", true);
+			$('#porder').attr("disabled", true);
+			$('#worder').attr("disabled", true);
+		}
+	}
+
+
+	function deleteProductOnclick() {
+		var selectedRows = activityOptions.api.getSelectedRows();
+		activityOptions.api.applyTransaction({
+			remove : selectedRows
+
+		});
+		cancelModalProductBtn();
+		//DELETE GST,SUBTOTAL,GRANDTOTAL,SGST,CGST,IGST
+		var sum = $("#subTotal").val();
+		var gstRate = $("#gstRate").val();
+		var qCGST = $("#qCGST").val();
+		var qSGST = $("#qSGST").val();
+		var qIGST = $("#qIGST").val();
+		var grandTotal = $("#grandTotal").val();
+		var itemIgst = $("#itemIgst").val();
+		var itemCgst = $("#itemCgst").val();
+		var itemSgst = $("#itemSgst").val();
+		var len = selectedRows.length;
+		for (var i = 0; i < len; i++) {
+
+			sum = sum - selectedRows[i].lineTotal;
+			var taxType = $("#taxType").val()
+			if (taxType == "true") {
+
+				selectedRows[i].itemIgst = selectedRows[i].lineTotal
+						* selectedRows[i].gstRate / 100;
+				qIGST = qIGST - selectedRows[i].itemIgst;
+				grandTotal = sum + qIGST;
+			} else {
+				selectedRows[i].itemCgst = selectedRows[i].lineTotal
+						* selectedRows[i].gstRate / 200;
+				selectedRows[i].itemSgst = selectedRows[i].lineTotal
+						* selectedRows[i].gstRate / 200;
+
+				qCGST = qCGST - selectedRows[i].itemCgst;
+				qSGST = qSGST - selectedRows[i].itemSgst;
+				grandTotal = sum + qCGST + qSGST;
+			}
+
+		}
+
+		$("#itemIgst").val(itemIgst);
+		$("#itemCgst").val(itemCgst);
+		$("#itemSgst").val(itemSgst);
+		$("#subTotal").val(sum);
+		$("#qIGST").val(qIGST);
+		$("#qCGST").val(qCGST);
+		$("#qSGST").val(qSGST);
+		$("#grandTotal").val(grandTotal)
+	}
+	
+	
+	function createReq(){
+		var selectedRows = gridOptionsReq.api.getSelectedRows();
+		var selectedRowsString = '';
+		var indentId = "";
+		for (var i = 0; i < selectedRows.length; i++) {
+			indentId = indentId + '"' + selectedRows[i].indentId + '",';
+		}
+		
+		// if (indentId) {
+		//	sessionStorage.setItem('module', 'MOD024');
+         //    sessionStorage.setItem('function', 'FUN0081');
+			 sessionStorage.setItem('activity', 'ACT0307');
+				localStorage.setItem('ReqProjectData', JSON.stringify(projectedId));
+			 console.log(JSON.stringify(projectedId));
+				window.location.href = "/store/store-indent"
+			
+	//	} else {
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		//} 	
+	}
+	
+	
+	
+	function createPo(){
+		var selectedRows = gridOptionsPo.api.getSelectedRows();
+		var selectedRowsString = '';
+		var poId = "";
+		for (var i = 0; i < selectedRows.length; i++) {
+			poId = poId + '"' + selectedRows[i].poId + '",';
+		}
+		var data = {};
+		var obj = [];
+		data.projectedId = projectedId;
+		data.prjname = prjname;
+		obj.push(data)
+		console.log(obj)
+		// if (poId) {
+			 sessionStorage.setItem('activity', 'ACT0217');
+				localStorage.setItem('PoProjectData', JSON.stringify(obj));
+			 console.log(JSON.stringify(obj));
+				window.location.href = "/purchase/manage-purchase-order"
+			
+		//} else {
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		//} 	
+	}
+	
+	/* function openDetails(id){
+		window.open("/projects/create-project-ProductList?id=" + window.btoa(id));
+	} */
+	
+	function addProduct(){
+		$("#productDetailsModal").modal('show');
+		agGrid.simpleHttpRequest({
+			url : 'create-project-product-get-sku-listing?type='+"Purchase"
+		}).then(function(data) {
+			 var len = data.length;
+			$('#totalProduct').find('span').html(len); 
+			console.log(data)
+			gridOptionsProduct.api.setRowData(data);
+			cancelBarProduct();
+			cancelBarSku();
+		});
+		
+		$("#prCategoryId").val("");
+		$("#tempCategoryId").val("");
+		$("#prLevelId").val("");
+		$("#productId").val("");
+		$("#catDesc").text("");
+		$("#vertical").empty();
+		var img = '<li data-thumb="../assets/css/extend/sld-noimg.jpg"><img src="../assets/css/extend/sld-noimg.jpg" id="imgLoc" alt="Mountains" class="hvrbox-layer_bottom img-fluid"></li>';
+		$("#vertical").append(img);
+		$("#productName").val("");
+	    $("#brand").val("");
+	    $("#mode").val("");
+	    $("#hsnCode").val("");
+	    $("#sicCode").val("");
+	    $("#fileedit").val("");;
+	    $("#prodStatus").prop("checked",false);
+	    closeNavFive();
+	    
+	    gridOptionsSku.api.setRowData();
+	    $('#deletess').attr("disabled", true);
+        $('#newBtn2').attr("disabled", true);
+        $('#saveProduct').attr("disabled", true);
+        $('#totalSku').find('span').html(0);
+        
+    
+	}
+	
+	function cancelModalProductSkuBtn(){
+		$("#productDetailsModal").modal('hide');
+		agGrid.simpleHttpRequest({
+			url : 'create-project-product-get-sku-listing?type='+"Purchase"
+		}).then(function(data) {
+			 var len = data.length;
+			$('#totalProduct').find('span').html(len);
+			console.log(data)
+			gridOptionsProduct.api.setRowData(data);
+		});
+		
+		$("#prCategoryId").val("");
+		$("#tempCategoryId").val("");
+		$("#prLevelId").val("");
+		$("#productId").val("");
+		$("#catDesc").text("");
+		$("#vertical").empty();
+		var img = '<li data-thumb="../assets/css/extend/sld-noimg.jpg"><img src="../assets/css/extend/sld-noimg.jpg" id="imgLoc" alt="Mountains" class="hvrbox-layer_bottom img-fluid"></li>';
+		$("#vertical").append(img);
+		$("#productName").val("");
+	    $("#brand").val("");
+	    $("#mode").val("");
+	    $("#hsnCode").val("");
+	    $("#sicCode").val("");
+	    $("#fileedit").val("");;
+	    $("#prodStatus").prop("checked",false);
+	    closeNavFive();
+	    
+	    gridOptionsSku.api.setRowData();
+	}
+	
+	var productId ='';
+	var productName = '';
+	function onSelectionChangedproduct() {
+		var selectedRows = gridOptionsProduct.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+		for (var i = 0; i < selectedRows.length; i++) {
+			productId = productId  + selectedRows[i].productId; 
+			productName = productName  + selectedRows[i].productName; 
+			
+		}
+		$("#productId").val(productId);
+		$("#productName").val(productName);
+		
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#deletess').attr("disabled", true);
+	        $('#newBtn2').attr("disabled", false);
+	        
+		}else{
+			$('#deletess').attr("disabled", true);
+	        $('#newBtn2').attr("disabled", true);
+	      
+		}
+		
+		callThrghProduct(productId);
+	    $("#collapsefive").collapse({
+			toggle : false
+		}).collapse('show');
+	
+
+
+		
+		productId ='';
+		productName = '';
+	}
+	
+	function callThrghProduct(productId){
+		agGrid.simpleHttpRequest({
+			url : 'create-project-ProductList-get-sku-by-product?id='+productId
+		}).then(function(data) {
+			console.log(data)
+			var len = data.length;
+			$('#totalSku').find('span').html(len);
+			gridOptionsSku.api.setRowData(data);
+			
+			$("#skuPurchase").empty();
+			$("#skuPurchase").append("<option value>Select</option>");
+			for(var i = 0; i < data.length; i++) {
+				
+				$("#skuPurchase").append("<option value='"+data[i].sku+"'>"+data[i].sku+"</option>");
+			}
+			cancelBarSku();
+		});
+		
+	
+	}
+	
+	function openNavSku() {
+		document.getElementById('skuId').readOnly = true;
+		$(".formValidation").remove();
+	//	closeVendor();
+		var productId = $("#productId").val();
+		var productName = $("#productName").val();
+		$("#skuPrdId").text(productId);
+		$("#skudiv").hide();
+		$("#isEdit").val("");
+		$("#skuId").val("");
+		$("#model").val("");
+		$("#brand").val("");
+		$("#manufacture").val(productName);
+		$("#variationType").val("");
+		$("#variationValue").val("");
+		$("#unit").val("");
+		$("#salePrice").val("0");
+		$("#saleTax").val("");
+		$("#saleCess").val("");
+		 $("#imageName1_0").val("");
+	     $("#imageName1_0").empty("");
+		getColorList();
+		document.getElementById("mySkuSidenav").style.cssText = "width: 30%; position: absolute; right:-10px; overflow: hidden; height:621px;bottom:0px;";
+
+		document.getElementById("mainProductDetails").style.width = "70%";
+		document.getElementById("mainProduct").style.width = "70%";
+	}
+
+
+	function closeNavFive() {
+		$("#isEdit").val("");
+		document.getElementById('skuId').readOnly = false;
+		$("#skuId").val("");
+		$("#model").val("");
+		$("#manufacture").val("");
+		$("#variationType").val("");
+		$("#variationValue").val("");
+		$("#brand").val("");
+		$("#unit").val("");
+		$("#salePrice").val("");
+		$("#saleTax").val("");
+		$("#saleCess").val("");
+		$("#descrip").val("");
+		$('#uploadHidden1_0').empty();
+		$('#imageName1_0').empty();
+		$('#uploadedBillDiv1_0').empty();
+		document.getElementById("mySkuSidenav").style.width = "0";
+		document.getElementById("mainProductDetails").style.width = "100%";
+		document.getElementById("mainProduct").style.width = "100%";
+	}
+	function openVendor() {
+		closeNav();
+		$(".formValidation").remove();
+		var productId = $("#productId").val();
+		$("#skuPurchasePrdId").text(productId);
+		
+		$("#variantTypeSpan").text("");
+		$("#variantValueSpan").text("");
+		$("#variantUnitSpan").text("");
+		$("#skuPurchase").val("");
+		$("#vendorId").val("");
+		$("#purchasePrice").val("0");
+		$("#purchaseTax").val("");
+		$("#purchaseCess").val("");
+		$("#moq").val("0");
+		$("#isEditPurchase").val("");
+		$("#editSKUId").val("");
+		$("#editVendorId").val("");
+		
+		document.getElementById("myVendorSidenav").style.cssText = "width: 30%; position: absolute; right:-10px; overflow: hidden; height:410px;bottom:0px;";
+
+		document.getElementById("mainProductDetails").style.width = "70%";
+	}
+
+	function closeVendor() {
+		
+		$("#variantTypeSpan").text("");
+		$("#variantValueSpan").text("");
+		$("#variantUnitSpan").text("");
+		$("#skuPurchase").val("");
+		$("#vendorId").val("");
+		$("#purchasePrice").val("");
+		$("#purchaseTax").val("");
+		$("#purchaseCess").val("");
+		$("#moq").val("");
+		$("#isEditPurchase").val("");
+		$("#editSKUId").val("");
+		$("#editVendorId").val("");
+		
+		document.getElementById("myVendorSidenav").style.width = "0";
+		document.getElementById("mainProductDetails").style.width = "100%";
+	}
+
+
+
+	function onSelectionChangedsku(){
+		var selectedRows =gridOptionsSku.api.getSelectedRows();
+
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+		        $('#deletess').attr("disabled", false);
+		        $('#newBtn2').attr("disabled", true);
+		        $('#saveProduct').attr("disabled", false);
+				
+		}else{
+			    $('#deletess').attr("disabled", true);
+			    $('#newBtn2').attr("disabled", false);
+			    $('#saveProduct').attr("disabled", true);
+			
+		}
+	}
+
+	
+
+	function profileSelect() {
+		//deleteFile();
+		$('#next').show();
+		//$("#productSave").hide();
+		$(".formValidation").remove();
+		$('#newId').hide();
+		$("#profile").show();
+		$("#productheadId").html(null);
+		$("#prCategoryId").val("");
+		$("#tempCategoryId").val("");
+		$("#prLevelId").val("");
+		$("#productId").val("");
+		$("#catDesc").text("");
+		$("#vertical").empty();
+		var img = '<li data-thumb="../assets/css/extend/sld-noimg.jpg"><img src="../assets/css/extend/sld-noimg.jpg" id="imgLoc" alt="Mountains" class="hvrbox-layer_bottom img-fluid"></li>';
+		$("#vertical").append(img);
+		$("#productName").val("");
+	    $("#brand").val("");
+	    $("#mode").val("");
+	    $("#hsnCode").val("");
+	    $("#sicCode").val("");
+	    $("#fileedit").val("");
+	   // $("#vertical").html('');
+	   // $("#mySKUGrid").empty();
+	   // $("#myPurchaseGrid").empty();
+	    $("#prodStatus").prop("checked",false);
+	    closeNavFive();
+	  //  closeVendor();
+	    
+	    skuOptions.api.setRowData();
+	    purchaseOptions.api.setRowData();
+	    $('#productSave').hide();
+	    getBrandList();
+	}
+	function getBrandList() {
+		var id=0;
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$.ajax({
+				type : "GET",
+				url : "create-project-ProductList-get-brandList?id=" + id,
+				success : function(response) {
+					if (response.message == "success") {
+						$("#brand").empty();
+						var option = $("<option></option>");
+						$(option).val(null);
+						$(option).html("Select");
+						$("#brand").append(option);
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#brand").append(option);
+						}
+						if(rid!="" || rid!=null || rid!="null"){
+							$("#brand").val(rid);
+						}
+					}
+				},
+				error : function(e) {
+				}
+			});	
+	}	
+	
+	function getColorList() {
+		var id=0;
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$.ajax({
+				type : "GET",
+				url : "create-project-ProductList-get-colorList?id=" + id,
+				success : function(response) {
+					if (response.message == "success") {
+						$("#color").empty();
+						var option = $("<option></option>");
+						$(option).val(null);
+						$(option).html("Select");
+						$("#color").append(option);
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#color").append(option);
+						}
+						/* if(rid!="" || rid!=null || rid!="null"){
+							$("#color").val(rid);
+						} */
+					}
+				},
+				error : function(e) {
+				}
+			});	
+	}
+	
+	function addNewBrand(){
+		$("#brandName").val('');
+		$("#brandDesc").val('');
+		$('#brandModal').modal('show');
+	}
+	function addNewColor(){
+		$("#colorName").val('');
+		$("#colorDesc").val('');
+		$('#colorModal').modal('show');
+	}
+	function cancelBtn2(){
+		$('#brandModal').modal('hide');
+	}
+	function cancelColor(){
+		$('#colorModal').modal('hide');
+	}
+	function addBrandInfo() {
+		var obj = {};
+		obj.brandId = $("#brandId").val();
+		obj.brandName = $("#brandName").val();
+		obj.brandDesc = $("#brandDesc").val();
+		var validation = true;
+
+		if (obj.brandName == null || obj.brandName == "") {
+			validation = validationUpdated("Brand Name Required", "brandName");
+		}
+		
+		if (validation) {
+			$(".formValidation").remove();
+			$.ajax({
+				type : "POST",
+				url : "create-project-ProductList-add-brand",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "Success") {
+						$("#messageParagraph").text(
+								"Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$('#brandModal').modal('hide');
+						getBrandList();
+					}
+					if (response.code == '1062') {
+						$("#messageParagraph").text("This brand name is already exists.");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$('#brandModal').modal('hide');
+						getBrandList();
+					}
+					
+				},
+				error : function(data) {
+				}
+			})
+		}
+	}
+	
+	function addColorInfo() {
+		var obj = {};
+		obj.colorId = $("#colorId").val();
+		obj.colorName = $("#colorName").val();
+		obj.colorDesc = $("#colorDesc").val();
+		var validation = true;
+
+		if (obj.colorName == null || obj.colorName == "") {
+			validation = validationUpdated("Color Name Required", "colorName");
+		}
+		
+		if (validation) {
+			$(".formValidation").remove();
+			$.ajax({
+				type : "POST",
+				url : "create-project-ProductList-add-color",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "Success") {
+						$("#messageParagraph").text(
+								"Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$('#colorModal').modal('hide');
+						getColorList();
+					}
+					if (response.code == '1062') {
+						$("#messageParagraph").text("This brand name is already exists.");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$('#colorModal').modal('hide');
+						getColorList();
+					}
+					
+				},
+				error : function(data) {
+				}
+			})
+		}
+	}
+	
+	function saveFile() {
+		var uFile = $(uploadDoc1_0)[0].files[0];
+		var fileName = event.currentTarget.value;
+		var lastIndex = fileName.lastIndexOf("\\");
+		if (lastIndex >= 0) {
+			fileName = fileName.substring(lastIndex + 1);
+		}
+		var extension = fileName.split(".");
+		var iURL = URL.createObjectURL(uFile);
+		$("#uploadedBillDiv1_0").html("");
+
+		if (extension[1] == "jpg" || extension[1] == "png"|| extension[1] == "jpeg") {
+			var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-picture-o' style='color: blue'></i></a></div>";
+		}else if (extension[1] == "pdf") {
+			var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-pdf-o' style='color: red'></i></a></div>";
+		} else {
+			var LightImg = "<div class='uploadicon position-l'> </div>";
+		}
+		$("#uploadedBillDiv1_0").html(LightImg);
+		$("#imageName1_0").html(fileName);
+		var fileData = new FormData();
+		fileData.append('file', uFile);
+		fileData.append('path', 'none');
+
+		$.ajax({
+			type : "POST",
+			url : "create-project-ProductList-upload-file1",
+			enctype : "multipart/form-data",
+			contentType : false,
+			data : fileData,
+			processData : false,
+			cache : false,
+			success : function(response) {
+
+			},
+			error : function(e) {
+
+			}
+		});
+	}
+	
+	
+	function validateAndSubmitForm() {
+        var obj = {};
+
+        obj.isEdit = $("#isEdit").val();
+        obj.productId = $("#productId").val();
+        obj.sku = $("#skuId").val();
+        obj.model = $("#model").val();
+        obj.manufacture = $("#manufacture").val();
+        obj.brand = $("#brand").val();
+        obj.color = $("#color").val();
+        obj.unit = $("#unit").val();
+        obj.descrip = $("#descrip").val();
+        var price = $("#salePrice").val();
+        price = price.replaceAll(",", "");
+        obj.salePrice = price;
+        obj.saleTax = $("#saleTax").val();
+        obj.saleCess = $("#saleCess").val();
+        obj.documentName = $("#imageName_0").html();
+
+        $(".formValidation").remove();
+        var allValid = true;
+
+        if (obj.manufacture == null || obj.manufacture == "") {
+            allValid = false;
+            validationModal("Material Item Required", "manufacture");
+        }
+
+        if (obj.unit == null || obj.unit == "") {
+            var mode = $("#mode").val();
+            if (mode == "PMODE00004") {
+                allValid = true;
+            } else {
+                allValid = false;
+                validationModal("UOM Required", "unit");
+            }
+        }
+
+        /* if (obj.salePrice == null || obj.salePrice == "") {
+            allValid = false;
+            validationModal("Sale Price Required", "salePrice");
+        } */
+
+        if (allValid) {
+            submitProductDetails(obj);
+        }
+    }
+
+	function submitProductDetails(dataset) {
+	    console.log(dataset)
+	    $('.loader').show();
+	    $.ajax({
+	    	 type: "POST",
+	         url: "create-project-ProductList-save-sku-dtls",
+	         dataType: 'json',
+	         contentType: 'application/json',
+	         data: JSON.stringify(dataset),
+	        success: function(response) {
+	            if (response.message == "Success") {
+	            	$('.loader').hide();
+	            	$("#messageParagraph").text("Data Saved Successfully");
+	            	$("#msgOkModal").removeClass("btn3");
+	            	$("#msgOkModal").addClass("btn1");
+	            	$("#msgModal").modal('show');
+	            	closeNavFive();
+	            	var productId = $("#productId").val();
+	            	 
+	            	agGrid.simpleHttpRequest({
+						url : 'create-project-ProductList-get-sku-by-product?id='+ productId
+					}).then(function(data) {
+						console.log(data)
+						var len = data.length;
+						$('#totalSku').find('span').html(len);
+						gridOptionsSku.api.setRowData(data);
+						$("#skuPurchase").empty();
+						$("#skuPurchase").append("<option value>Select</option>");
+						for(var i = 0; i < data.length; i++) {
+							
+							$("#skuPurchase").append("<option value='"+data[i].sku+"'>"+data[i].sku+"</option>");
+						}
+						
+						$('#deletess').attr("disabled", true);
+						 $('#newBtn2').attr("disabled", false);
+					});
+	            	
+	            	
+	            } else {
+	            	$('.loader').hide();
+	                $("#messageParagraph").text("This SKU value is already exists.");
+	            	$("#msgOkModal").removeClass("btn3");
+	            	$("#msgOkModal").addClass("btn1");
+	            	$("#msgModal").modal('show'); 
+	               
+	            }
+	        },
+	        error: function(response) {
+	            console.log(response);
+	        }
+	    })
+	}
+	function openSKUDetails(skuid, id) {
+		$(".formValidation").remove();
+		$("#isEdit").val("");
+		document.getElementById('skuId').readOnly = true;
+		$("#skuId").val("");
+		$("#model").val("");
+		$("#manufacture").val("");
+		$("#brand").val("");
+		$("#color").val("");
+		$("#unit").val("");
+		$("#descrip").val("");
+		$("#salePrice").val("");
+		$("#saleTax").val("");
+		$("#saleCess").val("");
+		openNavSku();
+		if(id) {
+			$('.loader').show();
+			obj = {};
+			
+			obj.key = id;
+			obj.name = skuid;
+			
+			$.ajax({
+				type : "POST",
+				url : "create-project-ProductList-get-sku-details",
+				dataType : 'json',
+				contentType : 'application/json',
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "success") {
+						$('.loader').hide();
+						$("#skudiv").show(); 
+						$("#isEdit").val(response.body.isEdit);
+						$("#skuId").val(response.body.sku);
+						$("#model").val(response.body.model);
+						$("#manufacture").val(response.body.manufacture);
+						$("#brand").val(response.body.brand);
+						$("#color").val(response.body.color);
+						//alert(response.body.color);
+						$("#unit").val(response.body.unit);
+						$("#salePrice").val(response.body.salePrice);
+						$("#saleTax").val(response.body.saleTax);
+						$("#saleCess").val(response.body.saleCess);
+						$("#descrip").val(response.body.descrip);
+						
+						var fileName=response.body.docName;
+						if (fileName != null) {
+							var ext = response.body.docName.split(".");
+							$("#imageName1_0").html(fileName);
+	 
+				           if (ext[1] == "jpg" || ext[1] == "png") {
+								var LightImg = '<div class ="uploadicon position-l"><a class="example-image-link" target="_balnk"><i class="fa fa-picture-o" style="color: blue" onclick=viewImage("'
+									+ fileName + '")></i></a> </div>';
+							}else if (ext[1] == "pdf") {
+								var LightImg = '<div class ="uploadicon position-l"><a class="example-image-link" target="_balnk"><i class="fa fa-file-pdf-o" style="color: red" onclick=viewImage("'
+									+ fileName + '")></i></a> </div>';
+							} else {
+								var LightImg = "<div class='uploadicon position-l'> </div>";
+							}  
+
+							$("#uploadedBillDiv1_0").html(LightImg);
+						}
+					}
+				}, error : function(data) {
+					console.log(data)
+					$('.loader').hide();}
+			});
+		}
+	}
+
+	function viewImage(id){
+		window.open("/document/document/"+id,'_blank');
+	}
+	function submitProductSkuDetails(dataset) {
+		$('.loader').show();
+	    console.log(dataset)
+	   	  $.ajax({
+	        type: "POST",
+	          url: "create-project-save-productsku",
+	        	 dataType: 'json',
+	        	    contentType: 'application/json',
+	        	      data: JSON.stringify(dataset),
+	        	      success: function(response) {
+	        	
+	                  if (response.message == "Success") {
+	                	  $('.loader').hide();
+	                	  cancelModalProductSkuBtn();
+
+	          			agGrid.simpleHttpRequest({
+	          				url : 'create-project-ProductSku-view'
+	          			}).then(function(data) {
+	          				console.log(data)
+	          				var jsonData = JSON.parse(data.body);
+	          				var allData = jsonData.viewPrductSkuData;
+	          				gridOptionsProductSku.api.setRowData(allData);
+	          			}); 
+	            } else {
+	            	if (response.code == '1062') {
+						$("#messageParagraph").text("This SKU is already exists.");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						cancelModalProductSkuBtn();
+						$('.loader').hide();
+					}
+	            }
+	        },
+	        error: function(response) {
+	            console.log(response);
+	            $('.loader').hide();}
+	    })
+	}
+	
+	
+	/* function saveProduct(){
+		 var selectedRowsProduct = gridOptionsProduct.api.getSelectedRows();
+    	 var selectedRowsSku = gridOptionsSku.api.getSelectedRows();
+    	 
+    	obj = {};
+    	item_data = [];
+    	
+    	 selectedRowsSku.forEach(function(selectedRow, index) {
+    	 });
+    		 selectedRowsProduct.forEach(function(selectedRow, index) {
+    		  });
+    			 for (var i = 0; i < selectedRowsSku.length; i++) {
+    				 for (var j = 0; j < selectedRowsProduct.length; j++) {
+    					 var item_obj = {};
+    					 item_obj.sku = selectedRowsSku[i].sku;
+    			            item_obj.model = selectedRowsSku[i].model;
+    			            item_obj.manufacture = selectedRowsSku[i].manufacture;
+    			            item_obj.brand = selectedRowsSku[i].brand;
+    			            item_obj.color =selectedRowsSku[i].color;
+    			            item_obj.unit = selectedRowsSku[i].unit;
+    			            item_obj.productId = selectedRowsProduct[j].productId;
+    			            item_obj.productName = selectedRowsProduct[j].productName;
+    			            item_data.push(item_obj)
+    				 }
+    			 }
+    	 
+        console.log(item_data,'item')
+    	$(".formValidation").remove();
+		allValid = true;
+		
+		
+		if(allValid) {
+			gridOptionsProductSku.api.forEachNode(function(rowNode, index) {
+				item_data.push(rowNode.data);
+		        });
+
+			gridOptionsProductSku.api.setRowData(item_data);
+			// cancelModalProductSkuBtn();
+			 gridOptionsProduct.api.deselectAll();
+		     gridOptionsSku.api.deselectAll();
+		}
+	} */
+	
+	
+	var savedProductIds = new Set();
+
+	function saveProduct() {
+	    var selectedRowsProduct = gridOptionsProduct.api.getSelectedRows();
+	    var selectedRowsSku = gridOptionsSku.api.getSelectedRows();
+
+	    var newItems = []; 
+
+	    for (var i = 0; i < selectedRowsSku.length; i++) {
+	        for (var j = 0; j < selectedRowsProduct.length; j++) {
+	            var productId = selectedRowsSku[i].sku;
+
+	            if (!savedProductIds.has(productId)) {
+	                var item_obj = {};
+	                item_obj.sku = selectedRowsSku[i].sku;
+	                item_obj.model = selectedRowsSku[i].model;
+	                item_obj.manufacture = selectedRowsSku[i].manufacture;
+	                item_obj.brand = selectedRowsSku[i].brand;
+	                item_obj.color = selectedRowsSku[i].color;
+	                item_obj.unit = selectedRowsSku[i].unit;
+	                item_obj.productId = selectedRowsProduct[j].productId;
+	                item_obj.productName = selectedRowsProduct[j].productName;
+
+	                newItems.push(item_obj);
+
+	                savedProductIds.add(productId);
+	            }
+	        }
+	    }
+
+	    if (newItems.length > 0) {
+	        gridOptionsProductSku.api.updateRowData({ add: newItems });
+	    }else{
+	    	console.log(newItems, 'newItems');
+	 	    $(".formValidation").remove();
+	 	    $("#messageParagraph").text("Duplicate entry");
+	        $("#msgOkModal").removeClass("btn3");
+	        $("#msgOkModal").addClass("btn1");
+	        $("#msgModal").modal('show');
+	        gridOptionsProduct.api.deselectAll();
+			gridOptionsSku.api.deselectAll();
+	    }
+
+	   
+	    
+	}
+
+   
+	
+	/* 
+	function deleteskuDtls(){
+		//alert("hiii")
+		$("#deleteSKU").modal('show');
+		//$("#delete").modal('hide');
+		
+	}
+	function cancelModalSKUDtls(){
+		$("#deleteSKU").modal('hide');
+		$("#addItemModel").modal('show');
+		//$("#delete").modal('hide');
+	} */
+	function deleteskuDtls(){
+
+		 var selectedNodes = gridOptionsSku.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		 sku= selectedData.map(node => node.sku);
+			var id = $('#productId').val();
+			$('.loader').show();
+		$.ajax({
+				type : "GET",
+				url : "create-project-deleteSku?id="+ sku,
+				success : function(response) {
+				if (response.message == "Success") {
+					$('.loader').hide();
+					 $('#newBtn2').attr("disabled", false);
+					 $('#deletess').attr("disabled", true);
+				
+					agGrid.simpleHttpRequest({
+						url : 'create-project-ProductList-get-sku-by-product?id='+ id
+					}).then(function(data) {
+						console.log(data)
+						var len = data.length;
+						$('#totalSku').find('span').html(len);
+						gridOptionsSku.api.setRowData(data);
+						
+						$("#skuPurchase").empty();
+						$("#skuPurchase").append("<option value>Select</option>");
+						for(var i = 0; i < data.length; i++) {
+							
+							$("#skuPurchase").append("<option value='"+data[i].sku+"'>"+data[i].sku+"</option>");
+						}
+					});
+					closeNavFive();
+					//cancelModalSKUDtls();
+				}
+				},
+				error : function(data) {
+				console.log(data);
+				$('.loader').hide();
+				}
+			})
+		
+	}
+	
+	function skuProductCSV() {
+		var dataset = [];
+		gridOptionsSku.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+		gridOptionsSku.api.exportDataAsCsv(dataset);
+	}
+ </script>
+
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+							<div class="row" id="upperOne">
+								
+											<div class="col-md-4 btn-hs">
+												<div class="font-design" id="totalPrj">
+													<h4>Project Creation (<span></span>)</h4>
+												</div>
+											</div>
+											<div class="col-md-4 btn-hs">
+												<div class="input-style">
+													<input type="text" placeholder="Search.." name="search"
+														class="searchboxinput" onkeyup="cancelBar()"
+														oninput="onQuickFilterChanged()" id="quickFilter"
+														autocomplete="off">
+													<div class="searchicon">
+														<a href="javascript:void(0)"><span
+															style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+															id="closeKey"
+															onclick="gridOptions1.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalPrj').find('span').html(gridOptions1.api.getModel().getRowCount());"
+															class="close_i"><i class="ti-close srchicon"></i></span></a><a
+															href="javascript:void(0)"><i
+															class="ti-search srchicon"></i></a>
+													</div>
+												</div>
+											</div>
+
+
+
+
+											<div class="col-md-4 buttonsec btn-hs" align="right"
+												id="btndiv">
+												
+												<button class="new-btn" id="add" onclick="addId()">New</button>
+												<button id="delete" onclick="deleteProject()"
+													class="delete-btn">DELETE</button>
+												
+
+											</div>
+										
+								<div id="myGrid" style="width: 100%; height: 300px;"
+									class="ag-theme-alpine"></div>
+							</div>
+							
+							
+							<div class="row mt-3" id="upperReq">
+								
+											<div class="col-md-4 btn-hs">
+												<div class="font-design" id="totalReq">
+													<h4>REQUISITION LIST(<span></span>)</h4>
+												</div>
+											</div>
+											<div class="col-md-4 btn-hs">
+												<div class="input-style">
+													<input type="text" placeholder="Search.." name="search"
+														class="searchboxinput" onkeyup="cancelBarReq()"
+														oninput="onQuickFilterChangedReq()" id="quickFilterReq"
+														autocomplete="off">
+													<div class="searchicon">
+														<a href="javascript:void(0)"><span
+															style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+															id="closeKeyReq"
+															onclick="gridOptionsReq.api.setQuickFilter(null);$('#quickFilterReq').val('');document.getElementById('closeKeyReq').style.display='none';$('#totalReq').find('span').html(gridOptionsReq.api.getModel().getRowCount());"
+															class="close_i"><i class="ti-close srchicon"></i></span></a><a
+															href="javascript:void(0)"><i
+															class="ti-search srchicon"></i></a>
+													</div>
+												</div>
+											</div>
+
+											<div class="col-md-4 buttonsec btn-hs" align="right"
+												id="btndiv">
+											<button class="new-btn" id="createReq" onclick="createReq()">Create Requsion</button>
+									
+									
+								</div>
+								<div id="myGridReq" style="width: 100%; height: 300px;"
+									class="ag-theme-alpine"></div>
+							</div>
+							
+							
+							<div class="row mt-3" id="upperPO">
+								
+											<div class="col-md-4 btn-hs">
+												<div class="font-design" id="totalPo">
+													<h4>PO/WO LIST(<span></span>)</h4>
+												</div>
+											</div>
+											<div class="col-md-4 btn-hs">
+												<div class="input-style">
+													<input type="text" placeholder="Search.." name="search"
+														class="searchboxinput" onkeyup="cancelBarPo()"
+														oninput="onQuickFilterChangedPo()" id="quickFilterPo"
+														autocomplete="off">
+													<div class="searchicon">
+														<a href="javascript:void(0)"><span
+															style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+															id="closeKeyPo"
+															onclick="gridOptionsPo.api.setQuickFilter(null);$('#quickFilterPo').val('');document.getElementById('closeKeyPo').style.display='none';$('#totalPo').find('span').html(gridOptionsPo.api.getModel().getRowCount());"
+															class="close_i"><i class="ti-close srchicon"></i></span></a><a
+															href="javascript:void(0)"><i
+															class="ti-search srchicon"></i></a>
+													</div>
+												</div>
+											</div>
+
+
+											<div class="col-md-4 buttonsec btn-hs" align="right"
+												id="btndiv">
+									<button class="new-btn" id="createPo" onclick="createPo()">Create Po</button>
+											</div>
+										
+								<div id="myGridPo" style="width: 100%; height: 300px;"
+									class="ag-theme-alpine"></div>
+							</div>
+							
+							
+							<!-- <div class="row" id="upperMaterialIssue">
+								<div class="innerstickybg">
+									<div class="row">
+										<div class="d-flex justify-content-between"
+											style="display: none;">
+											<div class="col-md-4 btn-hs">
+												<div class="font-design" id="totalMaterialIssue">
+													<h4>MaterialIssue LIST(<span></span>)</h4>
+												</div>
+											</div>
+											<div class="col-md-4 btn-hs">
+												<div class="input-style">
+													<input type="text" placeholder="Search.." name="search"
+														class="searchboxinput" onkeyup="cancelBarMaterialIssue()"
+														oninput="onQuickFilterChangedMaterialIssue()" id="quickFilterMaterialIssue"
+														autocomplete="off">
+													<div class="searchicon">
+														<a href="javascript:void(0)"><span
+															style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+															id="closeKeyMaterialIssue"
+															onclick="gridOptionsMaterialIssue.api.setQuickFilter(null);$('#quickFilterMaterialIssue').val('');document.getElementById('closeKeyMaterialIssue').style.display='none';"
+															class="close_i"><i class="ti-close srchicon"></i></span></a><a
+															href="javascript:void(0)"><i
+															class="ti-search srchicon"></i></a>
+													</div>
+												</div>
+											</div>
+
+
+											<div class="col-md-4 buttonsec btn-hs" align="right"
+												id="btndiv">
+
+											</div>
+										</div>
+									</div>
+									
+								</div>
+								<div id="myGridMaterialIssue" style="width: 100%; height: 300px;"
+									class="ag-theme-alpine"></div>
+							</div> -->
+							
+							
+
+
+
+
+						<div class="innercontent" id="mainPage">
+					
+							<div class="innerstickybg" id="headingItem"
+								style="background-color: #f0f3f1;">
+								<div class="row ">
+									<div class="col-md-3">
+										Project ID: <span id="projectIdvalue"></span> <input
+											type="hidden" id="projectId">
+									</div>
+									<div class="col-md-6">
+										<div id="statusDiv"></div>
+									</div>
+								
+									<div class="col-md-12 buttonsec btn-hs" id="btnDsn" align="right">
+										<button class="cancel-btn" id="cancel" onclick="closeNav1()">CANCEL</button>
+										<button class="btn1" id="saveId" onclick="addCreation()">SAVE</button>
+									</div>
+								</div>
+							</div>
+							
+							
+
+
+
+							<!-- End -->
+
+
+							<!--1st accordion start-->
+
+							<div class="col-lg-12">
+								<div class="accordion" id="accordionExample">
+
+									<!-- start -->
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingOne">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseOne"
+												aria-expanded="true" aria-controls="collapseOne">
+												PROJECT INFORMATION :</button>
+										</h2>
+
+										<div id="collapseOne"
+											class="aaccordion-collapse collapse show"
+											aria-labelledby="headingOne"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+												<div class="row">
+													<div class="col-lg-4">
+														<div class="form-group">
+															<label>Project Name</label><input type="text"
+																id="projectname" onblur="removeValid(event)" class="form-control">
+														</div>
+													</div>
+
+
+													<div class="col-lg-4 date1">
+														<div class="form-group calendar_box mb-10">
+															<label>Creation date</label> <input type="text"
+																id="creationID" value=""
+																class="form-control align-right"
+																onblur="removeValid(event)"
+																th:attr="onkeyup=|formatDate('startdate','${session.DATEFORMAT_JS}')|"
+																readonly> <i class="ti-calendar picker_calendar"
+																id="fromDateCalendar" onchange="dateChange()"></i>
+														</div>
+													</div>
+													<div class="col-lg-4">
+														<div class="form-group">
+															<label>Location</label><input type="text" id="locationID"
+																class="form-control">
+														</div>
+													</div>
+
+
+
+													<div class="col-lg-4">
+														<div class="form-group">
+															<label>Country</label>
+															<div class="select">
+																<select id="country2" onchange="stateList2()">
+																	<option th:value="NULL">Select</option>
+																	<option th:each="c:${countryList}" th:value='${c.key}'
+																		th:text="${c.name}"></option>
+																</select> <span class="focus"></span>
+															</div>
+														</div>
+													</div>
+
+
+													<div class="col-lg-4">
+														<div class="form-group">
+															<label>State</label>
+															<div class="select">
+																<select id="stateid2" onchange="">
+																	<option th:value="NULL">Select</option>
+
+																</select> <span class="focus"></span>
+															</div>
+														</div>
+													</div>
+
+													<div class="col-lg-4">
+														<div class="form-group">
+															<label>Pin</label><input type="text" id="pinID"
+																maxlength="6" onkeypress="return isNumberKey(event)"
+																class="form-control">
+														</div>
+													</div>
+
+													<div class="col-lg-4">
+														<div class="form-group">
+															<label>Project In-charge</label><input type="text"
+																id=pIncharge class="form-control">
+														</div>
+													</div>
+													<div class="col-lg-4">
+														<div class="form-group">
+															<label>Status</label>
+															<div class="select">
+																<select id="status" onblur="removeValid(event)">
+																	<option value="">Select</option>
+																	<option value="1">ACTIVE</option>
+																	<option value="0">IN-ACTIVE</option>
+																</select>
+															</div>
+														</div>
+													</div>
+													
+													
+													<div class="col-lg-4">
+														<div class="form-group">
+															<label>Project Type</label>
+															<div class="select">
+																<select id="projectType">
+																	<option th:value="NULL">Select</option>
+																	<option th:each="c:${projectTypeList}" th:value='${c.key}'
+																		th:text="${c.name}"></option>
+																</select> <span class="focus"></span>
+															</div>
+														</div>
+													</div>
+													
+												</div>
+											</div>
+										</div>
+
+
+									</div>
+									<!-- end -->
+
+
+
+									<!-- start -->
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingTwo">
+											<button class="accordion-button collapsed" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseTwo"
+												aria-expanded="false" aria-controls="collapseTwo">
+												BILLING ADDRESS :</button>
+										</h2>
+
+										<div id="collapseTwo" class="accordion-collapse collapse"
+											aria-labelledby="headingTwo"
+											data-bs-parent="#accordionExample">
+
+											<div class="accordion-body">
+												<div class="row form-box mb-10">
+													<div class="col-lg-4">
+														<div class="form-group">
+															<label>Billing Name</label><input type="text" id=cname
+																class="form-control">
+														</div>
+													</div>
+													
+													<div class="col-lg-4">
+														<div class="form-group">
+															<label>Billing Email</label><input type="text" id="email"
+																class="form-control">
+														</div>
+													</div>
+
+													<div class="col-lg-4">
+														<div class="form-group">
+															<label>Billing Mobile</label><input type="text"
+																id="mobile" class="form-control">
+														</div>
+													</div>
+
+													<div class="col-lg-4">
+														<div class="form-group">
+															<label>Billing Country</label>
+															<div class="select">
+																<select id="country" onchange="stateList()">
+																	<option th:value="NULL">Select</option>
+																	<option th:each="c:${countryList}" th:value='${c.key}'
+																		th:text="${c.name}"></option>
+																</select> <span class="focus"></span>
+															</div>
+														</div>
+													</div>
+
+													<div class="col-lg-4">
+														<div class="form-group">
+															<label>Billing State</label>
+															<div class="select">
+																<select id="stateid" onchange="">
+																	<option th:value="NULL">Select</option>
+																</select> <span class="focus"></span>
+															</div>
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Billing City</label> <input type="text"
+																class="form-control" onblur="removeValid(event)"
+																id="cityb" placeholder="">
+														</div>
+													</div>
+													
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Street1</label> <input type="text"
+																class="form-control" onblur="removeValid(event)"
+																id="street1" placeholder="">
+														</div>
+													</div>
+													
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Street2</label> <input type="text"
+																class="form-control" onblur="removeValid(event)"
+																id="street2" placeholder="">
+														</div>
+													</div>
+
+
+													<div class="col-lg-4">
+														<div class="form-group">
+															<label>Pin Code</label><input type="text" id="cPin"
+																maxlength="6" onkeypress="return isNumberKey(event)"
+																class="form-control">
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Gst No</label> <input type="text"
+																class="form-control" onblur="removeValid(event)"
+																id="gstNo" placeholder="">
+														</div>
+													</div>
+													
+													
+													
+													
+
+													<!-- <div class="col-lg-4">
+														<div class="form-group" style="display: none;">
+															<label>Billing Address</label><input type="text"
+																id="caddressId" class="form-control">
+														</div>
+													</div> -->
+
+													
+
+													<!-- <div class="col-lg-4"></div>
+
+													<div class="col-lg-12">
+														<div class="form-group">
+															<label>Billing Address</label>
+															<textarea class="form-control" rows="5" id="caddress"
+																name="text"></textarea>
+														</div>
+													</div> -->
+
+													<div class="col-lg-12">
+														<div class="form-group">
+															<label>Remarks</label>
+															<textarea class="form-control" rows="5" id="remarks"
+																name="text"></textarea>
+														</div>
+													</div>
+
+
+
+
+												</div>
+											</div>
+
+
+										</div>
+									</div>
+									<!-- end -->
+
+
+								</div>
+							</div>
+							<!--1st accordion end-->
+
+
+
+							<div class="col-lg-12">
+								<!--accordion start-->
+								<div class="accordion-item mt-4" id="accordionExample2">
+									<div class="accordion-item" id="documentDetails">
+										<h2 class="accordion-header" id="headingTwoo"
+											onclick="closeNav()">
+
+											<button class="accordion-button collapsed" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseTwoo"
+												aria-expanded="false" aria-controls="collapseTwoo">
+												Attach Files To Project</button>
+
+										</h2>
+										<div id="collapseTwoo" class="accordion-collapse collapse"
+											aria-labelledby="headingTwoo"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+
+
+												<div class="row">
+													<div class="col-md-4 btn-hs1">
+														<div class="font-design"></div>
+													</div>
+													<div class="col-md-8 butttonsec">
+														<!--   <button class="download-btn" onclick="rfqCSV()">Download</button> -->
+														<button class="new-btn" id="saveAttachmentBtn"
+															onclick="checkEmpty();">Add Document</button>
+
+													</div>
+												</div>
+
+												<table id="docTbl" cellspacing="7" cellpadding="7">
+													<thead>
+														<tr class="tr_clone">
+															<!-- <th align="center"></th> -->
+
+															<th width="620">Document Name</th>
+															<th width="480">Attachment</th>
+
+
+														</tr>
+													</thead>
+													<tbody id="doctbodyData">
+														<tr>
+															<td style="display: none" align="center" class="pdb-24"><input
+																class="checkCls" type="checkbox" id="check2"><label
+																for="check2"></label></td>
+															<td style="display: none"><div class="form-group">
+
+
+																	<select class="form-control documentclss" id="docid_0"
+																		onblur="removeValid(event);">
+																		<option value="">--Select--</option>
+																		<option th:each="c,iter:${documentTypeList}"
+																			th:value="${c.key}" th:text="${c.name}"></option>
+																	</select>
+																</div></td>
+															<td><div class="form-group">
+																	<input type="text" value=""
+																		class="form-control docNoclss"
+																		onblur="checkForDuplicateEntry(event)" id="docnoid_">
+																</div></td>
+
+															<td>
+																<div class="control-group position-r">
+																	<label class="custom-file-upload" for="uploadDoc_0"
+																		id="uploadFor_0"> <i id="clickImg_0"
+																		class="ti-plus"></i>
+																	</label>
+																	<div class="controls">
+
+																		<input type="file" class="document" id="uploadDoc_0"
+																			name="userImage" accept="image/*"
+																			onchange="saveMultiFile(event)" />
+
+																	</div>
+																</div> <input type="hidden" id="uploadHidden_0"
+																class="uploadHidCls">
+																<div id="uploadedBillDiv_0" align="center"
+																	class="uploadedBillCls"></div>
+																<div id="imageName_0" class="imageName"></div>
+																<div id="dltImage_0"></div>
+															</td>
+
+														</tr>
+
+
+													</tbody>
+												</table>
+
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<div id="main" class="mt-4">
+								<div class="accordion-item">
+									<h2 class="accordion-header" id="headingOne">
+										<button class="accordion-button" type="button"
+											data-bs-toggle="collapse" data-bs-target="#collapseOne"
+											aria-expanded="false" aria-controls="collapseOne">
+											Shipping Details</button>
+									</h2>
+
+									<div id="collapseOne" class="accordion-collapse collapse show"
+										aria-labelledby="headingOne"
+										data-bs-parent="#accordionExample">
+										<div class="accordion-body">
+
+											<div id="mySidenav" class="sidenav">
+												<div class="slidebox">
+													<div class="row">
+														<div class="col-md-10 edit">Shipping Details</div>
+														<div class="col-md-2">
+															<div class="arrow">
+																<a href="javascript:void(0)" class="closebtn"
+																	onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+															</div>
+														</div>
+													</div>
+													<div style="clear: both;"></div>
+													<div class="chartbtnsec">
+														<div align="right">
+															<button class="cancel-btn" onclick="closeNav()">CANCEL</button>
+															<button class="approve-btn" id="save1"
+																onclick="saveTableData()">SAVE</button>
+														</div>
+
+													</div>
+													<div class="clearfix"></div>
+													<div class="row">
+														<div class="col-lg-12">
+															<div class="form-group"></div>
+														</div>
+
+														<!--  <div class="col-lg-12">
+																<div class="form-group" >
+																	<label>Shipping Id</label> <input type="text"
+																		class="form-control" id="shippingId" readonly>
+																</div>
+															</div>   -->
+
+														<div class="col-lg-12">
+															<div class="form-group">
+																<input type="hidden" class="form-control" id="rowEdit">
+																<input type="hidden" id="shippingId"> <label>Shipping
+																	Name</label> <input type="text"
+																	class="form-control transparenttxtbox"
+																	id="shippingName" onblur="removeValid(event)">
+															</div>
+														</div>
+
+													<!-- 	<div class="col-lg-12">
+															<div class="form-group" style="display:none;">
+																<label>Shipping Address</label> <input type="text"
+																	class="form-control transparenttxtbox"
+																	id="shippingAddressId" onblur="removeValid(event)">
+															</div>
+														</div> -->
+														<div class="col-lg-12">
+															<div class="form-group">
+																<label>Shipping Email</label> <input type="text"
+																	class="form-control transparenttxtbox"
+																	id="shippingEmail" onblur="removeValid(event)">
+															</div>
+														</div>
+
+														<div class="col-lg-12">
+															<div class="form-group">
+																<label>Shipping Mobile No.</label> <input type="text"
+																	class="form-control transparenttxtbox"
+																	id="shippingMobileNo" onblur="removeValid(event)">
+															</div>
+														</div>
+														
+														<div class="col-lg-12">
+															<div class="form-group">
+																<label>Contact</label> <input type="text"
+																	class="form-control transparenttxtbox"
+																	id="shippingContact" onblur="removeValid(event)">
+															</div>
+														</div>
+														<div class="col-lg-12">
+															<div class="form-group">
+																<label>Shipping Country</label>
+																<div class="select">
+																	<select class="" id="country1" onchange="stateList1()">
+																		<option th:value="NULL">Select</option>
+																		<option th:each="c:${countryList}" th:value='${c.key}'
+																			th:text="${c.name}"></option>
+																	</select> <span class="focus"></span>
+																</div>
+															</div>
+														</div>
+
+														<div class="col-lg-12">
+															<div class="form-group">
+																<label>Shipping State</label>
+																<div class="select">
+																	<select id="stateid1" onchange="">
+																		<option th:value="NULL">Select</option>
+																	</select> <span class="focus"></span>
+																</div>
+															</div>
+														</div>
+
+														<div class="col-lg-12">
+															<div class="form-group">
+																<label>Shipping City</label> <input type="text"
+																	class="form-control transparenttxtbox"
+																	id="shippingCity" onblur="removeValid(event)">
+															</div>
+														</div>
+
+														<div class="col-lg-12">
+															<div class="form-group">
+																<label>Shipping Street1</label> <input type="text"
+																	class="form-control transparenttxtbox"
+																	id="shippingStreet1" onblur="removeValid(event)">
+															</div>
+														</div>
+
+														<div class="col-lg-12">
+															<div class="form-group">
+																<label>Shipping Street2</label> <input type="text"
+																	class="form-control transparenttxtbox"
+																	id="shippingStreet2" onblur="removeValid(event)">
+															</div>
+														</div>
+															<div class="col-lg-12">
+															<div class="form-group">
+																<label>Pin Code</label> <input type="text"
+																	class="form-control transparenttxtbox" id="shippingPin"
+																	onblur="removeValid(event)">
+															</div>
+														</div>
+														
+														<div class="col-lg-12">
+															<div class="form-group">
+																<label>Gst No</label> <input type="text"
+																	class="form-control transparenttxtbox"
+																	id="shippingGstNo" onblur="removeValid(event)">
+															</div>
+														</div>
+
+													<!-- 	<div class="col-lg-12">
+															<div class="form-group">
+																<label>Shipping Address</label>
+																<textarea class="form-control" rows="5" id="shippingAddress"
+																	name="text"></textarea>
+															</div>
+														</div> -->
+													</div>
+												</div>
+											</div>
+
+
+											<div class="row">
+												<div class="col-md-12 buttonsec btn-hs">
+													<button class="delete-btn" id="deleteChild"
+														onclick="deleteDetails()">DELETE</button>
+													<button class="new-btn" id="newchild" onclick="openNav()">NEW</button>
+												</div>
+												<div id="activity" style="width: 100%; height: 200px;"
+													class="ag-theme-alpine"></div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+
+							<div id ="mainProductsku" class="mt-4">
+								<div class="accordion-item">
+									<h2 class="accordion-header" id="headingfour">
+										<button class="accordion-button" type="button"
+											data-bs-toggle="collapse" data-bs-target="#collapsefour"
+											aria-expanded="false" aria-controls="collapsefour">
+											Product List</button>
+									</h2>
+
+									<div id="collapsefour"
+										class="accordion-collapse collapse show"
+										aria-labelledby="headingfour"
+										data-bs-parent="#accordionExample">
+										<div class="accordion-body">
+											
+											<div class="row">
+											<div class="col-md-12 buttonsec btn-hs" align="right"
+												id="btndiv">
+												<button class="delete-btn" id="deleteproductSku" onclick="deleteproductSku()">DELETE</button>
+												<button class="new-btn" id="addProduct" onclick="addProduct()">Add</button>
+											</div>
+											</div>
+											
+											<div id="myGridProductSku" style="width: 100%; height: 200px;"
+												class="ag-theme-alpine"></div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+
+						</div>
+
+						<!-- SIDE BAR NAVIGATION ENDS -->
+
+					</div>
+
+
+				</div>
+				<div id="deleteAttachment" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column">
+								<button type="button" class="close" data-dismiss="modal"
+									aria-hidden="true" onclick="closeDeleteConfirm()">
+									<i class="ti-close modal-close"></i>
+								</button>
+							</div>
+							<div class="modal-body">
+								<p>Do you really want to delete these records? This process
+									cannot be undone.</p>
+								<input type="hidden" id="dltValue">
+							</div>
+							<div class="modal-footer justify-content-center">
+
+								<button type="button" class="cancel-btn" data-dismiss="modal"
+									onclick="closeDeleteConfirm()">Cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="deletAttachmentRow()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div id="deleteProject" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column">
+								<!-- <button type="button" class="close" data-dismiss="modal"
+									aria-hidden="true" onclick="cancelModalBtn()">
+									 <i class="ti-close modal-close"></i> 
+								</button> -->
+							</div>
+							<div class="modal-body">
+								<p>Do you really want to delete these records? This process
+									cannot be undone.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: -15px;">
+
+								<button type="button" class="btn btn-secondary" id="modalCan" data-bs-dismiss="modal">cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="deleteOnclick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				
+				<div id="deleteProductSkuModal" class="modal fade show" aria-modal="true">
+			<div class="modal-dialog modal-confirm">
+				<div class="modal-content">
+					<div class="modal-header flex-column">
+						<button type="button" class="close" data-dismiss="modal"
+							aria-hidden="true" onclick="cancelModalProductSkuDtls()">
+							<i class="ti-close modal-close"></i>
+						</button>
+					</div>
+					<div class="modal-body">
+						<p>Do you really want to delete these records? This process
+							cannot be undone.</p>
+					</div>
+					<div class="modal-footer justify-content-center"
+						style="margin-top: -15px;">
+
+						<button type="button" class="cancel-btn" data-dismiss="modal"
+							onclick="cancelModalProductSkuDtls();">Cancel</button>
+						<button type="button" class="delete-btn" onclick="deleteproductSkuDtls()">Delete</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+				<div id="deleteProduct" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column">
+								<button type="button" class="close" data-dismiss="modal"
+									aria-hidden="true" onclick="cancelModalProductBtn()">
+									<i class="ti-close modal-close"></i>
+								</button>
+							</div>
+							<div class="modal-body">
+								<p>Do you really want to delete these records? This process
+									cannot be undone.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: -15px;">
+
+								<button type="button" class="cancel-btn" data-dismiss="modal"
+									onclick="cancelModalProductBtn();">Cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="deleteProductOnclick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				
+				<div id="productDetailsModal" class="modal fade show">
+					<div class="modal-dialog modal-xl">
+						<div class="modal-content">
+						
+							<div class="modal-body modal-w">
+							<div class="row">
+											<div class="col-md-12 buttonsec btn-hs" align="right"
+												id="btndiv">
+												
+												<button type="button" class="cancel-btn" data-dismiss="modal"
+									onclick="cancelModalProductSkuBtn();">Cancel</button>
+											</div>
+											</div>
+								<div id="mainProduct" class="mt-4">
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingThree">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseThree"
+												aria-expanded="false" aria-controls="collapseThree">
+												Product List</button>
+										</h2>
+
+										<div id="collapseThree"
+											class="accordion-collapse collapse show"
+											aria-labelledby="headingThree"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+												<div class="row">
+													<div class="col-md-4 btn-hs">
+														<div class="font-design" id="totalProduct">
+															<h4>
+																Products(<span></span>)
+															</h4>
+														</div>
+													</div>
+
+													<div class="col-md-4 btn-hs">
+														<div class="input-style">
+															<input type="text" placeholder="Search.." name="search"
+																class="searchboxinput"
+																oninput="onQuickFilterChangedProduct()" id="quickFilterProduct"
+																autocomplete="off">
+															<div class="searchicon">
+																<a href="javascript:void(0)"><span
+																	style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+																	id="closeKeyProduct"
+																	onclick="cancelBarProduct()"
+																	class="close_i"><i class="ti-close srchicon"></i></span></a><a
+																	href="javascript:void(0)"><i
+																	class="ti-search srchicon"></i></a>
+															</div>
+														</div>
+													</div>
+													<div class="col-md-4 btn-hs"></div>
+
+												</div>
+												<div id="myGridProduct" style="width: 100%; height: 200px;"
+													class="ag-theme-alpine"></div>
+											</div>
+										</div>
+									</div>
+								</div>
+								
+								<div id="mainProductDetails">
+										<div class="accordion mt-4" id="accordionExample">
+
+											<div class="accordion-item">
+												<h2 class="accordion-header" id="headingfive">
+													<button class="accordion-button collapsed" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapsefive"
+														aria-expanded="false" aria-controls="collapsefive">
+														SKU Details</button>
+
+												</h2>
+												<div id="collapsefive" class="accordion-collapse collapse"
+													aria-labelledby="headingfive"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+													<input type="hidden" id="productId"> <input type="hidden"
+														id="productName">
+														<input type = "hidden" id ="productSkuId">
+													<div id="mySkuSidenav" class="sidenav">
+															<div class="slidebox">
+																<div class="row">
+																	<div class="col-md-10">
+																		<div class="edit">
+																			Product Id: <span id="skuPrdId"></span>
+																		</div>
+																	</div>
+																	<div class="col-md-2">
+																		<div class="arrow">
+																			<a href="javascript:void(0)" class="closebtn"
+																				onclick="closeNavFive()"><i class="ti-arrow-right"></i></a>
+																		</div>
+																	</div>
+																</div>
+																<div class="chartbtnsec">
+																	<div align="right">
+																		<button class="cancel-btn" onclick="closeNavFive()">CANCEL</button>
+																		<!-- <button class="btn3">DELETE</button> -->
+																		<button class="approve-btn" id="saveSKUData">SAVE</button>
+																	</div>
+																</div>
+																<div class="clearfix"></div>
+
+																<div class="row">
+																	<!-- 	<div class="col-lg-6" id="skudiv1">
+																		<div class="form-group">
+																			<label>SKU</label> <input type="text" id="isEdit">
+																			<input type="text" value="" placeholder=""
+																				class="form-control" id="skuId"
+																				onblur="removeValid(event);" maxLength="8">
+																		</div>
+																	</div> -->
+
+																	<div class="col-md-12" id="skudiv1">
+																		<div class="form-group">
+																			<label>SKU/Material Code</label><input type="hidden" id="isEdit">
+																			<input type="text" value=""
+																				onblur="removeValid(event);" placeholder=""
+																				class="form-control" id="skuId" maxLength="8">
+																		</div>
+																	</div>
+																</div>
+																<div class="row">
+																	<div class="col-lg-12">
+																		<div class="form-group">
+																			<label>Model/Size</label> <input type="text" value=""
+																				placeholder="" class="form-control" id="model"
+																				onblur="removeValid(event);">
+																		</div>
+																	</div>
+																</div>
+																 <div class="row"> 
+																	<div class="col-md-12">
+																		<div class="form-group">
+																			<label>Material Name</label> <input type="text"
+																				value="" placeholder="" class="form-control"
+																				id="manufacture" onblur="removeValid(event);">
+																		</div>
+																	</div>
+
+																</div>
+																<div class="row">
+																	<div class="col-md-10">
+																		<div class="form-group">
+																			<label>Brand</label>
+																		<div class="select">
+																			<select class="" id="brand"
+																				onblur="removeValid(event);">
+																				<option value="">Select</option>
+																				<option th:each="c,iter:${brandList}"
+																					th:value="${c.key}" th:text="${c.name}"></option>
+
+																			</select>
+																		</div>
+																	</div>
+																	</div>
+																	<div class="col-md-2">
+																		<div class="form-group">
+																			<label
+																				style="margin-top: 18px;" onclick="addNewBrand()">
+																				<i class="ti-plus"></i> Add
+																			</label>
+																		</div>
+																	</div>
+																	</div>
+																	<div class="row">
+																	<div class="col-md-10">
+																		<div class="form-group">
+																			<label>Color</label>
+																			<div class="select">
+																				<select id="color">
+																					<option value="">Select</option>
+																				</select>
+																			</div>
+																		</div>
+																	</div>
+																	<div class="col-md-2">
+																		<div class="form-group">
+																			<label
+																				style="margin-top: 18px;" onclick="addNewColor()">
+																				<i class="ti-plus"></i> Add
+																			</label>
+																		</div>
+																	</div>
+																	</div>
+																<div class="col-md-12">
+																	<div class="form-group">
+																		<label>Description</label>
+																		<textarea id="descrip"
+																			class="mt-2 form-controls"> </textarea>
+					
+																	</div>
+																</div>
+																<!-- </div> -->
+																<!-- <div class="row">
+																	<div class="col-md-6">
+																		<div class="form-group">
+																			<label>Variation Type</label>
+																			<div class="select">
+																				<select class="" id="variationType"
+																					onblur="removeValid(event);">
+																					<option value="">Select</option>
+																					<option th:each="c,iter:${variationTypeList}"
+																						th:value="${c.key}" th:text="${c.name}"></option>
+																				</select>
+																			</div>
+
+																		</div>
+																	</div>
+																	<div class="col-md-6">
+																		<div class="form-group">
+																			<label>Variation Value</label> <input type="text"
+																				value="" onblur="removeValid(event);" placeholder=""
+																				class="form-control" id="variationValue">
+																		</div>
+																	</div>
+
+																</div> -->
+
+																<div class="row">
+																	<div class="col-md-6">
+																		<div class="form-group">
+																			<label>UOM</label>
+																			<div class="select">
+																				<select class="" id="unit"
+																					onblur="removeValid(event);">
+																					<option value="">Select</option>
+																					<option th:each="c,iter:${unitList}"
+																						th:value="${c.key}" th:text="${c.name}"></option>
+																				</select>
+																			</div>
+																		</div>
+																	</div>
+																	<div class="col-md-6" id="upload">
+																		<label style="margin-bottom: 10px;">Upload Image</label>
+						
+																		<div class="control-group position-r">
+																			<label class="custom-file-upload" for="uploadDoc1_0"
+																				style="margin-top: 18px;"> <i class="ti-plus"></i>
+																			</label>
+																			<div class="controls">
+																				<input type="file" class="document"id="uploadDoc1_0"
+																					accept=".jpeg, .jpg, .png, .pdf" name="userImage"
+																					 onchange="saveFile(event)">
+																			</div>
+																		</div>
+																			<input type="hidden" id="uploadHidden1_0"
+																				class="uploadHidCls" >
+																			<div id="uploadedBillDiv1_0" align="center"
+																				class="uploadedBillCls" style="margin-top: 10px;"></div>
+																			<div id="imageName1_0" class="imageName"
+																				style="margin-top: 10px;"></div>
+							
+																		</div>
+																	<input type="hidden" id="salePrice">
+
+																	<!-- 	<div class="col-md-6">
+																		<div class="form-group">
+																			<label>Unit Sale Price</label> <input type="text"
+																				value="" onclick="salaryBack(event)"
+																				onblur="removeValid(event);salaryCheck(event)"
+																				placeholder="" class="form-control" id="salePrice">
+																		</div>
+																	</div> -->
+																</div>
+															</div>
+														</div>
+
+
+														<!-- <div id="myVendorSidenav" class="sidenav">
+															<div class="slidebox">
+																<div class="row">
+																	<div class="col-md-10">
+																		<div class="edit">
+																			Product Id: <span id="skuPurchasePrdId"></span>
+																		</div>
+																	</div>
+																	<div class="col-md-2">
+																		<div class="arrow">
+																			<a href="javascript:void(0)" class="closebtn"
+																				onclick="closeVendor()"><i
+																				class="ti-arrow-right"></i></a>
+																		</div>
+																	</div>
+																</div>
+																<div class="chartbtnsec">
+																	<div align="right">
+																		<button class="cancel-btn" onclick="closeVendor()">CANCEL</button>
+																		<button class="btn3">DELETE</button>
+																		<button class="approve-btn" id="savePurchaseDtls">SAVE</button>
+																	</div>
+																</div>
+																<div class="clearfix"></div>
+
+																<div class="row">
+																	<div class="col-lg-12">
+																		<div class="form-group">
+																			<label>SKU</label>
+																			<div class="select">
+																				<input type="hidden" id="isEditPurchase"> <input
+																					type="hidden" id="editSKUId"> <input
+																					type="hidden" id="editVendorId"> <select
+																					id="skuPurchase" onblur="removeValid(event);">
+																					<option value="">Select</option>
+																				</select>
+																			</div>
+																		</div>
+																	</div>
+																</div>
+																<div class="row">
+																	<div class="col-lg-6">
+																		<div class="form-group">
+																			<span class="slide-span">Variation Type: </span><span
+																				id="variantTypeSpan" class="slide-span-text"></span>
+																		</div>
+																	</div>
+																</div>
+																<div class="row">
+																	<div class="col-md-12">
+																		<div class="form-group">
+																			<span class="slide-span">Variation Value: </span><span
+																				id="variantValueSpan" class="slide-span-text"></span>
+																		</div>
+																	</div>
+
+																</div>
+																<div class="row">
+																	<div class="col-md-12">
+																		<div class="form-group">
+																			<span class="slide-span">Variation Unit: </span><span
+																				id="variantUnitSpan" class="slide-span-text"></span>
+																		</div>
+																	</div>
+
+																</div>
+
+																<div class="row">
+																	<div class="col-md-12">
+																		<div class="form-group">
+																			<label>Vendor</label>
+																			<div class="select">
+																				<select id="vendorId" class=""
+																					onblur="removeValid(event);">
+																					<option value="">Select</option>
+																					<option th:each="c,iter:${vendorList}"
+																						th:value="${c.key}" th:text="${c.name}"></option>
+																				</select>
+																			</div>
+
+																		</div>
+																	</div>
+																</div>
+																<input type="hidden" id="purchasePrice">
+																<div class="row">
+																		<div class="col-md-6">
+																		<div class="form-group">
+																			<label>Unit Purchase Price</label> <input type="text"
+																				value="" placeholder="" class="form-control"
+																				id="purchasePrice"
+																				onblur="removeValid(event);salaryCheck(event)"
+																				onclick="salaryBack(event)">
+																		</div>
+																	</div>
+
+
+
+
+																	<div class="col-md-12">
+																		<div class="form-group">
+																			<label>MOQ</label> <input type="text" value=""
+																				placeholder="" class="form-control" id="moq"
+																				onblur="removeValid(event);">
+																		</div>
+																	</div>
+
+																</div>
+															</div>
+														</div> -->
+
+												<div class="row">
+														
+													<div class="col-md-2 btn-hs">
+														<div class="font-design" id="totalSku">
+															<h4>
+																Sku(<span></span>)
+															</h4>
+														</div>
+													</div>
+
+													<div class="col-md-4 btn-hs">
+														<div class="input-styles">
+															<input type="text" placeholder="Search.." name="search"
+																class="searchboxinput"
+																oninput="onQuickFilterChangedSku()" id="quickFilterSku"
+																autocomplete="off">
+															<div class="searchicon">
+																<a href="javascript:void(0)"><span
+																	style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+																	id="closeKeySku"
+																	onclick="cancelBarSku()"
+																	class="close_i"><i class="ti-close srchicon"></i></span></a><a
+																	href="javascript:void(0)"><i
+																	class="ti-search srchicon"></i></a>
+															</div>
+														</div>
+													</div>
+													
+														
+															<div class="col-md-6 btn-hs">
+																<button class="new-btn" id="saveProduct" onclick="saveProduct()">Save</button>
+																<button class="download-btn" onclick="skuProductCSV();">Download</button>
+																<button class="delete-btn" id="deletess" onclick="deleteskuDtls()">DELETE</button>
+																<button class="new-btn" id="newBtn2" onclick="openNavSku()">NEW</button>
+															</div>
+
+														</div>
+															
+																<div id="myGridSku" style="width: 100%; height: 190px;"
+																	class="ag-theme-alpine"></div>
+															
+														<br>
+														<!-- <div class="row">
+															<div class="col-md-4 btn-hs1">
+																<div class="font-design"></div>
+															</div>
+															<div class="col-md-8 butttonsec">
+																<button class="upload-btn" id="uploads">Upload</button>
+																<button class="download-btn" id="downloads"
+																	onclick="purchaseProductCSV();">Download</button>
+																	<div class="buttongap"></div>
+																<button class="delete-btn" data-toggle="modal"
+																	data-target="#delete" id="deletes"
+																	onclick="deletepurchaseDtls()">DELETE</button>
+																<button class="new-btn" id="newBtn1"
+																	onclick="openVendor()">NEW</button>
+															</div>
+														</div> -->
+														<!-- <div class="row">
+															<div class="col-md-12">
+																<div id="myGridVender"
+																	style="width: 100%; height: 100px;"
+																	class="ag-theme-alpine"></div>
+															</div>
+														</div> -->
+													</div>
+												</div>
+											</div>
+
+										</div>
+									</div>
+								<div class="modal fade" id="brandModal">
+			<div class="modal-dialog modal-lg"
+				style="margin-top: 130px; height: 900px; max-width: 600px">
+				<div class="modal-content">
+
+					<!-- 	Modal Header -->
+					<div class="modal-header"></div>
+					<!-- Modal body -->
+					<div class="modal-body">
+
+						<div class="col-md-12" id="shippingInfo">
+							<div class="card-title">
+								<h4>Add Brand Details</h4>
+							</div>
+							<div class="row">
+
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Name</label> <input type="hidden" id="brandId">
+										<input type="text" class="form-control transparenttxtbox"
+											placeholder="" id="brandName" onblur="removeValid(event);">
+									</div>
+								</div>
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Description</label>
+										<textarea class="form-control" id="brandDesc"
+											onblur="removeValid(event);"></textarea>
+									</div>
+								</div>
+
+							</div>
+
+							<div class="row mt-4">
+								<div class="form-group">
+
+									<button class="delete-btn" id="cancel" onclick="cancelBtn2()">CANCEL</button>
+									<button class="btn1" id="save" onclick="addBrandInfo()">SAVE</button>
+
+								</div>
+							</div>
+						</div>
+
+
+
+					</div>
+				</div>
+			</div>
+		</div>
+		<!--  -->
+		<div class="modal fade" id="colorModal">
+			<div class="modal-dialog modal-lg"
+				style="margin-top: 130px; height: 900px; max-width: 600px">
+				<div class="modal-content">
+
+					<!-- 	Modal Header -->
+					<div class="modal-header"></div>
+					<!-- Modal body -->
+					<div class="modal-body">
+
+						<div class="col-md-12" id="shippingInfo">
+							<div class="card-title">
+								<h4>Add Color Details</h4>
+							</div>
+							<div class="row">
+
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Color Name</label> <input type="hidden" id="colorId">
+										<input type="text" class="form-control transparenttxtbox"
+											placeholder="" id="colorName" onblur="removeValid(event);">
+									</div>
+								</div>
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Description</label>
+										<textarea class="form-control" id="colorDesc"
+											onblur="removeValid(event);"></textarea>
+									</div>
+								</div>
+
+							</div>
+
+							<div class="row mt-4">
+								<div class="form-group">
+
+									<button class="delete-btn" id="cancelColor" onclick="cancelColor()">CANCEL</button>
+									<button class="btn1" id="saveColor" onclick="addColorInfo()">SAVE</button>
+
+								</div>
+							</div>
+						</div>
+
+
+
+					</div>
+				</div>
+			</div>
+		</div>
+							</div>
+							<!-- <div class="modal-footer justify-content-center"
+								style="margin-top: -15px;">
+								
+								<button type="button" class="cancel-btn" data-dismiss="modal"
+									onclick="cancelModalProductBtn();">Cancel</button>
+								
+							</div> -->
+						</div>
+					</div>
+				</div>
+
+
+			</div>
+		</div>
+	</div>
+</body>
+</html>

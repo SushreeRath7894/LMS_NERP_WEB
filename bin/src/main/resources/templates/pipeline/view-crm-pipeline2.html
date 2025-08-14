@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+.rating {
+	float: left;
+}
+
+.rating:not(:checked)>input {
+	position: absolute;
+	top: -9999px;
+	clip: rect(0, 0, 0, 0);
+}
+
+.rating:not(:checked)>label {
+	float: right;
+	width: 1em;
+	padding: 0 .1em;
+	overflow: hidden;
+	white-space: nowrap;
+	cursor: pointer;
+	font-size: 200%;
+	line-height: 1.2;
+	color: rgba(0, 0, 0, 0.6);
+	/*  text-shadow:1px 1px #bbb, 2px 2px #666, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating:not(:checked)>label:before {
+	content: '★ ';
+}
+
+.rating>input:checked ~ label {
+	color: #ea0;
+	/*  text-shadow:1px 1px #c60, 2px 2px #940, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating:not(:checked)>label:hover, .rating:not(:checked)>label:hover ~
+	label {
+	color: black;
+	/*  text-shadow:1px 1px goldenrod, 2px 2px #B57340, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating>input:checked+label:hover, .rating>input:checked+label:hover ~
+	label, .rating>input:checked ~ label:hover, .rating>input:checked ~
+	label:hover ~ label, .rating>label:hover ~ input:checked ~ label {
+	color: #ea0;
+	/*  text-shadow:1px 1px goldenrod, 2px 2px #B57340, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating>label:active {
+	position: relative;
+	top: 2px;
+	left: 2px;
+}
+
+.btn-outline-primary {
+	color: #007bff;
+	background-color: rgb(240 243 241/ 90%);
+	background-image: none;
+	border-color: #007bff;
+	cursor: pointer;
+}
+</style>
+<script>
+	//Starts Side Nav
+	function openNav() {
+
+		$('#lostReason').val("");
+
+		document.getElementById("mySidenav").style.cssText = "width: 250px; position: absolute; right:-10px; overflow: hidden; height:auto; top:0px;";
+
+		document.getElementById("main").style.width = "100%";
+	}
+
+	function closeNav() {
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main").style.width = "100%";
+	}
+
+	function openNav1() {
+
+		$('#fromtime').val("");
+		$('#totime').val("");
+
+		document.getElementById("mySidenav1").style.cssText = "width: 250px; position: absolute; right:-10px; overflow: hidden; height:auto; top:0px;";
+
+		document.getElementById("main").style.width = "100%";
+	}
+
+	function closeNav1() {
+		document.getElementById("mySidenav1").style.width = "0";
+		document.getElementById("main").style.width = "100%";
+	}
+	//side Nav Ends
+
+	$(function() {
+
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		agGrid.simpleHttpRequest({
+			url : "view-crm-pipeline-throughAjax"
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+
+			gridOptions.api.setRowData(data);
+
+		});
+		$("#myGrid").show();
+		$("#delete").attr("disabled", true);
+	});
+
+	$(function() {
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+	})
+	//search bar
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+
+	$('input,textarea').focus(
+			function() {
+				$(this).data('placeholder', $(this).attr('placeholder')).attr(
+						'placeholder', '');
+			}).blur(function() {
+		$(this).attr('placeholder', $(this).data('placeholder'));
+	});
+
+	var count = 0;
+	function allCheck() {
+		count++;
+
+		if (count == 1) {
+			$('.checkCls').prop("checked", true);
+		} else {
+			count = 0;
+			$('.checkCls').prop("checked", false);
+		}
+	}
+
+	var txtLen = 0;
+	function textCount(event) {
+
+		var id = event.target.id;
+		var pId = $('#' + id).next().attr("id");
+		$('#' + pId + ' span').empty();
+		txtLen = $('#' + id).val().length;
+		$('#' + pId + ' span').append(txtLen);
+	}
+	// column Defs
+	const columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+
+			},
+			{
+				headerName : 'Id',
+				field : "pipelineId",
+				cellRenderer : function(params) {
+					return '<a onclick=editPage("' + params.data.pipelineId
+							+ ',' + '0' + '") href="javascript:void(0)">'
+							+ params.data.pipelineId + '</a>';
+				}
+			},
+			{
+				headerName : "Opportunity",
+				field : "oppertunity",
+				cellRenderer : function(params) {
+					return '<a onclick=editPage("' + params.data.pipelineId
+							+ ',' + '1' + '") href="javascript:void(0)">'
+							+ params.data.oppertunity + '</a>';
+				}
+			}, {
+				headerName : "Customer Name",
+				field : "customer"
+			}, {
+				headerName : "Priority",
+				field : "priority",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : "Status",
+				field : "statusName",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			} ];
+
+	const gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 260,
+			height : 10
+		},
+		rowSelection : 'multiple',
+		suppressRowClickSelection : true,
+		getRowNodeId : function(data) {
+			return data.customerId;
+		}
+	};
+	// for new button
+	function newBtn() {
+		$("#add").hide();
+		$("#copy").hide();
+		$("#delete").hide();
+		$("#myGrid").hide();
+		$("#searchRowDiv").hide();
+		$("#totalReq").hide();
+		$("#statusDiv").hide();
+		$("#idDiv").hide();
+		$("#collapseFour").hide();
+		$("#headingFour").hide();
+		$("#myGridActivity").hide();
+
+		$("#demo").show();
+
+	}
+	// for cancel button
+	function cancelBtn() {
+		$("#add").show();
+		$("#copy").show();
+		$("#delete").show();
+		$("#totalReq").show();
+		$("#myGrid").show();
+		$("#searchRowDiv").show();
+		$("#demo").hide();
+
+		$('#pipelineId').val("");
+		$('#oppertunity').val("");
+		$('#expectedRevenue').val("");
+		$('#probability').val("");
+		$('#customer').val("");
+		$('#email').val("");
+		$('#phone').val("");
+		$('#saleperson').val("");
+		$('#salesTeam').val("");
+		$('#date').val("");
+		$("#star1").attr("checked", false);
+		$("#star2").prop("checked", false);
+		$("#star3").prop("checked", false);
+		$('#tags').val("");
+		$('#campanyName').val("");
+		$('#description').val("");
+		$('#campanyName').val("");
+		$('#addressStreet').val("");
+		$('#addressStreet2').val("");
+		$('#city').val("");
+		$('#states').val("");
+		$('#zip').val("");
+		$('#country').val("");
+		$('#website').val("");
+		$('#language').val("");
+		$('#contactName').val("");
+		$('#tittle').val("");
+		$('#jobPosition').val("");
+		$('#mobile').val("");
+		$('#referdBy').val("");
+		$('#campaign').val("");
+		$('#medium').val("");
+		$('#source').val("");
+
+		agGrid.simpleHttpRequest({
+			url : "view-crm-pipeline-throughAjax"
+		}).then(function(data) {
+			gridOptions.api.setRowData(data);
+		});
+	}
+
+	$(document).ready(function() {
+		$("#date").datetimepicker({
+			format : "d-m-Y",
+			closeOnDateSelect : true,
+			minDate : new Date(),
+			timepicker : false,
+		});
+		$("#pipelineId").val("");
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#fromDate').val($(this).val());
+		})
+
+		$('#fromDate').blur(function() {
+			$("#fromDateCalendar").val($(this).val());
+		})
+
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#toDate').val($(this).val());
+		})
+
+		$('#toDate').blur(function() {
+			$("#toDateCalendar").val($(this).val());
+		})
+
+		$("#fromTime").datetimepicker({
+			format : 'H:i',
+			closeOnDateSelect : false,
+			timepicker : true,
+			datepicker : false,
+			step : 15
+		})
+
+		$("#toTime").datetimepicker({
+			format : "H:i",
+			closeOnDateSelect : false,
+			timepicker : true,
+			datepicker : false,
+			step : 15
+		})
+
+	});
+</script>
+<script>
+	function submitReason(id, lostReason) {
+		var id = $("#pipelineId").val();
+		var obj = {};
+
+		lostReason = $('#lostReason').val();
+
+		var validation = true;
+
+		if (lostReason == null || lostReason == "") {
+			validation = validationUpdated("lostreason Required", "lostReason");
+		}
+
+		if (validation) {
+			alert(lostReason);
+
+			//alert(lostReason);
+			$.ajax({
+
+				type : "GET", // url : 'view-statutary-audit-master-getComment?id='+id+"&auditId="+auditId+'&draftId='+draftId,
+				url : "view-crm-pipeline-add-lostreason?id=" + id
+						+ "&lostReason=" + lostReason,
+				dataType : 'json',
+				contentType : 'application/json',
+				success : function(response) {
+					//alert("hii");
+					console.log(response);
+					if (response.message == "Success") {
+
+						$("#add").show();
+						$("#copy").show();
+						$("#delete").show();
+						$("#totalReq").show();
+						$("#myGrid").show();
+						$("#searchRowDiv").show();
+
+						$("#demo").hide();
+
+						agGrid.simpleHttpRequest({
+							url : "view-crm-pipeline-throughAjax"
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+					}
+				},
+				error : function(data) {
+
+					console.log(data);
+				}
+			})
+		}
+
+	}
+
+	//Meeting Save function
+
+	function scheduleMeeting() {
+
+		var obj = {};
+
+		//var custId = [];
+
+		obj.meetingId = $('#meetingId').val();
+		obj.pipelineId = $('#pipelineId').val();
+
+		obj.fromDate = $('#fromDateCalendar').val();
+		obj.toDate = $('#toDateCalendar').val();
+		obj.fromTime = $('#fromTime').val();
+		obj.toTime = $('#toTime').val();
+		obj.location = $('#location').val();
+		obj.summary = $('#summary').val();
+		obj.descriptionMeeting = $('#descriptionMeeting').val();
+		obj.title = $("#title").val();
+		obj.customerId = $('#customerId').val();
+		//alert(obj)
+		console.log("JSON" + JSON.stringify(obj));
+		//obj.requisitionId = reqId;
+		//obj.candEmail = candMail;
+		//obj.interviewerMail = emailId;
+		//obj.locationName = $('#location').val();
+
+		/* var validation = true;
+
+		if (fromDate == null || fromDate == "") {
+			validation = validationUpdated("fromDate Required", "fromDate");
+		}
+		if (location == null || location == "") {
+			validation = validationUpdated("location Required", "location");
+		}
+
+		if (validation) { */
+
+		$.ajax({
+			type : "POST",
+			url : "view-crm-pipeline-add-schedule-meeting",
+			contentType : "application/json",
+			data : JSON.stringify(obj),
+			success : function(response) {
+				if (response.message == "Success") {
+
+					$("#add").show();
+					$("#copy").show();
+					$("#delete").show();
+					$("#totalReq").show();
+					$("#myGrid").show();
+					$("#searchRowDiv").show();
+
+					$("#demo").hide();
+
+					agGrid.simpleHttpRequest({
+						url : "view-crm-pipeline-throughAjax"
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+					});
+				}
+			},
+			error : function(data) {
+
+				console.log(data);
+			}
+		})
+		//}
+
+	}
+	////ends
+	function addPipeline() {
+		var ratingId = $("input:radio[name=rating]:checked").val();
+		//alert(ratingId);
+		var obj = {};
+		obj.pipelineId = $('#pipelineId').val();
+		obj.oppertunity = $('#oppertunity').val();
+		obj.expectedRevenue = $('#expectedRevenue').val();
+		obj.probability = $('#probability').val();
+		obj.customer = $('#customer').val();
+		obj.email = $('#email').val();
+		obj.phone = $('#phone').val();
+		obj.saleperson = $('#saleperson').val();
+		obj.salesTeam = $('#salesTeam').val();
+		obj.expectedClosing = $('#date').val();
+		obj.priority = ratingId;
+		obj.tags = $('#tags').val();
+		obj.company = $('#campanyName').val();
+		obj.description = $('#description').val();
+		obj.campanyName = $('#campanyName').val();
+		obj.addressStreet = $('#addressStreet').val();
+		obj.addressStreet2 = $('#addressStreet2').val();
+		obj.city = $('#city').val();
+		obj.states = $('#states').val();
+		obj.zip = $('#zip').val();
+		obj.country = $('#country').val();
+		obj.website = $('#website').val();
+		obj.language = $('#language').val();
+		obj.contactName = $('#contactName').val();
+		obj.tittle = $('#tittle').val();
+		obj.jobPosition = $('#jobPosition').val();
+		obj.mobile = $('#mobile').val();
+		obj.referdBy = $('#referdBy').val();
+		obj.campaign = $('#campaign').val();
+		obj.medium = $('#medium').val();
+		obj.source = $('#source').val();
+		console.log(obj);
+
+		/* FORM VALIDATION STARTS*/
+
+		var validation = true;
+
+		if (obj.oppertunity == null || obj.oppertunity == "") {
+			validation = validationUpdated("oppertunity Required",
+					"oppertunity");
+		}
+
+		/* FORM VALIDATION ENDS*/
+
+		if (validation) {
+			$.ajax({
+				type : "POST",
+				url : "view-crm-pipeline-ajax",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					console.log(response);
+					if (response.message == "Success") {
+
+						$("#add").show();
+						$("#copy").show();
+						$("#delete").show();
+						$("#totalReq").show();
+						$("#myGrid").show();
+						$("#searchRowDiv").show();
+
+						$("#demo").hide();
+
+						agGrid.simpleHttpRequest({
+							url : "view-crm-pipeline-throughAjax"
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+					}
+				},
+				error : function(data) {
+
+					console.log(data);
+				}
+			})
+		}
+
+	}
+
+	// auto complete
+	function contactNameAutoComplete() {
+
+		var x = $("#contactName").val();
+		$
+				.ajax({
+
+					type : "GET",
+					url : "/pipeline/view-crm-pipeline-contactAutoComplete?id="
+							+ x,
+					dataType : 'json',
+					contentType : 'application/json',
+					success : function(response) {
+						console.log(response);
+						if (response.message == "success") {
+
+							if (response.body.length != 0) {
+								console.log("if: " + response);
+								$("#contactName").css("background", "#FFF");
+								var content = '<ul id="autocomplete-list">';
+								for (var i = 0; i < response.body.length; i++) {
+
+									console.log(response)
+									content += '<li onClick="selectAutocompleteValue1(\''
+											+ response.body[i].contactName
+											+ '\',\''
+											+ response.body[i].oppertunity
+											+ '\',\''
+											+ response.body[i].customer
+											+ '\',\''
+											+ response.body[i].email
+											+ '\',\''
+											+ response.body[i].phone
+											+ '\',\''
+											+ response.body[i].city
+											+ '\',\''
+											+ response.body[i].addressStreet
+											+ '\',\''
+											+ response.body[i].campanyName
+											+ '\',\''
+											+ response.body[i].states
+											+ '\',\''
+											+ response.body[i].country
+											+ '\',\''
+											+ response.body[i].zip
+											+ '\')">'
+											+ response.body[i].contactName
+											+ '</li>';
+								}
+								content += '</ul>';
+								$("#suggesstion-box1").show();
+								$("#suggesstion-box1").html(content);
+
+							} else {
+								console.log("else: " + response);
+								$("#contactName").css("background", "#FFF");
+								var content = '<ul id="autocomplete-list">';
+								content += '<li onClick="selectAutocompleteValue1(\''
+										+ ''
+										+ '\',\''
+										+ ''
+										+ '\')">'
+										+ "No Data Found" + '</li>';
+								content += '</ul>';
+								$("#suggesstion-box1").show();
+								$("#suggesstion-box1").html(content);
+							}
+						}
+					},
+					error : function(data) {
+						console.log(data);
+					}
+				})
+	}
+
+	function selectAutocompleteValue1(contactName, oppertunity, customer,
+			email, phone, city, addressStreet, campanyName, states, country,
+			zip) {
+		if (contactName) {
+			$("#contactName").val(contactName);
+			$("#oppertunity").val(campanyName);
+			$("#customer").val(customer);
+			$("#email").val(email);
+			$("#phone").val(phone);
+			$("#city").val(city);
+			$("#addressStreet").val(addressStreet);
+			$("#campanyName").val(campanyName);
+			$("#states").val(states);
+			$("#country").val(country);
+			$("#zip").val(zip);
+			$("#contactName").attr('data-procat', contactName);
+			$("#suggesstion-box1").hide();
+		} else {
+			$("#contactName").val("");
+			$("#oppertunity").val("");
+			$("#customer").val("");
+			$("#email").val("");
+			$("#phone").val("");
+			$("#city").val("");
+			$("#addressStreet").val("");
+			$("#campanyName").val("");
+			$("#states").val("");
+			$("#country").val("");
+			$("#zip").val("");
+			$("#contactName").attr('data-procat', "");
+			$("#suggesstion-box1").hide();
+		}
+	}
+	// Edit & stage change 
+	function editPage(id) {
+
+		var editId = id.split(",");
+
+		var pipelineId = editId[0];
+		var modal = editId[1];
+		//alert(modal)
+		$("#demo").show();
+
+		$.ajax({
+			type : "GET",
+			url : "view-crm-pipeline-edit?id=" + pipelineId,
+			async : false,
+			success : function(response) {
+				console.log(response);
+				if (response.message == "Success") {
+					agGridActivity(pipelineId);
+					$("#pipelineId").val(response.body.pipelineId);
+					$("#oppertunity").val(response.body.oppertunity);
+					$("#expectedRevenue").val(response.body.expectedRevenue);
+					$("#probability").val(response.body.probability);
+					$('#customer').val(response.body.customer);
+					$('#email').val(response.body.email);
+					$('#phone').val(response.body.phone);
+					$('#saleperson').val(response.body.saleperson);
+					$('#salesTeam').val(response.body.salesTeam);
+					$('#date').val(response.body.expectedClosing);
+					let index = response.body.priority;
+					$('#star' + index).prop('checked', true);
+					$('#tags').val(response.body.tags);
+					$('#company').val(response.body.company);
+					$('#description').val(response.body.description);
+					$('#campanyName').val(response.body.campanyName);
+					$('#addressStreet').val(response.body.addressStreet);
+					$('#addressStreet2').val(response.body.addressStreet2);
+					$('#city').val(response.body.city);
+					$('#states').val(response.body.states);
+					$('#zip').val(response.body.zip);
+					$('#country').val(response.body.country);
+					$('#website').val(response.body.website);
+					$('#language').val(response.body.language);
+					$('#contactName').val(response.body.contactName);
+					$('#tittle').val(response.body.tittle);
+					$('#jobPosition').val(response.body.jobPosition);
+					$('#mobile').val(response.body.mobile);
+					$('#referdBy').val(response.body.referdBy);
+					$('#campaign').val(response.body.campaign);
+					$('#medium').val(response.body.medium);
+					$('#source').val(response.body.source);
+					$('#stageStatus').val(response.body.pipelineStatus);
+					//for stage active status
+					if (response.body.pipelineStatus == 1) {
+						$("#stages1").attr("class", "btn btn-primary");
+						$("#stages2").attr("class", "btn btn-outline-primary");
+						$("#stages3").attr("class", "btn btn-outline-primary");
+						$("#stages4").attr("class", "btn btn-outline-primary");
+					}
+					if (response.body.pipelineStatus == 2) {
+						$("#stages2").attr("class", "btn btn-primary");
+						$("#stages1").attr("class", "btn btn-outline-primary");
+						$("#stages3").attr("class", "btn btn-outline-primary");
+						$("#stages4").attr("class", "btn btn-outline-primary");
+					}
+					if (response.body.pipelineStatus == 3) {
+						$("#stages3").attr("class", "btn btn-primary");
+						$("#stages1").attr("class", "btn btn-outline-primary");
+						$("#stages2").attr("class", "btn btn-outline-primary");
+						$("#stages4").attr("class", "btn btn-outline-primary");
+					}
+					if (response.body.pipelineStatus == 4) {
+						$("#stages4").attr("class", "btn btn-primary");
+						$("#stages2").attr("class", "btn btn-outline-primary");
+						$("#stages3").attr("class", "btn btn-outline-primary");
+						$("#stages1").attr("class", "btn btn-outline-primary");
+					}
+					if (modal == '1') {
+						$("#add").hide();
+						$("#copy").hide();
+						$("#delete").hide();
+						$("#totalReq").hide();
+						$("#myGrid").hide();
+						$("#searchRowDiv").hide();
+						$("#save").hide();
+						$("#cancel").show();
+						$("#statusDiv").show();
+						$("#idDiv").show();
+						$("#collapseFour").show();
+						$("#headingFour").show();
+						$("#myGridActivity").show();
+
+						$("#pipelineHeadId").html(response.body.pipelineId);
+						$("#oppertunity").attr('disabled', true);
+						$("#expectedRevenue").attr('disabled', true);
+						$("#probability").attr('disabled', true);
+						$("#customer").attr('disabled', true);
+						$("#email").attr('disabled', true);
+						$("#phone").attr('disabled', true);
+						$("#saleperson").attr('disabled', true);
+						$("#salesTeam").attr('disabled', true);
+						$("#date").attr('disabled', true);
+						$(".rating").attr('disabled', true);
+						$("#tags").attr('disabled', true);
+						$("#company").attr('disabled', true);
+						$("#description").attr('disabled', true);
+						$("#campanyName").attr('disabled', true);
+						$("#addressStreet").attr('disabled', true);
+						$("#addressStreet2").attr('disabled', true);
+						$("#city").attr('disabled', true);
+						$("#states").attr('disabled', true);
+						$("#zip").attr('disabled', true);
+						$("#country").attr('disabled', true);
+						$("#website").attr('disabled', true);
+						$("#language").attr('disabled', true);
+						$("#contactName").attr('disabled', true);
+						$("#tittle").attr('disabled', true);
+						$("#jobPosition").attr('disabled', true);
+						$("#mobile").attr('disabled', true);
+						$("#referdBy").attr('disabled', true);
+						$("#campaign").attr('disabled', true);
+						$("#medium").attr('disabled', true);
+						$("#source").attr('disabled', true);
+						/* 	$("#stages1").attr('disabled', false);
+							$("#stages2").attr('disabled', false);
+							$("#stages3").attr('disabled', false);
+							$("#stages4").attr('disabled', false); */
+
+					} else {
+
+						$("#add").hide();
+						$("#copy").hide();
+						$("#delete").hide();
+						$("#totalReq").hide();
+						$("#myGrid").hide();
+						$("#searchRowDiv").hide();
+						$("#statusDiv").hide();
+						$("#idDiv").hide();
+						$("#collapseFour").hide();
+						$("#headingFour").hide();
+						$("#myGridActivity").hide();
+						$("#mySidenav").hide();
+
+						$("#oppertunity").attr('disabled', false);
+						$("#expectedRevenue").attr('disabled', false);
+						$("#probability").attr('disabled', false);
+						$("#customer").attr('disabled', false);
+						$("#email").attr('disabled', false);
+						$("#phone").attr('disabled', false);
+						$("#saleperson").attr('disabled', false);
+						$("#salesTeam").attr('disabled', false);
+						$("#date").attr('disabled', false);
+						$(".rating").attr('disabled', false);
+						$("#tags").attr('disabled', false);
+						$("#company").attr('disabled', false);
+						$("#description").attr('disabled', false);
+						$("#campanyName").attr('disabled', false);
+						$("#addressStreet").attr('disabled', false);
+						$("#addressStreet2").attr('disabled', false);
+						$("#city").attr('disabled', false);
+						$("#states").attr('disabled', false);
+						$("#zip").attr('disabled', false);
+						$("#country").attr('disabled', false);
+						$("#website").attr('disabled', false);
+						$("#language").attr('disabled', false);
+						$("#contactName").attr('disabled', false);
+						$("#tittle").attr('disabled', false);
+						$("#jobPosition").attr('disabled', false);
+						$("#mobile").attr('disabled', false);
+						$("#referdBy").attr('disabled', false);
+						$("#campaign").attr('disabled', false);
+						$("#medium").attr('disabled', false);
+						$("#source").attr('disabled', false);
+
+					}
+				}
+			}
+		})
+	}
+
+	/***************************        stage change         ****************************************/
+
+	function addStages(event) {
+
+		var pipelineId = $("#pipelineId").val();
+		var stages = event.currentTarget.value;
+		var previousStage = $("#stageStatus").val();
+		//alert(pipelineId);
+		//alert(stages);
+		//alert(previousStage);
+		if (stages != previousStage) {
+			$
+					.ajax({
+						type : "GET",
+						url : "view-crm-pipeline-addStages?id=" + pipelineId
+								+ "&stage=" + stages + "&previousStage="
+								+ previousStage,
+						success : function(response) {
+
+							if (response.message == "success") {
+
+								if (stages == 1) {
+									$("#stages1").attr("class",
+											"btn btn-primary");
+									$("#stages2").attr("class",
+											"btn btn-outline-primary");
+									$("#stages3").attr("class",
+											"btn btn-outline-primary");
+									$("#stages4").attr("class",
+											"btn btn-outline-primary");
+								}
+								if (stages == 2) {
+									$("#stages2").attr("class",
+											"btn btn-primary");
+									$("#stages1").attr("class",
+											"btn btn-outline-primary");
+									$("#stages3").attr("class",
+											"btn btn-outline-primary");
+									$("#stages4").attr("class",
+											"btn btn-outline-primary");
+								}
+								if (stages == 3) {
+									$("#stages3").attr("class",
+											"btn btn-primary");
+									$("#stages1").attr("class",
+											"btn btn-outline-primary");
+									$("#stages2").attr("class",
+											"btn btn-outline-primary");
+									$("#stages4").attr("class",
+											"btn btn-outline-primary");
+								}
+								if (stages == 4) {
+									$("#stages4").attr("class",
+											"btn btn-primary");
+									$("#stages2").attr("class",
+											"btn btn-outline-primary");
+									$("#stages3").attr("class",
+											"btn btn-outline-primary");
+									$("#stages1").attr("class",
+											"btn btn-outline-primary");
+								}
+
+								//var pipelineId = $("#pipelineId").val();
+								//alert(pipelineId);
+								agGrid
+										.simpleHttpRequest(
+												{
+													url : 'view-crm-pipeline-activity-through-ajax?id='
+															+ pipelineId
+												}).then(
+												function(data) {
+													activityOptions.api
+															.setRowData(data);
+												});
+
+							} else {
+								swal({
+									title : response.code,
+									text : response.message,
+									type : "warning"
+								});
+							}
+						},
+						error : function(data) {
+							console.log(data);
+						}
+					});
+		}
+
+	}
+</script>
+<!-- *************************             Activity Log                *************************************-->
+
+<script>
+
+	var activityDefs = [ {
+		headerCheckboxSelection : true,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		width : 20
+	}, {
+		headerName : "Activity Name",
+		field : "operationName"
+	}, {
+		headerName : "User Name",
+		field : "operationBy"
+	}, {
+		headerName : "Created Date",
+		field : "operationOn",
+		cellStyle : {
+			textAlign : 'center'
+		}
+
+	} ];
+
+	var activityOptions = {
+		columnDefs : activityDefs,
+
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 420
+		}
+
+	};
+
+	document.addEventListener('DOMContentLoaded', function() {
+
+		var gridDiv = document.querySelector('#myGridActivity');
+		new agGrid.Grid(gridDiv, activityOptions);
+
+	});
+	function agGridActivity(pipelineId) {
+		agGrid.simpleHttpRequest({
+			url : 'view-crm-pipeline-activity-through-ajax?id=' + pipelineId
+		}).then(function(data) {
+			activityOptions.api.setRowData(data);
+		});
+	}
+
+	//ag grid for activity log end
+</script>
+</head>
+
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+
+						<div class="d-flex justify-content-between">
+							<div class="col-md-4  btn-hs">
+								<div class="font-design" id="totalReq">
+									PIPELINE LIST (<span></span>)
+								</div>
+							</div>
+							<div class="col-md-4  btn-hs" id="searchRowDiv">
+							<div class="input-style">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter">
+								<div class="searchicon">
+									<a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+
+						</div>
+					<div class="buttonsec btn-hs">
+								<input type="button" class="btn3" id="delete" value="DELETE"
+									data-toggle="modal" data-target="#delete" readonly> <input
+									type="button" class="btn1" id="add" value="NEW"
+									onclick="newBtn()" readonly>
+							</div>
+						</div>
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innercontent">
+								<div class="innerstickybg">
+									<div class="d-flex justify-content-between" id="main">
+										<div class="col-md-3" id="idDiv">
+											Pipeline ID: <span id="pipelineHeadId"></span>
+										</div>
+										<div class="col-md-4">
+											<div id="statusDiv">
+												<div class="hr4"></div>
+												<div class="main-div">
+													<div class="section2">
+														<button class="btn btn-outline-primary"
+															onclick="addStages(event)" id="stages1" value="1">New</button>
+													</div>
+													<div class="section3">
+														<button class="btn btn-outline-primary"
+															onclick="addStages(event)" id="stages2" value="2">Qualified</button>
+													</div>
+													<div class="section4">
+														<button class="btn btn-outline-primary"
+															onclick="addStages(event)" id="stages3" value="3">Proposition</button>
+													</div>
+													<div class="section5">
+														<button class="btn btn-outline-primary"
+															onclick="addStages(event)" id="stages4" value="4">Won</button>
+													</div>
+
+												</div>
+											</div>
+										</div>
+
+
+										<div class="col-md-2" align="center">
+											<button class="btn3" type="button" id="lost"
+												onclick="openNav()">Mark Lost</button>
+
+
+											<button class="btn3" type="button" id="meeting"
+												onclick="openNav1()">Schedule meeting</button>
+
+										</div>
+
+										<div class="col-md-3 padding-0" align="right">
+											<button class="btn4" id="cancel" onclick="cancelBtn()">CANCEL</button>
+											<button class="btn1" id="save" onclick="addPipeline()">SAVE</button>
+										</div>
+									</div>
+								</div>
+								<div class="innercontent">
+
+									<!-- <div class="row"> -->
+									<div class="row">
+										<div class="col-md-4">
+											<div class="form-group">
+												<input type="hidden" id="stageStatus" /> <input
+													type="hidden" id="pipelineId" /> <label>Opportunity</label>
+												<input type="text" class="form-control" id="oppertunity"
+													placeholder="Opportunity Title">
+											</div>
+										</div>
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Customer</label>
+												<div class="select">
+													<select id="customer">
+														<option value="">Select Customer</option>
+														<option th:each="c,iter:${customerList}"
+															th:value="${c.key}" th:text="${c.name}"></option>
+													</select>
+												</div>
+											</div>
+										</div>
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Email</label> <input type="text" class="form-control"
+													id="email" placeholder="Email">
+											</div>
+										</div>
+
+									</div>
+
+									<div class="row">
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Phone No</label> <input type="text"
+													class="form-control" id="phone" placeholder="phone no">
+											</div>
+										</div>
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Tags</label>
+												<div class="select">
+													<select id="tags">
+														<option value="">Select Tags</option>
+														<option th:each="c,iter:${tagList}" th:value="${c.key}"
+															th:text="${c.name}"></option>
+													</select>
+												</div>
+											</div>
+										</div>
+										<div class="col-md-4">
+											<div class="form-group">
+												<div>
+													<label>Expected Revenue </label> <label
+														style="margin-left: 150px;">Probability</label>
+												</div>
+												<div class="row">
+													<div class="col-lg-5">
+														<input type="text" id="expectedRevenue"
+															th:name="expectedRevenue" placeholder="0.00"
+															class="form-control" onkeyup="checkNumexpectedRevenue();">
+													</div>
+													<div class="col-lg-1 mid_frm_tx">
+														<span style="position: relative; right: 15px;">₹</span> at
+													</div>
+													<div class="col-lg-5">
+														<input type="text" style="margin-left: 10px;"
+															id="probability" name="probability" placeholder="0.00"
+															class="form-control" onkeyup="checkNumprobability();">
+													</div>
+													<div class="col-lg-1 mid_frm_tx">%</div>
+												</div>
+											</div>
+										</div>
+									</div>
+
+									<div class="row">
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Sales Person </label>
+												<div class="select">
+													<select id="saleperson">
+														<option value="">Select Sales Person</option>
+														<option th:each="c,iter:${salesPersonList}"
+															th:value="${c.key}" th:text="${c.name}"></option>
+													</select>
+												</div>
+											</div>
+										</div>
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Sales Team</label>
+												<div class="select">
+													<select id="salesTeam">
+														<option value="">Select Sales Team</option>
+														<option th:each="c,iter:${salesTeamList}"
+															th:value="${c.key}" th:text="${c.name}"></option>
+													</select>
+												</div>
+											</div>
+										</div>
+
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Expected Closing</label> <input type="text"
+													class="form-control" id="date" readonly>
+											</div>
+										</div>
+									</div>
+
+
+
+
+									<div class="row">
+										<div class="col-md-4">
+											<div class="form-group">
+												<div>
+													<label>Priority</label>
+												</div>
+												<fieldset class="rating">
+													<input type="radio" class="rating1" id="star3"
+														name="rating" value="3" /><label for="star3" title="High">3
+														stars</label> <input type="radio" class="rating1" id="star2"
+														name="rating" value="2" /><label for="star2"
+														title="Medium">2 stars</label> <input type="radio"
+														class="rating1" id="star1" name="rating" value="1" /><label
+														for="star1" title="Low">1 star</label>
+												</fieldset>
+											</div>
+										</div>
+										<div class="col-md-8">
+											<div class="modal-inrheading">Description</div>
+											<div class="position-text">
+												<textarea rows="4" cols="100" id="description"
+													onkeyup="textCount(event)"></textarea>
+												<div id="charNumSN" class="txtcounter" align="right">
+													<span>0</span> characters
+												</div>
+											</div>
+										</div>
+
+									</div>
+
+
+									<!-- 	main div start here -->
+									<div id="main">
+
+										<!-- 	collapse for Contact InformationStart here -->
+											<div class="accordion-item">
+												<h2 class="accordion-header" id="headingOne">
+													<button class="accordion-button" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapseOne"
+														aria-expanded="false" aria-controls="collapseOne">
+														Contact Information</button>
+												</h2>
+												<div id="collapseOne"
+													class="accordion-collapse collapse show"
+													aria-labelledby="headingOne"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+													<div class="row">
+														<div class="col-md-2">
+															<div class="form-group">
+																<label>Contact Name</label> <input type="text"
+																	class="form-control" id="contactName"
+																	onkeyup="contactNameAutoComplete();"
+																	placeholder="Contact Name">
+																<div id="suggesstion-box1"></div>
+															</div>
+														</div>
+														<div class="col-md-2">
+															<div class="form-group">
+																<label>Title</label>
+																<div class="select">
+																	<select id="tittle">
+																		<option th:value="NULL">Select Title</option>
+																		<option th:each="c,iter:${tittleList}"
+																			th:value="${c.key}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+														</div>
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Street</label> <input type="text"
+																	class="form-control" id="addressStreet"
+																	placeholder="Street... ">
+															</div>
+														</div>
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Street2</label> <input type="text"
+																	class="form-control" id="addressStreet2"
+																	placeholder="Street2... ">
+															</div>
+														</div>
+
+													</div>
+													<div class="row">
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>City</label> <input type="text"
+																	class="form-control" id="city" placeholder="city name ">
+															</div>
+														</div>
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>State</label>
+																<div class="select">
+																	<select id="states">
+																		<option th:value="NULL">Select State</option>
+																		<option th:each="c,iter:${statesList}"
+																			th:value="${c.key}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+														</div>
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>ZIP Code</label> <input type="text"
+																	class="form-control" id="zip"
+																	placeholder="zip code... ">
+															</div>
+														</div>
+
+													</div>
+													<div class="row">
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Country</label>
+																<div class="select">
+																	<select id="country">
+																		<option th:value="NULL">Select Country</option>
+																		<option th:each="c,iter:${countryList}"
+																			th:value="${c.key}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+														</div>
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Company Name</label> <input type="text"
+																	class="form-control" id="campanyName"
+																	placeholder="campany name ">
+															</div>
+														</div>
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Website</label> <input type="text"
+																	class="form-control" id="website"
+																	placeholder="Website ">
+															</div>
+														</div>
+													</div>
+													<div class="row">
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Language </label>
+																<div class="select">
+																	<select id="language">
+																		<option value="">Select Language</option>
+																		<option th:each="c,iter:${languageList}"
+																			th:value="${c.key}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+														</div>
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Job Position </label> <input type="text"
+																	class="form-control" id="jobPosition"
+																	placeholder="Job Position  ">
+															</div>
+														</div>
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Mobile</label> <input type="text"
+																	class="form-control" id="mobile" placeholder="Mobile ">
+															</div>
+														</div>
+</div>
+													</div>
+												</div>
+											</div>
+									<!-- 	sidenave for Contact Information End here -->
+									<!-- 	sidenave for Marketing Start here -->
+									<div class="accordion-item">
+												<h2 class="accordion-header" id="headingTwo">
+													<button class="accordion-button" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapseTwo"
+														aria-expanded="true" aria-controls="collapseTwo">
+														Marketing</button>
+												</h2>
+												<div id="collapseTwo"
+													class="accordion-collapse collapse show"
+													aria-labelledby="headingTwo"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+
+													<div class="row">
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Campaign </label>
+																<div class="select">
+																	<select id="campaign">
+																		<option value="">Select Campaign</option>
+																		<option th:each="c,iter:${campaignList}"
+																			th:value="${c.key}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+														</div>
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Medium</label>
+																<div class="select">
+																	<select id="medium">
+																		<option value="">Select Medium</option>
+																		<option th:each="c,iter:${mediumList}"
+																			th:value="${c.key}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+														</div>
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>Source</label>
+																<div class="select">
+																	<select id="source">
+																		<option value="">Select Source</option>
+																		<option th:each="c,iter:${sourceList}"
+																			th:value="${c.key}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+														</div>
+
+													</div>
+
+												</div>
+											</div>
+										</div>
+									<!-- 	sidenave for Marketing End here -->
+
+									<!-- 	sidenave for Misc Start here -->
+								<div class="accordion-item">
+												<h2 class="accordion-header" id="headingThree">
+													<button class="accordion-button" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapseThree"
+														aria-expanded="true" aria-controls="collapseThree">
+														MISC</button>
+												</h2>
+												<div id="collapseThree"
+													class="accordion-collapse collapse show"
+													aria-labelledby="headingThree"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+													<div class="row">
+
+														<div class="col-md-5 btn-hs1">
+															<div class="font-design"></div>
+														</div>
+													</div>
+
+													<div class="row">
+														<div class="col-md-4">
+															<div class="form-group">
+																<label>ReferedBy</label> <input type="text"
+																	class="form-control" id="referdBy"
+																	placeholder="ReferedBy ">
+															</div>
+														</div>
+													</div>
+
+												</div>
+											</div>
+
+										</div>
+									<!-- 	sidenave for Misc End here -->
+									<!-- 	sidenave for activity log Start here -->
+									<div class="accordion-item">
+												<h2 class="accordion-header" id="headingFour">
+													<button class="accordion-button" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapseFour"
+														aria-expanded="true" aria-controls="collapseFour">
+														Activity Log</button>
+												</h2>
+												<div id="collapseFour"
+													class="accordion-collapse collapse show"
+													aria-labelledby="headingFour"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+													<div class="row">
+
+														<div class="col-md-5 btn-hs1">
+															<div class="font-design"></div>
+														</div>
+													</div>
+
+													<div id="myGridActivity"
+														style="width: 100%; height:200px;"
+														class="ag-theme-alpine"></div>
+
+												</div>
+											</div>
+
+										</div>
+									<!-- 	sidenave for activity log End here -->
+
+								</div>
+
+								<!-- 	main div end here -->
+
+
+								<div id="mySidenav" class="sidenav">
+									<div class="slidebox">
+										<div class="row">
+											<div class="col-md-9">
+												<div class="edit">Lost Reason</div>
+											</div>
+											<div class="col-md-3">
+												<div class="arrow">
+													<a href="javascript:void(0)" class="closebtn"
+														onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+												</div>
+											</div>
+
+
+											<div class="chartbtnsec1">
+												<div align="right">
+													<button class="btn4" onclick="closeNav()">CANCEL</button>
+													<button class="btn3" onclick="deleteReason()">DELETE</button>
+													<button class="btn1" onclick="submitReason()">SAVE</button>
+												</div>
+											</div>
+											<div class="col-md-8">
+												<div class="form-group">
+													<label>Lost Reason </label>
+													<div class="select">
+														<select id="lostReason">
+															<option value="">Select Reason</option>
+															<option th:each="c,iter:${lostReasonList}"
+																th:value="${c.key}" th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+
+
+								<div id="mySidenav1" class="sidenav">
+									<div class="slidebox">
+										<div class="row">
+											<div class="col-md-10">
+												<div class="edit" id="heading">SCHEDULE MEETING</div>
+											</div>
+											<div class="col-md-2">
+												<div class="arrow">
+													<a href="javascript:void(0)" class="closebtn"
+														onclick="closeNav1()"><i class="ti-arrow-right"></i></a>
+												</div>
+											</div>
+
+											<div class="chartbtnsec2">
+												<div align="right">
+
+													<button class="btn1" onclick="scheduleMeeting()">SCHEDULE</button>
+													<!-- <button class="btn3" onclick="deleteSource()">DELETE</button> -->
+													<button class="btn4" onclick="closeNav()">CANCEL</button>
+
+												</div>
+											</div>
+											<input type="hidden" id="pipelineId"> <input
+												type="hidden" id="meetingId">
+
+											<div class="col-md-12">
+												<div class="form-group">
+
+													<label>Title</label> <input type="text"
+														class="form-control" id="title" placeholder="Title">
+
+												</div>
+											</div>
+
+											<div class="col-md-12">
+
+
+												<label>Customer Name</label> <select id="customerId"
+													class="form-control">
+													<option value="">Select Customer</option>
+													<option th:each="c,iter:${customerList}"
+														th:value="${c.key}" th:text="${c.name}"></option>
+
+												</select>
+
+											</div>
+
+											<div class="col-md-6">
+												<div class="form-group">
+
+													<label>From Date</label> <input type="text"
+														id="fromDateCalendar" class="form-control">
+
+												</div>
+											</div>
+
+											<div class="col-md-6">
+												<div class="form-group">
+
+													<label>From Time</label> <input type="text" id="fromTime"
+														class="form-control" readonly>
+
+												</div>
+											</div>
+
+											<div class="col-md-6">
+												<div class="form-group calendar_box">
+
+													<label>To Date</label> <input type="text"
+														id="toDateCalendar" class="form-control"
+														th:attr="onkeyup=|formatDate('toDateEdit','${session.DATEFORMAT_JS}')|"
+														readonly> <i class="ti-calendar picker_calendar"
+														id="toDateCalendarEdit"></i>
+
+												</div>
+											</div>
+
+											<div class="col-md-6">
+												<div class="form-group">
+
+													<label>To Time</label> <input type="text" id="toTime"
+														class="form-control" readonly>
+
+												</div>
+											</div>
+
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Location</label> <input type="text" id="location"
+														placeholder="location" class="form-control">
+												</div>
+											</div>
+
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Summary</label> <input type="text" id="summary"
+														placeholder="summary" class="form-control">
+												</div>
+											</div>
+
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Description</label>
+													<textarea style="height: 90px;" id="descriptionMeeting"></textarea>
+												</div>
+											</div>
+
+
+
+										</div>
+
+									</div>
+								</div>
+
+							</div>
+						</div>
+					</div>
+
+
+
+
+					<!-- The Modal For Delete-->
+					<div class="modal fade" id="delete">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-dismiss="modal"
+										aria-hidden="true">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p>Do you really want to delete these records? This process
+										cannot be undone.</p>
+								</div>
+								<div class="modal-footer justify-content-center">
+									<button type="button" class="btn1" data-dismiss="modal"
+										aria-hidden="true">Cancel</button>
+									<button type="button" class="btn3" id="deleteModalBtn"
+										onclick="deleteReq()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+
+					<!-- The Modal For Validation-->
+					<div class="modal fade" id="reqValid">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-dismiss="modal"
+										aria-hidden="true">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p id="modalMsg"></p>
+								</div>
+								<div class="modal-footer justify-content-center">
+									<button type="button" class="btn1" data-dismiss="modal"
+										aria-hidden="true">Ok</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+						<!-- ------------------Mark Lost modal------------------------- -->
+
+					<div id="markLostModal" class="modal fade">
+						<div class="modal-dialog">
+							<!-- Modal content-->
+							<div class="modal-content">
+								<div class="modal-header">
+									<h4 class="modal-title">Lost Reason</h4>
+									<button type="button" class="close" data-dismiss="modal"
+										aria-label="Close">
+										<i class="ti-close"></i>
+									</button>
+
+								</div>
+								<div class="modal-body">
+									<!-- text input -->
+									<div class="row">
+										<div class="col-md-12">
+											<div class="form-group">
+												<label>Comment</label> <input class="form-control"
+													type="text" id="comment">
+											</div>
+										</div>
+
+									</div>
+								</div>
+								<div class="modal-footer justify-content-left">
+									<button type="button" class="btn1" data-dismiss="modal"
+										aria-hidden="true" id="SubmitBtn"
+										onclick="rejectLeave()">Submit</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+					
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>

@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<style>
+.agGridname {
+	text-align: center;
+	padding-top: 17px;
+	font-size: 20px;
+	font-weight: 600;
+}
+
+#remarks {
+	margin-bottom: 40px;
+}
+
+.mygrid2 {
+	margin-bottom: 20px;
+}
+
+.gridStyle {
+	padding: 0px 16px;
+}
+
+.ag-header-row{
+    background: linear-gradient(45deg, #011749, #0c40b6, #5885de) !important;
+    color: white!important;
+    border: none;
+
+}
+
+.ag-header-group-text{
+
+text-align: center;
+    width: 100%;
+}
+</style>
+<script type="text/javascript">
+	$(document).ready(function() {
+		
+		$("#headingItem").hide();
+		$("#innerDiv").hide();
+		
+		$("#month").attr("disabled",true);
+		$("#date").attr("disabled",true);
+
+		var gridDiv1 = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv1, gridOptions);
+
+		var gridDiv2 = document.querySelector('#monitorGrid1');
+		new agGrid.Grid(gridDiv2, gridOptionsMonitor1);
+		
+		var gridDiv3 = document.querySelector('#monitorGrid2');
+		new agGrid.Grid(gridDiv3, gridOptionsMonitor2);
+		gridOptions.api.setRowData("");
+		
+		gridOptions.api.setRowData("");
+		
+		$('#reqDltBtn').attr('disabled', true);
+		 $('#approve').prop('disabled', true);
+		$('#delete').modal('hide');
+		agGrid.simpleHttpRequest({
+			url : 'monitorReport-activity-view'
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.NoiseMonitor;
+			console.log(allData)
+			var len = allData.length;
+			 $('#totalReq').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+		});
+
+		var data = [];
+		gridOptions.api.setRowData(data);
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false
+		}).on("change", function() {
+			$('#date').val($(this).val());
+		})
+
+		$('#date').blur(function() {
+			$("#fromDateCalendar").val($(this).val());
+		})
+		
+		
+		
+		
+	let dateDropdown = document.getElementById('date');
+
+    let currentYear = new Date().getFullYear();
+    let earliestYear = 1970;
+
+  /*   while (currentYear >= earliestYear) {
+      let dateOption = document.createElement('option');
+      dateOption.text = currentYear;
+      dateOption.value = currentYear;
+      dateDropdown.add(dateOption);
+      currentYear -= 1;
+    } */
+    
+    var currentDate = new Date();
+    
+    var currentMonth = currentDate.getMonth(); 
+    
+    var currentYear2 = currentDate.getFullYear();
+    
+    var monthNames = ["January", "February", "March", "April", "May", "June",
+                      "July", "August", "September", "October", "November", "December"];
+    var formattedDate = monthNames[currentMonth - 1] + '-' + currentYear2.toString().slice(-2);
+    
+    //$("#month").val(monthNames[currentMonth]);
+    //$("#date").val(currentYear2);
+    
+    
+    $("#toDateCalendar").datetimepicker('destroy').datetimepicker({
+        format: 'd-m-Y',  
+        closeOnDateSelect: true,
+        timepicker: false,
+    }).on("change", function() {
+
+        var selectedDate = $(this).val();
+        var dateParts = selectedDate.split("-");  
+        
+        var day = dateParts[0];    
+        var month = dateParts[1];  
+        var year = dateParts[2];   
+        
+    
+        
+        $('#fromDate').val(day);  
+        $("#month").val(monthNames[month -1]);   
+        $("#date").val(year);     
+    });
+
+    $('#fromDate').blur(function() {
+        $("#toDateCalendar").val($(this).val());
+    });
+
+
+		
+
+	});
+	
+	function onQuickFilterChanged() {
+		gridOptions.api.setQuickFilter(document.getElementById('quickFilter').value);
+		var totalRowCount = gridOptions.api.getModel().getRowCount();
+		$('#totalReq').find('span').html(totalRowCount);
+	}
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	/*
+	 Event Activity
+	 */
+	var columnDef = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+
+			},
+			{
+				headerName : "Report Id",
+				field : "noiseId",
+				
+				width : 180,
+				cellRenderer : function(params) {
+					if (params.data.approveStatus=="1") {
+						return '<a onclick=editPage("'+ params.data.noiseId + '","'+params.data.approveStatus+'") href="javascript:void(0)">'
+						+ params.data.noiseId + '  ' +'<i class="bi bi-view-list"></i></a>';
+					
+					}else{
+						return '<a onclick=editPage("'+ params.data.noiseId + '","'+params.data.approveStatus+'") href="javascript:void(0)">'
+						+ params.data.noiseId  + '  ' + '<i class="bi bi-pencil-square"></i></a>';
+					}
+				}
+			}, {
+				headerName : 'Month',
+				field : "noiseMonth",
+				width : 180,
+			}, {
+				headerName : 'Year',
+				field : "noiseDate",
+				width : 180,
+			}, {
+				headerName : 'Remarks',
+				field : "remark",
+				width : 200,
+				cellStyle : {
+					textAlign : 'center'
+				},
+			},
+			{
+				headerName : 'Created On',
+				field : "createdOn",
+				width : 180,
+				cellStyle : {
+					textAlign : 'center'
+				},
+			},
+			{
+				headerName : 'Created By',
+				field : "createdBy",
+				width : 185,
+				cellStyle : {
+					textAlign : 'center'
+				},
+			},
+			
+			{
+				headerName : 'REPORT pdf',
+				field : "downloaddoc",
+				cellStyle : {
+					textAlign : 'center'
+				},  cellRenderer: function(params) {
+		            return '<a onclick="reportDownload(\'' + params.data.noiseId + '\', \'' + params.data.noiseMonth +  '\', \'' + params.data.noiseDate + '\', \'' + params.data.inputDate + '\')" href="javascript:void(0)">' +
+	                   '<i class="bi bi-cloud-download"></i> Download</a>';
+	        }},
+	    	{
+	    		headerName: 'Approve Status',
+	    		field: "approveStatus",
+	    		width: 250,
+	    		hide:true,
+	    		cellStyle: { textAlign: 'center' },
+	    		cellRenderer: function(params) {
+	    		  var sts=	params.data.approveStatus;
+	    		  if (sts==1){
+	    			return 'Approved'
+	    		  }else{
+	    			return 'Not Approved'
+	    		  }
+	    			}
+	    	}
+			];
+	var gridOptions = {
+		columnDefs : columnDef,
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 210,
+			height : 10
+		},
+		onSelectionChanged : onSelectionChanged,
+	};
+	
+	
+	var id = "";
+
+	function onSelectionChanged() {
+		var selectedNodes = gridOptions.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		 
+		 id= selectedData.map(node => node.noiseId);
+		 var approveStatus=selectedData.map(node=>node.approveStatus);
+	 
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			 if (approveStatus == 1) {
+		            $('#approve').prop('disabled', true);
+		        } else {
+		            $('#approve').prop('disabled', false);
+		        }
+				$('#new').attr('disabled', true);
+				$('#reqDltBtn').attr('disabled', false);
+		}else {
+			
+			$('#new').attr('disabled', false);
+			$('#reqDltBtn').attr('disabled', true);
+			 $('#approve').prop('disabled', true);
+		}
+	}
+
+	/* Monitor Grid1*/
+	var columnDefMonitor1 = [ {
+		headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly : false,
+		checkboxSelection : false,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		pinned: 'left',
+
+	}, {
+		headerName : "Sl No.",
+		field : "slNo1",
+		width : 100,
+		pinned: 'left',
+	}, {
+		headerName : 'LOcation',
+		field : "location1",
+		width : 400,
+		pinned: 'left',
+	}, {
+		headerName : 'No.of persons exposed',
+		field : "persons1",
+		width : 160,
+	}, {
+		headerName : 'Avg. Hrs. Exposed',
+		field : "avghours1",
+		width : 160,
+	}, {
+		headerName : '                               Noise Level (In Decibel)',
+		field : "noiselevel1",
+		width : 300,
+		cellStyle : {
+			textAlign : 'center'
+		},
+		 children: [
+		      {
+		        headerName: 'Day Time', 
+		        field: 'daytime1',
+		        editable: true
+		      },
+		      {
+		        headerName: 'Night Time', 
+		        field: 'nighttime1',
+		        editable: true
+		      }
+		    ]
+	}, {
+		headerName : 'Maximum permissible limit (In Decibel)',
+		field : "maximumpermissible1",
+		width : 180,
+	
+	}
+
+	];
+	var gridOptionsMonitor1 = {
+		columnDefs : columnDefMonitor1,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 210,
+			height : 10,
+			singleClickEdit : true,
+			stopEditingWhenCellsLoseFocus : true
+		},
+	};
+	
+	
+	var columnDefMonitor2 = [ {
+		headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly : false,
+		checkboxSelection : false,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		pinned: 'left',
+
+	}, {
+		headerName : "Sl No.",
+		field : "slNo2",
+		width : 100,
+		pinned: 'left',
+	}, {
+		headerName : 'LOcation',
+		field : "location2",
+		width : 400,
+		pinned: 'left',
+	}, {
+		headerName : 'No.of persons exposed',
+		field : "persons2",
+		width : 160,
+	}, {
+		headerName : 'Avg. Hrs. Exposed',
+		field : "avghours2",
+		width : 160,
+	}, {
+		headerName : 'Noise Level (In Decibel)',
+		field : "noiselevel2",
+		width : 300,
+		cellStyle : {
+			textAlign : 'center'
+		},
+		 children: [
+		      {
+		        headerName: 'Day Time', 
+		        field: 'daytime2',
+		        editable: true
+		      },
+		      {
+		        headerName: 'Night Time', 
+		        field: 'nighttime2',
+		        editable: true
+		      }
+		    ]
+	}, {
+		headerName : 'Maximum permissible limit (In Decibel)',
+		field : "maximumpermissible2",
+		width : 180,
+	
+	}
+
+	];
+	var gridOptionsMonitor2 = {
+		columnDefs : columnDefMonitor2,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 210,
+			height : 10,
+			singleClickEdit : true,
+			stopEditingWhenCellsLoseFocus : true
+		},
+	};
+
+	var evntId = "";
+	id = "";
+	function rowSelectId() {
+		var selectedNodes = gridOptions.api.getSelectedNodes();
+
+	}
+	
+	
+	
+
+	
+
+	function newBtn() {
+		
+var currentDate = new Date();
+	    
+	    var currentMonth = currentDate.getMonth(); 
+	    
+	    var currentYear2 = currentDate.getFullYear();
+	    
+	    var monthNames = ["January", "February", "March", "April", "May", "June",
+	                      "July", "August", "September", "October", "November", "December"];
+	    var formattedDate = monthNames[currentMonth - 1] + '-' + currentYear2.toString().slice(-2);
+	    
+	   // $("#month").val(monthNames[currentMonth]);
+	   // $("#date").val(currentYear2);
+
+$("#fromDate").val('');
+		$("#myGrid").hide();
+		$(".upperDiv").hide();
+		$("#totalReq").hide();
+		$("#searchRowDiv").hide();
+		$("#new").hide();
+		$("#download").hide();
+		$("#reqDltBtn").hide();
+		$("#approve").hide();
+		
+		$("#headingItem").show();
+		$("#innerDiv").show();
+
+
+		var dateFormat = "Y"; // Setting the format to only year
+		$("#fromDateCalendar").datetimepicker({
+		    format: dateFormat,           // Format to display only the year
+		    timepicker: false,            // Disable the time picker
+		    closeOnDateSelect: true,      // Close the picker after selection
+		    yearStart: 1900,              // Set a starting year if needed
+		    yearEnd: new Date().getFullYear(), // Set an ending year
+		    viewMode: "years",            // Start in year view mode
+		    onShow: function (ct, $input) {
+		        this.setOptions({
+		            format: 'Y',           // Ensure that only the year is shown
+		        });
+		    }
+		}).on("change", function () {
+		    $('#date').val($(this).val()); // Set the selected year to the input field
+		});
+
+		$('#date').blur(function () {
+		    $("#fromDateCalendar").val($(this).val()); // Sync the input with datepicker
+		});
+		
+
+		var data = [];
+		gridOptionsMonitor1.api.setRowData(data);
+		gridOptionsMonitor2.api.setRowData(data);
+		
+		
+		$.ajax({
+            type: "GET",
+            url: "noise-monitor-data",
+            async: false,
+            success: function(response) {
+            	
+            	var responsedata = JSON.parse(response.body);
+            	
+            	var grid1Data1 = responsedata.grid1;
+            	var gridData2 = responsedata.grid2;
+            	
+            	gridOptionsMonitor1.api.setRowData(grid1Data1);
+        		gridOptionsMonitor2.api.setRowData(gridData2);
+            	
+            }
+		
+		});
+		
+	}
+	
+	
+	function formSaveBtn() {
+		gridOptionsMonitor1.api.stopEditing();
+		gridOptionsMonitor2.api.stopEditing();
+		$(".formValidation").remove();
+		var valid= true;
+		var datas = [];
+		var item = {};
+		
+		
+		item.month = $("#month").val();
+		item.date = $("#date").val();
+		item.remarks = $("#remarks").val();
+		item.monitorId = $("#monitorId").val();
+		item.inputDate = $("#fromDate").val();
+		
+		/* if (item.month == null || item.month == "") {
+			valid = validationUpdated("Month is Required", "month");
+		 } */
+		if (item.date == null || item.date == "") {
+			valid = validationUpdated("Date is Required", "fromDate");
+		 }
+		if (item.remarks == null || item.remarks == "") {
+			valid = validationUpdated("Remarks is Required", "remarks");
+		 }
+		
+	
+		
+		 var dataOfGrid1 = [];
+		 gridOptionsMonitor1.api.forEachNode(function(rowNode, index) {
+			 dataOfGrid1.push(rowNode.data);
+			  });
+		 var dataOfGrid2 = [];
+		 gridOptionsMonitor2.api.forEachNode(function(rowNode, index) {
+			 dataOfGrid2.push(rowNode.data);
+			  });
+		 item.grid1List = dataOfGrid1;
+		 item.grid2List = dataOfGrid2;
+		 
+		 if (valid) {
+		datas.push(item);
+		
+		
+		savePlanDetails(datas);
+
+		 }
+	}		
+	
+	
+	function savePlanDetails(datas) {
+		$('.loader').show();
+		
+		$.ajax({
+			type : "POST",
+			url : "monitorReport-activity-add",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(datas),
+			success : function(response) {
+				
+				$("#myGrid").show();
+				$(".upperDiv").show();
+				$("#totalReq").show();
+				$("#searchRowDiv").show();
+				$("#new").show();
+				$("#download").show();
+				$("#reqDltBtn").show();
+				
+				$("#headingItem").hide();
+				$("#innerDiv").hide();
+				
+				$("#monitorId").val('');
+				$("#remarks").val('');
+				 $("#date").val('');
+				 $("#month").val('');
+				
+				
+				agGrid.simpleHttpRequest({
+					url : 'monitorReport-activity-view'
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.NoiseMonitor;
+					console.log(allData)
+					var len = allData.length;
+					$('#totalReq').find('span').html(len);
+					gridOptions.api.setRowData(allData);
+				});
+				
+				//location.reload();
+				
+				Cancel();
+				$('.loader').hide();
+				
+			},
+			error : function(data) {
+				$('.loader').hide();
+			}
+		})
+
+	}
+	
+	
+	function editPage(completionId) {
+		 
+		$("#monitorId").val(completionId);
+		 
+		$("#myGrid").hide();
+		$(".upperDiv").hide();
+		$("#totalReq").hide();
+		$("#searchRowDiv").hide();
+		$("#new").hide();
+		$("#download").hide();
+		$("#reqDltBtn").hide();
+		$("#approve").hide();
+		$("#headingItem").show();
+		$("#innerDiv").show();
+		$('.loader').show();
+		agGrid.simpleHttpRequest(
+				{
+					url : 'monitorReport-activity-edit?id='+ completionId
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.completionData;
+					var allData1=allData[0].grid1;
+					var allData2=allData[0].grid2;
+					
+					gridOptionsMonitor1.api.setRowData(allData1);
+					gridOptionsMonitor2.api.setRowData(allData2);
+					
+					$("#month").val(allData[0].noiseMonth);
+					$("#date").val(allData[0].noiseDate);
+					$("#remarks").val(allData[0].remark);
+					$("#fromDate").val(allData[0].inputdate);
+					
+					
+				});
+		$('.loader').hide();
+	}
+
+		
+	
+	function deleteFun() {
+		$('#delete').modal('show');
+	}
+	
+	function deleteOnclick() {
+		
+		if (id) {
+			$('.loader').show();
+				$.ajax({
+		type : "POST",
+		url : "monitorReport-activity-delete?id="+ id,
+		success : function(response) {
+		 if (response.code == "success") {
+			 Cancel();
+				$("#messageParagraph").text("Data Deleted Successfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('#delete').modal('hide');
+				agGrid.simpleHttpRequest({
+					url : 'monitorReport-activity-view'
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.NoiseMonitor;
+					console.log(allData)
+					var len = allData.length;
+					$('#totalReq').find('span').html(len);
+					gridOptions.api.setRowData(allData);
+				});
+				
+				 $('#new').attr('disabled', false);
+				$('#reqDltBtn').attr('disabled', true);
+				$('.loader').hide();
+			} else {
+				$("#messageParagraph").text("Something went to wrong!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('.loader').hide();
+			}
+		},
+		error : function(data) {
+		}
+	})
+		} else {
+			$('.loader').hide();
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+}
+	
+	
+	function Cancel(){
+		$("#myGrid").show();
+		$(".upperDiv").show();
+		$("#totalReq").show();
+		$("#searchRowDiv").show();
+		$("#new").show();
+		$("#download").show();
+		$("#reqDltBtn").show();
+		$("#approve").show();
+		
+		$("#headingItem").hide();
+		$("#innerDiv").hide();
+		
+		//$(".gridStyle").empty();
+		
+		$("#monitorId").val('');
+		$("#remarks").val('');
+		 $("#date").val('');
+		 $("#month").val('');
+		 
+		 gridOptions.api.setQuickFilter(null);
+			$('#quickFilter').val('');
+			document.getElementById('closeKey').style.display='none';
+			$('#totalReq').find('span').html(gridOptions.api.getModel().getRowCount());
+			
+			$('.formValidation').css('display', 'none');
+			
+		
+	}
+	
+	
+	function downloadDetails() {
+		var params = {
+			fileName: 'Noise_Monitoring_Report.csv', // Specify your custom filename here
+		};
+		gridOptions.api.exportDataAsCsv(params);
+	}
+
+	
+	function reportDownload(id,month,noiseDate,inputDate) {
+		window.open("/grc/monitorReport-pdf-downloads?id="+window.btoa(id) + "&month=" + month +"&year=" + noiseDate + "&inputDate=" +inputDate, '_blank');  
+	}
+	
+	function approveReport(){
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+
+		var selectedNodes = gridOptions.api.getSelectedNodes();
+		var selectedData = selectedNodes.map(node => node.data);
+
+
+		var noiseId = selectedData[0].noiseId;
+		 
+		$.ajax({
+			type: "GET",
+			url: "noise-monitor-approve?noiseId=" + noiseId,
+			async: false,
+			success: function(response) {
+				console.log(response)
+				if (response.code == "success") {
+				 
+					$("#messageParagraph").text(response.message);
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$('#deleteChecklist').attr("disabled", true);
+					$('#new').show();
+					agGrid.simpleHttpRequest({
+						url : 'monitorReport-activity-view'
+					}).then(function(data) {
+						var jsonData = JSON.parse(data.body);
+						var allData=jsonData.NoiseMonitor;
+						console.log(allData)
+						var len = allData.length;
+						$('#totalReq').find('span').html(len);
+						gridOptions.api.setRowData(allData);
+					});
+
+				} else {
+					$("#messageParagraph").text("Something went to wrong!");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$('.loader').hide();
+				}
+
+			},
+			error: function(data) {
+			}
+		});
+	}
+	  
+	 
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<!-- <div class="innercontent" > -->
+
+					<div class="d-flex justify-content-between upperDiv" id="demo1"
+						style="display: none;">
+						<div class="btn-hs">
+							<div class="font-design" id="totalReq">
+								Noise Monitor Report(<span></span>)
+							</div>
+						</div>
+						<div id="searchRowDiv">
+							<div class="input-style">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter"
+									autocomplete="off">
+								<div class="searchicon">
+									<a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalReq').find('span').html(gridOptions.api.getModel().getRowCount());"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+						</div>
+						<div class="buttonsec btn-hs" id="btndiv">
+							<button class="download-btn" id="download"
+								onclick="downloadDetails()">Download</button>
+
+							<button class="delete-btn" id="reqDltBtn" onclick="deleteFun()">DELETE</button>
+							<input type="button" class="new-btn" id="new" value="NEW"
+								onclick="newBtn()" readonly>
+								<button class="btn1" id="approve" onclick="approveReport()">Approve</button>
+						</div>
+					</div>
+
+					<input type="hidden" id="sessionOrganization1"
+						th:value="${session.ORGANIZATION}" /> <input type="hidden"
+						id="sessionDivision1" th:value="${session.ORGANIZATION_DIVISION}" />
+
+					<input type="hidden" id="sessionId" th:value="${session.USER_ID}" />
+
+
+					<input type="hidden" id="sessionName" th:value="${userName}" /> <input
+						type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+						type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+						type="hidden" id="adRole" th:value="${adRole}" />
+					<!------------- parent table my grid ---------------------->
+
+					<div id="myGrid" style="width: 100%; height: 500px;"
+						class="ag-theme-alpine"></div>
+
+
+					<div class="innerstickybg" id="headingItem">
+						<div class="row">
+							<div class="col-md-6">
+								<div class="col-md-6">
+									NOISE MONITORING REPORT: <span id="rtmrReportId"></span>
+								</div>
+							</div>
+							<div class="col-md-6" align="right">
+								<button class="cancel-btn" id="Cancel" onclick="Cancel()">Cancel</button>
+								<button class="save-btn" id="save" onclick="formSaveBtn()">Save</button>
+
+
+							</div>
+						</div>
+					</div>
+
+
+					<div class="row" id="innerDiv">
+						<input type="hidden" id="monitorId">
+
+						<div class="col-md-4 form-group" id="fdateDiv"
+							>
+							<div class="form-group calendar_box">
+								<label>Date</label> <input type="text" id="fromDate"
+									placeholder="Date" class="form-control" disabled> <i
+									class="ti-calendar picker_calendar" id="toDateCalendar"
+									style="top: 35px; right: 5px;"></i>
+							</div>
+						</div>
+
+						<div class="col-md-4">
+							<div class="form-group" id="emplist">
+								<label> Month </label>
+								<input type="text" id="month"
+									placeholder="" class="form-control">
+								
+							</div>
+						</div>
+						
+						
+						<div class="col-md-4">
+							<div class="form-group" id="emplist">
+								<label> Year </label>
+								<input type="text" id="date"
+									placeholder="" class="form-control">
+								
+							</div>
+						</div>
+
+						<div class="col-md-10">
+							<div class="form-group">
+								<label>Remarks</label>
+								<textarea type="text" class="form-control transparenttxtbox"
+									id="remarks" onblur="removeValid(event)"></textarea>
+							</div>
+						</div>
+
+						<div class="col-md-12 gridStyle">
+							<div id="monitorGrid1" style="width: 100%; height: 500px;"
+								class="ag-theme-alpine"></div>
+						</div>
+
+						<div class="col-md-12">
+							<p class="agGridname">AMBIENT SOUND</p>
+						</div>
+
+
+						<div class="col-md-12 mygrid2 gridStyle">
+							<div id="monitorGrid2" style="width: 100%; height: 180px;"
+								class="ag-theme-alpine"></div>
+						</div>
+
+
+
+					</div>
+
+
+					<div id="delete" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column"></div>
+								<div class="modal-body">
+									<p>Do you really want to delete this Data? This process
+										cannot be undone.</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: 0px;">
+
+									<button type="button" class="cancel-btn"
+										data-bs-dismiss="modal" onclick="cancelModalBtnDlt();">Cancel</button>
+									<button type="button" class="delete-btn"
+										onclick="deleteOnclick()">Delete</button>
+										
+								</div>
+							</div>
+						</div>
+					</div>
+
+				</div>
+			</div>
+		</div>
+</body>
+</html>

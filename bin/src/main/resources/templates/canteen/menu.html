@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.autocomplete {
+	position: relative;
+	display: inline-block;
+	width: 100%;
+}
+.sticky {
+  position: fixed;
+  top: 0;
+  width: 100%;
+}
+.fixed-nav-bar {
+  top: 0;
+  z-index: 100;
+  position: fixed;
+  width: 100%;
+}
+/* .fixed-nav-bar {
+ position: fixed;
+ top: 0; left: 0;
+ z-index: 9999;
+ width: 100%;
+ height: 50px;
+ background-color: #00a087;
+} */
+.sugg-cls ul {
+	height: 150px;
+	overflow-x: scroll;
+	position: relative;
+}
+
+ul#autocomplete-list1 {
+	position: relative;
+	z-index: 999;
+}
+
+ul#autocomplete-list1 li {
+	position: relative;
+	color: #fff;
+	padding-left: 6px;
+	background-color: #1f57a8;
+	border-bottom: solid 1px #6189c2;
+	padding-top: 5px;
+	padding-bottom: 5px;
+}
+
+a.addCust {
+	color: #fff;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+/* .form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+} */
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+</style>
+<script>
+	$(function() {
+
+			var gridDiv = document.querySelector('#myGrid');
+			new agGrid.Grid(gridDiv, gridOptions);
+			agGrid.simpleHttpRequest({
+				url : "menu-throughAjax"
+			}).then(function(data) {
+				var len = data.length;
+				$('#totalReq').find('span').html(len);
+	
+				gridOptions.api.setRowData(data);
+	
+			});
+			$("#myGrid").show();
+			$("#delete").attr("disabled", true);
+		 });
+
+	$(function() {
+			$('.collapse').on('show.bs.collapse', function() {
+				$(this).siblings('.panel-heading').addClass('active');
+			});
+
+	 })
+	//search bar
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+
+	$('input,textarea').focus(
+			function() {
+				$(this).data('placeholder', $(this).attr('placeholder')).attr(
+						'placeholder', '');
+			}).blur(function() {
+		$(this).attr('placeholder', $(this).data('placeholder'));
+	});
+
+	// column Defs
+	const columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				checkboxSelection : true,
+				width : 8,
+				sortable : false,
+				filter : false,
+				resizable : true
+
+			},
+			{
+				headerName : 'Item Id',
+				field : "itemId",
+				width : 150,
+				cellRenderer : function(params) {
+					return '<a onclick=editPage("' + params.data.itemId
+							+ ',' + '0' + '") href="javascript:void(0)">'
+							+ params.data.itemId + '</a>';
+				}
+			},
+
+			{
+				headerName : "Item Name",
+				field : "itemName",
+				width : 200,
+				cellStyle : {
+					textAlign : 'center'
+				},
+				  cellRenderer : function(params) {
+						return '<div style="color:black;font-weight: bold;">'
+						+ params.data.itemName 
+						+ '</div>';
+		      	}
+			}, {
+				headerName : "Price",
+				field : "price",
+				width : 150,
+				cellStyle : {
+					textAlign : 'right'
+				},
+				  cellRenderer : function(params) {
+						return '<div style="color:black;font-weight: bold;">'
+						+ params.data.price 
+						+ '</div>';
+		      	}
+			}, {
+				headerName : "Categry",
+				field : "categry",
+				width : 200,
+				cellStyle : {
+					textAlign : 'center'
+				},
+				  cellRenderer : function(params) {
+						return '<div style="color:black;font-weight: bold;">'
+						+ params.data.categry 
+						+ '</div>';
+		      	}
+			}, {
+				headerName : "Sub Categry",
+				field : "subcategry",
+				width : 200,
+				cellStyle : {
+					textAlign : 'center'
+				},
+				  cellRenderer : function(params) {
+						return '<div style="color:black;font-weight: bold;">'
+						+ params.data.subcategry 
+						+ '</div>';
+		      	}
+			}, {
+				headerName : "variant",
+				field : "variant",
+				width : 200,
+				cellStyle : {
+					textAlign : 'right'
+				},
+				  cellRenderer : function(params) {
+						return '<div style="color:black;font-weight: bold;">'
+						+ params.data.variant 
+						+ '</div>';
+		      	}
+			}, {
+				headerName : "Active",
+				field : "status",
+				width : 200,
+				cellStyle : {
+					textAlign : 'center'
+				},
+				cellRenderer : function(params) {
+					if (params.data.status == 1) {
+						return '<div style="color:black;font-weight: bold;">Active</div>';
+					} else {
+						return '<div style="color:orange;font-weight: bold;">Inactive</div>';
+					}
+				}
+			} 
+
+	];
+
+	const gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 220,
+			height : 10
+		},
+		//rowSelection : 'multiple',
+		suppressRowClickSelection : true,
+		onSelectionChanged : rowSelect,
+		getRowNodeId : function(data) {
+			return data.itemId;
+		}
+	};
+
+	function viewImage(id) {
+		window.open("/document/shoukeen/" + id, '_blank');
+	}
+
+	var deleteId = "";
+	function rowSelect() {
+		//alert('hello select');
+		var selectedRows = gridOptions.api.getSelectedRows();
+		deleteId = "";
+
+		for (var i = 0; i < selectedRows.length; i++) {
+			deleteId = deleteId + '"' + selectedRows[i].itemId + '",';
+			// deleteId = deleteId  + selectedRows[i].paymentId + ',';
+		}
+		deleteId = deleteId.substring(0, deleteId.length - 1);
+		console.log(deleteId)
+		var rowCount = 0;
+
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			$('#delete').attr("disabled", false);
+
+		} else {
+			$('#delete').attr("disabled", true);
+		}
+	}
+	// for new button
+	function newBtn() {
+		//	alert('hello');#newBt"#add").hide();
+		
+		$("#itemId").empty();
+		$("#copy").hide();
+		$("#add").hide();
+		$("#delete").hide();
+		$("#myGrid").hide();
+		$("#searchRowDiv").hide();
+		$("#totalReq").hide();
+		$("#statusDiv").hide();
+		$("#idDiv").hide();
+		$("#collapseFour").hide();
+		$("#headingFour").hide();
+		$("#myGridActivity").hide();
+		$("#demo").show();
+
+	}
+	// for cancel button
+	function cancelBtn() {
+		$("#add").show();
+		$("#copy").show();
+		$("#delete").show();
+		$("#totalReq").show();
+		$("#myGrid").show();
+		$("#searchRowDiv").show();
+		$("#demo").hide();
+
+		$('#itemId').val("");
+		$('#itemName').val("");
+		$('#price').val("");
+		$('#categry').val("");
+		$('#subcategry').val("");
+		$('#variant').val("");
+		$('#status').val("");
+
+		agGrid.simpleHttpRequest({
+			url : "menu-throughAjax"
+		}).then(function(data) {
+			gridOptions.api.setRowData(data);
+		});
+	}
+
+	$(document).ready(function() {
+		$("#date").datetimepicker({
+			format : "d-m-Y",
+			closeOnDateSelect : true,
+			minDate : new Date(),
+			timepicker : false,
+		});
+		
+
+	});
+
+	// Edit & stage change 
+	function editPage(id) {
+		//alert(id);
+		var editId = id.split(",");
+		var itemId = editId[0];
+		var modal = editId[1];
+		$("#demo").show();
+		$("#add").hide();
+		$("#copy").hide();
+		$("#delete").hide();
+		$("#myGrid").hide();
+		$("#searchRowDiv").hide();
+		$("#totalReq").hide();
+		$("#statusDiv").hide();
+		$("#idDiv").hide();
+		$("#collapseFour").hide();
+		$("#headingFour").hide();
+		$("#myGridActivity").hide();
+
+		$.ajax({
+			type : "GET",
+			url : "menu-edit?id=" + itemId,
+			async : false,
+			success : function(response) {
+				console.log("response------" + JSON.stringify(response));
+				if (response.message == "Success") {
+
+					$("#add").hide();
+					$("#copy").hide();
+					$("#delete").hide();
+					$("#myGrid").hide();
+					$("#searchRowDiv").hide();
+					$("#totalReq").hide();
+					$("#statusDiv").hide();
+					$("#idDiv").hide();
+					$("#collapseFour").hide();
+					$("#headingFour").hide();
+					$("#myGridActivity").hide();
+
+					$("#demo").show();
+
+					$(".container").hide();
+
+					$("#itemId").text(response.body[0].itemId);
+					$("#itemName").val(response.body[0].itemName);
+					$("#price").val(response.body[0].price);
+					$("#categry").val(response.body[0].categry);
+					$("#subcategry").val(response.body[0].subcategry);
+					$("#variant").val(response.body[0].variant);
+					$("#status").val(response.body[0].status);
+
+				}
+
+			}
+		})
+	}
+</script>
+<script>
+	//addIncentiveInfo
+
+	function addIncentiveInfo() {
+
+		var obj = {};
+
+		obj.itemId = $('#itemId').text();
+		obj.itemName = $('#itemName').val();
+		obj.price = $('#price').val();
+		obj.categry = $('#categry').val();
+		obj.subcategry = $("#subcategry").val();
+		obj.variant = $("#variant").val();
+		obj.status = $('#status').val();
+		
+		console.log("object on add-----------" + JSON.stringify(obj));
+
+
+		
+
+		var validation = true;
+		if (validation) {
+			$.ajax({
+				type : "POST",
+				url : "menu-add-dtls",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "Success") {
+						swal("Menu added successfully!", " ", "success");
+						cancelBtn();
+						agGrid.simpleHttpRequest({
+							url : "menu-throughAjax"
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+					
+
+					}
+				},
+				error : function(data) {
+
+					console.log(data);
+				}
+			})
+		}
+
+	}
+
+	function deleteIncentive() {
+		$.ajax({
+			type : "GET",
+			url : "menu-delete-id?id=" + deleteId,
+			success : function(response) {
+				if (response.message == "Success") {
+					swal("Menu deleted successfully!", " ", "success");
+					agGrid.simpleHttpRequest({
+						url : "menu-throughAjax"
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+					});
+
+				}
+			}
+
+		});
+
+		$('#delete').attr("disabled", true);
+	}
+	
+	function clubMemberGetDetail(){
+		var clubMemberId = $('#clubmember').val();
+		$.ajax({
+			type : "GET",
+			url : "menu-getMemberDetails?id=" + subcategry,
+			async : false,
+			success : function(response) {
+				//console.log("response------" + JSON.stringify(response));
+				if (response.message == "Success") {
+					$("#rangefrom").val(response.body[0].memberRangeFrom);
+					$("#rangeto").val(response.body[0].memberRangeTo);
+				}
+
+			}
+		})
+	}
+	
+	function getIncentiveStatus(){
+			var categry = $('#categry').val();
+			$.ajax({
+				type : "GET",
+				url : "menu-getIncentiveDetails?id=" + categry,
+				async : false,
+				success : function(response) {
+					//console.log("response------" + JSON.stringify(response));
+					if (response.message == "Success") {
+						$("#incentivecode").val(response.body[0].itemId);
+						//$("#rangeto").val(response.body[0].memberRangeTo);
+					}
+	
+				}
+			})
+	}
+	
+	//country
+	function getStateList() {
+			var cname = $('#categry').val();
+			if (cname) {
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				//$("#dname").append(option);
+				$.ajax({
+					type : "GET",
+					url : "manage-customer-mstr-stateList?id=" + cname,
+					success : function(response) {
+						if (response.message == "success") {
+							$("#subcategry").empty();
+							var option = $("<option></option>");
+							$(option).val(null);
+							$(option).html("Select");
+							$("#subcategry").append(option);
+							for (var i = 0; i < response.body.length; i++) {
+								var option = $("<option></option>");
+								$(option).val(response.body[i].key);
+								$(option).html(response.body[i].name);
+								$("#subcategry").append(option);
+							}
+						}
+					},
+					error : function(e) {
+					}
+				});
+		} else {
+				$("#subcategry").empty();
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				$("#subcategry").append(option);
+				$("#subcategry").empty();
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				//$("#dname").append(option);
+			}
+
+	}
+	
+	//state
+	function getDistDetails(){
+			var cname = $('#subcategry').val();
+			if (cname) { 
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				//$("#dname").append(option);
+				$.ajax({type : "GET",
+					url : "manage-customer-distList?id="+ cname,
+							success : function(response) {
+								if (response.message == "success") {
+									$("#variant").empty();
+									var option = $("<option></option>");
+									$(option).val(null);
+									$(option).html("Select");
+									$("#variant").append(option);
+									for (var i = 0; i < response.body.length; i++) {
+										var option = $("<option></option>");
+										$(option).val(response.body[i].key);
+										$(option).html(response.body[i].name);
+										$("#variant").append(option);
+									}
+								}
+							},
+							error : function(e) { 
+							}
+						});
+		 } else {
+				$("#variant").empty();
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				$("#variant").append(option);
+				$("#variant").empty();
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				//$("#dname").append(option);
+			}
+	}
+	
+</script>
+</head>
+
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+
+					<div class="d-flex justify-content-between">
+						<div class="col-md-2  btn-hs">
+							<div class="font-design" id="totalReq">
+								ALL Menu(<span></span>)
+							</div>
+						</div>
+						<div class="col-md-4  btn-hs" id="searchRowDiv">
+							<div class="input-style">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter">
+								<div class="searchicon">
+									<a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+
+						</div>
+						<div class="col-md-6  buttonsec btn-hs">
+							<input type="button" class="btn3" onclick="deleteIncentive()"
+								id="delete" value="DELETE" data-toggle="modal"
+								data-target="#delete" readonly>
+							<!-- <input type="button" class="btn2" id="action" value="Action"
+									 readonly> -->
+
+							<input type="button" class="btn1" id="add" value="Add Menu" onclick="newBtn()" readonly>
+						</div>
+					</div>
+
+					<div id="myGrid" style="width: 100%; height: 500px;"
+						class="ag-theme-alpine"></div>
+
+					<div class="collapse" id="demo">
+						<div class="innercontent">
+							<div class="innerstickybg">
+								<div class="d-flex justify-content-between" id="main">
+									<div class="col-md-3" id="idDiv">
+										Menu ID: <span id="itemId"></span>
+									</div>
+									<div>
+										<span class="taskInfo"> Menu Information</span>
+									</div>
+									
+									<div class="col-md-6 padding-0" align="right">
+										<button class="btn1" id="cancel" onclick="cancelBtn()">BACK</button>
+										<button class="btn4" id="cancel" onclick="cancelBtn()">CANCEL</button>
+										<button class="btn1" id="save" onclick="addIncentiveInfo()">SAVE</button>
+									</div>
+								</div>
+							</div>
+							<div class="innercontent">
+
+
+								<div class="row">
+
+
+
+
+									<!-- Search Filter Div Start-->
+									<div class="col-md-6">
+										<div class="form-group">
+											<label>Item Name</label> <input type="text"
+												class="form-control" id="itemName"
+												placeholder="Item Name"> <span
+												id="errmsg_name"></span>
+										</div>
+									</div>
+									<div class="col-md-6">
+										<div class="form-group">
+											<label>Price</label> <input type="text"
+												class="form-control" id="price"
+												placeholder="Price">
+												<span id="errmsg_price"></span>
+												
+												
+										</div>
+									</div>
+									
+									
+									<div class="col-md-6" id="searchFilterDiv"
+										style="margin-bottom: 10px;">
+
+										<div class="form-group">
+											<label>Category</label>
+											<div class="select">
+												<select id="categry" class="form-control" onchange="getIncentiveStatus()">
+													<option value="">--Select--</option>
+													<option th:each="c,iter:${incentivedetails}"
+														th:value="${c.key}" th:text="${c.name}"></option>
+												</select> <span id="errmsg_categry"></span>
+											</div>
+
+										</div>
+									</div>
+
+									<div class="col-md-6">
+										<div class="form-group">
+											<label>Sub Category</label>
+											<div class="select">
+												<select id="subcategry" class="form-control" onchange="clubMemberGetDetail()">
+													<option value="">--Select--</option>
+													<option th:each="c,iter:${clubMemberDetails}"
+														th:value="${c.key}" th:text="${c.name}" ></option>
+												</select> <span id="errmsg_subcategry"></span>
+											</div>
+
+										</div>
+									</div>
+
+									<div class="col-md-6">
+										<div class="form-group">
+											<label>Variant</label>
+											<div class="select">
+												<select id="variant" class="form-control" onchange="clubMemberGetDetail()">
+													<option value="">--Select--</option>
+													<option th:each="c,iter:${variantDetails}"
+														th:value="${c.key}" th:text="${c.name}" ></option>
+												</select> <span id="errmsg_variant"></span>
+											</div>
+
+										</div>
+									</div>
+
+									
+									
+										<div class="col-md-6">
+										<div class="form-group">
+											<label>Active</label>
+											<div class="select">
+												<select id="status" class="form-control">
+													<option value="">Select</option>
+													<option value="1">Active</option>
+													<option value="0">Inactive</option>
+												</select>
+												<span id="errmsg_status"></span>
+											</div>
+										</div>
+									</div>
+
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

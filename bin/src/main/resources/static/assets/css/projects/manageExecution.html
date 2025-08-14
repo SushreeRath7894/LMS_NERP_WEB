@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<script src="../assets/js/extend/grid-ent.js"></script>
+<script>
+	function openNav() {
+		
+		$(".formValidation").remove();
+		$("#yearVal").val("");
+		$("#yearId").val("");
+		
+		document.getElementById("mySidenav").style.cssText = "top:135px; width:260px; position: absolute; right:-40px; overflow: hidden; height:auto;";
+		document.getElementById("myGrid").style.width = "82%";
+	}
+
+	function closeNav() {
+		
+		$(".formValidation").remove();
+		$("#yearVal").val("");
+		$("#yearId").val("");
+		
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("myGrid").style.width = "100%";
+	}
+	
+$(document).ready(function(){
+	
+	getYearDataList();
+	
+	$("#submitYear").click(function(){
+		obj = {};
+		
+		obj.year = $("#yearVal").val();
+		
+		$(".formValidation").remove();
+		allPValid = true;
+		if( $("#yearVal").val() == null || $("#yearVal").val() == ""){
+			allPValid = false;
+			validationAll("Year Required","yearVal");
+		}
+		
+		if(allPValid) {
+			$('.loader').show();
+	    	$("body").addClass("overlay");
+			submitYearData(obj);
+		}
+	})
+	
+	$('#basic').simpleTreeTable({
+	    expander: $('#expander'),
+	    collapser: $('#collapser'),
+	    store: 'session',
+	    storeKey: 'simple-tree-table-basic'
+	  });
+	
+	$("#saveBudgetPlan").click(function(){
+		
+		$('.loader').show();
+    	$("body").addClass("overlay");
+		
+		var data = $("#hiddenMonthDataset").val();
+		
+		var monthlist = data.split(",");
+		var monthset = [];
+		for(var i = 0; i < monthlist.length - 1; i++) {
+			monthset.push(monthlist[i].toLowerCase())
+		}
+		//console.log(monthset)
+		var dataset = [];
+		$("#basic > #tbodyData > tr").each(function(){
+			var id = $(this).attr("id");
+			console.log(id)
+			var obj = {};
+			obj['id'] = id;
+			obj['year'] = $("#hiddenYear").val();
+			for(var i = 0; i < monthset.length; i++) {
+				var j = i + 1;
+				var monthData = $(this).find(".m"+j+"_"+id).val();
+				if(monthData == "" || monthData == null) {
+					monthData = 0;
+				} else {
+					monthData = monthData.replace(",","");
+				}
+				obj[monthset[i]] = parseFloat(monthData);
+			}
+			var total = $(this).find(".total_"+id).val();
+			if(total == "" || total == null) {
+				total = 0;
+			} else {
+				total = total.replace(",","");
+			}
+			obj['total'] = parseFloat(total);
+			dataset.push(obj)
+		})
+		submitBudgetPlan(dataset);
+	})
+	
+})
+
+function submitBudgetPlan(dataset) {
+	$.ajax({
+        type: "POST",
+        url: "project-budget-save",
+        dataType: "json",
+        contentType: "application/json",
+        data: JSON.stringify(dataset),
+        success: function(response) {
+            if (response.message == "success") {
+            	$('.loader').hide();
+            	$("body").removeClass("overlay");
+            }
+        }, error: function(data) {
+        	console.log(data)
+        	$('.loader').hide();
+        	$("body").removeClass("overlay");
+        }
+	});
+}
+
+function formatNumber(num) {
+	return num.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,')
+}
+
+function getBudgetPlanData(id) {
+	$("#tbodyData").empty();
+	obj = {};
+	obj.year = id;
+	obj.id = $("#hiddenMonthDataset").val();
+	$.ajax({
+        type: "POST",
+        url: "project-budget-get-cc-list",
+        dataType: "json",
+        contentType: "application/json",
+        data: JSON.stringify(obj),
+        success: function(response) {
+            if (response.message == "success") {
+            	console.log(response.body)
+            	for(var i = 0; i < response.body.length; i++) {
+            		var row = "";
+            		if(i == 0) {
+            			if(response.body[i].count > 0) {
+            				row = '<tr data-node-id="'+response.body[i].id+'" class="abc" id="'+response.body[i].id+'">'+
+    						'<td class="firstnode">'+response.body[i].slNo+' - '+response.body[i].name+'</td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m1_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m1)+'"><input type="hidden" value="'+response.body[i].m1+'" id="hdm1_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m2_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m2)+'"><input type="hidden" value="'+response.body[i].m2+'" id="hdm2_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m3_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m3)+'"><input type="hidden" value="'+response.body[i].m3+'" id="hdm3_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m4_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m4)+'"><input type="hidden" value="'+response.body[i].m4+'" id="hdm4_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m5_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m5)+'"><input type="hidden" value="'+response.body[i].m5+'" id="hdm5_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m6_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m6)+'"><input type="hidden" value="'+response.body[i].m6+'" id="hdm6_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m7_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m7)+'"><input type="hidden" value="'+response.body[i].m7+'" id="hdm7_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m8_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m8)+'"><input type="hidden" value="'+response.body[i].m8+'" id="hdm8_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m9_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m9)+'"><input type="hidden" value="'+response.body[i].m9+'" id="hdm9_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m10_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m10)+'"><input type="hidden" value="'+response.body[i].m10+'" id="hdm10_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m11_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m11)+'"><input type="hidden" value="'+response.body[i].m11+'" id="hdm11_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m12_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m12)+'"><input type="hidden" value="'+response.body[i].m12+'" id="hdm12_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="total_'+response.body[i].id+'" value="'+formatNumber(response.body[i].total)+'"></td></tr>';
+            			} else {
+            				row = '<tr data-node-id="'+response.body[i].id+'" class="abc" id="'+response.body[i].id+'">'+
+    						'<td class="firstnode">'+response.body[i].slNo+' - '+response.body[i].name+'</td>'+
+    						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m1_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m1)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",1)><input type="hidden" value="'+response.body[i].m1+'" id="hdm1_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m2_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m2)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",2)><input type="hidden" value="'+response.body[i].m2+'" id="hdm2_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m3_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m3)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",3)><input type="hidden" value="'+response.body[i].m3+'" id="hdm3_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m4_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m4)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",4)><input type="hidden" value="'+response.body[i].m4+'" id="hdm4_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m5_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m5)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",5)><input type="hidden" value="'+response.body[i].m5+'" id="hdm5_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m6_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m6)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",6)><input type="hidden" value="'+response.body[i].m6+'" id="hdm6_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m7_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m7)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",7)><input type="hidden" value="'+response.body[i].m7+'" id="hdm7_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m8_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m8)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",8)><input type="hidden" value="'+response.body[i].m8+'" id="hdm8_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m9_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m9)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",9)><input type="hidden" value="'+response.body[i].m9+'" id="hdm9_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m10_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m10)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",10)><input type="hidden" value="'+response.body[i].m10+'" id="hdm10_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m11_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m11)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",11)><input type="hidden" value="'+response.body[i].m11+'" id="hdm11_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m12_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m12)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",12)><input type="hidden" value="'+response.body[i].m12+'" id="hdm12_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="total_'+response.body[i].id+'" value="'+formatNumber(response.body[i].total)+'" disabled></td></tr>';
+            			}
+            			
+            		} else {
+            			if(response.body[i].count > 0) {
+            				row = '<tr data-node-id="'+response.body[i].id+'" data-node-pid="'+response.body[i].parentId+'" class="abc" id="'+response.body[i].id+'">'+
+    						'<td class="firstnode">'+response.body[i].slNo+' - '+response.body[i].name+'</td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m1_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m1)+'"><input type="hidden" value="'+response.body[i].m1+'" id="hdm1_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m2_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m2)+'"><input type="hidden" value="'+response.body[i].m2+'" id="hdm2_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m3_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m3)+'"><input type="hidden" value="'+response.body[i].m3+'" id="hdm3_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m4_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m4)+'"><input type="hidden" value="'+response.body[i].m4+'" id="hdm4_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m5_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m5)+'"><input type="hidden" value="'+response.body[i].m5+'" id="hdm5_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m6_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m6)+'"><input type="hidden" value="'+response.body[i].m6+'" id="hdm6_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m7_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m7)+'"><input type="hidden" value="'+response.body[i].m7+'" id="hdm7_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m8_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m8)+'"><input type="hidden" value="'+response.body[i].m8+'" id="hdm8_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m9_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m9)+'"><input type="hidden" value="'+response.body[i].m9+'" id="hdm9_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m10_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m10)+'"><input type="hidden" value="'+response.body[i].m10+'" id="hdm10_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m11_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m11)+'"><input type="hidden" value="'+response.body[i].m11+'" id="hdm11_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="m12_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m12)+'"><input type="hidden" value="'+response.body[i].m12+'" id="hdm12_'+response.body[i].id+'"></td>'+
+    						'<td><input type="text"  disabled data-idval="'+response.body[i].id+'" class="total_'+response.body[i].id+'" value="'+formatNumber(response.body[i].total)+'"></td></tr>';
+            			} else {
+            				
+            				if(response.body[i].chartAccList.length > 0) {
+            					row = '<tr data-node-id="'+response.body[i].id+'" data-node-pid="'+response.body[i].parentId+'" class="abc" id="'+response.body[i].id+'">'+
+        						'<td class="firstnode">'+response.body[i].slNo+' - '+response.body[i].name+'</td>'+
+        						'<td><input type="text" disabled data-idval="'+response.body[i].id+'" class="m1_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m1)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",1)><input type="hidden" value="'+response.body[i].m1+'" id="hdm1_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text" disabled data-idval="'+response.body[i].id+'" class="m2_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m2)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",2)><input type="hidden" value="'+response.body[i].m2+'" id="hdm2_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text" disabled data-idval="'+response.body[i].id+'" class="m3_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m3)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",3)><input type="hidden" value="'+response.body[i].m3+'" id="hdm3_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text" disabled data-idval="'+response.body[i].id+'" class="m4_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m4)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",4)><input type="hidden" value="'+response.body[i].m4+'" id="hdm4_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text" disabled data-idval="'+response.body[i].id+'" class="m5_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m5)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",5)><input type="hidden" value="'+response.body[i].m5+'" id="hdm5_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text" disabled data-idval="'+response.body[i].id+'" class="m6_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m6)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",6)><input type="hidden" value="'+response.body[i].m6+'" id="hdm6_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text" disabled data-idval="'+response.body[i].id+'" class="m7_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m7)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",7)><input type="hidden" value="'+response.body[i].m7+'" id="hdm7_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text" disabled data-idval="'+response.body[i].id+'" class="m8_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m8)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",8)><input type="hidden" value="'+response.body[i].m8+'" id="hdm8_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text" disabled data-idval="'+response.body[i].id+'" class="m9_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m9)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",9)><input type="hidden" value="'+response.body[i].m9+'" id="hdm9_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text" disabled data-idval="'+response.body[i].id+'" class="m10_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m10)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",10)><input type="hidden" value="'+response.body[i].m10+'" id="hdm10_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text" disabled data-idval="'+response.body[i].id+'" class="m11_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m11)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",11)><input type="hidden" value="'+response.body[i].m11+'" id="hdm11_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text" disabled data-idval="'+response.body[i].id+'" class="m12_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m12)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",12)><input type="hidden" value="'+response.body[i].m12+'" id="hdm12_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text" disabled data-idval="'+response.body[i].id+'" class="total_'+response.body[i].id+'" value="'+formatNumber(response.body[i].total)+'" disabled></td></tr>';
+        						var row1 = "";
+        						for(var j = 0; j < response.body[i].chartAccList.length; j++) {
+        							row1 = row1 + '<tr data-node-id="'+response.body[i].chartAccList[j].id+'" data-node-pid="'+response.body[i].chartAccList[j].parentId+'" class="abc" id="'+response.body[i].chartAccList[j].id+'">'+
+            						'<td class="firstnode">'+response.body[i].chartAccList[j].slNo+' - '+response.body[i].chartAccList[j].name+'</td>'+
+            						'<td><input type="text"  data-idval="'+response.body[i].chartAccList[j].id+'" class="m1_'+response.body[i].chartAccList[j].id+'" value="'+formatNumber(response.body[i].chartAccList[j].m1)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].chartAccList[j].id+'","'+response.body[i].chartAccList[j].parentId+'",1)><input type="hidden" value="'+response.body[i].chartAccList[j].m1+'" id="hdm1_'+response.body[i].chartAccList[j].id+'"></td>'+
+            						'<td><input type="text"  data-idval="'+response.body[i].chartAccList[j].id+'" class="m2_'+response.body[i].chartAccList[j].id+'" value="'+formatNumber(response.body[i].chartAccList[j].m2)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].chartAccList[j].id+'","'+response.body[i].chartAccList[j].parentId+'",2)><input type="hidden" value="'+response.body[i].chartAccList[j].m2+'" id="hdm2_'+response.body[i].chartAccList[j].id+'"></td>'+
+            						'<td><input type="text"  data-idval="'+response.body[i].chartAccList[j].id+'" class="m3_'+response.body[i].chartAccList[j].id+'" value="'+formatNumber(response.body[i].chartAccList[j].m3)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].chartAccList[j].id+'","'+response.body[i].chartAccList[j].parentId+'",3)><input type="hidden" value="'+response.body[i].chartAccList[j].m3+'" id="hdm3_'+response.body[i].chartAccList[j].id+'"></td>'+
+            						'<td><input type="text"  data-idval="'+response.body[i].chartAccList[j].id+'" class="m4_'+response.body[i].chartAccList[j].id+'" value="'+formatNumber(response.body[i].chartAccList[j].m4)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].chartAccList[j].id+'","'+response.body[i].chartAccList[j].parentId+'",4)><input type="hidden" value="'+response.body[i].chartAccList[j].m4+'" id="hdm4_'+response.body[i].chartAccList[j].id+'"></td>'+
+            						'<td><input type="text"  data-idval="'+response.body[i].chartAccList[j].id+'" class="m5_'+response.body[i].chartAccList[j].id+'" value="'+formatNumber(response.body[i].chartAccList[j].m5)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].chartAccList[j].id+'","'+response.body[i].chartAccList[j].parentId+'",5)><input type="hidden" value="'+response.body[i].chartAccList[j].m5+'" id="hdm5_'+response.body[i].chartAccList[j].id+'"></td>'+
+            						'<td><input type="text"  data-idval="'+response.body[i].chartAccList[j].id+'" class="m6_'+response.body[i].chartAccList[j].id+'" value="'+formatNumber(response.body[i].chartAccList[j].m6)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].chartAccList[j].id+'","'+response.body[i].chartAccList[j].parentId+'",6)><input type="hidden" value="'+response.body[i].chartAccList[j].m6+'" id="hdm6_'+response.body[i].chartAccList[j].id+'"></td>'+
+            						'<td><input type="text"  data-idval="'+response.body[i].chartAccList[j].id+'" class="m7_'+response.body[i].chartAccList[j].id+'" value="'+formatNumber(response.body[i].chartAccList[j].m7)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].chartAccList[j].id+'","'+response.body[i].chartAccList[j].parentId+'",7)><input type="hidden" value="'+response.body[i].chartAccList[j].m7+'" id="hdm7_'+response.body[i].chartAccList[j].id+'"></td>'+
+            						'<td><input type="text"  data-idval="'+response.body[i].chartAccList[j].id+'" class="m8_'+response.body[i].chartAccList[j].id+'" value="'+formatNumber(response.body[i].chartAccList[j].m8)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].chartAccList[j].id+'","'+response.body[i].chartAccList[j].parentId+'",8)><input type="hidden" value="'+response.body[i].chartAccList[j].m8+'" id="hdm8_'+response.body[i].chartAccList[j].id+'"></td>'+
+            						'<td><input type="text"  data-idval="'+response.body[i].chartAccList[j].id+'" class="m9_'+response.body[i].chartAccList[j].id+'" value="'+formatNumber(response.body[i].chartAccList[j].m9)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].chartAccList[j].id+'","'+response.body[i].chartAccList[j].parentId+'",9)><input type="hidden" value="'+response.body[i].chartAccList[j].m9+'" id="hdm9_'+response.body[i].chartAccList[j].id+'"></td>'+
+            						'<td><input type="text"  data-idval="'+response.body[i].chartAccList[j].id+'" class="m10_'+response.body[i].chartAccList[j].id+'" value="'+formatNumber(response.body[i].chartAccList[j].m10)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].chartAccList[j].id+'","'+response.body[i].chartAccList[j].parentId+'",10)><input type="hidden" value="'+response.body[i].chartAccList[j].m10+'" id="hdm10_'+response.body[i].chartAccList[j].id+'"></td>'+
+            						'<td><input type="text"  data-idval="'+response.body[i].chartAccList[j].id+'" class="m11_'+response.body[i].chartAccList[j].id+'" value="'+formatNumber(response.body[i].chartAccList[j].m11)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].chartAccList[j].id+'","'+response.body[i].chartAccList[j].parentId+'",11)><input type="hidden" value="'+response.body[i].chartAccList[j].m11+'" id="hdm11_'+response.body[i].chartAccList[j].id+'"></td>'+
+            						'<td><input type="text"  data-idval="'+response.body[i].chartAccList[j].id+'" class="m12_'+response.body[i].chartAccList[j].id+'" value="'+formatNumber(response.body[i].chartAccList[j].m12)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].chartAccList[j].id+'","'+response.body[i].chartAccList[j].parentId+'",12)><input type="hidden" value="'+response.body[i].chartAccList[j].m12+'" id="hdm12_'+response.body[i].chartAccList[j].id+'"></td>'+
+            						'<td><input type="text"  data-idval="'+response.body[i].chartAccList[j].id+'" class="total_'+response.body[i].chartAccList[j].id+'" value="'+formatNumber(response.body[i].chartAccList[j].total)+'" disabled></td></tr>';
+        						}
+        						row = row + row1;
+            				} else {
+            					row = '<tr data-node-id="'+response.body[i].id+'" data-node-pid="'+response.body[i].parentId+'" class="abc" id="'+response.body[i].id+'">'+
+        						'<td class="firstnode">'+response.body[i].slNo+' - '+response.body[i].name+'</td>'+
+        						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m1_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m1)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",1)><input type="hidden" value="'+response.body[i].m1+'" id="hdm1_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m2_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m2)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",2)><input type="hidden" value="'+response.body[i].m2+'" id="hdm2_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m3_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m3)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",3)><input type="hidden" value="'+response.body[i].m3+'" id="hdm3_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m4_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m4)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",4)><input type="hidden" value="'+response.body[i].m4+'" id="hdm4_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m5_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m5)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",5)><input type="hidden" value="'+response.body[i].m5+'" id="hdm5_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m6_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m6)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",6)><input type="hidden" value="'+response.body[i].m6+'" id="hdm6_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m7_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m7)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",7)><input type="hidden" value="'+response.body[i].m7+'" id="hdm7_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m8_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m8)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",8)><input type="hidden" value="'+response.body[i].m8+'" id="hdm8_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m9_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m9)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",9)><input type="hidden" value="'+response.body[i].m9+'" id="hdm9_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m10_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m10)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",10)><input type="hidden" value="'+response.body[i].m10+'" id="hdm10_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m11_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m11)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",11)><input type="hidden" value="'+response.body[i].m11+'" id="hdm11_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="m12_'+response.body[i].id+'" value="'+formatNumber(response.body[i].m12)+'" onkeyup=setTotalRowWise(event);setParentData("'+response.body[i].id+'","'+response.body[i].parentId+'",12)><input type="hidden" value="'+response.body[i].m12+'" id="hdm12_'+response.body[i].id+'"></td>'+
+        						'<td><input type="text"  data-idval="'+response.body[i].id+'" class="total_'+response.body[i].id+'" value="'+formatNumber(response.body[i].total)+'" disabled></td></tr>';
+            				}
+            			}
+            		}
+					$("#tbodyData").append(row);
+            	}
+            	
+            	$('.loader').hide();
+            	$("body").removeClass("overlay");
+            	
+            	$('#basic').simpleTreeTable({
+            	    expander: $('#expander'),
+            	    collapser: $('#collapser'),
+            	    store: 'session',
+            		storeKey: 'simple-tree-table-basic'
+            	});
+            }
+        }, error: function(data) {
+        	console.log(data)
+        	$('.loader').hide();
+        	$("body").removeClass("overlay");
+        }
+	});
+}
+
+function setParentData(id,parentId,slno) {
+	
+		var m1 = $(".m"+slno+"_"+id).val();
+		if(m1 == null || m1 == "") {
+			m1 = 0;
+		} else {
+			m1 = m1.replace(",","");
+		}
+		var hidVal = $("#hdm"+slno+"_"+id).val();
+		var pVal = $("#tbodyData > #"+parentId).find(".m"+slno+"_"+parentId).val();
+		if(pVal == null || pVal == "") {
+			pVal = 0;
+		} else {
+			pVal = pVal.replace(",","");
+		}
+		pVal = parseFloat(pVal) + parseFloat(m1) - parseFloat(hidVal);
+		$("#hdm"+slno+"_"+id).val(m1);
+		$("#"+parentId).find(".m"+slno+"_"+parentId).val("");
+		$("#"+parentId).find(".m"+slno+"_"+parentId).val(formatNumber(pVal));
+		var pId = $("#"+parentId).attr("data-node-pid");
+		setTotalValue(parentId);
+		setParentData(parentId,pId,slno);
+	
+}
+
+function setTotalValue(dataval) {
+	var m1 = $(".m1_"+dataval).val();
+	if(m1 == null || m1 == "") {
+		m1 = 0;
+	} else {
+		m1 = m1.replace(",","");
+	}
+	var m2 = $(".m2_"+dataval).val();
+	if(m2 == null || m2 == "") {
+		m2 = 0;
+	} else {
+		m2 = m2.replace(",","");
+	}
+	var m3 = $(".m3_"+dataval).val();
+	if(m3 == null || m3 == "") {
+		m3 = 0;
+	} else {
+		m3 = m3.replace(",","");
+	}
+	var m4 = $(".m4_"+dataval).val();
+	if(m4 == null || m4 == "") {
+		m4 = 0;
+	} else {
+		m4 = m4.replace(",","");
+	}
+	var m5 = $(".m5_"+dataval).val();
+	if(m5 == null || m5 == "") {
+		m5 = 0;
+	} else {
+		m5 = m5.replace(",","");
+	}
+	var m6 = $(".m6_"+dataval).val();
+	if(m6 == null || m6 == "") {
+		m6 = 0;
+	} else {
+		m6 = m6.replace(",","");
+	}
+	var m7 = $(".m7_"+dataval).val();
+	if(m7 == null || m7 == "") {
+		m7 = 0;
+	} else {
+		m7 = m7.replace(",","");
+	}
+	var m8 = $(".m8_"+dataval).val();
+	if(m8 == null || m8 == "") {
+		m8 = 0;
+	} else {
+		m8 = m8.replace(",","");
+	}
+	var m9 = $(".m9_"+dataval).val();
+	if(m9 == null || m9 == "") {
+		m9 = 0;
+	} else {
+		m9 = m9.replace(",","");
+	}
+	var m10 = $(".m10_"+dataval).val();
+	if(m10 == null || m10 == "") {
+		m10 = 0;
+	} else {
+		m10 = m10.replace(",","");
+	}
+	var m11 = $(".m11_"+dataval).val();
+	if(m11 == null || m11 == "") {
+		m11 = 0;
+	} else {
+		m11 = m11.replace(",","");
+	}
+	var m12 = $(".m12_"+dataval).val();
+	if(m12 == null || m12 == "") {
+		m12 = 0;
+	} else {
+		m12 = m12.replace(",","");
+	}
+	
+	var sum = 0;
+	
+	sum = parseFloat(m1) + parseFloat(m2) + parseFloat(m3) + parseFloat(m4) + parseFloat(m5) + parseFloat(m6) + parseFloat(m7) + parseFloat(m8) + parseFloat(m9) + parseFloat(m10) + parseFloat(m11) + parseFloat(m12);
+	
+	$(".total_"+dataval).val(formatNumber(sum));
+}
+
+function setTotalRowWise(e) {
+	console.log(e)
+	
+	var dataval = e.target.dataset.idval;
+	console.log(dataval)
+	
+	var m1 = $(".m1_"+dataval).val();
+	if(m1 == null || m1 == "") {
+		m1 = 0;
+	} else {
+		m1 = m1.replace(",","");
+	}
+	var m2 = $(".m2_"+dataval).val();
+	if(m2 == null || m2 == "") {
+		m2 = 0;
+	} else {
+		m2 = m2.replace(",","");
+	}
+	var m3 = $(".m3_"+dataval).val();
+	if(m3 == null || m3 == "") {
+		m3 = 0;
+	} else {
+		m3 = m3.replace(",","");
+	}
+	var m4 = $(".m4_"+dataval).val();
+	if(m4 == null || m4 == "") {
+		m4 = 0;
+	} else {
+		m4 = m4.replace(",","");
+	}
+	var m5 = $(".m5_"+dataval).val();
+	if(m5 == null || m5 == "") {
+		m5 = 0;
+	} else {
+		m5 = m5.replace(",","");
+	}
+	var m6 = $(".m6_"+dataval).val();
+	if(m6 == null || m6 == "") {
+		m6 = 0;
+	} else {
+		m6 = m6.replace(",","");
+	}
+	var m7 = $(".m7_"+dataval).val();
+	if(m7 == null || m7 == "") {
+		m7 = 0;
+	} else {
+		m7 = m7.replace(",","");
+	}
+	var m8 = $(".m8_"+dataval).val();
+	if(m8 == null || m8 == "") {
+		m8 = 0;
+	} else {
+		m8 = m8.replace(",","");
+	}
+	var m9 = $(".m9_"+dataval).val();
+	if(m9 == null || m9 == "") {
+		m9 = 0;
+	} else {
+		m9 = m9.replace(",","");
+	}
+	var m10 = $(".m10_"+dataval).val();
+	if(m10 == null || m10 == "") {
+		m10 = 0;
+	} else {
+		m10 = m10.replace(",","");
+	}
+	var m11 = $(".m11_"+dataval).val();
+	if(m11 == null || m11 == "") {
+		m11 = 0;
+	} else {
+		m11 = m11.replace(",","");
+	}
+	var m12 = $(".m12_"+dataval).val();
+	if(m12 == null || m12 == "") {
+		m12 = 0;
+	} else {
+		m12 = m12.replace(",","");
+	}
+	var sum = 0;
+	
+	sum = parseFloat(m1) + parseFloat(m2) + parseFloat(m3) + parseFloat(m4) + parseFloat(m5) + parseFloat(m6) + parseFloat(m7) + parseFloat(m8) + parseFloat(m9) + parseFloat(m10) + parseFloat(m11) + parseFloat(m12);
+	
+	$(".total_"+dataval).val(formatNumber(sum));
+}
+
+function submitYearData(dataset) {
+	$.ajax({
+        type: "POST",
+        url: "project-budget-save-year",
+        dataType: "json",
+        contentType: "application/json",
+        data: JSON.stringify(dataset),
+        success: function(response) {
+            if (response.message == "success") {
+            	$('.loader').hide();
+            	$("body").removeClass("overlay");
+            	closeNav();
+            	
+            	var div = '<div id="'+response.body.yearId+'" class="databasebox_mail divcls" style="text-align: center !important;" onclick=openDetails("'+response.body.yearId+'","'+response.body.year+'","'+response.body.monthDtls+'")>'+
+						'<a href="javascript:void(0)"><div style="font-size: 34px;">' + response.body.year + '</div> '+
+					'<span style="font-size: 15px;">'+response.body.monthDtls+'</span></a></div>';
+				$("#yearDiv").append(div);
+            }
+        }, error: function(data) {
+        	console.log(data)
+        	$('.loader').hide();
+        	$("body").removeClass("overlay");
+        }
+	});
+}
+
+function getYearDataList() {
+	$("#yearDiv").empty();
+	$('.loader').show();
+	$("body").addClass("overlay");
+	$.ajax({
+        type: "POST",
+        url: "project-budget-get-year-list",
+        dataType: "json",
+        contentType: "application/json",
+        data: "A",
+        success: function(response) {
+            if (response.message == "success") {
+            	console.log(response.body)
+            	
+            	var id = response.body[0].year;
+            	var mnth =response.body[0].monthDtls;
+            	mnth = mnth.replaceAll(" ","");
+            	mnth = mnth.split("-");
+            	setMonthList(mnth[0],mnth[2]);
+            	for(var i = 0; i < response.body.length; i++) {
+            		var mnth = response.body[i].monthDtls;
+            		mnth = mnth.replaceAll(" ","");
+            		mnth = mnth.split("-");
+            		var start = mnth[0];
+            		var end = mnth[2];
+            		var div = '<div id="'+response.body[i].yearId+'" class="databasebox_mail divcls" style="text-align: center !important;" onclick=openDetails("'+response.body[i].yearId+'","'+response.body[i].year+'","'+start+'","'+end+'")>'+
+							'<a href="javascript:void(0)"><div style="font-size: 34px;">' + response.body[i].year + '</div> '+
+						'<span style="font-size: 15px;">'+response.body[i].monthDtls+'</span></a></div>';
+            		$("#yearDiv").append(div);
+            		
+            		
+            		
+            		if(i == 0) {
+            			$("#"+response.body[i].yearId).removeClass("databasebox_mail");
+            			$("#"+response.body[i].yearId).addClass("databasebox_mailactive");
+            		}
+            	}
+            	
+            	$("#hiddenYear").val(response.body[0].year);
+            	
+            	getBudgetPlanData(id);
+            	
+            }
+        }, error: function(data) {
+        	console.log(data)
+        }
+	});
+}
+
+function setMonthList(start,end) {
+	var dataset = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+	var total = ["Total"];
+	var a = dataset.indexOf(start);
+	var y = dataset.splice(a);
+	var newdataset = y.concat(dataset); 
+	var newdataset = newdataset.concat(total);
+	$("#hiddenMonthDataset").val(newdataset);
+	/* $("#theadData").empty();
+	var head = "<th class='firstnode'></th>";
+	$("#theadData").append(head);
+	for(var i = 0; i < newdataset.length; i++) {
+		var dyhead = '<th class="dyheadCls">'+newdataset[i]+'</th>';
+		$("#theadData").append(dyhead);
+	} */
+}
+
+function openDetails(id,year,start,end) {
+	setMonthList(start,end);
+	$("#hiddenYear").val(year);
+	$(".divcls").removeClass("databasebox_mailactive");
+	$(".divcls").addClass("databasebox_mail");
+	$("#"+id).addClass("databasebox_mailactive");
+	$('.loader').show();
+	$("body").addClass("overlay");
+	getBudgetPlanData(year);
+}
+
+
+</script>
+<style>
+.dyheadCls {
+	text-align: center;
+}
+
+td input {
+	overflow: visible;
+	width: 100%;
+	border: 0;
+	text-align: right;
+	font-size: 12px;
+	font-weight: 100;
+}
+
+input:focus {
+	border: 0;
+	outline: 0;
+}
+
+input disabled {
+	background: none;
+}
+
+/* .ag-theme-alpine .ag-cell-wrapper>:not (.ag-cell-value ):not (.ag-group-value) {
+	height: 21px !important;
+} */
+.ag-theme-alpine .ag-root-wrapper {
+	border-left: 0px solid #e2e2e2 !important;
+	border-right: 0px solid #e2e2e2 !important;
+	border-bottom: 0px solid #e2e2e2 !important;
+	border-top: 0px solid #e2e2e2 !important;
+}
+
+.ag-root-wrapper:first-child {
+	border-left: 0px solid #e2e2e2 !important;
+	border-right: 0px solid #e2e2e2 !important;
+	border-bottom: 0px solid #e2e2e2 !important;
+	border-top: 0px solid #e2e2e2 !important;
+}
+
+.ag-theme-alpine .ag-header-row {
+	border-top: 1px solid #e2e2e2 !important;
+}
+
+.ag-row-group-indent-0 {
+	border-bottom: 0px solid #e2e2e2 !important;
+	border-top: 0px solid #e2e2e2 !important;
+}
+
+.ag-center-cols-viewport {
+	background: #F6f8f8 !important;
+	border: 0px solid #fff;
+}
+
+.ag-theme-alpine .ag-ltr .ag-cell {
+	border-left-color: #f6f8f8 !important;
+	border-bottom-color: #f6f8f8 !important;
+}
+
+.ag-center-cols-container:first-child {
+	border-top: 0px !important;
+	border-bottom: 0px !important;
+}
+
+#basic th:first-child {
+	border: none;
+}
+
+.abc td:first-child {
+	border: 1px transparent;
+}
+
+.firstnode {
+	color: #929292;
+	border-top: 1px solid transparent !important;
+	border-left: 1px solid transparent !important;
+	border-bottom: 1px solid transparent !important;
+	width: 320px;
+	font-size: 12px;
+	font-weight: 100;
+}
+table {
+	border: 1px solid #ebeded;
+}
+table th
+{
+border:1px solid #333;
+}
+table td
+{
+border:1px solid #333;
+}
+
+.simple-tree-table-closed .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'FontAwesome';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+	transform: rotate(90deg);
+}
+
+.simple-tree-table-opened .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'FontAwesome';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+}
+
+.simple-tree-table-icon {
+	display: inline-block;
+	width: 1.5em;
+	line-height: 1.5em;
+	margin: 0.1em;
+	background-color: transparent;
+	text-align: center;
+	cursor: pointer;
+}
+/* table td
+{
+width:250px;
+} */
+</style>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="row">
+							<div class="col-md-9">
+								<!-- <div class="rightsec_titleone padding_5" id="yearDiv"></div> -->
+							</div>
+							<div class="col-md-3">
+								<div class="buttonsec">
+									<button class="btn4">Download</button>
+									<button class="btn1" id="saveBudgetPlan">Save</button>
+									<button class="btn4">Cancel</button>
+
+								</div>
+							</div>
+
+						</div>
+
+						<div class="row">
+							<div class="col-lg-12">
+								<input type="hidden" id="hiddenYear"> <input
+									type="hidden" id="hiddenMonthDataset">
+								<table id="basic" width="100%" border="1">
+									<thead id="theadData">
+										<th class="firstnode">Phase/Task Name</th>
+										<th>Start Date</th>
+										<th>End Date</th>
+										<th>Assigned To</th>
+										<th>Type</th>
+										<th>Quantity Needed</th>
+										<th>Planned Hours</th>
+										<th>Actual Hours</th>
+										<th>Requisition date</th>
+										<th>Need Date</th>
+										<th>File Attach</th>
+										<th>Requisition Id</th>
+										<th>Notes</th>
+										<th>Action</th>
+									</thead>
+									<tbody id="tbodyData12">
+										<tr data-node-id="1" class="abc" id="1">
+											<td class="firstnode">1 - ABC Project Odisha</td>
+											<td><input type="text" disabled="true" value=""><input
+												type="hidden" value="0" id="hdm1_cc027"></td>
+											<td><input type="text" disabled="true" value=""><input
+												type="hidden" value="0" id="hdm2_cc027"></td>
+											<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027"></td>
+												
+										</tr>
+										<tr data-node-id="1.1" data-node-pid="1" class="abc" id="1.1">
+											<td class="firstnode">1.1 - Phase-1</td>
+											<td><input type="text" disabled="true" value=""
+												onkeyup="setTotalRowWise(event);setParentData(&quot;cc047&quot;,&quot;cc027&quot;,1)"><input
+												type="hidden" value="0">06-May-23</td>
+											<td><input type="text" disabled="true" value=""
+												onkeyup="setTotalRowWise(event);setParentData(&quot;cc047&quot;,&quot;cc027&quot;,2)"><input
+												type="hidden" value="0" id="hdm2_cc047">10-May-23</td>
+											<td><input type="text" disabled="true" value=""
+												onkeyup="setTotalRowWise(event);setParentData(&quot;cc047&quot;,&quot;cc027&quot;,3)"><input
+												type="hidden" value="0" id="hdm3_cc047"></td>
+										</tr>
+										<tr data-node-id="1.2" data-node-pid="1"
+											class="abc simple-tree-table-empty" id="1.2">
+											<td class="firstnode">1.2 - Task-1</td>
+											<td><input type="text" value=""
+												onkeyup="setTotalRowWise(event);setParentData(&quot;CA00006&quot;,&quot;cc047&quot;,1)"><input
+												type="hidden" value="" id="hdm1_CA00006">06-May-23</td>
+											<td><input type="text" value=""
+												onkeyup="setTotalRowWise(event);setParentData(&quot;CA00006&quot;,&quot;cc047&quot;,2)"><input
+												type="hidden" value="" id="hdm2_CA00006">06-May-23</td>
+											<td><input type="text" value=""
+												onkeyup="setTotalRowWise(event);setParentData(&quot;CA00006&quot;,&quot;cc047&quot;,3)"><input
+												type="hidden" value="" id="hdm3_CA00006">Shradha panda</td>
+										</tr>
+										<tr data-node-id="1.3" data-node-pid="1"
+											class="abc simple-tree-table-empty" id="1.3">
+											<td class="firstnode">1.3 - Drawing</td>
+											<td><input type="text" value=""
+												onkeyup="setTotalRowWise(event);setParentData(&quot;CA00006&quot;,&quot;cc047&quot;,1)"><input
+												type="hidden" value="" id="hdm1_CA00006"></td>
+											<td><input type="text" value=""
+												onkeyup="setTotalRowWise(event);setParentData(&quot;CA00006&quot;,&quot;cc047&quot;,2)"><input
+												type="hidden" value="" id="hdm2_CA00006"></td>
+											<td><input type="text" value=""
+												onkeyup="setTotalRowWise(event);setParentData(&quot;CA00006&quot;,&quot;cc047&quot;,3)"><input
+												type="hidden" value="" id="hdm3_CA00006"></td>
+										</tr>
+										<tr data-node-id="2" class="abc" id="2">
+											<td class="firstnode">2 - Document</td>
+											<td><input type="text" disabled="true" value=""><input
+												type="hidden" value="" id="hdm1_cc027">06-May-23</td>
+											<td><input type="text" disabled="true" value=""><input
+												type="hidden" value="" id="hdm2_cc027">06-May-23</td>
+											<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027">Biraja</td>
+												<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027">Sub Task</td>
+												<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027">1</td>
+												<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027">6</td>
+												<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027">5</td>
+												<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027"></td>
+												<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027">06-May-23</td>
+										</tr>
+										<tr data-node-id="2.1" data-node-pid="2" class="abc" id="2.1">
+											<td class="firstnode">2.1 - Specifications</td>
+											<td><input type="text" disabled="true" value=""
+												onkeyup="setTotalRowWise(event);setParentData(&quot;cc047&quot;,&quot;cc027&quot;,1)"><input
+												type="hidden" value="">06-May-23</td>
+											<td><input type="text" disabled="true" value=""
+												onkeyup="setTotalRowWise(event);setParentData(&quot;cc047&quot;,&quot;cc027&quot;,2)"><input
+												type="hidden" value="" id="hdm2_cc047">06-May-23</td>
+											<td><input type="text" disabled="true" value=""
+												onkeyup="setTotalRowWise(event);setParentData(&quot;cc047&quot;,&quot;cc027&quot;,3)"><input
+												type="hidden" value="" id="hdm3_cc047">Tusar</td>
+												<td><input type="text" disabled="true" value=""
+												onkeyup="setTotalRowWise(event);setParentData(&quot;cc047&quot;,&quot;cc027&quot;,3)"><input
+												type="hidden" value="" id="hdm3_cc047">Sub Task</td>
+												<td><input type="text" disabled="true" value=""
+												onkeyup="setTotalRowWise(event);setParentData(&quot;cc047&quot;,&quot;cc027&quot;,3)"><input
+												type="hidden" value="" id="hdm3_cc047">1</td>
+												<td><input type="text" disabled="true" value=""
+												onkeyup="setTotalRowWise(event);setParentData(&quot;cc047&quot;,&quot;cc027&quot;,3)"><input
+												type="hidden" value="" id="hdm3_cc047">4</td>
+												<td><input type="text" disabled="true" value=""
+												onkeyup="setTotalRowWise(event);setParentData(&quot;cc047&quot;,&quot;cc027&quot;,3)"><input
+												type="hidden" value="" id="hdm3_cc047">4</td>
+												<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027"></td>
+												<td><input type="text" disabled="true" value=""
+												onkeyup="setTotalRowWise(event);setParentData(&quot;cc047&quot;,&quot;cc027&quot;,3)"><input
+												type="hidden" value="" id="hdm3_cc047">06-May-23</td>
+										</tr>
+										<tr data-node-id="2.2" data-node-pid="2" class="abc" id="2.2">
+											<td class="firstnode">2.2 - Earth Cutter</td>
+											<td><input type="text" disabled="true" value="0"
+												onkeyup="setTotalRowWise(event);setParentData(&quot;cc047&quot;,&quot;cc027&quot;,1)"><input
+												type="hidden" value="0"></td>
+											<td><input type="text" disabled="true" value="0"
+												onkeyup="setTotalRowWise(event);setParentData(&quot;cc047&quot;,&quot;cc027&quot;,2)"><input
+												type="hidden" value="0" id="hdm2_cc047"></td>
+											<td><input type="text" disabled="true" value="0"
+												onkeyup="setTotalRowWise(event);setParentData(&quot;cc047&quot;,&quot;cc027&quot;,3)"><input
+												type="hidden" value="0" id="hdm3_cc047"></td>
+										</tr>
+										<tr data-node-id="3" class="abc" id="3">
+											<td class="firstnode">3 - Machine</td>
+											<td><input type="text" disabled="true" value=""><input
+												type="hidden" value="" id="hdm1_cc027">06-May-23</td>
+											<td><input type="text" disabled="true" value=""><input
+												type="hidden" value="" id="hdm2_cc027">06-Maay-23</td>
+											<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027">Venkat</td>
+												<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027">Requisition</td>
+												<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027">2</td>
+												<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027">15</td>
+												<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027">18</td>
+												<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027">05-May-23</td>
+												<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027">06-May-23</td>
+										</tr>
+										<tr data-node-id="4" class="abc" id="4">
+											<td class="firstnode">4 - Task-2</td>
+											<td><input type="text" disabled="true" value=""><input
+												type="hidden" value="" id="hdm1_cc027">07-May-23</td>
+											<td><input type="text" disabled="true" value="0"><input
+												type="hidden" value="0" id="hdm2_cc027"></td>
+											<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027">08-May-23</td>
+												<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027">Amar</td>
+										</tr>
+										<tr data-node-id="5" class="abc" id="5">
+											<td class="firstnode">5 - Task-3</td>
+											<td><input type="text" disabled="true" value=""><input
+												type="hidden" value="" id="hdm1_cc027">09-May-23</td>
+											<td><input type="text" disabled="true" value=""><input
+												type="hidden" value="" id="hdm2_cc027">10-May-23</td>
+											<td><input type="text" disabled="true"
+												data-idval="cc027" class="m3_cc027" value=""><input
+												type="hidden" value="" id="hdm3_cc027">Saroj</td>
+										</tr>
+										<tr data-node-id="6" class="abc" id="6">
+											<td class="firstnode">6 - Phase-2</td>
+											<td><input type="text" disabled="true" value=""><input
+												type="hidden" value="" id="hdm1_cc027">11-May-23</td>
+											<td><input type="text" disabled="true" value=""><input
+												type="hidden" value="" id="hdm2_cc027">14-May-23</td>
+											
+										</tr>
+										<tr data-node-id="7" class="abc" id="7">
+											<td class="firstnode">7 - Task-1</td>
+											<td><input type="text" disabled="true" value=""><input
+												type="hidden" value="" id="hdm1_cc027">11-May-23</td>
+											<td><input type="text" disabled="true" value=""><input
+												type="hidden" value="" id="hdm2_cc027">12-May-23</td>
+											<td><input type="text" disabled="true" value=""><input
+												type="hidden" value="" id="hdm2_cc027">Shradha Panda</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+
+						<!-- <div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div> -->
+
+
+					</div>
+
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

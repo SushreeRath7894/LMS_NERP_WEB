@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.autocomplete {
+	position: relative;
+	display: inline-block;
+	width: 100%;
+}
+
+.sugg-cls ul {
+	height: 150px;
+	overflow-x: scroll;
+	position: relative;
+}
+
+ul#autocomplete-list1 {
+	position: relative;
+	z-index: 999;
+}
+
+ul#autocomplete-list1 li {
+	position: relative;
+	color: #fff;
+	padding-left: 6px;
+	background-color: #1f57a8;
+	border-bottom: solid 1px #6189c2;
+	padding-top: 5px;
+	padding-bottom: 5px;
+}
+
+a.addCust {
+	color: #fff;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+/* .form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+} */
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+
+#product .ag-row:first-child {
+	border: 1px solid #007bff;
+}
+product .ag-row:first-child {
+	border: 1px solid #007bff;
+}
+
+#product .ag-row-selected {
+	border: 1px solid #007bff !important;
+}
+
+</style>
+<script type="text/javascript">
+	function openNav() {
+		document.getElementById("mySidenav").style.cssText = "width: 40%; position: absolute; right:-10px; overflow: hidden; height:auto; top:292px;";
+		document.getElementById("main_content").style.width = "60%";
+	}
+	function closeNav() {
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main_content").style.width = "100%";
+		$("#riskAnalysis").val('');
+		$("#impactAnalysis").val('');
+		$("#owner").val('');
+		$("#impactAction").val('');
+		$("#editProduct").val(null);
+	}
+</script>
+
+<script type="text/javascript">
+	$(document).ready(function() {
+	
+		$("#statusDiv").hide();
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+		$('.collapse').on('hide.bs.collapse', function() {
+			$(this).siblings('.panel-heading').removeClass('active');
+		});
+	
+		$('#analysisDltBtn').attr('disabled', true);
+		$('#approveBtn').attr('disabled', true);
+		
+		gridOptions.api.setRowData();
+		//$('.loader').show();
+		agGrid.simpleHttpRequest({
+			url : "risk-mitigation-plan-view-all-Details"
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData = jsonData.mitigationAllDatails;
+			var len = allData.length;
+			$('#totalReq').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+			//$('.loader').hide();
+		}); 
+		$("#newBtn").click(function() {
+			$("#myGrid").hide();
+			$("#reqTable").hide();
+			$(".btn-hs").hide();
+			$("#demo").show();
+		})
+		
+		var dateFormat = localStorage.getItem("dateFormat");
+							$("#receiveDateCalendar1").datetimepicker({
+								format : 'd-m-Y',
+								closeOnDateSelect : true,
+								timepicker : false,
+								datepicker : true,
+								scrollMonth : false,
+							}).on("change", function() {
+								$('#mitigationDate').val($(this).val());
+							})
+							$('#mitigationDate').blur(function() {
+								$("#receiveDateCalendar1").val($(this).val());
+							})
+
+		$("#quarter").click(function() {
+			$("#myTbl").hide();
+			$(".btn-hs").hide();
+			$("#demo").show();
+		})
+
+		$("#receiveDate").datetimepicker({
+			format : 'd-m-Y',
+			closeOnDateSelect : true,
+			timepicker : false,
+		})	
+
+		
+	});
+
+	$("input[class='myCheckbox']").click(function() {
+		if ($("#formID input:checkbox:checked").length > 0) {
+			$(".checkSubmit").addClass('active');
+		} else {
+			$(".checkSubmit").removeClass('active');
+		}
+	});
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+</script>
+
+<script>
+	var columnDefs = [
+		{
+			//headerCheckboxSelection : true,
+			headerCheckboxSelectionFilteredOnly : true,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true
+		},
+		{
+			headerName : "Risk Mitigation Id",
+			field : "mitigationId",
+			width : 180,
+		cellRenderer : function(params) {
+			return '<a onclick=editMitigation("' + params.data.mitigationId
+					+','+params.data.approveStatus + '") href="javascript:void(0)">'
+					+ params.data.mitigationId + '</a>';
+		}
+		},
+		{
+			headerName : "Project ID",
+			field : "projectId",
+			hide:true
+		},
+		{
+			headerName : "Project Name",
+			field : "projectName",
+			width : 250,
+		}, {
+			headerName : "Mitigation Date",
+			field : "mitigationDate",
+			width : 250,
+			cellStyle : {
+				textAlign : 'center'
+			}
+		}, {
+			headerName : 'Location',
+			field : "location",
+			type : 'rightAligned',
+			width : 230
+		},  {
+			headerName : 'Project Incharge',
+			field : "pIncharge",
+			width : 240,
+		}, 
+		 {
+			headerName : 'Approve Status',
+			field : "approveStatus",
+			width : 200,
+			cellStyle : {
+				textAlign : 'center'
+			},
+			cellRenderer : function(params) {
+				if (params.data.approveStatus =="Pending") { 
+					return '<div style="color:#a9a9a9">Pending</div>';
+				} else {
+					return '<div style="color:#0642f5">Approved</div>';
+				} 	
+			}
+		}, {
+			headerName : 'Customer Name',
+			field : "cName",
+			width : 220,
+		}, {
+			headerName : 'Customer Address',
+			field : "cAddress",
+			width : 220,
+		},{
+			headerName : 'Email',
+			field : "email",
+			width : 150,
+
+		}, {
+			headerName : 'Mobile',
+			field : "mobile",
+			width : 150,
+
+		},
+		{
+			headerName : 'Created By',
+			field : "createdBy",
+			width : 150,
+
+		}];
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 153
+		},
+		onSelectionChanged : onSelectionChanged,
+
+	};
+	
+	// for product table
+
+	var productDefs = [
+		{
+			headerName : "Risk Id",
+			field : "riskId",
+			width : 180,
+		 	 cellRenderer : function(params) {
+				return '<a onclick=editRiskDetails("' + params.data.riskId
+						+ '") href="javascript:void(0)">'
+						+ params.data.riskId + '</a>';
+			}  
+		}, {
+			headerName : 'Category',
+			field : "category",
+			width : 170,
+		}, {
+			headerName : 'Risk Name',
+			field : "riskName",
+			width : 350,
+
+		},{
+			headerName : 'Probability',
+			field : "probability",
+			width : 170,
+			//editable: true
+		}, {
+			headerName : 'Impact',
+			field : "impact",
+			width : 170,
+			//editable: true
+		}, {
+			headerName : 'Mitigation Plan',
+			field : "mitigationPlan",
+			width : 250,
+			//editable: true
+			
+		}];
+
+	var productOptions = {
+			columnDefs: productDefs,
+		    defaultColDef: {
+		        sortable: true,
+		        filter: true,
+		        resizable: true,
+		        width: 149,
+		        height: 10
+		    },
+		    rowSelection: 'single',
+		    onSelectionChanged: onSelectionChangedItem,
+		    getRowNodeId : function(data) {
+				return data.riskId;
+			}
+		};
+	
+	var childDefs = [
+		{
+			headerCheckboxSelection : true,
+			headerCheckboxSelectionFilteredOnly : true,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true
+
+		},
+		{
+			headerName : "Sl No",
+			field : "impactMitigationId",
+			width : 180,
+		 	 cellRenderer : function(params) {
+				return '<a onclick=editImpactDetails("' + params.data.impactMitigationId
+						+ '") href="javascript:void(0)">'
+						+ params.data.impactMitigationId + '</a>';
+			}  
+		},  {
+			headerName : 'Risk Analysis',
+			field : "riskAnalysis",
+			width : 190,
+
+		}, {
+			headerName : 'Impact Analysis',
+			field : "impactAnalysis",
+			width : 190,
+			//editable: true
+		},
+		{
+			headerName : 'Action',
+			field : "impactAction",
+			width : 190,
+			//editable: true
+			
+		},{
+			headerName : 'Owner',
+			field : "owner",
+			width : 190,
+			//editable: true
+			
+		}];
+
+	var childOptions = {
+			columnDefs : childDefs,
+			rowSelection : 'multiple',
+			groupSelectsChildren : true,
+			suppressRowClickSelection : true,
+			suppressAggFuncInHeader : true,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 153
+			},
+			//onSelectionChanged : onSelectionChangedChild,
+			getRowNodeId : function(data) {
+				return data.riskId;
+			}
+
+		};
+	var impactDefs = [
+		{
+			headerCheckboxSelection : true,
+			headerCheckboxSelectionFilteredOnly : true,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true
+
+		},
+		{
+			headerName : "Sl No",
+			field : "impactMitigationId",
+			width : 180,
+		 	/*  cellRenderer : function(params) {
+				return '<a onclick=editRiskImpactDetails("' + params.data.impactMitigationId
+						+ '") href="javascript:void(0)">'
+						+ params.data.impactMitigationId + '</a>';
+			}  */ 
+		},  {
+			headerName : 'Risk Analysis',
+			field : "riskAnalysis",
+			width : 250,
+
+		}, {
+			headerName : 'Impact Analysis',
+			field : "impactAnalysis",
+			width : 250,
+			//editable: true
+		},{
+			headerName : 'Action',
+			field : "impactAction",
+			width : 250,
+			
+		}, {
+			headerName : 'Owner',
+			field : "owner",
+			width : 250,
+			//editable: true
+			
+		}];
+
+	var impactOptions = {
+			columnDefs : impactDefs,
+			rowSelection : 'multiple',
+			groupSelectsChildren : true,
+			suppressRowClickSelection : true,
+			suppressAggFuncInHeader : true,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 153
+			},
+		//	onSelectionChanged : onSelectionChangedChild,
+			getRowNodeId : function(data) {
+				return data.riskId;
+			}
+
+		};
+	// setup the grid after the page has finished loading
+	document.addEventListener('DOMContentLoaded', function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		var gridDiv = document.querySelector('#product');
+		new agGrid.Grid(gridDiv, productOptions);
+
+		var gridDiv = document.querySelector('#child');
+		new agGrid.Grid(gridDiv, childOptions);
+		
+		var gridDiv = document.querySelector('#impact1');
+		new agGrid.Grid(gridDiv, impactOptions);
+
+	});
+
+
+	function resetState() {
+		gridOptions.columnApi.resetColumnState();
+
+	}
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+	function cancel(){
+		 $("#searchRowDiv").show();
+		$("#reqTable").show();
+		$(".btn-hs").show();
+		$("#myGrid").show();
+		$("#demo").hide();
+		gridOptions.api.setRowData();
+		agGrid.simpleHttpRequest({
+			url : "risk-mitigation-plan-view-all-Details"
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData = jsonData.mitigationAllDatails;
+			var len = allData.length;
+			$('#totalReq').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+		}); 
+		$("#desc").val('');
+		$("#reqType").val('');
+		$("#reqPrior").val('');
+		$("#receiveDate").val('');
+		$("#isHold").val('');
+		$("#source").html('');
+		//$("#rfqId").val(rfqId);
+		$("#mitigationHeadId").html('');
+		$("#createdDate").append('');
+		$("#sku").val('');
+		$("#skuEditId").val('');
+		$("#itemId").val('');
+		$("#itemName").val('');
+		$("#locationId").val('');
+		$("#quantity").val('');
+		$("#unit").val('');
+		 
+		$("#search").val('');
+	}
+	function onSelectionChanged() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+		var selectedNodes = gridOptions.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		 var approveStatus= selectedData.map(node => node.approveStatus);
+		if (rowCount > 0) {
+			if(approveStatus=="Pending"){
+				$('#analysisDltBtn').attr('disabled', false);
+				$('#approveBtn').attr('disabled', false);
+				$('#newBtn').attr('disabled', true);
+			}else{
+				$('#analysisDltBtn').attr('disabled', true);
+				$('#approveBtn').attr('disabled', true);
+				$('#newBtn').attr('disabled', true);
+			}
+		} else {
+			$('#analysisDltBtn').attr('disabled', true);
+			$('#approveBtn').attr('disabled', true);
+			$('#newBtn').attr('disabled', false);
+		}
+
+	}
+	
+	function onSelectionChangedItem() {
+
+		var selectedNodes = productOptions.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		 var riskId= selectedData.map(node => node.riskId);
+     getRiskAndImpactDtls(riskId);
+	
+	}
+	
+	function getRiskAndImpactDtls(riskId){
+		var id=riskId;
+		//$('.loader').show();
+		impactOptions.api.setRowData('');
+		agGrid.simpleHttpRequest(
+				{
+					url : 'risk-mitigation-plan-getData-forImpactAndRisk?id='+ id
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body[0]);
+					console.log(jsonData)
+					var allData=jsonData.getDataforImpactAndRisk;
+					var len = allData.length;
+					$('.loader').hide();
+					
+					impactOptions.api.setRowData(allData);
+					childOptions.api.setRowData(allData);
+				});
+	}
+
+	function switchPage() {
+		 $("#searchRowDiv").hide();
+	 productOptions.api.setRowData();
+						$('.loader').show();
+						agGrid.simpleHttpRequest({
+							url : "risk-mitigation-plan-riskdetails-view-through-ajax"
+						}).then(function(data) {
+							var jsonData = JSON.parse(data.body);
+							var allData = jsonData.identificationData;
+							var len = allData.length;
+							productOptions.api.setRowData(allData);
+							$('.loader').hide();
+						}); 
+
+		
+		var date = (new Date()).toISOString().split('T')[0];
+		var newDate = changeDateFormat(date);
+		$("#mitigationIdApplyDate").val(newDate);
+		$("#save1").show();
+		$("#addProduct").show();
+		$("#dltProduct").show();
+		$('#dltProduct').attr('disabled', true);
+		$("#desc").val('');
+	    $("#searchRowDiv").hide();
+	    $("#reqPrior").val('');
+	 // $("#mitigationIdApplyDate").val('');
+	    $("#searchRowDiv").hide();
+	    $('#dltProduct').attr('disabled', true);
+	    $("#main_content1").hide();
+	    window.onclick = function(event) {
+	        $('#product').find('.ag-row').css('border', 'none');
+		}
+	}
+	function changeDateFormat(inputDate) { // expects Y-m-d
+		var splitDate = inputDate.split('-');
+		if (splitDate.count == 0) {
+			return null;
+		}
+		var year = splitDate[0];
+		var month = splitDate[1];
+		var day = splitDate[2];
+
+		return day + '-' + month + '-' + year;
+	}
+
+	function editMitigation(id1) {
+		 var data = id1.split(",");
+		var id= data[0]; 
+		var approveStatus = data[1];
+		$("#myGrid").hide();
+		$("#searchRowDiv").hide();
+		$("#reqTable").hide();
+		$(".btn-hs").hide();
+		$("#demo").show();
+		$("#main_content").show();
+		$("#main_content1").show();
+		 if(approveStatus=='Pending'){
+			$("#save1").show();
+		}
+		else{
+			$("#save1").hide();
+		} 
+		 $('.loader').show();
+		 $("body").addClass("overlay");
+		agGrid.simpleHttpRequest(
+				{
+					url : 'risk-mitigation-plan-edit?id='+ id
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body[0]);
+					console.log(jsonData)
+					var allData=jsonData.editMitigationData;
+					var len = allData.length;
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+					$("#projectId").val(allData[0].projectId);
+		 			$("#mitigationHeadId").html(allData[0].mitigationId);
+		 			$("#mitigationId").val(allData[0].mitigationId);
+		 			$("#mitigationDate").val(allData[0].mitigationDate);
+		 			$("#desc").val(allData[0].desc);
+					$("#riskName").val(allData[0].riskName);
+					$("#category").val(allData[0].category);
+					$("#mitigationPlan").val(allData[0].mitigationPlan);
+					$("#impact").val(allData[0].impact);
+					$("#probability").val(allData[0].probability);
+					productOptions.api.setRowData(allData);
+					var riskId=allData[0].riskId;
+					getRiskAndImpactDtls(riskId)
+					
+				});
+		window.onclick = function(event) {
+	        $('#product').find('.ag-row').css('border', 'none');
+		}
+	}
+	function editImpactDetails(id) {
+      openNav();
+      $('.loader').show();
+		$("body").addClass("overlay");
+		agGrid.simpleHttpRequest(
+				{
+					url : 'risk-mitigation-plan-edit-for-impact?id='+ id
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body[0]);
+					console.log(jsonData)
+					var allData=jsonData.editData;
+					var len = allData.length;
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+					$("#riskId").val(allData[0].riskId);
+					$("#impactMitigationId").val(allData[0].impactMitigationId);
+					$("#riskName").val(allData[0].riskName);
+					$("#riskAnalysis").val(allData[0].riskAnalysis);
+					$("#impactAnalysis").val(allData[0].impactAnalysis);
+					$("#impactAction").val(allData[0].impactAction);
+					$("#owner").val(allData[0].owner);
+				});
+	}
+	function cancelImpact() {
+		 $("#probability").val('');
+		 $("#impact").val('');
+		 $("#mitigationPlan").val('');
+		$('#addModel1').modal('hide');
+		closeNav();
+	}
+
+	function deleteFun() {
+		$('#delete').modal('show');
+	}
+	function deleteProduct() {
+		$('#deleteProduct').modal('show');
+	}
+	function deleteProductIndConfirm() {
+		$('#deleteProductInd').modal('show');
+	}
+	
+	// delete 
+	function deleteOnclick() {
+
+			var selectedRows = gridOptions.api.getSelectedRows();
+		 var id=selectedRows[0].mitigationId;
+		
+		
+			$.ajax({
+				type : "POST",
+				url : "risk-mitigation-plan-delete?id="+ id,
+				success : function(response) {
+				 if (response.message == "Success") {
+					 $('#delete').modal('hide');
+						$('#newBtn').attr("disabled", false);
+						$('#analysisDltBtn').attr('disabled', true);
+						$('#approveBtn').attr('disabled', true);
+						
+						gridOptions.api.setRowData();
+						agGrid.simpleHttpRequest({
+							url : "risk-mitigation-plan-view-all-Details"
+						}).then(function(data) {
+							var jsonData = JSON.parse(data.body);
+							var allData = jsonData.mitigationAllDatails;
+							var len = allData.length;
+							$('#totalReq').find('span').html(len);
+							gridOptions.api.setRowData(allData);
+						}); 
+						
+					} else {
+
+					}
+				},
+				error : function(data) {
+					console.log(data)
+				}
+			})
+		}
+	// delete selected record from ag grid
+	function deleteProductOnclick() {
+		var selectedRows = productOptions.api.getSelectedRows();
+		productOptions.api.applyTransaction({
+			remove : selectedRows
+		});
+		cancelModalProductBtn();
+
+	}
+
+	function cancelModalBtn() {
+		$("#deleteProduct").modal("hide");
+	}
+	//for closeing modal box for dlt  product
+	function cancelModalProductBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+		$('#deleteProduct').modal('hide');
+	}
+	//for closeing modal box for dlt ind product
+	function cancelModalBtnDPI() {
+		$('#deleteProductInd').modal('hide');
+	}
+	function approveAnalysis() {
+		$('#approvePQtn').modal('show');
+	}
+
+    function cancelApproveModalBtn() {
+		$('#approvePQtn').modal('hide');
+	}	
+	function approveOnclick() {
+			
+			var selectedRows = gridOptions.api.getSelectedRows();
+			var selectedRowsString = '';
+			selectedRows.forEach(function(selectedRow, index) {
+				if (index > 0) {
+					selectedRowsString += ',';
+				}
+				selectedRowsString += selectedRow.mitigationId;
+			});
+			var mitigationId = selectedRowsString;
+			
+			var approveStatus = 1;
+			$('#approvePQtn').modal('show');
+			$('.loader').show();
+		$.ajax({
+			type : "GET",
+			url : "risk-mitigation-plan-approve-th-ajax?approveStatus=" + approveStatus + "&mitigationId=" + mitigationId ,
+			async : false,
+			success : function(response) {
+				if (response.message == "Success") {
+					$('.loader').hide();
+					$("#messageParagraph").text("Indent Approved Successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					
+					$('#newBtn').attr("disabled", false);
+					$('#analysisDltBtn').attr("disabled", true);
+					$('#approveBtn').attr("disabled", true);
+					
+					$('#approvePQtn').modal('hide');
+					$("#total").show();
+					$("#totalReq").show();
+					$("#btndiv").show();
+					$('#dwnld').show();
+					$("#addData").hide();
+					$("#myGrid").show();
+					$("#searchRowDiv").show();
+					$("#reqTable").show();
+		
+					gridOptions.api.setRowData();
+					agGrid.simpleHttpRequest({
+						url : "risk-mitigation-plan-view-all-Details"
+					}).then(function(data) {
+						var jsonData = JSON.parse(data.body);
+						var allData = jsonData.mitigationAllDatails;
+						var len = allData.length;
+						$('#totalReq').find('span').html(len);
+						gridOptions.api.setRowData(allData);
+					});  
+					
+				}else{
+					$('.loader').hide();
+					$('#approvePQtn').modal('show');
+				}
+				
+			},
+			error : function(data) {
+			}
+		});
+	}	
+
+	function validFormData() {
+		var allValid = true;
+		if (!validationUpdated("Project Required", 'projectId'))
+			allValid = false;
+
+		if (!validationUpdated("Analysis Date Required",
+				'mitigationDate'))
+			allValid = false;
+		return allValid;
+	}
+	function validProductData() {
+		var item = null;
+		productOptions.api.forEachNode(function(rowNode, index) {
+			item = item + rowNode.data;
+		});
+		if (item) {
+			return true;
+		} else {
+			$("#messageParagraph").text("Please Add Item Details");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			return false;
+		}
+	}
+	function addMainDetails() {
+		// if (validFormData() && validProductData()) {
+			var datas = [];
+		
+			setTimeout(function() {
+
+				productOptions.api.forEachNode(function(rowNode, indrx) {
+
+					var item = rowNode.data;
+					item.projectId = $("#projectId").val();
+					item.projectName = $("#projectId").find('option:selected').text();
+					item.mitigationDate = $("#mitigationDate").val();
+					item.mitigationId = $("#mitigationHeadId").html();
+					item.desc = $("#desc").val();
+					datas.push(item);
+
+				});
+				saveAllMitigation(datas);
+
+			}, 1000)
+
+		//}
+	}
+	
+	
+	function saveAllMitigation(datas) {
+		//$('.loader').show();
+	//	$("body").addClass("overlay");
+						$.ajax({
+							type : "POST",
+							url : "risk-mitigation-plan-add",
+							contentType : "application/json",
+							data : JSON.stringify(datas),
+							success : function(response) {
+						if (response.message == "Success") {
+							$('.loader').hide();
+							$("body").removeClass("overlay");
+							$("#messageParagraph").text("Data Saved Successfully");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							gridOptions.api.setRowData();
+							agGrid.simpleHttpRequest({
+								url : "risk-mitigation-plan-view-all-Details"
+							}).then(function(data) {
+								var jsonData = JSON.parse(data.body);
+								var allData = jsonData.mitigationAllDatails;
+								var len = allData.length;
+								$('#totalReq').find('span').html(len);
+								gridOptions.api.setRowData(allData);
+							}); 
+							cancel();
+						}
+
+					},
+					error : function(datas) {
+						console.log(datas)
+					}
+				})
+
+	}
+	
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	function onQuickFilterChanged() {
+		$(".ti-search srchicon").hide();
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+
+	function cancelModalBtn1(){
+		$('#delete').modal('hide');
+	}
+	function cancelModal(){
+		$("#myModal").modal('hide');
+	}
+	
+	
+	
+
+	function downloadDetails() {
+		var dataset = [];
+		gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+		gridOptions.api.exportDataAsCsv(dataset);
+	}
+
+
+	
+	function editRiskDetails(riskId) {
+    var mitigationHeadId=$("#mitigationHeadId").html();
+		if (mitigationHeadId == '') {
+			return false;
+		}
+		$('#addModel1').modal('show');
+		//var indentId = $("#indentHeadId").html();
+		var rowNode = productOptions.api.getRowNode(riskId);
+		$("#riskId").val(rowNode.data.riskId);
+		$("#category").val(rowNode.data.category);
+		$("#riskName").val(rowNode.data.riskName);
+		$("#probability").val(rowNode.data.probability);
+		$("#impact").val(rowNode.data.impact);
+		$("#mitigationPlan").val(rowNode.data.mitigationPlan);
+		$("#editriskId").val(riskId);
+		$("#riskHeadId").html(riskId);
+		$("#riskIdForChild").html(riskId);
+		$("#riskName1").val(rowNode.data.riskName);
+		closeNav();
+		//openNav();
+		/*   agGrid.simpleHttpRequest({
+			url : "risk-mitigation-plan-view-impact-Details"
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData = jsonData.mitigationImpactData;
+			var len = allData.length;
+			childOptions.api.setRowData(allData);
+		});  */ 
+	//	var riskId =rowNode.data.riskId;
+		childOptions.api.setRowData('');
+		getRiskAndImpactDtls(riskId);
+	}
+	function addRisk() {
+		obj = {};
+		var id = $("#mitigationHeadId").html();
+		obj.mitigationId = $("#mitigationHeadId").html();
+		obj.riskId = $("#riskHeadId").html();
+		obj.riskName = $("#riskName").val();
+		obj.category = $("#category").val();
+		obj.probability = $("#probability").val();
+		obj.impact = $("#impact").val();
+		obj.mitigationPlan = $("#mitigationPlan").val();
+		var validation = true;
+
+		if (obj.probability == null || obj.probability == "") {
+			validation = validationUpdated("Probability Required", "probability");
+		}
+		if (obj.impact == null || obj.impact == "") {
+			validation = validationUpdated("Impact Required", "impact");
+		} 
+		if (obj.mitigationPlan == null || obj.mitigationPlan == "") {
+			validation = validationUpdated("Plan Required", "mitigationPlan");
+		}
+		if (validation) {
+			console.log(obj)
+			$('.loader').show();
+			$.ajax({
+				type : "POST",
+				url : "risk-mitigation-plan-Riskdetails-save",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "Success") {
+						$('.loader').hide();
+						$("#messageParagraph").text(
+						"Data Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						closeNav();
+						
+						agGrid.simpleHttpRequest({
+						 url : 'risk-mitigation-plan-view-Risk-Details?id='+ id
+						}).then(function(data) {
+							var jsonData = JSON.parse(data.body);
+							var allData = jsonData.viewRiskDetailss;
+							productOptions.api.setRowData(allData);
+						}); 
+					}
+				},
+				error : function(data) {
+				}
+			})
+		}
+	}
+	function addImpact() {
+		obj = {};
+		obj.projectId = $("#projectId").val();
+		obj.mitigationId = $("#mitigationHeadId").html();
+		obj.riskId = $("#riskHeadId").html();
+		obj.impactMitigationId = $("#impactMitigationId").val();
+		obj.riskName = $("#riskName1").val();
+		obj.riskAnalysis = $("#riskAnalysis").val();
+		obj.impactAnalysis = $("#impactAnalysis").val();
+		obj.impactAction = $("#impactAction").val();
+		obj.owner = $("#owner").val();
+		var riskId =$("#riskHeadId").html();
+		var validation = true;
+
+		 if (obj.riskAnalysis == null || obj.riskAnalysis == "") {
+			validation = validationUpdated("RiskAnalysis Required", "riskAnalysis");
+		}
+		if (obj.impactAnalysis == null || obj.impactAnalysis == "") {
+			validation = validationUpdated("ImpactAnalysis Required", "impactAnalysis");
+		}
+		if (obj.impactAction == null || obj.impactAction == "") {
+			validation = validationUpdated("Action Required", "impactAction");
+		}
+		if (obj.owner == null || obj.owner == "") {
+			validation = validationUpdated("Owner Required", "owner");
+		}
+  
+		if (validation) {
+			console.log(obj)
+			$('.loader').show();
+			$.ajax({
+				type : "POST",
+				url : "risk-mitigation-plan-impact-details-save",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "Success") {
+						
+						$('.loader').hide();
+						$("#messageParagraph").text(
+						"Data Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');					
+						closeNav();
+						
+						agGrid.simpleHttpRequest({
+							url : "risk-mitigation-plan-view-impact-Details?riskId="+riskId,
+						}).then(function(data) {
+							var jsonData = JSON.parse(data.body);
+							var allData = jsonData.mitigationImpactData;
+							var len = allData.length;
+							childOptions.api.setRowData(allData);
+						}); 
+					}
+				},
+				error : function(data) {
+				}
+			})
+		}
+	}	
+</script>
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="d-flex justify-content-between">
+							<div class="btn-hs">
+								<div class="font-design" id="totalReq">
+									MITIGATION LIST (<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-2 buttonsec btn-hs">
+
+								<button class="btn4" onclick="downloadDetails()">DOWNLOAD</button>
+								<!--<button class="btn1" id="newBtn" onclick="switchPage()">NEW</button>
+								<button class="btn3" id="analysisDltBtn" onclick="deleteFun()">DELETE</button>
+								<button id="approveBtn" class="btn2"
+									onclick="approveAnalysis()">APPROVE</button>
+								<button class="btn2" id="reply" onclick="reply()">REPLY</button>  -->
+							</div>
+						</div>
+						<!-- <div class="loader">
+							<center>
+								<img class="loading-image" src="../assets/images/loading.gif"
+									alt="../assets/images/loading.gif">
+							</center>
+						</div> -->
+						<div id="myGrid" style="width: 100%; height: 424px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innerstickybg">
+								<div class="row">
+
+									<div class="col-md-6">
+										Mitigation Id: <span id="mitigationHeadId"></span>
+									</div>
+									<div class="col-md-6" align="right">
+										<button class="cancel-btn" onclick="cancel()">Cancel</button>
+										<button class="btn1" id="save1" onclick="addMainDetails()">Save</button>
+									</div>
+								</div>
+
+							</div>
+							<input type="hidden" id="editriskId">
+							<div class="row innersticky_contentgap">
+								<div class="col-md-6">
+									<div class="row">
+										<input type="hidden" id="deptId">
+
+										<div class="col-lg-6">
+											<div class="form-group">
+												<label>Project</label>
+												<div class="select">
+													<select id="projectId">
+														<option th:each="c:${ProjectList}" th:value='${c.key}'
+															th:text="${c.name}"></option>
+													</select>
+												</div>
+											</div>
+										</div>
+
+										<div class="col-md-6">
+											<div class="form-group calendar_box">
+												<label>Analysis Date</label> <input type="text"
+													id="mitigationDate" autocomplete="off"
+													class="form-control" onblur="removeValid(event)"
+													th:attr="onkeyup=|formatDate('mitigationDate','${session.DATEFORMAT_JS}')|"
+													readonly> <i class="ti-calendar picker_calendar"
+													id="receiveDateCalendar1"></i>
+											</div>
+										</div>
+									</div>
+								</div>
+
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Purpose</label>
+										<textarea class="form-control" id="desc"
+											style="line-height: 22px !important;"></textarea>
+										<input type="hidden" id="identificationId" />
+									</div>
+								</div>
+							</div>
+							<div class="mt-4">
+								<div id="product" style="width: 100%; height: 200px;"
+									class="ag-theme-alpine"></div>
+							</div>
+
+							<div id="main_content1">
+								<div class="accordion-item mt-4" id="accordionExample1">
+									<h2 class="accordion-header" id="headingOne1">
+										<button class="accordion-button" type="button"
+											data-bs-toggle="collapse" data-bs-target="#collapseOne1"
+											aria-expanded="false" aria-controls="collapseOne1">
+											Risk And Impact Mitigation Plan</button>
+									</h2>
+
+									<div id="collapseOne1" class="accordion-collapse collapse show"
+										aria-labelledby="headingOne1"
+										data-bs-parent="#accordionExample1">
+										<div class="accordion-body">
+											<div class="row">
+												<div class="row">
+													<div class="col-md-4 btn-hs1">
+														<div class="font-design"></div>
+													</div>
+													<div class="col-md-8 butttonsec">
+														<!-- <button class="btn1" id="addProduct" onclick="openNav()">NEW</button>
+														<button class="btn3" id="dltProduct"
+															onclick="deleteProduct()">DELETE</button> -->
+													</div>
+												</div>
+												 <div id="impact1" style="width: 100%; height: 200px;"
+							                     class="ag-theme-alpine"></div>
+											</div>
+										</div>
+									</div>
+
+								</div>
+							</div>
+						</div>
+
+
+
+						<div class="modal fade" id="addModel1">
+							<div class="modal-dialog modal-lg"
+								style="margin-top: 130px; height: 900px;">
+								<div class="modal-content">
+
+									<!-- 	Modal Header -->
+									<div class="modal-header flex-column"></div>
+									<!-- Modal body -->
+									<div class="modal-body">
+
+										<!--  <div class="collapse" id="demo1"> -->
+										<!-- <div class="innerstickybg"> -->
+											<div class="row">
+
+												<div class="col-md-6">
+													Risk Id: <span id="riskHeadId"></span>
+												</div>
+												<div class="col-md-6" align="right">
+													<button class="cancel-btn" onclick="cancelImpact()">Cancel</button>
+													<button class="btn1" id="save1" onclick="addRisk()">Save</button>
+												</div>
+											</div>
+
+										<!-- </div> -->
+										<input type="hidden" id="editriskId">
+										<input type="hidden" id="riskId">
+										<div class="row innersticky_contentgap">
+										<div class="col-lg-6">
+												<div class="form-group">
+													<label>Risk Name</label> <input type="text"
+														id="riskName" class="form-control"
+														onblur="removeValid(event)" readonly>
+												</div>
+											</div>
+	                                          <div class="col-lg-6">
+												<div class="form-group">
+													<label>Category</label> <input type="text"
+														id="category" class="form-control"
+														onblur="removeValid(event)" readonly>
+												</div>
+											</div>
+											<div class="col-lg-6">
+												<div class="form-group">
+													<label>Probability</label> <input type="text"
+														id="probability" class="form-control"
+														onblur="removeValid(event)">
+												</div>
+											</div>
+												<div class="col-lg-6">
+												<div class="form-group">
+													<label>Impact</label> <input type="text"
+														id="impact" class="form-control"
+														onblur="removeValid(event)">
+												</div>
+											</div>
+												<div class="col-lg-6">
+												<div class="form-group">
+													<label>Mitigation Plan</label> <input type="text"
+														id="mitigationPlan" class="form-control"
+														onblur="removeValid(event)">
+												</div>
+											</div>
+
+										</div>
+
+										<div id="main_content">
+											<div class="accordion-item mt-4" id="accordionExample">
+												<h2 class="accordion-header" id="headingOne">
+													<button class="accordion-button" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapseOne"
+														aria-expanded="false" aria-controls="collapseOne">
+														Risk And Impact Analysis Details</button>
+												</h2>
+
+												<div id="collapseOne"
+													class="accordion-collapse collapse show"
+													aria-labelledby="headingOne"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+														<div class="row">
+															<div class="row">
+																<div class="col-md-4 btn-hs1">
+																	<div class="font-design"></div>
+																</div>
+																<div class="col-md-8 butttonsec">
+																	<button class="btn1" id="addProduct"
+																		onclick="openNav()">NEW</button>
+																	<!-- <button class="btn3" id="dltProduct"
+																		onclick="deleteProduct()">DELETE</button> -->
+																</div>
+															</div>
+															<div id="child" style="width: 100%; height: 200px;"
+																class="ag-theme-alpine"></div>
+														</div>
+													</div>
+												</div>
+
+												<div id="mySidenav" class="sidenav">
+													<div class="slidebox">
+														<div class="row">
+															<div class="chartbtnsec">
+																<div align="right">
+																	<button class="cancel-btn" onclick="closeNav()">CANCEL</button>
+																	<button class="approve-btn" id="saveTableData"
+																		onclick="addImpact()">SAVE</button>
+
+																</div>
+															</div>
+															<div class="col-lg-12">
+																<div class="form-group">
+																<input type="hidden" id="impactMitigationId"> 
+																	<input type="hidden" id="riskIdForChild"> <input
+																		type="hidden" id="itemId"> <label>Risk
+																		Name</label> <input type="text" id="riskName1"
+																		class="form-control" readonly>
+																</div>
+															</div>
+
+															<div class="col-lg-12">
+																<div class="form-group">
+																	<input type="hidden" id="riskId"> <input
+																		type="hidden" id="itemId"> <label>Risk
+																		Analysis</label> <input type="text" id="riskAnalysis"
+																		class="form-control">
+																</div>
+															</div>
+
+															<div class="col-lg-12">
+																<div class="form-group">
+																	<label>Impact Analysis </label> <input type="text"
+																		id="impactAnalysis" class="form-control"
+																		onblur="removeValid(event)">
+																</div>
+															</div>
+																<div class="col-lg-12">
+																<div class="form-group">
+																	<label>Action</label> <input type="text" id="impactAction"
+																		onblur="removeValid(event)" class="form-control">
+																</div>
+															</div>
+															<div class="col-lg-12">
+																<div class="form-group">
+																	<label>Owner</label> <input type="text" id="owner"
+																		onblur="removeValid(event)" class="form-control">
+																</div>
+															</div>
+
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<!--  </div>  -->
+									</div>
+								</div>
+							</div>
+						</div>
+
+
+						<div class="modal fade" id="lineGraph">
+							<div class="modal-dialog modal-lg">
+								<div class="modal-content large-model">
+
+									<div align="right">
+										<button type="button" class="close" data-dismiss="modal">
+											<i class="ti-close" style="font-size: 14px;"></i>
+										</button>
+									</div>
+									<!-- Modal body -->
+									<div class="modal-body">
+										<div class="row" id="lineGraphDiv">
+											<div class="col-md-12">
+												<div id="chart" class="collapse show">
+													<div style="width: 90%; height: 280px; margin: 0 auto;">
+														<div id="container1" style="width: 100%; height: 280px;"></div>
+													</div>
+													<div style="width: 90%; height: auto; margin: 0 auto;">
+														<div class="row">
+															<div class="col-md-12">
+
+																<div align="right" class="pdficonsec">
+																	<i class="fa fa-file-pdf-o fa-2x pdf"
+																		onclick="downloadChartPdf()"></i> <i
+																		class="fa fa-file-excel-o fa-2x excel"
+																		onclick="getExcelReport()"></i>
+																</div>
+																<table id="graphTable" class="newtbl">
+																</table>
+															</div>
+
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+
+									</div>
+									<!-- Modal footer -->
+
+
+
+								</div>
+							</div>
+						</div>
+						<!-- delete modal start -->
+						<div id="delete" class="modal fade show" aria-modal="true">
+							<div class="modal-dialog modal-confirm">
+								<div class="modal-content">
+									<div class="modal-header flex-column">
+										<button type="button" class="close" data-dismiss="modal"
+											aria-hidden="true" onclick="cancelModalBtn1()">
+											<i class="ti-close modal-close"></i>
+										</button>
+									</div>
+									<div class="modal-body">
+										<p>Do you really want to delete these records? This
+											process cannot be undone.</p>
+									</div>
+									<div class="modal-footer justify-content-center"
+										style="margin-top: -30px;">
+
+										<button type="button" class="cancel-btn" data-dismiss="modal"
+											onclick="cancelModalBtn1();">Cancel</button>
+										<button type="button" class="btn3" onclick="deleteOnclick()">Delete</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+
+						<div id="approvePQtn" class="modal fade show" aria-modal="true">
+							<div class="modal-dialog modal-confirm">
+								<div class="modal-content">
+									<div class="modal-header flex-column"></div>
+									<div class="modal-body">
+										<p>Do you want to approve mitigation</p>
+									</div>
+									<div class="modal-footer justify-content-center"
+										style="margin-top: -30px;">
+										<button type="button" class="cancel-btn" data-dismiss="modal"
+											onclick="cancelApproveModalBtn();">No</button>
+										<button type="button" class="approve-btn"
+											onclick="approveOnclick()">Yes</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>

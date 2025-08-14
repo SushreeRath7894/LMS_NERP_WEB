@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+
+<head>
+<style>
+.tr-node-one {
+	padding-top: 12px !important;
+}
+
+.firstnode {
+	color: #676666;
+	border-top: 1px solid transparent !important;
+	border-left: 1px solid transparent !important;
+	border-bottom: 1px solid transparent !important;
+	width: 320px;
+	font-size: 14px;
+	font-weight: 100;
+}
+
+.simple-tree-table-closed .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'FontAwesome';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+	transform: rotate(90deg);
+}
+
+.simple-tree-table-opened .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'FontAwesome';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+}
+
+.simple-tree-table-icon {
+	display: inline-block;
+	width: 1.5em;
+	line-height: 1.5em;
+	margin: 0.1em;
+	background-color: transparent;
+	text-align: center;
+	cursor: pointer;
+}
+</style>
+<script>
+	$(document).ready(function() {
+				getDemoList();
+
+				$("#demoSave").click(function() {
+							data = {};
+
+							data.demoId = $("#demoId").val();
+							data.demoName = $("#demoName").val();
+							data.demoDesc = $("#demoDesc").val();
+							data.demoStatus = $(
+									"input[name='isActive']:checked").val();
+							//console.log(data)
+							$(".formValidation").remove();
+							allValid = true;
+							if (data.demoName == null || data.demoName == "") {
+								allValid = false;
+								validationModal(" Name Required", "demoName");
+							}
+							if (data.demoDesc == null || data.demoDesc == "") {
+								allValid = false;
+								validationModal("demo Description Required",
+										"demoDesc");
+							}
+
+							if (allValid) {
+								$('.loader').show();
+								$("body").removeClass("overlay");
+								submitDemo(data);
+							}
+
+						})
+
+				$("#subDemoSave").click(function() {
+							data = {};
+
+							data.demoId = $("#subDemoId").val();
+							data.demoName = $("#subDemoName").val();
+							data.demoDesc = $("#subDemoDesc").val();
+							data.demoStatus = $(
+									"input[name='isSubCatActive']:checked").val();
+							data.parentId = $("#parentDemo").val();
+
+							var slno = $("#slnoval").val();
+
+							$(".formValidation").remove();
+							allValid1 = true;
+							if (data.demoName == null || data.demoName == "") {
+								allValid1 = false;
+								validationModal("Sub-Demo Name Required",
+										"subDemoName");
+							}
+							if (data.demoDesc == null || data.demoDesc == "") {
+								allValid1 = false;
+								validationModal(
+										"Sub-Demo Description Required",
+										"subDemoDesc");
+							}
+
+							if (allValid1) {
+								$('.loader').show();
+								$("body").removeClass("overlay");
+								submitSubDemo(data, slno);
+							}
+
+						})
+
+				$("#deleteModalBtn").click(function() {
+					$('.loader').show();
+					$("body").addClass("overlay");
+							var data = $("#deleteModalBtn").attr("value");
+							//var slno = $("#deleteModalBtn").attr("slno");
+							$("#deleteModalBtn").attr("disabled", "disabled");
+							if (data) {
+								$.ajax({
+				    				type : "POST",
+				    				url : "demo-tree-delete",
+				    				dataType : 'json',
+				    				contentType : 'application/json',
+				    				data : data,
+				    				success : function(response) {
+				    					if (response.message == "Success") {
+				    						$("#deleteModalBtn").removeAttr("disabled");
+				    						$("#"+data).remove();
+				    						cancelModalBtn();
+				    						closeDemo();
+				    					}
+				    				}, error : function(data) {
+				    					console.log(data)
+				    				}
+				    			});
+								
+							}
+							$('.loader').hide();
+							$("body").removeClass("overlay");
+						})
+			})
+
+
+	function getDemoList() {
+		$('.loader').show();
+		$("body").addClass("overlay");
+		$("#costCeneterCBDiv").empty();
+		$
+				.ajax({
+					type : "POST",
+					url : "demo-tree-get-total-list",
+					dataType : "json",
+					contentType : "application/json",
+					success : function(response) {
+						if (response.message == "Success") {
+							console.log(response.body)
+							if (response.body.length > 0) {
+								for (var i = 0; i < response.body.length; i++) {
+									var row = "";
+									if (response.body[i].demoId == response.body[i].parentId) {
+										row = '<tr data-node-id="'+response.body[i].demoId+'" class="abc" id="'+response.body[i].demoId+'">'
+												+ '<td class="firstnode tr-node-one" id=lbl_'+response.body[i].demoId+'>'
+												+ response.body[i].demoName
+												+ '<label for="check1">&nbsp;&nbsp;<a href="javascript:void(0)"><i title="Add Child" class="ti-plus cbicon" onclick=openDemoSub("'
+												+ response.body[i].demoId
+												+ '","1");></i></a>&nbsp;<a href="javascript:void(0)"><i title="Edit Category" class="ti-pencil" onclick=editDemoCategory("'
+												+ response.body[i].demoId
+												+ '")></i></a>&nbsp;<a href="javascript:void(0)"><i title="Delete Category" class="ti-close" onclick=deleteDemoCategory("'
+												+ response.body[i].demoId
+												+ '")></i></a></label>'
+												+ '</td></tr>';
+									} else {
+										row = '<tr data-node-id="'+response.body[i].demoId+'" data-node-pid="'+response.body[i].parentId+'" class="abc" id="'+response.body[i].demoId+'">'
+												+ '<td class="firstnode" id=lbl_'+response.body[i].demoId+'>'
+												+ response.body[i].demoName
+												+ '<label for="check1">&nbsp;&nbsp;<a href="javascript:void(0)"><i title="Add Child" class="ti-plus cbicon" onclick=openDemoSub("'
+												+ response.body[i].demoId
+												+ '","2");></i></a>&nbsp;<a href="javascript:void(0)"><i title="Edit Category" class="ti-pencil" onclick=editSubCategory("'
+												+ response.body[i].demoId
+												+ '","'
+												+ response.body[i].parentId
+												+ '")></i></a>&nbsp;<a href="javascript:void(0)"><i title="Delete Category" class="ti-close" onclick=deleteDemoCategory("'
+												+ response.body[i].demoId
+												+ '")></i></a></label>'
+												+ '</td></tr>';
+									}
+									$("#costCeneterCBDiv").append(row);
+								}
+
+								$('.loader').hide();
+								$("body").removeClass("overlay");
+
+								$('#basic').simpleTreeTable({
+									expander : $('#expander'),
+									collapser : $('#collapser'),
+									store : 'session',
+									storeKey : 'simple-tree-table-basic'
+								});
+
+							}
+						} else {
+							$('.loader').hide();
+							$("body").removeClass("overlay");
+						}
+					},
+					error : function(response) {
+						console.log(response);
+						$('.loader').hide();
+						$("body").removeClass("overlay");
+					}
+				})
+	}
+
+	function openDemo() {
+		closeDemoSub();
+		$("#demoId").val("");
+		$("#demoName").val("");
+		$("#demoDesc").val("");
+		$('#demoStatus').prop('checked', true);
+
+		$("#deleteSlideCat").attr("onclick", "");
+
+		document.getElementById("mySidenavDemo").style.cssText = "width: 270px; position: absolute; right:-45px; overflow: hidden;";
+		document.getElementById("main").style.width = "420px";
+	}
+
+	function closeDemo() {
+
+		$("#demoId").val("");
+		$("#demoName").val("");
+		$("#demoDesc").val("");
+		$('#demoStatus').prop('checked', true);
+
+		$("#deleteSlideCat").attr("onclick", "");
+
+		document.getElementById("mySidenavDemo").style.width = "0";
+		document.getElementById("main").style.width = "480px";
+	}
+
+	function openDemoSub(demoId, sl) {
+		closeDemo();
+		var pName = $("#lbl_" + demoId).text();
+		$("#subDemoParentSpan").text(" " + pName);
+		$("#parentDemo").val(demoId);
+
+		$("#subDemoId").val("");
+		$("#subDemoName").val("");
+		$("#subDemoDesc").val("");
+		$('#subDemoStatus').prop('checked', true);
+
+		$("#slnoval").val(sl);
+
+		$("#dltSlideSubCat").attr("onclick", "");
+
+		document.getElementById("mySidenavSubDemo").style.cssText = "width: 270px; position: absolute; right:-45px; overflow: hidden;";
+		document.getElementById("main").style.width = "420px";
+	}
+
+	function closeDemoSub() {
+
+		$("#subDemoParentSpan").text(" ");
+		$("#parentDemo").val("");
+
+		$("#subDemoId").val("");
+		$("#subDemoName").val("");
+		$("#subDemoDesc").val("");
+		$('#subDemoStatus').prop('checked', true);
+
+		$("#slnoval").val("");
+
+		$("#dltSlideSubCat").attr("onclick", "");
+
+		document.getElementById("mySidenavSubDemo").style.width = "0";
+		document.getElementById("main").style.width = "480px";
+	}
+
+	function submitDemo(dataset) {
+		$.ajax({
+			type : "POST",
+			url : "demo-tree-save",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(dataset),
+			success : function(response) {
+				if (response.message == "Success") {
+					console.log(response.body)
+					closeDemo();
+					getDemoList();
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+					$("#messageParagraph").text("Data Saved Successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+				} else {
+					getDemoList();
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+					$("#messageParagraph").text("Something Went Wrong");
+					$("#msgOkModal").removeClass("btn1");
+					$("#msgOkModal").addClass("btn3");
+					$("#msgModal").modal('show');
+				}
+			},
+			error : function(response) {
+				console.log(response);
+				getDemoList();
+				$('.loader').hide();
+				$("body").removeClass("overlay");
+				$("#messageParagraph").text("Something Went Wrong");
+				$("#msgOkModal").removeClass("btn1");
+				$("#msgOkModal").addClass("btn3");
+				$("#msgModal").modal('show');
+			}
+		})
+	}
+
+	function submitSubDemo(dataset, slno) {
+
+		$.ajax({
+			type : "POST",
+			url : "demo-tree-save-subdemo",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(dataset),
+			success : function(response) {
+				if (response.message == "Success") {
+					console.log(response.body)
+					closeDemoSub();
+					getDemoList();
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+					$("#messageParagraph").text("Data Saved Successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+				} else {
+					getDemoList();
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+					$("#messageParagraph").text("Something Went Wrong");
+					$("#msgOkModal").removeClass("btn1");
+					$("#msgOkModal").addClass("btn3");
+					$("#msgModal").modal('show');
+				}
+			},
+			error : function(response) {
+				console.log(response);
+				getDemoList();
+				$('.loader').hide();
+				$("body").removeClass("overlay");
+				$("#messageParagraph").text("Something Went Wrong");
+				$("#msgOkModal").removeClass("btn1");
+				$("#msgOkModal").addClass("btn3");
+				$("#msgModal").modal('show');
+			}
+		})
+	}
+
+	function editDemoCategory(id) {
+		$('.loader').show();
+		$("body").addClass("overlay");
+		openDemo();
+		$("#demoId").val(id);
+		if (id) {
+			$.ajax({
+				type : "POST",
+				url : "demo-tree-get-category-dtls-by-id",
+				dataType : "json",
+				contentType : "application/json",
+				data : id,
+				success : function(response) {
+					if (response.message == "Success") {
+						if (response.body != null && response.body != "") {
+							$("#demoName").val(response.body.demoName);
+							$("#demoDesc").val(response.body.demoDesc);
+							if (response.body.demoStatus == "1") {
+								$('#demoStatus').prop('checked', true);
+							} else {
+								$('#demoStatus').prop('checked', false);
+							}
+							$('.loader').hide();
+							$("body").removeClass("overlay");
+						}
+					}
+				},
+				error : function(data) {
+					console.log(data)
+					$("#demoId").val("");
+					$("#demoName").val("");
+					$("#demoDesc").val("");
+					$('#demoStatus').prop('checked', true);
+					$("#deleteSlideCat").attr("onclick", "");
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+				}
+			});
+		} else {
+			$("#demoId").val("");
+			$("#demoName").val("");
+			$("#demoDesc").val("");
+			$('#demoStatus').prop('checked', true);
+			$("#deleteSlideCat").attr("onclick", "");
+			$('.loader').hide();
+			$("body").removeClass("overlay");
+		}
+	}
+
+	function editSubCategory(id, pId) {
+		$('.loader').show();
+		$("body").addClass("overlay");
+		openDemoSub(pId, "2");
+		$("#subDemoId").val(id);
+		if (id) {
+			$.ajax({
+				type : "POST",
+				url : "demo-tree-get-category-dtls-by-id",
+				dataType : "json",
+				contentType : "application/json",
+				data : id,
+				success : function(response) {
+					if (response.message == "Success") {
+						if (response.body != null && response.body != "") {
+							$("#subDemoName").val(response.body.demoName);
+							$("#subDemoDesc").val(response.body.demoDesc);
+							if (response.body.demoStatus == "1") {
+								$('#subDemoStatus').prop('checked', true);
+							} else {
+								$('#subDemoStatus').prop('checked', false);
+							}
+							$('.loader').hide();
+							$("body").removeClass("overlay");
+						}
+					}
+				},
+				error : function(data) {
+					console.log(data)
+					$("#subDemoId").val("");
+					$("#subDemoName").val("");
+					$("#subDemoDesc").val("");
+					$('#subDemoStatus').prop('checked', true);
+					$("#dltSlideSubCat").attr("onclick", "");
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+				}
+			});
+		} else {
+			$("#subDemoId").val("");
+			$("#subDemoName").val("");
+			$("#subDemoDesc").val("");
+			$('#subDemoStatus').prop('checked', true);
+			$("#dltSlideSubCat").attr("onclick", "");
+			$('.loader').hide();
+			$("body").removeClass("overlay");
+		}
+	}
+
+	function cancelModalBtn() {
+		$("#delete").modal('hide');
+		$("#deleteModalBtn").attr("value", "");
+		//$("#deleteModalBtn").attr("slno", "");
+		$("#deleteModalBtn").removeAttr("disabled");
+	}
+
+	function deleteDemoCategory(id) {
+		if (id) {
+			$("#delete").modal('show');
+			$("#deleteModalBtn").attr("value", id);
+			//$("#deleteModalBtn").attr("slno", "1");
+		} else {
+			$("#delete").modal('hide');
+			$("#deleteModalBtn").attr("value", "");
+			$("#deleteModalBtn").removeAttr("disabled");
+			//$("#deleteModalBtn").attr("slno", "");
+		}
+	}
+
+	function deleteDemoSubCategory(id) {
+		if (id) {
+			$("#delete").modal('show');
+			$("#deleteModalBtn").attr("value", id);
+			//$("#deleteModalBtn").attr("slno", "2");
+		} else {
+			$("#delete").modal('hide');
+			$("#deleteModalBtn").attr("value", "");
+			$("#deleteModalBtn").removeAttr("disabled");
+			//$("#deleteModalBtn").attr("slno", "");
+		}
+	}
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="row margin_topbot" id="searchRowDiv"></div>
+						<div class="row">
+							<div class="col-md-10  btn-hs" style="margin-bottom: 15px;">
+								<div class="font-design ft-lt" id="totalReq">Demo</div>
+								<div class="roomdetails2">
+									<div class="cat_plusbtn cp" title="Add Category"
+										onclick="openDemo()">+</div>
+								</div>
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-md-8">
+								<div class="flowsection"
+									style="border-right: 0px solid #ccc !important">
+									<table id="basic">
+										<tbody id="costCeneterCBDiv"></tbody>
+									</table>
+									<!-- code start for second tree -->
+									<!-- code end for second tree -->
+								</div>
+							</div>
+
+							<div class="col-md-4">
+								<div class="roomdetails roomListDiv" id="main"></div>
+								<div class="slidearrow" onclick="openDemoSub()">
+									<i class="ti-arrow-left"></i>
+								</div>
+								<div id="mySidenav" class="sidenav">
+									<div class="slidebox">
+										<div class="row">
+											<div class="col-md-10">
+												<div class="edit" id="roomLevelText"></div>
+											</div>
+											<div class="col-md-2">
+												<div class="arrow">
+													<a href="javascript:void(0)" class="closebtn"
+														onclick="closeDemoSub()"><i class="ti-arrow-right"></i></a>
+												</div>
+											</div>
+											<div class="chartbtnsec">
+												<div class="" align="right">
+													<button class="btn4" onclick="closeDemoSub()">CANCEL</button>
+													<!-- <button class="btn3" id="dltRoom"
+																		onclick="deleteRoom()">DELETE</button>
+ -->
+													<button class="btn1" id="roomSave">SAVE</button>
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Code</label> <input type="text"
+														class="form-control transparenttxtbox"
+														placeholder="Room Code" id="roomCode"> <input
+														type="hidden" id="sectionRoomId"> <input
+														type="hidden" id="roomDBId"> <input type="hidden"
+														id="rFloorSlNo"> <input type="hidden"
+														id="rSectionSlNo">
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Name</label> <input type="text"
+														class="form-control transparenttxtbox"
+														placeholder="Room Name" id="roomName"
+														onblur="checkCharLengthOfString('roomName','10');">
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Room Type</label>
+													<div class="select">
+														<select id="roomType" class="transparenttxtbox">
+															<option th:each="c,iter:${roomTypeList}"
+																th:value="${c.key}" th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+
+
+								<!-- Add Floor -->
+								<div id="mySidenavSubDemo" class="sidenav">
+									<div class="slidebox">
+										<div class="row">
+											<div class="col-md-10">
+												<div class="edit" id="floorNavText">Sub-Category</div>
+											</div>
+											<div class="col-md-2">
+												<div class="arrow">
+													<a href="javascript:void(0)" class="closebtn"
+														onclick="closeDemoSub()"><i class="ti-arrow-right"></i></a>
+												</div>
+											</div>
+											<div class="chartbtnsec">
+												<div class="" align="right">
+													<button class="btn4" onclick="closeDemoSub()">CANCEL</button>
+													<!-- <button class="btn3" id="dltSlideSubCat" onclick="">DELETE</button> -->
+													<button class="btn1" id="subDemoSave">SAVE</button>
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<span class="slide-span">Parent:</span><span
+														id="subDemoParentSpan" class="slide-span-text"></span>
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Name</label> <input type="hidden" id="subDemoId">
+													<input type="text" class="form-control transparenttxtbox"
+														placeholder="" id="subDemoName"
+														onblur="removeValid(event);"> <input type="hidden"
+														id="parentDemo"> <input type="hidden" id="slnoval">
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Description</label>
+													<textarea class="form-control" id="subDemoDesc"
+														onblur="removeValid(event);"></textarea>
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<input type="checkbox" class="loc-chb"
+														name="isSubCatActive" id=subDemoStatus value="1" checked>
+													<label style="margin-top: 8px;">Active</label>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+
+								<!-- Add Section -->
+								<div id="mySidenavDemo" class="sidenav">
+									<div class="slidebox">
+										<div class="row">
+											<div class="col-md-10">
+												<div class="edit" id="sectionNavText">Demo Project</div>
+											</div>
+											<div class="col-md-2">
+												<div class="arrow">
+													<a href="javascript:void(0)" class="closebtn"
+														onclick="closeDemo()"><i class="ti-arrow-right"></i></a>
+												</div>
+											</div>
+											<div class="chartbtnsec">
+												<div class="" align="right">
+													<button class="btn4" onclick="closeDemo()">CANCEL</button>
+													<!-- <button class="btn3" id="deleteSlideCat">DELETE</button -->
+													<button class="btn1" id="demoSave">SAVE</button>
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Name</label> <input type="hidden" id="demoId">
+													<input type="text" class="form-control transparenttxtbox"
+														placeholder="" id="demoName">
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Description</label>
+													<textarea class="form-control" id="demoDesc"></textarea>
+												</div>
+											</div>
+											<div class="col-md-12">
+												<div class="form-group">
+													<input type="checkbox" class="loc-chb" name="isActive"
+														id="demoStatus" value="1" checked> <label
+														style="margin-top: 8px;">Active</label>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div id="delete" class="modal fade show" aria-modal="true">
+				<div class="modal-dialog modal-confirm">
+					<div class="modal-content">
+						<div class="modal-header flex-column">
+							<button type="button" class="close" data-dismiss="modal"
+								aria-hidden="true" onclick="cancelModalBtn()">
+								<i class="ti-close modal-close"></i>
+							</button>
+						</div>
+						<div class="modal-body">
+							<p>Do you really want to delete these records? This process
+								cannot be undone.</p>
+						</div>
+						<div class="modal-footer justify-content-center">
+							<button type="button" class="btn1" data-dismiss="modal"
+								onclick="cancelModalBtn();">Cancel</button>
+							<button type="button" class="btn3" id="deleteModalBtn">Delete</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

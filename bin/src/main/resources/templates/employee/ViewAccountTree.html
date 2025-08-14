@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+
+<head>
+<link rel="stylesheet" href="../assets/css/extend/style-extend.css">
+
+<script type="text/javascript">
+	$(document)
+			.ready(
+					function() {
+						$.fn
+								.extend({
+									treed : function(o) {
+
+										/*var openedClass = 'fa-minus-circle';
+										var closedClass = 'fa-plus-circle';*/
+										var openedClass = 'fa fa-angle-down';
+										var closedClass = 'fa fa-angle-right ';
+
+										if (typeof o != 'undefined') {
+											if (typeof o.openedClass != 'undefined') {
+												openedClass = o.openedClass;
+											}
+											if (typeof o.closedClass != 'undefined') {
+												closedClass = o.closedClass;
+											}
+										}
+										;
+
+										//initialize each of the top levels
+										var tree = $(this);
+										tree.addClass("tree");
+										tree
+												.find('li')
+												.has("ul")
+												.each(
+														function() {
+															var branch = $(this); //li with children ul
+															branch
+																	.prepend("<i class='indicator fa " + closedClass + "'></i>");
+															branch
+																	.addClass('branch');
+															branch
+																	.on(
+																			'click',
+																			function(
+																					e) {
+																				if (this == e.target) {
+																					var icon = $(
+																							this)
+																							.children(
+																									'i:first');
+																					icon
+																							.toggleClass(openedClass
+																									+ " "
+																									+ closedClass);
+																					$(
+																							this)
+																							.children()
+																							.children()
+																							.toggle();
+																				}
+																			})
+															branch.children()
+																	.children()
+																	.toggle();
+														});
+										//fire event from the dynamically added icon
+										tree
+												.find('.branch .indicator')
+												.each(
+														function() {
+															$(this)
+																	.on(
+																			'click',
+																			function() {
+																				$(
+																						this)
+																						.closest(
+																								'li')
+																						.click();
+																			});
+														});
+										//fire event to open branch if the li contains an anchor instead of text
+										tree.find('.branch>a').each(function() {
+											$(this).on('click', function(e) {
+												$(this).closest('li').click();
+												e.preventDefault();
+											});
+										});
+										//fire event to open branch if the li contains a button instead of text
+										tree
+												.find('.branch>button')
+												.each(
+														function() {
+															$(this)
+																	.on(
+																			'click',
+																			function(
+																					e) {
+																				$(
+																						this)
+																						.closest(
+																								'li')
+																						.click();
+																				e
+																						.preventDefault();
+																			});
+														});
+									}
+								});
+
+						$('#tree1').treed();
+
+						$('#tree2').treed({
+							openedClass : 'glyphicon-folder-open',
+							closedClass : 'glyphicon-folder-close'
+						});
+
+						$('#tree3').treed({
+							openedClass : 'glyphicon-chevron-right',
+							closedClass : 'glyphicon-chevron-down'
+						});
+					})
+</script>
+<script type="text/javascript">
+
+$(function() {
+    $('.listName').show();
+    $('.addChild').show();
+
+
+    $("#sbmtdata").click(function() {
+        if (!blankValidation("groupName", "TextField", "Child Name can not be left blank"))
+            return false;
+        var groupName = $('#groupName').val();
+        var parentId = $("#parentId").val();
+        var levelName = $("#levelName").val();
+
+        //submitAndNext(data);
+        swal.fire({
+            title: "Are you sure to Submit?",
+            text: "Once Submited,Can't revert back !",
+            type: "warning",
+
+            showCancelButton: true,
+            confirmButtonColor: "#DD6BB5",
+            confirmButtonText: "Submit",
+            showLoaderOnConfirm: true,
+            reverseButtons: true,
+            confirmButtonAriaLabel: 'Thumbs up, great!',
+            cancelButtonText: 'Cancel',
+            cancelButtonAriaLabel: 'Thumbs down',
+
+            preConfirm: () => {
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        console.log("Doing async operation");
+                        resolve()
+                    }, 3000)
+                })
+            }
+        }).then((result) => {
+            if (result.value) {
+                $.ajax({
+                    type: "POST",
+                    url: "add-child",
+                    data: {
+                        'groupName': groupName,
+                        'parentId': parentId,
+                        'levelName': levelName
+                    },
+                    success: function(response) {
+                        console.log(response);
+                        if (response.message) {
+                            swal({
+                                title: "Data Saved Successfully.",
+                                type: "success",
+                            }).then(function() {
+                                window.location.href = "view-organizational-structure";
+                            })
+                        } else {
+                            swal("Data Saved Successfully.");
+                            window.location.href = "view-organizational-structure";
+                        }
+                    },
+                    error: function(response) {
+                        swal(response.code);
+                        window.location.href = "view-organizational-structure";
+                    }
+                })
+            }
+        })
+
+    });
+
+
+    $("#sbmtdataParent").click(function() {
+        const ipAPI = 'https://api.ipify.org?format=json';
+        if (!blankValidation("parentName", "TextField", "Parent Name can not be left blank"))
+            return false;
+        var parentName = $('#parentName').val();
+
+        //submitAndNext(data);
+        swal.fire({
+            title: "Are you sure to Submit?",
+            text: "Once Submited,Can't revert back !",
+            type: "warning",
+
+            showCancelButton: true,
+            confirmButtonColor: "#DD6BB5",
+            confirmButtonText: "Submit",
+            showLoaderOnConfirm: true,
+            reverseButtons: true,
+            confirmButtonAriaLabel: 'Thumbs up, great!',
+            cancelButtonText: 'Cancel',
+            cancelButtonAriaLabel: 'Thumbs down',
+
+            preConfirm: () => {
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        console.log("Doing async operation");
+                        resolve()
+                    }, 3000)
+                })
+            }
+        }).then((result) => {
+            if (result.value) {
+                $.ajax({
+                    type: "POST",
+                    url: "add-parent",
+                    data: {
+                        'parentName': parentName
+                    },
+                    success: function(response) {
+                        console.log(response);
+                        if (response.message) {
+                            swal({
+                                title: "Data Saved Successfully.",
+                                type: "success",
+                            }).then(function() {
+                                window.location.href = "view-organizational-structure";
+                            })
+                        } else {
+                            swal("Data Saved Successfully");
+                            window.location.href = "view-organizational-structure";
+                        }
+                    },
+                    error: function(response) {
+                        swal(response.code);
+                        window.location.href = "view-organizational-structure";
+                    }
+                })
+            }
+        })
+
+    });
+
+});
+
+function OpenModel(index, levelName) {
+	$("#groupName").val("");
+    $('#levelName').val(levelName);
+    $('#parentId').val(index);
+    $('#myModal').modal('show');
+}
+
+function OpenModelParent() {
+    $("#parentName").val("");
+    $('#myModalParent').modal('show');
+}
+</script>
+<style>
+.tree ul li:before {
+	content: none;
+	display: block;
+	width: 10px;
+	height: 0;
+	border-top: 1px solid;
+	margin-top: -1px;
+	position: absolute;
+	top: 1em;
+	left: 0;
+}
+</style>
+</head>
+
+<div layout:fragment="content">
+<!-- <!-- 	<div  class="row">
+        <div class="newsmlgrid">
+            <div class="box1" align="center">
+                <a href="#" data-toggle="collapse" data-target="#demo">
+                    <div class="number">1</div>
+                    <div class="text">LEVEL 1</div>
+                </a>
+            </div>
+        </div>
+        <div class="arrowsec" align="center">
+            <div class="arrow_white">
+                 <img src="img/arrow_icon.png" class="img-fluid">
+            </div>
+        </div>
+        <div class="newsmlgrid">
+            <div class="box1" align="center">
+                <a href="hrms_hire.html">
+                    <div class="number">3</div>
+                    <div class="text">LEVEL 2</div>
+                </a>
+            </div>
+        </div>
+
+        <div class="arrowsec" align="center">
+            <div class="arrow_white">
+                 <img src="img/arrow_icon.png" class="img-fluid">
+            </div>
+        </div>
+        <div class="newsmlgrid">
+            <div class="box1" align="center">
+                <a href="hrms_hire.html">
+                    <div class="number">12</div>
+                    <div class="text">LEVEL 3</div>
+                </a>
+            </div>
+        </div>
+
+        <div class="arrowsec" align="center">
+            <div class="arrow_white">
+                 <img src="img/arrow_icon.png" class="img-fluid">
+            </div>
+        </div>
+
+        <div class="newsmlgrid">
+            <div class="box1" align="center">
+                <a href="hrms_hire.html">
+                    <div class="number">21</div>
+                    <div class="text">LEVEL 4</div>
+                </a>
+            </div>
+        </div>
+      
+        
+    </div> --> -->
+
+
+	<div class="main mrt_20">
+
+		<div class="card-title">
+			<h4>Organizational Structure</h4>
+		</div>
+		<div class="container-fluid">
+
+			<div id="demo_11" class="collapse show">
+				<div class="row">
+					<div class="col-md-4">
+						<div class="flowsection">
+							<!--  <div>CEO ->  -> Section -> Room </div> -->
+							<ul id="tree1">
+								<li>Extend Corporation<a onclick="openNav()"><i class="ti-plus"></i></a>
+									<ul>
+										<li><input type="checkbox" id="check1" value="green">
+											<label for="check1"></label>
+											<div class="mainclass">Business Development</div>
+											<ul class="secondstep">
+
+
+												<li><div class="subclass">
+														<input type="checkbox" id="check2"><label
+															for="check2"></label>Sales <label for="check2"><a
+															onclick="openNav()"><i class="ti-plus"></i></a> <a href="#"><i
+																class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																class="ti-close"></i></a></label>
+													</div>
+													<ul class="secondstep">
+														<li><div class="subclass">
+																<input type="checkbox" id="check2.1"><label
+																	for="check2.1"></label>Sales & Alignment<label for="check2.1"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a href="#"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+															
+														<li><div class="subclass">
+																<input type="checkbox" id="check2.2"><label
+																	for="check2.2"></label>Process Mapping<label for="check2.2"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a href="#"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+														<li><div class="subclass">
+																<input type="checkbox" id="check2.3"><label
+																	for="check2.3"></label>Tracking Result<label for="check2.3"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a href="#"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+													</ul></li>
+
+												<li><div class="subclass">
+														<input type="checkbox" id="check3"><label
+															for="check3"></label>Marketing <label for="check3"><a
+															onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																class="ti-close"></i></a></label>
+													</div>
+													<ul class="secondstep">
+														<li><div class="subclass">
+																<input type="checkbox" id="check3.1"><label
+																	for="check3.1"></label>Public Relation<label for="check3.1"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+														<li><div class="subclass">
+																<input type="checkbox" id="check3.2"><label
+																	for="check3.2"></label>Media Planning<label for="check3.2"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+														<li><div class="subclass">
+																<input type="checkbox" id="check3.3"><label
+																	for="check3.3"></label>Customer Support<label for="check3.3"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+													</ul></li>
+
+
+											</ul></li>
+										<li><input type="checkbox" id="check4" value="green">
+											<label for="check4"></label>
+											<div class="mainclass">Product Development</div>
+											<ul class="secondstep">
+												<li><div class="subclass">
+														<input type="checkbox" id="check4.1"><label
+															for="check4.1"></label>Conceptual Design <label for="check4.1"><a
+															onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																class="ti-close"></i></a></label>
+													</div>
+													<ul class="secondstep">
+														<li><div class="subclass">
+																<input type="checkbox" id="check4.2"><label
+																	for="check4.2"></label>design1<label for="check4.2"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+														<li><div class="subclass">
+																<input type="checkbox" id="check4.3"><label
+																	for="check4.3"></label>design2<label for="check4.3"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+														
+													</ul></li>
+													
+												<li><div class="subclass">
+														<input type="checkbox" id="check5"><label
+															for="check5"></label>Product Design <label for="check5"><a
+															onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																class="ti-close"></i></a></label>
+													</div>
+													<ul class="secondstep">
+														<li><div class="subclass">
+																<input type="checkbox" id="check5.1"><label
+																	for="check5.1"></label>Product1<label for="check5.1"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a href="#"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+														<li><div class="subclass">
+																<input type="checkbox" id="check5.2"><label
+																	for="check5.2"></label>Product2<label for="check5.2"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+														<li><div class="subclass">
+																<input type="checkbox" id="check5.3"><label
+																	for="check5.3"></label>Product3<label for="check5.3"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+													</ul></li>
+
+												
+
+												<li><div class="subclass">
+														<input type="checkbox" id="check6"><label
+															for="check6"></label>System Deployment <label for="check6"><a
+															onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																class="ti-close"></i></a></label>
+													</div>
+													<ul class="secondstep">
+														<li><div class="subclass">
+																<input type="checkbox" id="check6.1"><label
+																	for="check6.1"></label>Report1<label for="check6.1"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+														<li><div class="subclass">
+																<input type="checkbox" id="check6.2"><label
+																	for="check6.2"></label>Report2<label for="check6.2"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+														<li><div class="subclass">
+																<input type="checkbox" id="check6.3"><label
+																	for="check6.3"></label>Report3<label for="check6.3"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+													</ul></li>
+											</ul></li>
+
+
+
+
+										<li><input type="checkbox" id="check7"><label
+											for="check7"></label>
+											<div class="mainclass">Finance</div>
+											<ul class="secondstep">
+												<li><div class="subclass">
+														<input type="checkbox" id="check3"><label
+															for="check3"></label>Financial Services <label for="check3"><a
+															onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																class="ti-close"></i></a></label>
+													</div>
+													<ul class="secondstep">
+														<li><div class="subclass">
+																<input type="checkbox" id="check3"><label
+																	for="check3"></label>Report1<label for="check3"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+														<li><div class="subclass">
+																<input type="checkbox" id="check3"><label
+																	for="check3"></label>Report1<label for="check3"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+														<li><div class="subclass">
+																<input type="checkbox" id="check3"><label
+																	for="check3"></label>Report1<label for="check3"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+													</ul></li>
+												<li><div class="subclass">
+														<input type="checkbox" id="check3"><label
+															for="check3"></label>Financial Markets <label for="check3"><a
+															onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																class="ti-close"></i></a></label>
+													</div>
+													<ul class="secondstep">
+														<li><div class="subclass">
+																<input type="checkbox" id="check3"><label
+																	for="check3"></label>Report1<label for="check3"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+														<li><div class="subclass">
+																<input type="checkbox" id="check3"><label
+																	for="check3"></label>Report1<label for="check3"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+														<li><div class="subclass">
+																<input type="checkbox" id="check3"><label
+																	for="check3"></label>Report1<label for="check3"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+													</ul></li>
+												<li><div class="subclass">
+														<input type="checkbox" id="check3"><label
+															for="check3"></label> Financial Assets  <label for="check3"><a
+															onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																class="ti-close"></i></a></label>
+													</div>
+													<ul class="secondstep">
+														<li><div class="subclass">
+																<input type="checkbox" id="check3"><label
+																	for="check3"></label>Report1<label for="check3"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+														<li><div class="subclass">
+																<input type="checkbox" id="check3"><label
+																	for="check3"></label>Report1<label for="check3"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a onclick="closeNav()"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+														<li><div class="subclass">
+																<input type="checkbox" id="check3"><label
+																	for="check3"></label>Report1<label for="check3"><a
+																	onclick="openNav()"><i class="ti-plus"></i></a> <a href="#"><i
+																		class="ti-pencil"></i></a> <a onclick="closeNav()"><i
+																		class="ti-close"></i></a></label>
+															</div></li>
+													</ul></li>
+											
+												
+											</ul></li>
+									</ul>
+								</li>
+
+
+
+							</ul>
+							</li>
+							<!--   <li>
+                        <div>HRM</div>
+                        <ul>
+                           <li><div>Company Maintenance</div></li>
+                           <li>
+                            <div> Employees</div>
+                              <ul>
+                                 <li>
+                                    <div>Reports</div>
+                                    <ul>
+                                       <li><div>Report1</div></li>
+                                       <li><div>Report2</div></li>
+                                       <li><div>Report3</div></li>
+                                    </ul>
+                                 </li>
+                                 <li><div>Employee Maint.</div></li>
+                              </ul>
+                           </li>
+                           <li><div>Human Resources</div></li>
+                        </ul>
+                     </li> -->
+							<!-- </ul> -->
+						</div>
+					</div>
+
+
+					<div class="col-md-8">
+						<!-- <div class="roomdetails" id="main">
+							<h3>HR Management</h3>
+							<div class="row">
+								<div class="col-md-2"></div>
+
+
+							</div>
+							<h3>Finance & Accounting</h3>
+							<div class="row">
+								<div class="col-md-2"></div>
+
+
+							</div>
+							<h3>Research & Development</h3>
+							<div class="row">
+								<div class="col-md-2"></div>
+
+
+							</div>
+						</div> -->
+						<!-- </div>
+ <div class="col-md-3">  -->
+						<div class="slidearrow" onclick="openNav()">
+							<i class="ti-arrow-left"></i>
+						</div>
+						<div id="mySidenav" class="sidenav">
+						
+							<div class="slidebox">
+								<div class="row">
+									<div class="col-md-10">
+										<div class="edit">Edit</div>
+									</div>
+									<div class="col-md-2">
+										<div class="arrow">
+											<a href="javascript:void(0)" class="closebtn"
+												onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+										</div>
+									</div>
+
+									<div class="chartbtnsec">
+										<div class="row">
+											<button class="btn1">ADD CHILD</button>
+											<button class="btn3">DELETE</button>
+											<button class="btn1">SAVE</button>
+										</div>
+									</div>
+									<div class="col-md-12 mt-30">
+										<div class="form-group">
+											<label>Title</label> <input type="text"
+												class="form-control charttitle" placeholder="Marketing">
+										</div>
+									</div>
+
+									<div class="col-md-12 mt-30">
+										<div class="edit">Location</div>
+										<div>
+											<div class="locationbtn">
+												INDIA <span class="remove">&times;</span>
+											</div>
+											<div class="locationbtn">
+												USA <span class="remove">&times;</span>
+											</div>
+										</div>
+									</div>
+
+									<div class="col-md-12 mt-30">
+										<div class="edit">Cost Center</div>
+										<div>
+											<div class="locationbtn">
+												Marketing <span class="remove">&times;</span>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+				</div>
+
+			</div>
+
+
+		</div>
+	</div>
+</div>
+
+
+
+</body>
+</html>
+
+
+
+
+<script type="text/javascript">
+function openNav() {
+  document.getElementById("mySidenav").style.cssText = "width: 250px; position: absolute; right:-37px; overflow: hidden;";  
+ 
+  document.getElementById("main").style.width = "400px";
+}
+
+function closeNav() {
+  document.getElementById("mySidenav").style.width = "0";
+  document.getElementById("main").style.width= "530px";
+}
+
+
+
+    $(document).ready(function(){
+        $("#newBtn").click(function(){
+            $("#myTbl").hide();
+            $(".btn-hs").hide();
+            $("#demo").show();
+        })
+        
+        $("#cancelBtn").click(function(){
+            $("#myTbl").show();
+            $(".btn-hs").show();
+            $("#demo").hide();
+        });
+         $("#quarter").click(function(){
+            $("#myTbl").hide();
+            $(".btn-hs").hide();
+            $("#demo").show();
+        })
+
+        $("#cancelBtn").click(function(){
+            $("#myTbl").show();
+            $(".btn-hs").show();
+            $("#demo").hide();
+        });
+    });
+
+$(document).ready(function(){
+    $('input[type="checkbox"]').click(function(){
+        var inputValue = $(this).attr("value");
+        $("." + inputValue).toggle();
+    });
+});
+</script>
+</body>
+
+</html>

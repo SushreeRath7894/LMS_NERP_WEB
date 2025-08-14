@@ -1,0 +1,503 @@
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+	th:fragment="main-billing">
+<style>
+.alignment {
+	float: right;
+}
+
+.right-align {
+	text-align: right !important;
+}
+
+#bill-table thead th {
+	font-weight: bold !important;
+	font-size: 10px !important; 
+}
+
+.bg-header {
+	background-color: #f5f2e7;
+}
+
+#payBtn1 {
+	background-color: #d4af37 !important;
+	color: #000000;
+	font-weight: 600;
+	width: 80px !important;
+}
+
+.highlight-btn {
+	transition: transform 0.3s ease;
+	
+}
+.highlight-btn:hover {
+	transform: scale(1.05);
+	box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+@keyframes zoomInOut { 0% {
+	transform: scale(1);
+}
+
+50%
+{
+transform
+:
+scale(
+1.1
+);
+}
+100%
+{
+transform
+:
+ 
+scale
+(
+1
+)
+;
+ 
+}
+}
+</style>
+<script>
+  $(()=>{
+    $('#methodBankSelect').select2();  
+    $('#methodCostCenterSelect').select2();
+  });
+  
+  let newBillId = 0;
+  function addBillRow() {
+  	
+  	let dataset = []
+  	let sum = 0;
+  	let grandTotal = $("#grandTotal").text();
+  	$("#bill-table tbody tr").each(function(index) {
+  		let a = {
+  			pay_mode: $(this).find('.pay_mode').val(),
+  			pay_mode_name: $(this).find('.pay_mode option:selected').text(),
+  			transaction_no: $(this).find('.transaction_no').val(),
+  			bank: $(this).find('.bank').val(),
+  			amount: $(this).find('.amount').val(),
+  		};
+  		let amnt = a?.amount || '0';
+  		sum = sum + parseFloat(amnt);
+  		dataset.push(a);
+  	});
+  	
+  	for (let i = 0; i < dataset.length; i++) {
+  	    const item = dataset[i];
+  	    
+  	    if(!item.pay_mode) {
+  	    	toastr.error("Payment Mode Required");
+  	    	return;
+  	    }
+  	    if(!item.transaction_no && item.pay_mode_name != 'CASH') {
+  	    	toastr.error("Transaction/Cheque Number Required");
+  	    	return;
+  	    }
+  	    if(!item.amount) {
+  	    	toastr.error("Amount Required");
+  	    	return;
+  	    }
+  	    
+  	}
+  	
+  	/* if(sum >= grandTotal) {
+  		toastr.error("There is no balance left to pay");
+  		return;
+  	} */
+  	
+  	const rows = document.querySelectorAll('#bill-tbody tr');
+  	let c = 0;
+  	rows.forEach((row, index) => {
+  	    const inputs = row.querySelectorAll('input, select, textarea');
+  	    //inputs.forEach(el => el.disabled = true);
+  	    c++;
+  	});
+  	
+  	let dropdownOptions = `<option></option>`;
+  	globalPayModeList.forEach((kra,index) => {
+  		const selected = index === 0 ? ' selected' : '';
+  		dropdownOptions += `<option value="${kra.key}" ${selected}>${kra.name}</option>`;
+  	});
+  	
+  	let actionButton = `<button class="btn go-btn remove-kra mr-2" onclick=removeBillRow(${newBillId})>
+				<i class="fas fa-trash"></i>
+				</button>
+			</button>` ;
+  	
+  	const newRow = $(`
+  			<tr class="bill-parent-class" data-bill-id="${newBillId}">
+  				<td style="text-align: center" class="slno-td">${c+1}</td>
+  				<td>
+  					<select class="form-control pay_mode">
+  						${dropdownOptions}
+  					</select>
+  				</td>
+  				<td>
+  					<input type="text" class="form-control transaction_no" placeholder="Transaction/Cheque Number">
+  				</td>
+  				<td>
+  					<input type="text" class="form-control bank" placeholder="Bank Name">
+  				</td>
+  				<td>
+  					<input type="text" class="form-control amount" placeholder="Amount" onkeyup=allowOnlyNumbers(this);validateEachAmount(${newBillId})>
+  				</td>
+  				<td>${actionButton}
+  				</td>
+  			</tr>
+  		`);
+  	
+  		$('#bill-table tbody').append(newRow);
+  	
+  		newRow.find('.pay_mode').select2({
+  			placeholder: "Payment Mode",
+  			allowClear: true,
+  			width: '100%'
+  		});
+  		
+  		newBillId = newBillId + 1;
+  }
+  
+  function removeBillRow(i){
+	  let sumAmount = 0;
+	  let grandTotal = $("#pendingAmount").text();
+	  let c = 0;
+	  $("#bill-table tbody tr").each(function(index) {
+		  c++;
+	  })
+	  if(c === 1) {
+		  toastr.error("Action Failed: Single Row Deletion Is Restricted");
+		  return;
+	  } else {
+		  
+		  document.querySelectorAll('tr[data-bill-id="'+i+'"]')?.forEach(tr => tr.remove());
+		  $("#bill-table tbody tr").each(function(index) {
+			  $(this).find('.slno-td').text(index+1);
+		  })
+		  $("#bill-table tbody tr.bill-parent-class").each(function(index) {
+			  let amnt = $(this).find('.amount').val() || '0';
+			  sumAmount = sumAmount + parseFloat(amnt);
+		  })
+		  $("#billingAmount").val(sumAmount?.toFixed(2))
+	  }
+	  
+  }
+  
+  function validateTotalAmount() {
+	  let grandTotal = $("#pendingAmount").text();
+	  let billAmount = $("#billingAmount").val();
+	  
+	  if(billAmount > grandTotal) {
+		  toastr.error("The Maximum Amount You Have To Pay Is "+grandTotal);
+		  $("#billingAmount").val(grandTotal);
+		  return;
+	  }
+  }
+  
+  function validateEachAmount(i) {
+	  
+	  let sumAmount = 0;
+	  let grandTotal = $("#pendingAmount").text();
+	  $("#bill-table tbody tr.bill-parent-class").each(function(index) {
+		  let amnt = $(this).find('.amount').val() || '0';
+		  sumAmount = sumAmount + parseFloat(amnt);
+	  })
+	  
+	  $("#billingAmount").val(sumAmount?.toFixed(2))
+	  
+	  if(sumAmount > grandTotal) {
+		  toastr.error("The Maximum Amount You Have To Pay Is "+grandTotal);
+		  const amntEl = document.querySelector('tr[data-bill-id="' + i + '"] .amount');
+		  if (amntEl) amntEl.value = '';
+		  
+		  let sum = 0;
+		  $("#bill-table tbody tr.bill-parent-class").each(function(index) {
+			  let amnt = $(this).find('.amount').val() || '0';
+			  sum = sum + parseFloat(amnt);
+		  })
+			
+		  $("#billingAmount").val(sum?.toFixed(2));
+		  return;
+	  }
+  }
+</script>
+<!--Payment Details-->
+<div class="requisition-tbl d-flex flex-column gap-2 h-100">
+
+	<!-- <div class="border rounded table-responsive">
+		<table class="table table-borderless mb-0" width="100%">
+			<tr valign="middle">
+				<td width="50%">
+          <div class="d-flex gap-2 align-items-center">
+            <div style="border: 1px solid #ddd; padding: 5px;" class="fw-600">
+              <strong>Booking Id:</strong><br> <span id="bookingIds"></span>
+            </div>
+            <div style="border: 1px solid #ddd; padding: 5px;" class="fw-600">
+              <strong>Invoice Id:</strong><br> <span id="invoiceIds"></span>
+            </div>
+          </div>
+				</td>
+				<td>
+					<div class="d-flex justify-content-end gap-2">
+						<button id="prev1" class="btn m-0 edit-btn" onclick="billingPrevious()" type="button">Prev</button>
+						<button id="payBtn" onclick="initiateBillingProcess()" class="btn m-0 edit-btn" type="button">Pay</button>
+					</div>
+				</td>
+			</tr>
+		</table>
+	</div> -->
+	<div class="d-flex w-100 justify-content-between align-items-center p-2 border rounded bg-header">
+		<div class="project-name flex-1">Booking Id: <br><span class="head-user-name" id="bookingIds"></span></div>
+		<div class="project-name flex-1 d-none">Invoice Id: <br><span class="head-user-name" id="invoiceIds"></span></div>
+		<div class="d-flex justify-content-end gap-2 flex-1">
+			<!--  <button class="btn m-0 edit-btn" type="button" id="prev1" onclick="billingPrevious()">Prev</button> -->
+			<div class="mr-2">
+				<button class="btn btn-primary edit-btn" type="button" id="prev1"
+					onclick="billingPrevious()">
+					<i class="fas fa-arrow-left"></i> Prev
+				</button>
+			</div>
+			<!-- <button class="btn m-0 edit-btn" type="button" id="payBtn1" onclick="initiateBillingProcess()">Pay</button> -->
+			<!-- <div class="mr-2">
+				<button class="btn m-0 edit-btn" type="button" id="payBtn1"
+					onclick="initiateBillingProcess()">
+					<i class="fas fa-credit-card"></i> Pay
+				</button>
+			</div> -->
+
+			<div class="mr-2 ">
+				<button id=payBtn1
+					class="btn btn-primary edit-btn highlight-btn"
+					onclick="initiateBillingProcess()">
+					<i class="fas fa-wallet"></i> Pay
+				</button>
+			</div>
+
+		</div>
+	</div>
+	<div class="card p-2">
+		<!--Payment Grid-->
+		<div id="payment" style="width: 100%; height: 100vh; display: none" class="ag-theme-alpine"></div>
+		<input type="hidden" id="accountSubGroupId">
+
+		<!--Payment breakdown list-->
+		<div class="row">
+			<div class="col-md-6"></div>
+			<div class="col-md-6">
+				<table class="alignment">
+					<tr class="d-none">
+						<td style="text-align: left;"><strong>Sub Total:</strong></td>
+						<td style="text-align: right;"><span id="subTotal"></span></td>
+					</tr>
+					<tr class="d-none">
+						<td style="text-align: left;"><strong>CGST:</strong></td>
+						<td style="text-align: right;"><span id="cgst"></span></td>
+					</tr>
+					<tr class="d-none">
+						<td style="text-align: left;"><strong>SGST:</strong></td>
+						<td style="text-align: right;"><span id="sgst"></span></td>
+					</tr>
+					<tr>
+						<td style="text-align: left;"><strong>Total:</strong></td>
+						<td style="text-align: right;"><span id="grandTotal"></span></td>
+					</tr>
+					<tr id="pendingAmntTR">
+						<td style="text-align: left;"><strong>Due:</strong></td>
+						<td style="text-align: right;"><span id="pendingAmount"></span></td>
+					</tr>
+				</table>
+			</div>
+		</div>
+
+		<!-- Payment Details Starts from here-->
+		<div>
+			<div class="row" style="margin-bottom: 20px; margin-top: 20px">
+				<!-- Payment Mode Section -->
+				<!-- <div class="col-lg-4" id="paymentModeMethodDiv">
+					<div class="form-group">
+						<label>Choose Payment Mode</label><br>
+						<div class="radio-group dtl-radiobtn">
+							<label> <input type="radio" id="CashMethod"
+								name="CashChequeOrOnlineMethod" value="Cash"> Cash
+							</label> <label> <input type="radio" id="ChequeMethod"
+								name="CashChequeOrOnlineMethod" value="Cheque"> Cheque
+							</label> <label> <input type="radio" id="OnlineMethod"
+								name="CashChequeOrOnlineMethod" value="Online"> Online
+							</label> <label> <input type="radio" id="UpiMethod"
+								name="CashChequeOrOnlineMethod" value="Upi"> UPI
+							</label>
+						</div>
+					</div>
+				</div> -->
+				<div class="col-lg-3">
+					<div class="form-group">
+						<label>Bill Amount<span class="mandatory">*</span></label>
+						<input type="text" id="billingAmount" class="form-control" placeholder="Bill Amount" readonly onkeyup="allowOnlyNumbers(this),validateTotalAmount()">
+					</div>
+				</div>
+				<div class="col-lg-3">
+
+					<div class="form-group">
+						<label>Bank Account</label>
+						<div class="select">
+							<select class="form-control" id="methodBankSelect">
+								<!-- <option value="">Select</option> -->
+								<!-- Dynamic bank options -->
+								<option th:each="c, iter: ${bankPaymentAccountList}"
+									th:value="${c.key}" th:text="${c.name}"
+									th:selected="${iter.index == 0}"></option>
+							</select>
+						</div>
+					</div>
+				</div>
+				<div class="col-lg-3">
+					<div class="form-group">
+						<label>Cost Center</label>
+						<div class="select">
+							<select class="form-control" id="methodCostCenterSelect">
+								<!-- <option value="">Select</option> -->
+								<!-- Dynamic bank options -->
+								<option th:each="c, iter: ${ccList}" th:value="${c.key}"
+									th:text="${c.name}" th:selected="${iter.index == 0}"></option>
+							</select>
+						</div>
+					</div>
+				</div>
+				
+				<div class="col-lg-3 methodRemark">
+					<div class="form-group">
+						<label>Remarks</label> <input type="text" class="form-control"
+							id="methodPayRemarks" placeholder="Remarks">
+					</div>
+				</div>
+			</div>
+			<div class="row mt-2">
+				<div class="col-md-12 cnt-sp-bw">
+					<h5 class="sub-header-new">Billing Details</h5>
+					<div class="d-flex gap-1 task-btn-sec">
+						<button
+							class="border-0 btn-transition btn btn-outline-primary btn-bill-v"
+							title="Add More" onclick="addBillRow()">
+							<i class="fa fa-plus-square" aria-hidden="true"></i>
+						</button>
+					</div>
+				</div>
+			</div>
+			<div class="row">
+				<table class="table table-bordered" id="bill-table">
+					<thead>
+						<tr>
+							<th style="width: 10%;" class="bill-tbl-th">Sl</th>
+							<th style="width: 20%;" class="bill-tbl-th">Payment Mode</th>
+							<th style="width: 25%;" class="bill-tbl-th">Transaction/Cheque Number</th>
+							<th style="width: 25%;" class="bill-tbl-th">Bank</th>
+							<th style="width: 10%;" class="bill-tbl-th">Amount</th>
+							<th style="width: 10%;" class="bill-tbl-th">Action</th>
+						</tr>
+					</thead>
+					<tbody id="bill-tbody">
+
+					</tbody>
+
+				</table>
+			</div>
+			<!-- Payment Details (Based on Payment Method) -->
+			<!-- <div class="row">
+
+
+				Bank Details
+				<div class="col-lg-4 methodBankDiv">
+					<div class="form-group">
+						<label>Transaction Number</label> <input type="text"
+							class="form-control" id="methodTransactionNumber"
+							placeholder="Transaction Number">
+					</div>
+				</div>
+				<div class="col-lg-4 methodBankDiv">
+					<div class="form-group">
+						<label>Receiver Bank Name</label> <input type="text"
+							class="form-control" id="methodReceiverBankName"
+							placeholder="Receiver Bank Name">
+					</div>
+				</div>
+				<div class="col-lg-4 methodBankDiv">
+					<div class="form-group">
+						<label>Receiver Bank Branch</label> <input type="text"
+							class="form-control" id="methodReceiverBankBranch"
+							placeholder="Receiver Bank Branch">
+					</div>
+				</div>
+				<div class="col-lg-4 methodBankDiv">
+					<div class="form-group">
+						<label>Receiver IFSC Code</label> <input type="text"
+							class="form-control" id="methodReceiverIfscCode"
+							placeholder="Receiver IFSC Code">
+					</div>
+				</div>
+				<div class="col-lg-4 methodBankDiv">
+					<div class="form-group">
+						<label>Receiver Account Number</label> <input type="text"
+							class="form-control" id="methodReceiverAccountNumber"
+							placeholder="Receiver Account Number">
+					</div>
+				</div>
+
+				Cheque Details
+				<div class="col-lg-4 methodChequeDiv">
+					<div class="form-group">
+						<label>Cheque Number</label> <input type="text"
+							class="form-control" id="methodChequeNo"
+							placeholder="Cheque Number">
+					</div>
+				</div>
+				<div class="col-lg-4 methodChequeDiv">
+					<div class="form-group">
+						<label>Receiver Bank Name</label> <input type="text"
+							class="form-control" id="methodChequeBankName"
+							placeholder="Bank Name">
+					</div>
+				</div>
+				<div class="col-lg-4 methodChequeDiv">
+					<div class="form-group">
+						<label>Receiver Bank Branch</label> <input type="text"
+							class="form-control" id="methodChequeBankBranch"
+							placeholder="Bank Branch">
+					</div>
+				</div>
+				<div class="col-lg-4 methodChequeDiv">
+					<div class="form-group">
+						<label>Receiver Account Number</label> <input type="text"
+							class="form-control" id="methodChequeAccountNumber"
+							placeholder="Account Number">
+					</div>
+				</div>
+
+				UPI Details
+				<div class="col-lg-4 methodUpiDiv">
+					<div class="form-group">
+						<label>UPI ID</label> <input type="text" class="form-control"
+							id="methodOnlineUpiID" placeholder="UPI ID">
+					</div>
+				</div>
+				<div class="col-lg-4 methodUpiDiv">
+					<div class="form-group">
+						<label>Receiver UPI ID</label> <input type="text"
+							class="form-control" id="methodReceiverOnlineUpiID"
+							placeholder="Receiver UPI ID">
+					</div>
+				</div>
+				<div class="col-lg-4 methodUpiDiv">
+					<div class="form-group">
+						<label>UPI Transaction ID</label> <input type="text"
+							class="form-control" id="methodReceiverUpiTransactionID"
+							placeholder="Receiver Transaction ID">
+					</div>
+				</div>
+				
+			</div> -->
+		</div>
+	</div>
+
+</div>
+</html>

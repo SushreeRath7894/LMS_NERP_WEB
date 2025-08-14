@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org" th:fragment="so-timeline">
+<head>
+<style>
+.tracking-detail {
+	padding: 3rem 0
+}
+
+#tracking {
+	margin-bottom: 1rem
+}
+
+[class*=tracking-status-] p {
+	margin: 0;
+	font-size: 1.1rem;
+	color: #fff;
+	text-transform: uppercase;
+	text-align: center
+}
+
+[class*=tracking-status-] {
+	padding: 1.6rem 0
+}
+
+.tracking-status-intransit {
+	background-color: #65aee0
+}
+
+.tracking-status-outfordelivery {
+	background-color: #f5a551
+}
+
+.tracking-status-deliveryoffice {
+	background-color: #f7dc6f
+}
+
+.tracking-status-delivered {
+	background-color: #4cbb87
+}
+
+.tracking-status-attemptfail {
+	background-color: #b789c7
+}
+
+.tracking-status-error, .tracking-status-exception {
+	background-color: #d26759
+}
+
+.tracking-status-expired {
+	background-color: #616e7d
+}
+
+.tracking-status-pending {
+	background-color: #ccc
+}
+
+.tracking-status-inforeceived {
+	background-color: #214977
+}
+
+.tracking-list {
+	border: 1px solid #e5e5e5
+}
+
+.tracking-item-so {
+	border-left: 1px solid #e5e5e5;
+	position: relative;
+	padding: 2rem 1.5rem .5rem 2.5rem;
+	font-size: .9rem;
+	margin-left: 3rem;
+	min-height: 5rem
+}
+
+.tracking-item-so:last-child {
+	padding-bottom: 4rem
+}
+
+.tracking-item-so .tracking-date {
+	margin-bottom: .5rem
+}
+
+.tracking-item-so .tracking-date span {
+	color: #888;
+	font-size: 85%;
+	padding-left: .4rem
+}
+
+.tracking-item-so .tracking-content {
+	padding: .5rem .8rem;
+	background-color: #f4f4f4;
+	border-radius: .5rem
+}
+
+.tracking-item-so .tracking-content span {
+	display: block;
+	color: #888;
+	font-size: 85%
+}
+
+.tracking-item-so .tracking-icon {
+	line-height: 1.6rem;
+	position: absolute;
+	left: -0.8rem;
+	width: 1.6rem;
+	height: 1.6rem;
+	text-align: center;
+	border-radius: 50%;
+	font-size: 1.1rem;
+	background-color: #9f01ed;
+	color: #fff
+}
+
+.tracking-item-so .tracking-icon.status-sponsored {
+	background-color: #f68
+}
+
+.tracking-item-so .tracking-icon.status-delivered {
+	background-color: #4cbb87
+}
+
+.tracking-item-so .tracking-icon.status-outfordelivery {
+	background-color: #f5a551
+}
+
+.tracking-item-so .tracking-icon.status-deliveryoffice {
+	background-color: #f7dc6f
+}
+
+.tracking-item-so .tracking-icon.status-attemptfail {
+	background-color: #b789c7
+}
+
+.tracking-item-so .tracking-icon.status-exception {
+	background-color: #d26759
+}
+
+.tracking-item-so .tracking-icon.status-inforeceived {
+	background-color: #214977
+}
+
+.tracking-item-so .tracking-icon.status-intransit {
+	color: #c889e5;
+	border: 1px solid #9302e6;
+	font-size: .6rem
+}
+
+@media ( min-width :992px) {
+	.tracking-item-so {
+		margin-left: 10rem
+	}
+	.tracking-item-so .tracking-date {
+		position: absolute;
+		left: -10rem;
+		width: 7.5rem;
+		text-align: right
+	}
+	.tracking-item-so .tracking-date span {
+		display: block
+	}
+	.tracking-item-so .tracking-content {
+		padding: 0;
+		background-color: transparent
+	}
+}
+
+.status-badge.selected {
+    background: linear-gradient(45deg, #be00ff, #8803e0);
+}
+
+.status-badge {
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    border-radius: 15px;
+    color: #fff;
+    position: relative;
+    margin-right: 15px;
+}
+
+.title-body {
+    padding: 0.5rem 0;
+    align-items: center;
+    display: flex;
+}
+</style>
+<script>
+function salesOrderTimeline(soRef) {
+	$("#timelineContainer").empty();
+	agGrid.simpleHttpRequest({
+		url: 'view-saleorder-timeline?id=' + soRef,
+	}).then((resp)=> {
+		if(resp?.body) {
+			let data = JSON.parse(resp?.body);
+			data?.forEach((d,i)=>{
+				createTimelineCard(i+1, d?.sku, d?.timeline);
+			})
+		} else {
+			showNoRecordsFound();
+		}
+	})
+}
+function createTimelineCard(timelineId, title, trackingData) {
+	const container = document.createElement('div');
+	container.className = 'row demo';
+
+	const collapseId = `multiCollapseExample${timelineId}`;
+
+	// Card header that toggles the collapse
+	const card = document.createElement('div');
+	card.className = 'card m-2';
+	card.style.width = '18rem';
+	card.setAttribute('data-bs-toggle', 'collapse');
+	card.setAttribute('href', `#${collapseId}`);
+	card.setAttribute('role', 'button');
+	card.setAttribute('aria-expanded', 'false');
+	card.setAttribute('aria-controls', collapseId);
+
+	card.innerHTML = `
+		<div class="title-body">
+			<div class="status-badge selected">${timelineId}</div>
+			<h5 class="card-title">${title}</h5>
+		</div>
+	`;
+
+	// Collapse content
+	const row = document.createElement('div');
+	row.className = 'row';
+
+	const col = document.createElement('div');
+	col.className = 'col';
+
+	const collapseDiv = document.createElement('div');
+	collapseDiv.className = 'collapse multi-collapse';
+	collapseDiv.id = collapseId;
+
+	const collapseInnerRow = document.createElement('div');
+	collapseInnerRow.className = 'row';
+
+	const collapseCol = document.createElement('div');
+	collapseCol.className = 'col-md-12';
+
+	const trackingList = document.createElement('div');
+	trackingList.className = 'tracking-list';
+
+	// Loop through tracking data
+	trackingData.forEach(item => {
+		const trackingItem = document.createElement('div');
+		trackingItem.className = 'tracking-item-so';
+		trackingItem.innerHTML = `
+			<div class="tracking-icon status-intransit">
+				<svg class="svg-inline--fa fa-circle fa-w-16" aria-hidden="true" data-prefix="fas" data-icon="circle" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+					<path fill="currentColor" d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111 248-248S393 8 256 8z"></path>
+				</svg>
+			</div>
+			<div class="tracking-date">${item.formatted_fate}<span>${item.formatted_time}</span></div>
+			<div class="tracking-content">${item.timeline_msg}<span>${item.full_name}</span></div>
+		`;
+		trackingList.appendChild(trackingItem);
+	});
+
+	// Combine DOM elements
+	collapseCol.appendChild(trackingList);
+	collapseInnerRow.appendChild(collapseCol);
+	collapseDiv.appendChild(collapseInnerRow);
+	col.appendChild(collapseDiv);
+	row.appendChild(col);
+	container.appendChild(card);
+	container.appendChild(row);
+
+	// Append to a container in your page
+	document.getElementById('timelineContainer').appendChild(container);
+}
+
+function showNoRecordsFound() {
+	
+	$("#timelineContainer").empty();
+	
+	const container = document.getElementById('timelineContainer');
+
+	const noRecordDiv = document.createElement('div');
+	noRecordDiv.className = 'm-2 p-4 text-center';
+	noRecordDiv.style.backgroundColor = '#f8f9fa'; 
+	noRecordDiv.style.border = '1px solid #ddd';
+	noRecordDiv.style.borderRadius = '8px';
+	noRecordDiv.style.color = 'var(--mainColor)'; 
+	noRecordDiv.style.fontSize = '1.1rem';
+	noRecordDiv.style.fontWeight = '500';
+
+	noRecordDiv.textContent = 'No records found.';
+	container.appendChild(noRecordDiv);
+}
+
+
+</script>
+</head>
+<body>
+	<div class="card p-2" id="timelineContainer">
+		
+	</div>
+</body>
+</html>

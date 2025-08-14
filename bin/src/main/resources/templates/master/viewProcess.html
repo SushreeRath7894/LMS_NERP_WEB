@@ -1,0 +1,1600 @@
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+.picker_calendar {
+		cursor: pointer;
+		position: absolute;
+		top: 10px;
+		right: 18px;
+	}
+	
+	.blueClsWT {
+		background: #3467af!important;
+		color: #fff !important;
+	}
+	
+	.blueCls {
+		background: #3467af;
+		color: #fff;
+	}
+	
+	.blueClsWT::before {
+		font-size: 8px;
+		color: #FFF;
+		content: '\e64c';
+		font-family: 'themify';
+		padding-right: 7px;
+	}
+	
+	.tptCls {
+		background: transparnt;
+	}
+	.totalHour {
+	border: 1px solid #ddd;
+	border-radius: 2px;
+	background-color: #f5f5f5;
+	padding: 10px;
+	font-size: 12px;
+	color: #333;
+	transition: border-color 0.3s ease-in-out;
+	height: 25px;
+	width: 100%;
+}
+.pinned-bottom-row {
+            background: #EAE7FA !important;
+            font-weight: bold;
+        }
+</style>
+<script>
+
+		$(document).ready(function() {
+	    //	$('#saveDraft').hide();
+	    	$('#approve').hide();
+			getCurrentDateMonthYear();
+			getCurrentFY();
+			
+			var gridDiv = document.querySelector('#myGrid');
+			new agGrid.Grid(gridDiv, gridOptions);
+			viewAllProcessData();
+		})
+	
+		var columnDefs = [
+				/* 			{
+				 headerCheckboxSelection : true,
+				 headerCheckboxSelectionFilteredOnly : true,
+				 checkboxSelection : true,
+				 width : 10,
+				 sortable : false,
+				 filter : false,
+				 resizable : true,
+				 pinned: 'left',
+				 }, */
+				{
+					headerName : "Employee ID",
+					field : "empId",
+					pinned : 'left',
+					width : 130,
+					cellClass : function(params) {
+						if (params.data.approveStatus === '3') {
+	
+							return (params.data.approveStatus === '3' ? 'blueClsWT'
+									: 'tptCls');
+						}
+					}
+				},  {
+					headerName : "Employee Name",
+					field : "empName",
+					pinned : 'left',
+					cellStyle : {
+						textAlign : 'left'
+					},
+					width : 230,
+				},{
+					headerName : "Designation",
+					field : "desigName",
+					pinned : 'left',
+					cellStyle : {
+						textAlign : 'left'
+					},
+					width : 150,
+				}, {
+					headerName : "Department",
+					field : "dept",
+					hide: true,
+					cellStyle : {
+						textAlign : 'left'
+					},
+					width : 150,
+				}, {
+					headerName : "Workdays",
+					field : "workDay",
+					cellStyle : {
+						textAlign : 'center'
+					},
+					width : 120,
+				}, {
+					headerName : "Present",
+					field : "present",
+					cellStyle : {
+						textAlign : 'center'
+					},
+					width : 120,
+				}, {
+					headerName : "Leave",
+					field : "leave",
+					cellStyle : {
+						textAlign : 'center'
+					},
+					width : 120,
+				}, {
+					headerName : "OFF Availed",
+					field : "offday",
+					cellStyle : {
+						textAlign : 'center'
+					},
+					width : 130,
+				}, {
+					headerName : "Effective Workdays",
+					field : "workingDay",
+					cellStyle : {
+						textAlign : 'center'
+					},
+					width : 180,
+				}, {
+					headerName : "Attendance(%)",
+					field : "attendance",
+					cellStyle : {
+						textAlign : 'center'
+					},
+					width : 140,
+				}, {
+					headerName : "Basic",
+					field : "basic",
+					width : 120,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+	
+				}, {
+					headerName : "Hra",
+					field : "hra",
+					width : 120,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+	
+				}, {
+					headerName : "Conveyance Allowance",
+					field : "conve",
+					width : 220,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+				}, {
+					headerName : "Washing Allowance",
+					field : "washAllow",
+					width : 190,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+				}, {
+					headerName : "Medical Allowance",
+					field : "medical",
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+					width : 180,
+				}, {
+					headerName : "Special Allowance",
+					field : "specialAllowance",
+					width : 180,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+				}, {
+					headerName : "Skill Development",
+					field : "skillDev",
+					width : 180,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+				}, {
+					headerName : "Other Allowance",
+					field : "otherAllow",
+					width : 180,
+					valueFormatter: indianNumberFormatter,
+					hide: true,
+					cellStyle : {
+						textAlign : 'right'
+					}, 
+					cellRenderer: function(params) {
+						 var formattedValue = indianNumber(params.value);
+							if (params.data.empId === 'Total'|| params.data.approveStatus === '3') {
+						        return formattedValue;
+						    }  else {
+					        return '<input type="text" class="totalHour" name="numHour" value="' + params.data.otherAllow + '" id="otherAllow' + params.data.empId + '" maxlength="5" onkeyup="updateSumOfColumns(event,\'otherAllow\');checkNumeric(this.id);">';
+					    }
+					}, 
+				}, {
+					headerName : "Arear",
+					field : "arear",
+					width : 120,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+					cellRenderer: function(params) {
+						 var formattedValue = indianNumber(params.value);
+							if (params.data.empId === 'Total'|| params.data.approveStatus === '3') {
+						        return formattedValue;
+						    }  else {
+					        return '<input type="text" class="totalHour" name="numHour" value="' + params.data.arear + '" id="arear' + params.data.empId + '" maxlength="5" onkeyup="updateSumOfColumns(event,\'arear\');checkNumeric(this.id);">';
+					    }
+					},
+				}, {
+					headerName : "Bonus",
+					field : "bonus",
+					width : 120,
+					valueFormatter: indianNumberFormatter,
+					hide: true,
+					cellStyle : {
+						textAlign : 'right'
+					},
+					cellRenderer: function(params) {
+						 var formattedValue = indianNumber(params.value);
+							if (params.data.empId === 'Total'|| params.data.approveStatus === '3') {
+						        return formattedValue;
+						    }  else {
+					        return '<input type="text" class="totalHour" name="numHour" value="' + params.data.bonus + '" id="bonus' + params.data.empId + '" maxlength="5" onkeyup="updateSumOfColumns(event,\'bonus\');checkNumeric(this.id);">';
+					    }
+					},
+				}, {
+					headerName : "Reward",
+					field : "reward",
+					width : 120,
+					valueFormatter: indianNumberFormatter,
+					hide: true,
+					cellStyle : {
+						textAlign : 'right'
+					},
+					cellRenderer: function(params) {
+						 var formattedValue = indianNumber(params.value);
+							if (params.data.empId === 'Total'|| params.data.approveStatus === '3') {
+						        return formattedValue;
+						    }  else {
+					        return '<input type="text" class="totalHour" name="numHour" value="' + params.data.reward + '" id="reward' + params.data.empId + '" maxlength="5" onkeyup="updateSumOfColumns(event,\'reward\');checkNumeric(this.id);">';
+					    }
+					}
+				}, {
+					headerName : "Over Time",
+					field : "overTime",
+					width : 120,
+					valueFormatter: indianNumberFormatter,
+					hide: true,
+					cellStyle : {
+						textAlign : 'right'
+					},
+				}, {
+					headerName : "Total Earning",
+					field : "totalEarning",
+					width : 170,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+				}, {
+					headerName : "Epf",
+					field : "empEPF",
+					width : 120,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+	
+				}, {
+					headerName : "Esi",
+					field : "empESI",
+					width : 120,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+	
+				}, {
+					headerName : "Professional Tax",
+					field : "profTax",
+					width : 170,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+	
+				}, {
+					headerName : "LIC",
+					field : "lic",
+					width : 120,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+				}, {
+					headerName : "Wel. fund",
+					field : "welfund",
+					width : 120,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign: 'right'
+					},
+				}, {
+					headerName : "TDS",
+					field : "incTax",
+					width : 120,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+					cellRenderer: function(params) {
+						 var formattedValue = indianNumber(params.value);
+						if (params.data.empId === 'Total'|| params.data.approveStatus === '3') {
+					        return formattedValue;
+					    }  else {
+					        return '<input type="text" class="totalHour" name="numHour" value="' + params.data.incTax + '" id="incTax' + params.data.empId + '" maxlength="5" onkeyup="updateSumOfColumns(event,\'incTax\');checkNumeric(this.id);">';
+					    }
+					}
+				}, {
+					headerName : "Advance",
+					field : "advance",
+					width : 120,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+					cellRenderer: function(params) {
+						 var formattedValue = indianNumber(params.value);
+						if (params.data.empId === 'Total' || params.data.approveStatus === '3') {
+					        // If empId is 'Total', return just the value
+					        return formattedValue;
+					    }  else {
+					        return '<input type="text" class="totalHour" name="numHour" value="' + params.data.advance + '" id="advance' + params.data.empId + '" maxlength="5" onkeyup="updateSumOfColumns(event,\'advance\');checkNumeric(this.id);">';
+					    }
+					}
+				}, {
+					headerName : "Penalty",
+					field : "otherpenamnt",
+					width : 120,
+					valueFormatter: indianNumberFormatter,
+					hide: true,
+					cellStyle : {
+						textAlign : 'right'
+					},
+					cellRenderer: function(params) {
+						 var formattedValue = indianNumber(params.value);
+							if (params.data.empId === 'Total'|| params.data.approveStatus === '3') {
+						        return formattedValue;
+						    }  else {
+					        return '<input type="text" class="totalHour" name="numHour" value="' + params.data.otherpenamnt + '" id="otherpenamnt' + params.data.empId + '" maxlength="5" onkeyup="updateSumOfColumns(event,\'otherpenamnt\');checkNumeric(this.id);">';
+					    }
+					}
+				}, {
+					headerName : "Other Deductions",
+					field : "other",
+					width : 180,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+					cellRenderer: function(params) {
+						 var formattedValue = indianNumber(params.value);
+							if (params.data.empId === 'Total'|| params.data.approveStatus === '3') {
+						        return formattedValue;
+						    }  else {
+					        return '<input type="text" class="totalHour" name="numHour" value="' + params.data.other + '" id="other' + params.data.empId + '" maxlength="5" onkeyup="updateSumOfColumns(event,\'other\');checkNumeric(this.id);">';
+					    }
+					}
+				}, {
+					headerName : "Total Deduction",
+					field : "totalDeduction",
+					width : 180,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+	
+				}, {
+					headerName : "Net Pay",
+					field : "netPay",
+					width : 120,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+				}, {
+					headerName : "Employer Epf",
+					field : "compEPF",
+					width : 150,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+	
+				}, {
+					headerName : "Admin Charges",
+					field : "adminCharge",
+					width : 150,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+					cellRenderer: function(params) {
+						 var formattedValue = indianNumber(params.value);
+							if (params.data.empId === 'Total'|| params.data.approveStatus === '3') {
+						        return formattedValue;
+						    }  else {
+					        return '<input type="text" class="totalHour" name="numHour" value="' + params.data.adminCharge + '" id="adminCharge' + params.data.empId + '" maxlength="5" onkeyup="updateSumOfColumns(event,\'adminCharge\');checkNumeric(this.id);">';
+					    }
+					}
+				}, {
+					headerName : "EDLI Charges ",
+					field : "edliCharge",
+					width : 150,
+					valueFormatter: indianNumberFormatter,
+					cellStyle : {
+						textAlign : 'right'
+					},
+					cellRenderer: function(params) {
+						 var formattedValue = indianNumber(params.value);
+							if (params.data.empId === 'Total'|| params.data.approveStatus === '3') {
+						        return formattedValue;
+						    }  else {
+					        return '<input type="text" class="totalHour" name="numHour" value="' + params.data.edliCharge + '" id="edliCharge' + params.data.empId + '" maxlength="5" onkeyup="updateSumOfColumns(event,\'edliCharge\');checkNumeric(this.id);">';
+					    }
+					}
+				}, {
+					headerName : "Employer Esi",
+					field : "compESI",
+					valueFormatter: indianNumberFormatter,
+					width : 150,
+					cellStyle : {
+						textAlign : 'right'
+					},
+				}, {
+					headerName : "Sub Department",
+					field : "subDept",
+					hide: true,
+					cellStyle : {
+						textAlign : 'left'
+					},
+					width : 160,
+				}, {
+					headerName : "Father Name",
+					field : "fatherName",
+					hide: true,
+					cellStyle : {
+						textAlign : 'left'
+					},
+					width : 150,
+				},{
+					headerName : "EarningNew",
+					field : "totalEarningNew",
+					width : 170,
+					hide: true,
+					cellStyle : {
+						textAlign : 'right'
+					},
+				},{
+					headerName : "DeductionNew",
+					field : "totalDeductionNew",
+					width : 180,
+					hide: true,
+					cellStyle : {
+						textAlign : 'right'
+					},
+	
+				},
+				{
+					headerName : "NetPayNew",
+					field : "netPayNew",
+					width : 180,
+					hide: true,
+					cellStyle : {
+						textAlign : 'right'
+					},
+				},
+				{
+					headerName : 'Approve Status',
+					field : "approveStatus",
+					width : 150,
+					cellRenderer : function(params) {
+						if (params.data.approveStatus == 1) {
+							return '<div style="color:#ffa500">Forwarded</div>';
+						} else if (params.data.approveStatus == 3) {
+							return '<div style="color:#0642f5">Approved</div>';
+						} else if (params.data.approveStatus == 0) {
+							return '<div style="color:#a9a9a9">Pending</div>';
+						}else{
+							 return '';
+						}	
+					}
+				}
+				];
+		var rowData = [ {
+		    	empId: 'Total'
+		    },];
+		var gridOptions = {
+			    columnDefs: columnDefs,
+			    defaultColDef: {
+			        sortable: true,
+			        filter: true,
+			        resizable: true,
+			        width: 410,
+			        height: 20
+			    },
+			    pinnedBottomRowData: rowData,
+			    rowSelection: 'single',
+			    getRowStyle: function (params) {
+			        // Check if it is the last row
+			        if (params.node.rowPinned) {
+			            // Apply your custom styling for the last row
+			            return { background: '#EAE7FA !important', fontWeight: 'bold' };
+			        }
+			        // Return null for other rows
+			        return null;
+			    },
+			    onGridReady: function(params) {
+			        // When the grid is ready, add the event listener for clicks outside the grid
+			        document.addEventListener('click', function(event) {
+			            // Get the grid container element
+			            var gridContainer = document.querySelector('#myGrid');
+			            // Check if the clicked element is outside the grid container
+			            if (!gridContainer.contains(event.target)) {
+			                // Deselect all rows
+			                gridOptions.api.deselectAll();
+			            }
+			        });
+			    },
+			    onRowDoubleClicked: function(event) {
+			        // Deselect the double-clicked row
+			        gridOptions.api.deselectAll();
+			    },
+			    onRowSelected: function(event) {
+			        // Refresh cells when row is selected/deselected to update the disabled state of inputs
+			        gridOptions.api.refreshCells({ force: true });
+			    },
+			    components: {
+			        // Custom cell renderer component for editable columns
+			        editableCellRenderer: function(params) {
+			            var formattedValue = indianNumber(params.value);
+			            var isSelected = params.node.isSelected();
+
+			            if (params.data.empId === 'Total' || params.data.approveStatus === '3') {
+			                return formattedValue;
+			            } else {
+			                return '<input type="text" class="totalHour" name="numHour" value="' + params.value + '" id="' + params.colDef.field + params.data.empId + '" maxlength="5" onkeyup="updateSumOfColumns(event,\'' + params.colDef.field + '\');checkNumeric(this.id);" ' +
+			                    (isSelected ? '' : 'disabled') + '>';
+			            }
+			        }
+			    },
+			    frameworkComponents: {
+			        editableCellRenderer: 'editableCellRenderer'
+			    }
+			};
+		function indianNumber(amount) {
+		    if (amount == null) {
+		        return '';
+		    }
+		    amount = amount.toString();
+		    
+		    let [integerPart, decimalPart] = amount.split('.');
+		    let reversedInteger = integerPart.split('').reverse().join('');
+		    let formattedReversedInteger = reversedInteger.replace(/(\d{3})(?=\d)/g, '$1,').replace(/(\d{2})(?=\d{3},)/g, '$1,');
+		    let formattedInteger = formattedReversedInteger.split('').reverse().join('');
+		    return decimalPart ? `${formattedInteger}.${decimalPart}` : formattedInteger;
+		}
+		function generateCellContent(params, id) {
+		    if (params.data.empId === 'Total') {
+		        return params.value;
+		    } else if (params.data.approveStatus === '3') {
+		        return '<input type="text" class="totalHour" name="numHour" value="' + params.data.edliCharge + '" id="' + id + params.data.empId + '" maxlength="5" onkeyup="updateSumOfColumns(event,\'' + id + '\');checkNumeric(this.id);" disabled style="background-color: #ccc; color: #555;">';
+		    } else {
+		        return '<input type="text" class="totalHour" name="numHour" value="' + params.data.edliCharge + '" id="' + id + params.data.empId + '" maxlength="5" onkeyup="updateSumOfColumns(event,\'' + id + '\');checkNumeric(this.id);">';
+		    }
+		}
+		function checkNumeric(id) {
+		    var textField = document.getElementById(id);
+		    var value = textField.value.replace(/[^0-9 ]/g, '');
+		    if(value.slice(-1) == ' '){
+		     	$("#" + id).empty();
+		     	value = '';
+		     } 
+		   $("#" + id).val(value);
+		}
+		function updateSumOfColumns(event, col=null) {
+		    var newVal = event.target.value;
+		    var val = newVal.replace(/[^0-9 ]/g, '');
+		    var selectedNode = gridOptions.api.getSelectedNodes()[0];
+		   
+		    if (selectedNode) { 
+		        if (col === 'incTax' || col === 'advance' || col === 'otherpenamnt' || col === 'other' || 
+		        		col === 'reward' || col === 'bonus' || col === 'arear' || col === 'otherAllow' || 
+		        		col === 'adminCharge' || col === 'edliCharge') {
+		        	
+		            selectedNode.setDataValue(col, parseFloat(val) || 0);
+		            
+		        }
+		    }
+		    updateData();
+		    countFilteredRows();
+		    var empId = selectedNode.data.empId;
+		    var textField = document.getElementById(col + empId);
+		    if (textField) {
+		        textField.focus();
+		        textField.selectionStart = textField.selectionEnd = textField.value.length; 
+		    }
+		    event.preventDefault();
+		}
+		function updateData(){
+			gridOptions.api.forEachNode(function(node) {
+                var rowData = node.data;
+               
+                var totalEarning = parseFloat(rowData.totalEarningNew || 0);
+                var otherAllow = parseFloat(rowData.otherAllow || 0);
+                var arear = parseFloat(rowData.arear || 0);
+                var bonus = parseFloat(rowData.bonus || 0);
+                var reward = parseFloat(rowData.reward || 0);
+                
+                var earning = totalEarning + otherAllow + arear + bonus + reward ;
+                
+                var totalDeduction = parseFloat(rowData.totalDeductionNew || 0);
+                var other = parseFloat(rowData.other || 0);
+                var otherpenamnt = parseFloat(rowData.otherpenamnt || 0);
+                var advance = parseFloat(rowData.advance || 0);
+                var incTax = parseFloat(rowData.incTax || 0);
+                var deduct = totalDeduction + incTax + other + otherpenamnt + advance ;
+                
+              //  var netPay = parseFloat(rowData.netPayNew || 0);
+                
+                var gross = earning - deduct;
+                
+                node.setDataValue('totalEarning', earning);
+                node.setDataValue('totalDeduction', deduct);
+                node.setDataValue('netPay', gross);
+				
+            //    console.log("dataaaa----",node.data);
+                node.setData(node.data);
+            });
+		}
+		/* -------------------search bar for mygrid------------------------ */
+	
+		function onQuickFilterChanged() {
+			gridOptions.api
+					.setQuickFilter(document.getElementById('quickFilter').value);
+		//	alert(JSON.stringify(quickFilter))
+		    countFilteredRows();
+
+		    const filteredRows = gridOptions.api.getDisplayedRowCount();
+		    $('#totalReq').find('span').html(filteredRows);
+		}
+		function countFilteredRows() {
+            var filteredRowCount = 0;
+            var data = [];
+            gridOptions.api.forEachNodeAfterFilter(function (node) {
+                data.push(node.data);
+            });
+            var basic = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.basic);
+		    }, 0);
+			var hra = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.hra);
+		    }, 0);
+		    var medical = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.medical);
+		    }, 0);
+		    var conve = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.conve);
+		    }, 0);
+		    var washAllow = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.washAllow);
+		    }, 0);
+		    var skillDev = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.skillDev);
+		    }, 0);
+		    var other = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.other);
+		    }, 0);
+		    var bonus = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.bonus);
+		    }, 0);
+		    var reward = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.reward);
+		    }, 0);
+		    var arear = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.arear);
+		    }, 0);
+		    var overTime = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.overTime);
+		    }, 0);
+		    var totalEarning = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.totalEarning);
+		    }, 0);
+		    var incTax = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.incTax);
+		    }, 0);
+		    var empEPF = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.empEPF);
+		    }, 0);
+		    var empESI = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.empESI);
+		    }, 0);
+		    var profTax = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.profTax);
+		    }, 0);
+		    var advance = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.advance);
+		    }, 0);
+		    var totalDeduction = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.totalDeduction);
+		    }, 0);
+		    var netPay = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.netPay);
+		    }, 0);
+		    var compESI = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.compESI);
+		    }, 0);
+		    var empESI = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.empESI);
+		    }, 0);
+		    var specialAllowance = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.specialAllowance);
+		    }, 0);
+		    var lic = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.lic);
+		    }, 0);
+		    var welfund = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.welfund);
+		    }, 0);
+		    var adminCharge = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.adminCharge);
+		    }, 0);
+		    var edliCharge = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.edliCharge);
+		    }, 0);
+		    var compEPF = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.compEPF);
+		    }, 0);
+		    
+		    var workDay = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.workDay);
+		    }, 0);
+		    
+		    var present = data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.present);
+		    }, 0);
+		    
+		    var  offday= data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.offday);
+		    }, 0);
+		    
+		    var  workingDay= data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.workingDay);
+		    }, 0);
+		    var  leave= data.reduce(function (sum, row) {
+		        return sum + parseFloat(row.leave);
+		    }, 0);
+		    
+		    var  attendance= parseFloat(workingDay/workDay * 100 || 0).toFixed(2);
+
+		    
+		    var totalRow = [{
+		    		empId: 'Total',
+		    		basic: basic.toFixed(2),
+		    		hra: hra.toFixed(2),
+		    		medical: medical.toFixed(2),
+		    		conve: conve.toFixed(2),
+		    		washAllow: washAllow.toFixed(2),
+		    		skillDev: skillDev.toFixed(2),
+		    		other: other.toFixed(2),
+		    		bonus: bonus.toFixed(2),
+		    		reward: reward.toFixed(2),
+		    		arear: arear.toFixed(2),
+		    		overTime: overTime.toFixed(2),
+		    		totalEarning: totalEarning.toFixed(2),
+		    		incTax: incTax.toFixed(2),
+		    		empEPF: empEPF.toFixed(2),
+		    		empESI: empESI.toFixed(2),
+		    		profTax: profTax.toFixed(2),
+		    		advance: advance.toFixed(2),
+		    		totalDeduction: totalDeduction.toFixed(2),
+		    		netPay: netPay.toFixed(2),
+		    		compESI: compESI.toFixed(2),
+		    		specialAllowance: specialAllowance.toFixed(2),
+		    		lic: lic.toFixed(2),
+		    		welfund: welfund.toFixed(2),
+		    		adminCharge: adminCharge.toFixed(2),
+		    		edliCharge: edliCharge.toFixed(2),
+		    		compEPF: compEPF.toFixed(2),
+		    		workDay: workDay,
+		    		present: present,
+		    		offday: offday,
+		    		workingDay: workingDay,
+		    		attendance: attendance,
+		    		leave: leave
+		    }];
+		    gridOptions.api.setPinnedBottomRowData(totalRow);
+        }
+		function cancelBar() {
+			var id = document.getElementById("closeKey");
+			id.style.display = "block";
+	
+			if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+				id.style.display = "none";
+			}
+		}
+		function getCurrentDateMonthYear() {
+			var curdate = new Date();
+			var date = curdate.getDate();
+			var mnth = curdate.getMonth();
+			$("#attndyear").val(curdate.getFullYear())
+			var sday = $("#startDayForAtten").val();
+			if (parseInt(sday) > 1) {
+				if (parseInt(date) > parseInt(sday)) {
+					var month = (curdate.getMonth() + 1);
+					var year = curdate.getFullYear();
+				} else {
+					var month = curdate.getMonth();
+					if (month == 0) {
+						var year = curdate.getFullYear() - 1;
+						month = 12;
+					} else {
+						var month = curdate.getMonth();
+						var year = curdate.getFullYear();
+					}
+				}
+			} else {
+				var month = (curdate.getMonth() + 1);
+				var year = curdate.getFullYear();
+			}
+			var nextmonth = month + 1;
+			if (parseInt(sday) > 1) {
+				$("#attndmonth").val(month + 1);
+			} else {
+				$("#attndmonth").val(month);
+			}
+			var fromdate = sday + "-" + String(month).padStart(2, '0') + "-" + year;
+			const lastDayOfMonth = new Date(year, month, 0).getDate();
+			if (sday > 1) {
+				if (month == "12") {
+					var todate = (parseInt(sday) - 1) + "-"
+							+ String(1).padStart(2, '0') + "-" + (year + 1);
+				} else {
+					var todate = (parseInt(sday) - 1) + "-"
+							+ String(nextmonth).padStart(2, '0') + "-" + year;
+				}
+			} else {
+				var todate = lastDayOfMonth + "-" + String(month).padStart(2, '0')
+						+ "-" + year;
+			}
+			$("#fromDate").val(fromdate);
+			$("#fromDateCalendar").val(fromdate);
+			$("#endDate").val(todate);
+			$("#endDateCalendar").val(todate);
+		}
+		//Process
+		function Process() {
+			var curdate = new Date();
+			var date = curdate.getDate();
+			if (date > 15) {
+				var month = (curdate.getMonth() + 1);
+				var year = curdate.getFullYear();
+			} else {
+				var month = curdate.getMonth();
+				if (month == 0) {
+					var year = curdate.getFullYear() - 1;
+					month = 12;
+				} else {
+					var year = curdate.getFullYear();
+				}
+			}
+			var dataset = [];
+			var fromDate = $("#fromDate").val();
+			var toDate = $("#endDate").val();
+			var stafftype = $("#stafftype").val();
+			var financialYr = $("#financialYr").val();
+			var userrole = $("#sessionRole").val();
+			var roleid = "";
+			for (var i = 6; i <= userrole.length; i = i + 6) {
+				roleid = roleid + '"' + userrole.slice(i - 6, i) + '",';
+			}
+			roleid = roleid.substring(0, roleid.length - 1);
+	
+			 var components = [  						//list of all salary component
+				    { id: 'EEM001', name: 'basic' }, 
+				    { id: 'EEM002', name: 'hra' }, 
+				    { id: 'EEM005', name: 'medical' }, 
+				    { id: 'EEM006', name: 'profTax' },
+				    { id: 'EEM007', name: 'empEPF' }, 
+				    { id: 'EEM008', name: 'empESI' },
+				    { id: 'EEM009', name: 'incTax' },  
+				    { id: 'EEM010', name: 'compEPF' },
+				    { id: 'EEM011', name: 'compESI' }, 
+				    { id: 'EEM012', name: 'otherAllow' }, 
+				    { id: 'EEM013', name: 'advance' }, 
+				    { id: 'EEM016', name: 'bonus' }, 
+				    { id: 'EEM022', name: 'conve' },
+				    { id: 'EEM023', name: 'arear' }, 
+				    { id: 'EEM024', name: 'washAllow' },
+				    { id: 'EEM025', name: 'overTime' },
+	 			    { id: 'EEM026', name: 'skillDev' }, 
+				    { id: 'EEM028', name: 'reward' }, 
+				    { id: 'EEM033', name: 'otherpenamnt' }, 
+				    { id: 'EEM034', name: 'specialAllowance' }, 
+				    { id: 'EEM035', name: 'totalEarning' }, 
+				    { id: 'EEM036', name: 'totalDeduction' }, 
+				    { id: 'EEM037', name: 'netPay' }, 
+				    { id: 'EEM038', name: 'lic' },
+				    { id: 'EEM040', name: 'welfund' },
+				    { id: 'EEM043', name: 'other' },	
+				    { id: 'EEM045', name: 'adminCharge' },
+				    { id: 'EEM046', name: 'edliCharge' },
+				];
+			 var dataset = [];
+				var emplist = "";
+				gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {		// loop for each row displayed in grid
+				    if(rowNode.data.empId){
+				    	components.forEach(function(component) {									//loop for all salary component to fetch data for saving
+					        var obj = {};
+					        obj.empId = rowNode.data.empId;
+					        obj.bandId = rowNode.data.bandId;
+					        obj.dept = rowNode.data.deptId;
+					        obj.subDept = rowNode.data.subDeptId;
+					        obj.desig = rowNode.data.desig;
+					        obj.componetId = component.id;
+					        obj.amount = rowNode.data[component.name.replace(/ /g, '')] || 0; // Assuming the data fields in rowNode are named appropriately
+					        obj.fromDate = fromDate;
+					        obj.toDate = toDate;
+					        obj.financialYr = financialYr;
+			//		        obj.approvedRemarks = rowNode.data.approvedRemarks;
+			//		        obj.verifiedRemarks = rowNode.data.verifiedRemarks;
+			//		        obj.preparedRemarks = rowNode.data.preparedRemarks;
+			//		        obj.saveType = type;
+					        dataset.push(obj);
+					    });
+				    }
+				    emplist = emplist + '"' + rowNode.data.empId + '",';
+				});
+
+				emplist = emplist.substring(0, emplist.length - 1);
+	
+				var obj1 = {};
+				obj1.emplist = emplist;
+				obj1.roleid = roleid;
+				dataset.push(obj1);
+			if (dataset.length > 0) {
+				saveData(dataset);
+			} else {
+				$("#messageParagraph").text("NO DATA AVAILABLE FOR APPROVE!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('.loader').hide();
+			}
+		}
+		function SaveAsDraft(){
+			var curdate = new Date();
+			var date = curdate.getDate();
+			if (date > 15) {
+				var month = (curdate.getMonth() + 1);
+				var year = curdate.getFullYear();
+			} else {
+				var month = curdate.getMonth();
+				if (month == 0) {
+					var year = curdate.getFullYear() - 1;
+					month = 12;
+				} else {
+					var year = curdate.getFullYear();
+				}
+			}
+	
+			var dataset = [];
+			var fromDate = $("#fromDate").val();
+			var toDate = $("#endDate").val();
+			var stafftype = $("#stafftype").val();
+			var financialYr = $("#financialYr").val();
+			var userrole = $("#sessionRole").val();
+			var roleid = "";
+			for (var i = 6; i <= userrole.length; i = i + 6) {
+				roleid = roleid + '"' + userrole.slice(i - 6, i) + '",';
+			}
+			roleid = roleid.substring(0, roleid.length - 1);
+	
+			 var components = [
+				    { id: 'EEM001', name: 'basic' }, 
+				    { id: 'EEM002', name: 'hra' }, 
+				    { id: 'EEM005', name: 'medical' }, 
+				    { id: 'EEM006', name: 'profTax' },
+				    { id: 'EEM007', name: 'empEPF' }, 
+				    { id: 'EEM008', name: 'empESI' },
+				    { id: 'EEM009', name: 'incTax' },  
+				    { id: 'EEM010', name: 'compEPF' }, 
+				    { id: 'EEM011', name: 'compESI' }, 
+				    { id: 'EEM012', name: 'otherAllow' }, 
+				    { id: 'EEM013', name: 'advance' }, 
+				    { id: 'EEM016', name: 'bonus' }, 
+				    { id: 'EEM022', name: 'conve' },
+				    { id: 'EEM023', name: 'arear' }, 
+				    { id: 'EEM024', name: 'washAllow' },
+				    { id: 'EEM025', name: 'overTime' },
+	 			    { id: 'EEM026', name: 'skillDev' }, 
+				    { id: 'EEM028', name: 'reward' }, 
+				    { id: 'EEM033', name: 'otherpenamnt' }, 
+				    { id: 'EEM034', name: 'specialAllowance' }, 
+				    { id: 'EEM035', name: 'totalEarning' }, 
+				    { id: 'EEM036', name: 'totalDeduction' }, 
+				    { id: 'EEM037', name: 'netPay' }, 
+				    { id: 'EEM038', name: 'lic' },
+				    { id: 'EEM040', name: 'welfund' },
+				    { id: 'EEM043', name: 'other' },	
+				    { id: 'EEM045', name: 'adminCharge' },
+				    { id: 'EEM046', name: 'edliCharge' },
+				];
+			 var dataset = [];
+				var emplist = "";
+				gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+					 if(rowNode.data.empId){
+					    components.forEach(function(component) {
+					        var obj = {};
+					        obj.empId = rowNode.data.empId;
+					        obj.bandId = rowNode.data.bandId;
+					        obj.dept = rowNode.data.deptId;
+					        obj.subDept = rowNode.data.subDeptId;
+					        obj.desig = rowNode.data.desig;
+					        obj.componetId = component.id;
+					        obj.amount = rowNode.data[component.name.replace(/ /g, '')] || 0; // Assuming the data fields in rowNode are named appropriately
+					        obj.fromDate = fromDate;
+					        obj.toDate = toDate;
+					        obj.financialYr = financialYr;
+			//		        obj.approvedRemarks = rowNode.data.approvedRemarks;
+			//		        obj.verifiedRemarks = rowNode.data.verifiedRemarks;
+			//		        obj.preparedRemarks = rowNode.data.preparedRemarks;
+			//		        obj.saveType = type;
+					        dataset.push(obj);
+					    });
+					    emplist = emplist + '"' + rowNode.data.empId + '",';
+					 }
+				});
+
+				emplist = emplist.substring(0, emplist.length - 1);
+	
+				var obj1 = {};
+				obj1.emplist = emplist;
+				obj1.roleid = roleid;
+				dataset.push(obj1);
+			if (dataset.length > 0) {
+				if($('#quickFilter').val() === '' || $('#quickFilter').val() === null){
+					saveDraft(dataset);
+				}else{
+					$("#messageParagraph").text("Empty Search Bar");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$('.loader').hide();
+					
+				}
+			} else {
+				$("#messageParagraph").text("NO DATA AVAILABLE FOR APPROVE!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('.loader').hide();
+			}
+		}
+		function saveDraft(dataset){
+
+			$('.loader').show();
+			$.ajax({
+				type : "POST",
+				url : "view-process-saveAsDraft-details",
+				dataType : "json",
+				contentType : "application/json",
+				data : JSON.stringify(dataset),
+				success : function(response) {
+					if (response.message == "success") {
+						$('.loader').hide();
+						$("#messageParagraph")
+								.text("Saved As Draft Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						viewAllProcessData();
+					} else {
+						$('.loader').hide();
+						$("#messageParagraph").text(
+								"Duplicate Employee Entry");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						viewAllProcessData();
+					}
+				},
+				error : function(response) {
+					console.log(response)
+				}
+			});
+		}
+	function saveData(dataset){
+			$('.loader').show();
+			$.ajax({
+				type : "POST",
+				url : "view-process-approve-details",
+				dataType : "json",
+				contentType : "application/json",
+				data : JSON.stringify(dataset),
+				success : function(response) {
+					if (response.message == "success") {
+						$('.loader').hide();
+						$("#messageParagraph")
+								.text("Approved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						viewAllProcessData();
+					} else {
+						$('.loader').hide();
+						$("#messageParagraph").text(
+								"Duplicate Employee Entry");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						viewAllProcessData();
+					}
+				},
+				error : function(response) {
+					console.log(response)
+				}
+			});
+	}
+function changeType() {
+	viewAllProcessData();
+}
+	
+function getprocessYrMtData() {
+			var curdate = new Date();
+			var month = $("#attndmonth").val();
+			var sday = $("#startDayForAtten").val();
+			var attnyear = $("#attndyear").val();
+			var financial_year = "";
+			if ((month) <= 3) {
+				financial_year = (parseInt(attnyear) - 1) + "-"
+						+ parseInt(attnyear)
+			} else {
+				financial_year = parseInt(attnyear) + "-"
+						+ (parseInt(attnyear) + 1)
+			}
+	
+			$("#financialYr").val(financial_year)
+	
+			if (parseInt(sday) > 1) {
+				if (month == 1) {
+					var year = attnyear - 1;
+					month = 12;
+				} else {
+					var year = attnyear;
+					month = month - 1;
+				}
+			} else {
+				var year = attnyear;
+			}
+	
+			var nextmonth = parseInt(month) + 1;
+	
+			var fromdate = sday + "-" + String(month).padStart(2, '0') + "-" + year;
+			const lastDayOfMonth = new Date(year, month, 0).getDate();
+			if (sday > 1) {
+				if (month == "12") {
+					var todate = (parseInt(sday) - 1) + "-"
+							+ String(1).padStart(2, '0') + "-" + (year + 1);
+				} else {
+					var todate = (parseInt(sday) - 1) + "-"
+							+ String(nextmonth).padStart(2, '0') + "-" + year;
+				}
+			} else {
+				var todate = lastDayOfMonth + "-" + String(month).padStart(2, '0')
+						+ "-" + year;
+			}
+	
+			$("#fromDate").val(fromdate);
+			$("#fromDateCalendar").val(fromdate);
+			$("#endDate").val(todate);
+			$("#endDateCalendar").val(todate);
+		}
+		function changeMonthYear() {
+			var curdate = new Date();
+			var attnyear = $("#attndyear").val();
+			var sday = $("#startDayForAtten").val();
+			var date = curdate.getDate();
+			var mnth = curdate.getMonth();
+	
+			if (attnyear > curdate.getFullYear()) {
+				$("#messageParagraph").text(
+						"Please Choose Current Year Or Previous Year!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$("#attndyear").val(curdate.getFullYear())
+				getCurrentFY();
+				getCurrentDateMonthYear();
+				viewAllProcessData();
+			} else {
+				if (attnyear == curdate.getFullYear()) {
+					var month = $("#attndmonth").val();
+					var mt = month - 1;
+					if (mt > curdate.getMonth()) {
+						$("#messageParagraph").text(
+								"Please Choose Current month Or Previous Month!");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						if (parseInt(sday) > 1) {
+							if (parseInt(date) > parseInt(sday)) {
+								var month = (curdate.getMonth() + 1);
+								var year = attnyear;
+							} else {
+								var month = curdate.getMonth();
+								if (month == 0) {
+									var year = attnyear - 1;
+									month = 12;
+								} else {
+									var month = curdate.getMonth();
+									var year = attnyear;
+								}
+							}
+						} else {
+							var month = (curdate.getMonth() + 1);
+							var year = attnyear;
+						}
+						var nextmonth = month + 1;
+						if (parseInt(sday) > 1) {
+							$("#attndmonth").val(month + 1);
+						} else {
+							$("#attndmonth").val(month);
+						}
+						var fromdate = sday + "-" + String(month).padStart(2, '0')
+								+ "-" + year;
+						const lastDayOfMonth = new Date(year, month, 0).getDate();
+						if (sday > 1) {
+							if (month == "12") {
+								var todate = (parseInt(sday) - 1) + "-"
+										+ String(1).padStart(2, '0') + "-"
+										+ (year + 1);
+							} else {
+								var todate = (parseInt(sday) - 1) + "-"
+										+ String(nextmonth).padStart(2, '0') + "-"
+										+ year;
+							}
+						} else {
+							var todate = lastDayOfMonth + "-"
+									+ String(month).padStart(2, '0') + "-" + year;
+						}
+	
+						$("#fromDate").val(fromdate);
+						$("#fromDateCalendar").val(fromdate);
+						$("#endDate").val(todate);
+						$("#endDateCalendar").val(todate);
+					} else {
+						getprocessYrMtData();
+						viewAllProcessData();
+					}
+				} else {
+					getprocessYrMtData();
+					viewAllProcessData();
+				}
+			}
+		}
+		//downloadProcessCSV
+		function downloadProcessCSV() {
+			var rowCount = 0;
+			gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			    if (rowNode.data.empId) {
+			        rowCount++;
+			    }
+			});
+			if (rowCount > 0) {
+			    var name = "Salary Process-" + $("#attndmonth option:selected").text();
+			    var allColumns = gridOptions.columnApi.getAllColumns();
+
+			    allColumns.forEach(col => {
+			        if (col.getColDef().headerName) {
+			            col.getColDef().headerName = col.getColDef().headerName.toUpperCase();
+			        }
+			    });
+
+			    var visibleColumns = allColumns.filter(col => {
+			        const headerName = col.getColDef().headerName;
+			        const isColumnVisible = !col.getColDef().hide;
+			        return headerName !== undefined && headerName !== null && isColumnVisible;
+			    });
+
+			    var visibleColumnIds = visibleColumns.map(col => col.getColId());
+
+			    const params = {
+			        skipHeader: false,
+			        columnGroups: false,
+			        skipFooters: false,
+			        skipGroups: false,
+			        skipPinnedTop: false,
+			        skipPinnedBottom: false,
+			        allColumns: true,
+			        onlySelected: false,
+			        suppressQuotes: false,
+			        fileName: name + '.csv',
+			        sheetName: 'Sheet1',
+			        customHeader: null,
+			        customFooter: null,
+			        columnKeys: visibleColumnIds
+			    };
+			    gridOptions.api.exportDataAsCsv(params);
+			} else {
+			    $("#messageParagraph").text("NO DATA AVAILABLE FOR DOWNLOAD!");
+			    $("#msgOkModal").removeClass("btn3");
+			    $("#msgOkModal").addClass("btn1");
+			    $("#msgModal").modal('show');
+			}
+		}
+		//getCurrentFY
+		function getCurrentFY() {
+			var financial_year = "";
+			var today = new Date();
+			if ((today.getMonth() + 1) <= 3) {
+				financial_year = (today.getFullYear() - 1) + "-"
+						+ today.getFullYear()
+			} else {
+				financial_year = today.getFullYear() + "-"
+						+ (today.getFullYear() + 1)
+			}
+			$("#financialYr").val(financial_year)
+		}
+		//view All Process Data
+		function viewAllProcessData() {
+			var rowStatus=[];
+			var stafftype = $("#stafftype").val();
+			var fromDate = $("#fromDate").val();
+			var toDate = $("#endDate").val();
+			var employedBy = $("#employedBy").val();
+			$('.loader').show();
+			agGrid.simpleHttpRequest(
+					{
+						url : "view-process-view-details?fromDate=" + fromDate
+								+ "&toDate=" + toDate + "&employedBy=" + employedBy + "&stafftype=" + stafftype
+					}).then(function(data) {
+					$('.loader').hide();
+				var len = data.length;
+				$('#totalReq').find('span').html(len);
+				gridOptions.api.setRowData(data);
+				var count=0;
+				for (var i = 0; i < data.length; i++) {
+				    var approveStatus = data[i].approveStatus;
+				    if(approveStatus === '3'){
+				    	count +=1;
+				    }
+				}
+				if(data.length==count){
+			    	$('#saveDraft').hide();
+			    	$('#approve').hide();
+			    }else{
+			    	$('#saveDraft').show();
+			    	$('#approve').show();
+			    }
+				$('.loader').hide();
+				countFilteredRows();
+			    gridOptions.api.forEachNode(function(node) {
+					var rowData = node.data;
+					var changeAble =  parseFloat(rowData.incTax || 0) + parseFloat(rowData.advance || 0) + parseFloat(rowData.other || 0);
+					var totalDeduction = parseFloat(rowData.totalDeduction - changeAble || 0);
+					var totalEarning = parseFloat(rowData.totalEarning - parseFloat(rowData.arear || 0) || 0);
+					var netPay = parseFloat(totalEarning - totalDeduction || 0);
+                    node.setDataValue('totalDeductionNew', totalDeduction);
+					node.setDataValue('netPayNew', netPay);
+					node.setDataValue('totalEarningNew', totalEarning);
+                    node.setData(node.data);
+          	 }); 
+			});
+	
+		}
+		//get Approver Status
+		function getApproverStatus() {
+			var fromDate = $("#fromDate").val();
+			var userId = $("#sessionId").val();
+			if (fromDate) {
+				$.ajax({
+					type : 'GET',
+					url : 'view-process-getApproverStatus?fromDate=' + fromDate
+							+ "&userId=" + userId,
+					contentType : false,
+					success : function(response) {
+						if (response.message == "success") {
+							$("#isApprove").val(response.body.key);
+						}
+					},
+					error : function(e) {
+						alert("error");
+					}
+				});
+			}
+		}
+	</script>
+
+</head>
+
+<body>
+
+	<div layout:fragment="content">
+		<div class="content-wrap">
+			<div class="container-fluid">
+				<div class="maincontent">
+					<div class="row">
+
+						<div class="maincontentsec">
+							<div class="content_padding">
+
+								<div id="main_content">
+
+									<div class="panel-body">
+
+										<div class="row">
+											<input type="hidden" id="sessionId" th:value="${userId}" />
+											<input type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+												type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+												type="hidden" id="isApprove" /> <input type="hidden"
+												id="startDayForAtten" th:value="${startDayForAtten}" />
+
+											<div class="col-md-2">
+												<div class="form-group">
+													<label>Type</label>
+													<div class="select">
+														<select id="stafftype" class="form-control"
+															onchange="changeType()">
+															<option value="All">All</option>
+															<option th:each="c,iter:${typeList}" th:value="${c.key}"
+																th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-2">
+												<div class="form-group">
+													<label>Employed By</label>
+													<div class="select">
+														<select class="form-control bandclssls" id="employedBy"
+															onchange="changeType()">
+															<option value="All">All</option>
+															<option th:each="c,iter:${employedByList}"
+																th:value="${c.key}" th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+
+											<div class="col-md-2">
+												<div class="form-group">
+													<label>Year</label>
+													<div class="select">
+														<select id="attndyear" class="form-control"
+															onchange="changeMonthYear()">
+															<option th:each="c,iter:${yearList}" th:value="${c.name}"
+																th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-2">
+												<div class="form-group">
+													<label>Month Name</label>
+													<div class="select">
+														<select id="attndmonth" class="form-control"
+															onchange="changeMonthYear()">
+															<!-- <option value="">--SELECT--</option> -->
+															<option value="1">JANUARY</option>
+															<option value="2">FEBRUARY</option>
+															<option value="3">MARCH</option>
+															<option value="4">APRIL</option>
+															<option value="5">MAY</option>
+															<option value="6">JUNE</option>
+															<option value="7">JULY</option>
+															<option value="8">AUGUST</option>
+															<option value="9">SEPTEMBER</option>
+															<option value="10">OCTOBER</option>
+															<option value="11">NOVEMBER</option>
+															<option value="12">DECEMBER</option>
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-1">
+												<label>From Date</label>
+												<div class="form-group calendar_box">
+													<input type="text" id="fromDate" value=""
+														class="form-control"
+														th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+														readonly>
+													<!-- <i class="ti-calendar picker_calendar"
+															id="fromDateCalendar"></i> -->
+												</div>
+											</div>
+											<div class="col-md-1">
+												<label>To Date</label>
+												<div class="form-group calendar_box">
+													<input type="text" id="endDate" value=""
+														class="form-control"
+														th:attr="onkeyup=|formatDate('endDate','${session.DATEFORMAT_JS}')|"
+														readonly>
+													<!-- <i class="ti-calendar picker_calendar"
+															id="endDateCalendar"></i> -->
+												</div>
+											</div>
+											<div class="col-md-2">
+												<label>Financial Year</label>
+												<div class="form-group">
+													<input type="text" name="financialYr" value=""
+														placeholder="Financiyal Year" class="form-control"
+														id="financialYr" readonly>
+												</div>
+											</div>
+
+										</div>
+										<div class="d-flex justify-content-between mt-4">
+											<div class="btn-hs">
+												<div class="font-design" id="totalReq">
+													Employee Process Details(<span></span>)
+												</div>
+											</div>
+											<div id="searchRowDiv">
+												<div class="input-style">
+													<input type="text" placeholder="Search.." name="search"
+														class="searchboxinput" onkeyup="cancelBar()"
+														oninput="onQuickFilterChanged()" id="quickFilter"
+														autocomplete="off">
+													<div class="searchicon">
+														<a href="javascript:void(0)"><span
+															style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+															id="closeKey"
+															onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+															class="close_i"><i class="ti-close srchicon"></i></span></a><a
+															href="javascript:void(0)"><i
+															class="ti-search srchicon"></i></a>
+													</div>
+												</div>
+											</div>
+											<div class="buttonsec btn-hs" id="btndiv">
+												<button class="btn4" onclick="downloadProcessCSV()">Download</button>
+												<button class="approve-btn" id="approve" onclick="Process()">Approve</button>
+												<button class="btn1" id="saveDraft" onclick="SaveAsDraft()">Save
+													As Draft</button>
+											</div>
+										</div>
+										<div id="myGrid" style="width: 100%; height: 400px;"
+											class="ag-theme-alpine"></div>
+
+									</div>
+								</div>
+
+							</div>
+
+
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</html>

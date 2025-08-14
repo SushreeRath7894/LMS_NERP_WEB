@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+.btn1 {
+    border: none;
+    border-radius: 4px;
+    font-size: 10px;
+    background-color: #5784c4;
+    color: #fff!important;
+    margin-left: 5px;
+    margin-bottom: 8px;
+    width: 105px;
+    height: 28px;
+    line-height: 12px;
+    float: right;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.taskInfo{
+	padding-left: 10px;
+    color: #0c63e4;
+}
+
+.rating {
+	float: left;
+}
+
+.rating:not(:checked)>input {
+	position: absolute;
+	top: -9999px;
+	clip: rect(0, 0, 0, 0);
+}
+
+.rating:not(:checked)>label {
+	float: right;
+	width: 1em;
+	padding: 0 .1em;
+	overflow: hidden;
+	white-space: nowrap;
+	cursor: pointer;
+	font-size: 200%;
+	line-height: 1.2;
+	color: rgba(0, 0, 0, 0.6);
+	/*  text-shadow:1px 1px #bbb, 2px 2px #666, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating:not(:checked)>label:before {
+	content: '★ ';
+}
+
+.rating>input:checked ~ label {
+	color: #ea0;
+	/*  text-shadow:1px 1px #c60, 2px 2px #940, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating:not(:checked)>label:hover, .rating:not(:checked)>label:hover ~
+	label {
+	color: black;
+	/*  text-shadow:1px 1px goldenrod, 2px 2px #B57340, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating>input:checked+label:hover, .rating>input:checked+label:hover ~
+	label, .rating>input:checked ~ label:hover, .rating>input:checked ~
+	label:hover ~ label, .rating>label:hover ~ input:checked ~ label {
+	color: #ea0;
+	/*  text-shadow:1px 1px goldenrod, 2px 2px #B57340, .1em .1em .2em rgba(0,0,0,.5); */
+}
+
+.rating>label:active {
+	position: relative;
+	top: 2px;
+	left: 2px;
+}
+
+.btn-outline-primary {
+	color: #007bff;
+	background-color: rgb(240 243 241/ 90%);
+	background-image: none;
+	border-color: #007bff;
+	cursor: pointer;
+}
+.picker_calendar5 {
+ cursor: pointer;
+    position: absolute;
+    bottom: 361px;
+    left: 742px;
+}
+.picker_calendar6 {
+    cursor: pointer;
+    position: absolute;
+    bottom: 361px;
+    left: 1132px;
+}
+</style>
+<script>
+	
+	$(function() {
+		
+		 $("input[name=ReminderYesOrNo]:radio").click(function () {
+		        if ($('input[name=ReminderYesOrNo]:checked').val() == "Yes") {
+		            $('.reminderBtn').show();
+
+		        } else if ($('input[name=ReminderYesOrNo]:checked').val() == "No") {
+		            $('.reminderBtn').hide();
+		            $('#reminderDateid').val("");
+		            $('#reminderTime').val("");
+		            $('#taskAlertBy').val("");
+
+		        }
+		    });
+		
+		
+		var dateFormat = localStorage.getItem("dateFormat");								
+		$("#startDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#startDate').val($(this).val());
+		})
+		
+		$('#startDate').blur(function(){
+			$("#startDateCalendar").val($(this).val());
+		})
+		
+		
+		$("#endDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#endDate').val($(this).val());
+		})
+		
+		$('#endDate').blur(function(){
+			$("#endDateCalendar").val($(this).val());
+		})
+	
+	
+	
+	
+	 $("#toDateCalendarTime").datetimepicker({
+		format : 'H:i',
+		closeOnDateSelect : false,
+		timepicker : true,
+		datepicker : false,
+		step : 15
+	}).on("change", function() {
+		$('#reminderTime').val($(this).val());
+	})
+
+	$('#reminderTime').blur(function() {
+		$("#toDateCalendarTime").val($(this).val());
+	}) 
+	});
+	
+	$(function() {
+
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		agGrid.simpleHttpRequest({
+			url : "view-crm-daily-work-throughAjax"
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+
+			gridOptions.api.setRowData(data);
+
+		});
+		$("#myGrid").show();
+		$("#delete").attr("disabled", true);
+	});
+
+	$(function() {
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+	})
+	//search bar
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+
+	$('input,textarea').focus(
+			function() {
+				$(this).data('placeholder', $(this).attr('placeholder')).attr(
+						'placeholder', '');
+			}).blur(function() {
+		$(this).attr('placeholder', $(this).data('placeholder'));
+	});
+
+	var count = 0;
+	function allCheck() {
+		count++;
+
+		if (count == 1) {
+			$('.checkCls').prop("checked", true);
+		} else {
+			count = 0;
+			$('.checkCls').prop("checked", false);
+		}
+	}
+
+	var txtLen = 0;
+	function textCount(event) {
+
+		var id = event.target.id;
+		var pId = $('#' + id).next().attr("id");
+		$('#' + pId + ' span').empty();
+		txtLen = $('#' + id).val().length;
+		$('#' + pId + ' span').append(txtLen);
+	}
+	// column Defs
+	const columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				checkboxSelection : true,
+				width : 8,
+				sortable : false,
+				filter : false,
+				resizable : true
+				
+
+			},{
+				headerName : 'Activity Id',
+				field : "activityId",
+				cellRenderer : function(params) {
+					return '<a onclick=editPage("' + params.data.activityId
+							+ ',' + '0' + '") href="javascript:void(0)">'+"activity"
+							+ params.data.activityId + '</a>';
+				}
+			}, {
+				headerName : "Executive Name",
+				field : "ownerName",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			},
+			
+			
+			 {
+				headerName : "Activity Name",
+				field : "activityName",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			},{
+				headerName : "Activity Date",
+				field : "todayDate",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			},{
+				headerName : "Description",
+				field : "description",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			},
+			   {
+				headerName : "Status",
+				field : "activityStatus",
+				cellStyle : {
+					textAlign : 'left'
+				}
+			} ];
+
+	const gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 187,
+			height :10
+		},
+		rowSelection : 'multiple',
+		suppressRowClickSelection : true,
+		onSelectionChanged : rowSelect,
+		getRowNodeId : function(data) {
+			return data.activityId;
+		}
+	};
+	
+	var deleteId = "";
+	function rowSelect() {
+		//alert('hello select');
+		var selectedRows = gridOptions.api.getSelectedRows();
+		deleteId = "";
+
+		for (var i = 0; i < selectedRows.length; i++) {
+			//deleteId = deleteId + '"' + selectedRows[i].campaignId + '",';
+			  deleteId = deleteId  + selectedRows[i].activityId + ',';
+		}
+
+		//var programming = $("input[name='ag-checkbox-input']:checked").map(function() {
+        //    return this.value;
+       // }).get().join(', ');
+		
+		//alert(programming);
+		deleteId = deleteId.substring(0, deleteId.length - 1);
+		console.log(deleteId)
+		var rowCount = 0;
+
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			$('#delete').attr("disabled", false);
+
+		} else {
+			$('#delete').attr("disabled", true);
+		}
+	}
+	// for new button
+	function newBtn() { 
+	//	alert('hello');
+		$("#add").hide();
+		$("#copy").hide();
+		$("#delete").hide();
+		$("#myGrid").hide();
+		$("#searchRowDiv").hide();
+		$("#totalReq").hide();
+		$("#statusDiv").hide();
+		$("#idDiv").hide();
+		$("#collapseFour").hide();
+		$("#headingFour").hide();
+		$("#myGridActivity").hide();
+
+		$("#demo").show();
+
+	}
+	// for cancel button
+	function cancelBtn() {
+		$("#add").show();
+		$("#copy").show();
+		$("#delete").show();
+		$("#totalReq").show();
+		$("#myGrid").show();
+		$("#searchRowDiv").show();
+		$("#demo").hide();
+
+		$('#owner').val("");
+		$('#activityId').val("");
+		$('#activityName').val("");
+		$('#activityStatus').val("");
+		$('#todayDate').val("");
+		$('#description').text("");
+		
+
+		agGrid.simpleHttpRequest({
+			url : "view-crm-daily-work-throughAjax"
+		}).then(function(data) {
+			gridOptions.api.setRowData(data);
+		});
+	}
+
+	$(document).ready(function() {
+		$("#date").datetimepicker({
+			format : "d-m-Y",
+			closeOnDateSelect : true,
+			minDate : new Date(),
+			timepicker : false,
+		});
+		$("#activityId").val("");
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#fromDate').val($(this).val());
+		})
+
+		$('#fromDate').blur(function() {
+			$("#fromDateCalendar").val($(this).val());
+		})
+
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#toDate').val($(this).val());
+		})
+
+		$('#toDate').blur(function() {
+			$("#toDateCalendar").val($(this).val());
+		})
+
+		$("#fromTime").datetimepicker({
+			format : 'H:i',
+			closeOnDateSelect : false,
+			timepicker : true,
+			datepicker : false,
+			step : 15
+		})
+
+		$("#toTime").datetimepicker({
+			format : "H:i",
+			closeOnDateSelect : false,
+			timepicker : true,
+			datepicker : false,
+			step : 15
+		})
+
+	});
+	
+	
+	// Edit & stage change 
+	function editPage(id) {
+		//alert(id);
+		var editId = id.split(",");
+		
+		var activityId = editId[0];
+		
+		var modal = editId[1];
+		//alert('campaignId------'+campaignId);
+		$("#demo").show();
+
+		$.ajax({
+			type : "GET",
+			url : "view-crm-daily-work-edit?id=" + activityId,
+			async : false,
+			success : function(response) {
+				console.log("response------"+JSON.stringify(response));
+				if (response.message == "Success") {
+					
+					$("#add").hide();
+					$("#copy").hide();
+					$("#delete").hide();
+					$("#myGrid").hide();
+					$("#searchRowDiv").hide();
+					$("#totalReq").hide();
+					$("#statusDiv").hide();
+					$("#idDiv").hide();
+					$("#collapseFour").hide();
+					$("#headingFour").hide();
+					$("#myGridActivity").hide();
+
+					$("#demo").show();
+					
+					var todayDate = response.body[0].todayDate;
+					todayDate = todayDate.split(' ')[0];
+
+					
+					$(".container").hide();
+					//var activityId=
+					$("#activityId").text(response.body[0].activityId);
+					$("#owner").val(response.body[0].ownerName);
+					$("#activityName").val(response.body[0].activityName);
+					$('#activityStatus').val(response.body[0].activityStatus);
+					$('#todayDate').val(todayDate);
+					$('#activityStatus').val(response.body[0].activityStatus);
+					$('#description').val(response.body[0].description);
+					
+					
+				
+					
+					//for stage active status
+					
+				}
+			}
+		})
+	}
+
+</script>
+<script>
+		
+	////ends
+	function addActivityInfo() {
+		///alert('hello');//return false;
+		var obj = {};
+		obj.activityId = $('#activityId').text();
+		obj.owner = $('#owner').val();
+		obj.activityName = $('#activityName').val();
+		obj.activityStatus = $('#activityStatus').val();
+		obj.todayDate = $('#todayDate').val();
+		obj.description = $('#description').val(); 
+		
+		console.log("Object mapping for daily activity--------"+JSON.stringify(obj));
+		/* FORM VALIDATION STARTS*/
+
+		var validation = true;
+		//return false;
+
+	   if (obj.owner == null || obj.owner == "") {
+			validation = validationUpdated("Executive Required",
+					"owner");
+		} 
+
+		/* FORM VALIDATION ENDS*/
+
+		if (validation) {
+			//alert('save');
+			$.ajax({
+				type : "POST",
+				url : "view-crm-daily-work-add",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					console.log(response);
+					if (response.message == "Success") {
+
+						$("#add").show();
+						$("#copy").show();
+						$("#delete").show();
+						$("#totalReq").show();
+						$("#myGrid").show();
+						$("#searchRowDiv").show();
+
+						$("#demo").hide();
+
+						agGrid.simpleHttpRequest({
+							url : "view-crm-daily-work-throughAjax"
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+					}
+				},
+				error : function(data) {
+
+					console.log(data);
+				}
+			})
+		}
+
+	}
+	
+	function deleteActivity(){
+		console.log("delete ids--------------"+deleteId);
+		//return false;
+		$.ajax({
+			type : "GET",
+			url : "view-crm-daily-work-delete-id?id=" + deleteId,
+			success : function(response) {
+				if (response.message == "Success") {
+					cancelBtn();
+					agGrid.simpleHttpRequest({
+						url : "view-crm-daily-work-throughAjax"
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+					});
+
+				}
+			}
+
+		});
+		
+		$('#delete').attr("disabled", true);
+	}
+
+</script>
+</head>
+
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+
+						<div class="d-flex justify-content-between">
+							<div class="col-md-4  btn-hs">
+								<div class="font-design" id="totalReq">
+									ALL DAILY ACTIVITY (<span></span>)
+								</div>
+							</div>
+							<div class="col-md-4  btn-hs" id="searchRowDiv">
+							<div class="input-style">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter">
+								<div class="searchicon">
+									<a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+
+						</div>
+					<div class="buttonsec btn-hs">
+								<input type="button" class="btn3" onclick="deleteActivity()" id="delete" value="DELETE"
+									data-toggle="modal" data-target="#delete" readonly> 
+								<!-- 	<input type="button" class="btn2" id="action" value="Action"
+									 readonly> -->
+									
+									<input type="button" class="btn1" id="add" value="Add Daily Activity"
+									onclick="newBtn()" readonly>
+							</div>
+						</div>
+						
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innercontent">
+								<div class="innerstickybg">
+									<div class="d-flex justify-content-between" id="main">
+										<div class="col-md-3" id="idDiv">
+											Daily Activity ID: <span id="activityId"></span>
+										</div>
+										<div><span class="taskInfo">Daily Activity Information</span></div>
+
+
+										<div class="col-md-3 padding-0" align="right">
+											<button class="btn4" id="cancel" onclick="cancelBtn()">CANCEL</button>
+											<button class="btn1" id="save" onclick="addActivityInfo()">SAVE</button>
+										</div>
+									</div>
+								</div>
+								<div class="innercontent">
+
+									<!-- <div class="row"> -->
+									<div class="row">
+										<div class="col-md-4">
+					                      <div class="form-group">
+					                        <label>Executive</label>
+					                        <div class="select">
+												<select id="owner">
+														<option value="">Select Executive</option>
+															<option th:each="c,iter:${ownerList}"
+																th:value="${c.key}" th:text="${c.name}"></option>
+																		
+												</select>
+											</div>
+					                      </div>
+					                    </div>
+					                    
+					                
+					                    
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Activity Name</label>
+												<input type="text" class="form-control"
+													id="activityName" placeholder="Activity Name">
+											</div>
+										</div>
+										
+										 <div class="col-md-4">  
+					                     <div class="form-group">
+					                        <label>Status</label>
+					                        <div class="select">
+												<select id="activityStatus">
+														<option value="">Select Status</option>
+														<option value="Planning">Planning</option>
+														<option value="Complete">Complete</option>
+																		
+												</select>
+											</div>
+					                      </div>
+					                    </div>
+										
+										
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Today's Date</label> 
+										
+										<input type="date" id="todayDate" class="form-control">
+									</div>
+								</div>
+
+
+										     							
+									</div>
+									
+								<!-- 	main div start here -->
+									<div id="main">
+
+										<!-- 	collapse for Contact InformationStart here -->
+											<div class="accordion-item">
+												<h2 class="accordion-header" id="headingOne">
+													<button class="accordion-button" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapseOne"
+														aria-expanded="false" aria-controls="collapseOne">
+														Description Information</button>
+												</h2>
+												<div id="collapseOne"
+													class="accordion-collapse collapse show"
+													aria-labelledby="headingOne"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+													<div class="row">
+														
+													<div class="row">
+														<div class="col-md-8">
+														<div class="modal-inrheading">Description</div>
+														<div class="position-text">
+															<textarea rows="4" cols="100" id="description"
+																onkeyup="textCount(event)"></textarea>
+															<div id="charNumSN" class="txtcounter" align="right">
+																<span>0</span> characters
+															</div>
+														</div>
+													</div>
+													
+
+													</div>
+													
+													</div>
+			
+													</div>
+												</div>
+											</div>
+								
+								
+									<!-- 	sidenave for Marketing End here -->
+
+									<!-- 	sidenave for Misc Start here -->
+
+
+								</div>
+						</div>
+					</div>
+
+
+
+
+					<!-- The Modal For Delete-->
+					<div class="modal fade" id="delete">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-dismiss="modal"
+										aria-hidden="true">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p>Do you really want to delete these records? This process
+										cannot be undone.</p>
+								</div>
+								<div class="modal-footer justify-content-center">
+									<button type="button" class="btn1" data-dismiss="modal"
+										aria-hidden="true">Cancel</button>
+									<button type="button" class="btn3" id="deleteModalBtn"
+										onclick="deleteReq()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+
+					<!-- The Modal For Validation-->
+					<div class="modal fade" id="reqValid">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-dismiss="modal"
+										aria-hidden="true">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p id="modalMsg"></p>
+								</div>
+								<div class="modal-footer justify-content-center">
+									<button type="button" class="btn1" data-dismiss="modal"
+										aria-hidden="true">Ok</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+						<!-- ------------------Mark Lost modal------------------------- -->
+
+					<div id="markLostModal" class="modal fade">
+						<div class="modal-dialog">
+							<!-- Modal content-->
+							<div class="modal-content">
+								<div class="modal-header">
+									<h4 class="modal-title">Lost Reason</h4>
+									<button type="button" class="close" data-dismiss="modal"
+										aria-label="Close">
+										<i class="ti-close"></i>
+									</button>
+
+								</div>
+								<div class="modal-body">
+									<!-- text input -->
+									<div class="row">
+										<div class="col-md-12">
+											<div class="form-group">
+												<label>Comment</label> <input class="form-control"
+													type="text" id="comment">
+											</div>
+										</div>
+
+									</div>
+								</div>
+								<div class="modal-footer justify-content-left">
+									<button type="button" class="btn1" data-dismiss="modal"
+										aria-hidden="true" id="SubmitBtn"
+										onclick="rejectLeave()">Submit</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+					
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>

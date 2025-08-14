@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<script>
+$(document).ready(function(){
+	
+	$("#saveRoleData").click(function(data){
+		
+		data = {};
+		
+		data.roleId = $("#roleId").val();
+		data.roleName = $("#sliderRoleName").val();
+		data.roleDesc = $("#roleDesc").val();
+		data.status = $("input[name='isActive']:checked").val();
+		
+		$(".formValidation").remove();
+		allPValid = true;
+		if( $("#sliderRoleName").val() == null || $("#sliderRoleName").val() == ""){
+			allPValid = false;
+			validationModal("Role Name Required","sliderRoleName");
+		} 
+		if( $("#roleDesc").val() == null || $("#roleDesc").val() == ""){
+			allPValid = false;
+			validationModal("Role Description Required","roleDesc");
+		} 
+		
+		if(allPValid) {
+			submitRole(data);
+		}
+		
+	})
+	
+	$("#deleteModalBtn").click(function(){
+		var dataset = [];
+		
+		var selectedRows = gridOptions.api.getSelectedRows();
+		selectedRows.forEach(function(selectedRow, index) {
+			
+			data = {};
+			
+			data.key = selectedRow.roleId;
+			dataset.push(data);
+		});
+		console.log(dataset)
+		
+		if(dataset.length > 0) {
+			$.ajax({
+				type : "POST",
+				url : "manage-roles-delete",
+				dataType : 'json',
+				contentType : 'application/json',
+				data : JSON.stringify(dataset),
+				success : function(response) {
+					if (response.message == "success") {
+						$("#deleteModalBtn").removeAttr("disabled");
+						cancelModalBtn();
+						closeNav()
+					}
+				}, error : function(data) {
+					console.log(data)
+					$("#deleteModalBtn").removeAttr("disabled");
+				}
+			});
+		}
+	})
+	
+})
+
+
+var columnDefs = [{
+    headerCheckboxSelection: true,
+    headerCheckboxSelectionFilteredOnly: true,
+    checkboxSelection: true,
+    width: 10,
+    sortable: false,
+    filter: false,
+    resizable: true
+},
+{
+    headerName: "Role ID",
+    field: "roleId",
+    cellRenderer: function(params) {
+        return '<a onclick=openDetails("' + params.data.roleId + '") href="javascript:void(0)">' + params.data.roleId + '</a>';
+    }
+},
+{
+    headerName: "Name",
+    field: "roleName"
+},
+{
+    headerName: "Description",
+    width: 468,
+    field: "roleDesc"
+},
+{
+    headerName: "Status",
+    field: "status",
+    cellStyle: {textAlign: 'center'}
+},
+{
+    headerName: "Created By",
+    field: "createdBy",
+    cellStyle: {textAlign: 'center'}
+},
+{
+    headerName: "Created Date",
+    field: "createdDate",
+    cellStyle: {textAlign: 'center'}
+}
+];
+
+var gridOptions = {
+	columnDefs: columnDefs,
+	rowSelection: 'multiple',
+	suppressRowClickSelection: true,
+	defaultColDef: {
+		sortable: true,
+	    filter: true,
+	    resizable: true,
+	    width: 165,
+	    height: 10
+	},
+	onSelectionChanged : selectDeleteRoles
+};
+
+$(document).ready(function(){
+	agGrid.simpleHttpRequest({
+		url : 'manage-roles-get-listing'
+	}).then(function(data) {
+		var len = data.length;
+		$('#totalReq').find('span').html(len);
+		gridOptions.api.setRowData(data);
+	});
+})
+
+
+function onQuickFilterChanged() {
+	gridOptions.api.setQuickFilter(document.getElementById('quickFilter').value);
+}
+
+function totalRoleCSV() {
+	var dataset = [];
+	gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		dataset.push(rowNode.data);
+	});
+	gridOptions.api.exportDataAsCsv(dataset);
+}
+
+function roleSelect() {
+	openNav();
+}
+
+function openDetails(id) {
+	openNav();
+	if(id) {
+		$.ajax({
+	        type: "POST",
+	        url: "manage-roles-edit-data",
+	        dataType: "json",
+	        contentType: "application/json",
+	        data: id, 
+	        success: function(response) {
+	            if (response.message == "Success") {
+	            	$("#roleNameTxt").text(response.body.roleName);
+	            	$("#sliderRoleId").text(response.body.roleId);
+	            	$("#roleId").val(response.body.roleId);
+	            	$("#sliderRoleName").val(response.body.roleName);
+	            	$("#roleDesc").val(response.body.roleDesc);
+	            	if(response.body.roleStatus) {
+	            		$("#sliderStatus").prop("checked",true);
+	            	} else {
+	            		$("#sliderStatus").prop("checked",false);
+	            	}
+	            	
+	            }
+	        }, error: function(data) {
+	        	console.log(data)
+	        }
+		});
+	}
+}
+
+function submitRole(dataset) {
+	console.log(dataset)
+	$.ajax({
+        type: "POST",
+        url: "manage-roles-save-data",
+        dataType: "json",
+        contentType: "application/json",
+        data: JSON.stringify(dataset),
+        success: function(response) {
+            if (response.message == "Success") {
+            	closeNav();
+            	agGrid.simpleHttpRequest({
+            		url : 'manage-roles-get-listing'
+            	}).then(function(data) {
+            		var len = data.length;
+            		$('#totalReq').find('span').html(len);
+            		gridOptions.api.setRowData(data);
+            	});
+            }
+        }, error: function(data) {
+        	console.log(data)
+        }
+	});
+}
+
+function openNav() { 
+	$("#sliderRoleId").text("");
+	$("#roleNameTxt").text("New Role");
+	$("#roleId").val("");
+	$("#sliderRoleName").val("");
+	$("#roleDesc").val("");
+	$("#sliderStatus").prop("checked",true);
+	document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:115px;";
+	document.getElementById("myGrid").style.width = "75%";
+}
+
+function closeNav() {
+	agGrid.simpleHttpRequest({
+		url : 'manage-roles-get-listing'
+	}).then(function(data) {
+		var len = data.length;
+		$('#totalReq').find('span').html(len);
+		gridOptions.api.setRowData(data);
+	});
+	$("#sliderRoleId").text("");
+	$("#roleId").val("");
+	$("#sliderRoleName").val("");
+	$("#roleDesc").val("");
+	$("#sliderStatus").prop("checked",true);
+	document.getElementById("mySidenav").style.width = "0";
+	document.getElementById("myGrid").style.width = "100%";
+	
+}
+
+function selectDeleteRoles() {
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var c = 0;
+	selectedRows.forEach(function(selectedRow, index) {
+		c = c + 1;
+	});
+	
+	if(c > 0) {
+		$('#deleteBtn').attr('disabled', false);
+	}else{
+		$('#deleteBtn').attr('disabled', true);
+	}
+}
+function deleteRoles(){
+	$('#deleteModal').show();
+}
+function cancelModalBtn(){
+	$('#deleteModal').hide();
+	//$('#deleteModal').modal("hide");
+	closeNav()
+}
+ 
+document.addEventListener('DOMContentLoaded', function() {
+	$('#deleteBtn').attr('disabled', true);
+    var gridDiv = document.querySelector('#myGrid');
+    new agGrid.Grid(gridDiv, gridOptions);
+});
+</script>
+</head>
+<body>
+	<div layout:fragment="content">
+		<div class="content-wrap">
+			<div class="container-fluid">
+				<div class="maincontent">
+					<div class="row">
+
+						<div class="maincontentsec">
+							<div class="content_padding">
+								<div id="newId">
+									<div class="d-flex justify-content-between mt-4">
+										<div class="btn-hs" id="countDiv">
+											<div class="font-design" id="totalReq">
+												Role List(<span></span>)
+											</div>
+										</div>
+										<div id="SearchDiv">
+											<div class="input-style">
+												<input type="text" placeholder="Search.." name="search"
+													class="searchboxinput" onkeyup="cancelBar()"
+													oninput="onQuickFilterChanged()" id="quickFilter"
+													autocomplete="off">
+												<div class="searchicon">
+													<a href="javascript:void(0)"><span
+														style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+														id="closeKey"
+														onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+														class="close_i"><i class="ti-close srchicon"></i></span></a><a
+														href="javascript:void(0)"><i
+														class="ti-search srchicon"></i></a>
+												</div>
+											</div>
+										</div>
+										<div class="buttonsec btn-hs" id="btndiv">
+											<button class="btn4" onclick="totalRoleCSV();">Download</button>
+											<div class="buttongap"></div>
+											<button class="btn3" id="deleteBtn" onclick="deleteRoles()">DELETE</button>
+											<button class="btn1" id="newBtn" onclick="roleSelect()">NEW</button>
+										</div>
+									</div>
+ 
+									<div id="myGrid" style="width: 100%; height: 500px;"
+										class="ag-theme-alpine"></div>
+									<div id="mySidenav" class="sidenav"
+										style="top: 138px !important;">
+										<div class="slidebox">
+											<div class="row">
+												<div class="col-md-9">
+													<div class="edit" id="roleNameTxt">New Role</div>
+												</div>
+												<div class="col-md-3">
+													<div class="arrow">
+														<a href="javascript:void(0)" class="closebtn"
+															onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+													</div>
+												</div>
+											</div>
+											<div class="chartbtnsec">
+												<div align="right">
+													<button class="btn4" onclick="closeNav()">CANCEL</button>
+													<!-- <button class="btn3">DELETE</button> -->
+													<button class="btn1" id="saveRoleData">SAVE</button>
+												</div>
+											</div>
+											<div class="clearfix"></div>
+											<div class="row">
+												<div class="col-md-12">
+													<input type="hidden" id="roleId">
+													<div class="form-group">
+														<span class="slide-span">ID: </span><span
+															id="sliderRoleId" class="slide-span-text"></span>
+													</div>
+												</div>
+												<div class="col-md-12">
+													<div class="form-group">
+														<label>Name</label> <input type="text" value=""
+															placeholder="" class="form-control" id="sliderRoleName"
+															onblur="removeValid(event);">
+													</div>
+												</div>
+												<div class="col-md-12">
+													<div class="form-group">
+														<label>Description</label>
+														<textarea placeholder="" class="form-control"
+															id="roleDesc" onblur="removeValid(event);"></textarea>
+													</div>
+												</div>
+												<div class="col-md-12">
+													<div class="form-group">
+														<input type="checkbox" name="isActive"
+															style="margin-top: 8px;" id="sliderStatus" value="1"
+															checked="checked"> <label>Active</label>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id="deleteModal" class="modal fade show" aria-modal="true">
+			<div class="modal-dialog modal-confirm">
+				<div class="modal-content">
+					<div class="modal-header flex-column">
+					</div>
+					<div class="modal-body">
+						<p>Do you really want to delete these records? This process
+							cannot be undone.</p>
+					</div>
+					<div class="modal-footer justify-content-center"
+						style="margin-top: -30px;">
+						<button type="button" class="btn1" data-dismiss="modal"
+							onclick="cancelModalBtn();">Cancel</button>
+						<button type="button" class="btn3" id="deleteModalBtn">Delete</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

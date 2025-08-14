@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+
+.totalHour {
+	border: 1px solid #ddd;
+	border-radius: 2px;
+	background-color: #f5f5f5;
+	padding: 10px;
+	font-size: 12px;
+	color: #333;
+	transition: border-color 0.3s ease-in-out;
+	width: 65px;
+	height: 23px;
+}
+
+.defectDesc {
+	border: 1px solid #ddd;
+	border-radius: 2px;
+	background-color: #f5f5f5;
+	padding: 10px;
+	font-size: 12px;
+	color: #333;
+	transition: border-color 0.3s ease-in-out;
+	width: 671px;
+	height: 22px;
+}
+
+.sample-chk .form-control {
+	border-right: none;
+	border: 1px solid #d5d5d5 !important;
+	border-radius: 5px;
+	background: #fbfbfb;
+}
+
+.custom-color-column {
+	background-color: #f5f5f5;
+	color: #333;
+}
+
+.custom-color-column {
+	background-color: #f5f5f5;
+	color: #333;
+	border-color: #cdcdcd !important;
+}
+
+.static-cell-column {
+	color: black !important;
+	font-weight: 600
+}
+/* .my-custom-header-class {
+    justify-content: center !important;
+    display: flex;
+    align-items: center;
+} */
+.ag-header-group-cell-label {
+	justify-content: center !important;
+	/* border-color: black !important; */
+}
+/* #activity .ag-root {
+    border-color: black !important; 
+}
+
+#activity .ag-header-cell {
+    border-color: black !important;
+}*/
+
+/* #activity .ag-cell {
+    border-color: #adacad !important;
+} */
+</style>
+
+<script type="text/javascript">
+
+	$(document).ready(function() {
+		
+
+		
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		
+		
+		var gridDiv2 = document.querySelector('#activity1');
+		new agGrid.Grid(gridDiv2, activityOptions1);
+		
+		var gridDiv3 = document.querySelector('#activity2');
+		new agGrid.Grid(gridDiv3, activityOptions2);
+		
+		
+		
+		view();
+	
+		//activityOptions.api.setRowData();
+		$('#myModal10').modal('hide');
+		$('#reqDltBtn').attr('disabled', true);
+		$('#inspectBtn').attr('disabled', true);
+		$('#assignBtn').attr('disabled', true);
+		$('#deleteChild').attr('disabled', true);
+
+		
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#DateCalendar3").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#date').val($(this).val());
+		})
+
+		$('#date').blur(function() {
+			$("#DateCalendar3").val($(this).val());
+		})
+		
+		$('#deleteGrid1').attr("disabled", true);
+		$('#deleteGrid2').attr("disabled", true);
+			
+		window.totalCldParam=[];
+		window.TotalQtyValue=[];
+		window.ProdQtyValue=[];
+		window.DewrapCalcValue=[];
+
+	});   
+	
+	var pno=1;
+	function view(){
+		var pages;
+		var pageno = pno;
+		gridOptions.api.setRowData();
+		$('.loader').show();
+		agGrid.simpleHttpRequest({
+			url : 'production-logbook-of-view?pageno=' + pageno,
+		}).then(function(data) {
+			$('.loader').hide();
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.viewData;
+			gridOptions.api.setRowData(allData);
+			var totalRowCount = gridOptions.api.getModel().getRowCount();
+			$('#totalReq').find('span').html(totalRowCount);
+			if (allData.length > 0) {
+				$('#totalPageno').val(allData[0].totalPageno);
+				pages = allData[0].totalPageno;
+
+			}
+			createPagination(pages, pageno);
+		});
+	}
+	
+	//Pagination.
+	var pages;
+	function createPagination(pages, page) {
+		pno = page;
+		if ($("#totalPageno").val() == '') {
+			var pages = 20;
+		} else {
+			var pages = $("#totalPageno").val();
+			$("#currentPageno").val(page);
+		}
+		var str = '<ul>';
+		var active;
+		var pageCutLow = page - 1;
+		var pageCutHigh = page + 1;
+		// Show the Previous button only if you are on a page other than the first
+		if (page > 1) {
+			str += '<li class="page-item previous no"><a onclick="createPagination(pages, ' + (page - 1) + ')">Previous</a></li>';
+		}
+		// Show all the pagination elements if there are less than 6 pages total
+		if (pages < 6) {
+			for (let p = 1; p <= pages; p++) {
+				active = page == p ? "active" : "no";
+				str += '<li class="' + active + '"><a onclick="createPagination(pages, ' + p + ')">' + p + '</a></li>';
+			}
+		}
+		// Use "..." to collapse pages outside of a certain range
+		else {
+			if (page > 2) {
+				str += '<li class="no page-item"><a onclick="createPagination(pages, 1)">1</a></li>';
+				if (page > 3) {
+					str += '<li class="out-of-range"><a onclick="createPagination(pages,' + (page - 2) + ')">...</a></li>';
+				}
+			}
+			// Determine how many pages to show after the current page index
+			if (page === 1) {
+				pageCutHigh += 2;
+			} else if (page === 2) {
+				pageCutHigh += 1;
+			}
+			// Determine how many pages to show before the current page index
+			if (page === pages) {
+				pageCutLow -= 2;
+			} else if (page === pages - 1) {
+				pageCutLow -= 1;
+			}
+			// Output the indexes for pages that fall inside the range of pageCutLow
+			// and pageCutHigh
+			for (let p = pageCutLow; p <= pageCutHigh; p++) {
+				if (p === 0) {
+					p += 1;
+				}
+				if (p > pages) {
+					continue
+				}
+
+				active = page == p ? "active" : "no";
+				str += '<li class="page-item ' + active + '"><a onclick="createPagination(pages, ' + p + ')">' + p + '</a></li>';
+
+			}
+			// Show the very last page preceded by a "..." at the end of the pagination
+			// section (before the Next button)
+			if (page < pages - 1) {
+				if (page < pages - 2) {
+					str += '<li class="out-of-range"><a onclick="createPagination(pages,' + (page + 2) + ')">...</a></li>';
+				}
+				str += '<li class="page-item no"><a onclick="createPagination(pages, pages)">' + pages + '</a></li>';
+			}
+		}
+		// Show the Next button only if you are on a page other than the last
+		if (page < pages) {
+			str += '<li class="page-item next no"><a onclick="createPagination(pages, ' + (page + 1) + ')">Next</a></li>';
+			changePagination(page);
+		} else if (page <= pages) {
+			//str += '<li class="page-item next no"><a onclick="createPagination(pages, '+(page+1)+')">Next</a></li>';
+			changePagination(page);
+		}
+		str += '</ul>';
+		// Return the pagination string to be outputted in the pug templates
+		document.getElementById('pagination').innerHTML = str;
+		return str;
+
+	}
+	
+function changePagination(page) {
+		
+		pno = page;
+		var pageno = page;
+		$(".loader").show();
+		agGrid.simpleHttpRequest({
+			url : 'production-logbook-of-view?pageno=' + pageno
+		}).then(function(data) {
+			$(".loader").hide();
+			var jsonData = JSON.parse(data.body);
+			var allData = jsonData.viewData;
+			gridOptions.api.setRowData(allData);
+			
+			var totalRowCount = gridOptions.api.getModel().getRowCount();
+			$('#totalCandidate').find('span').html(totalRowCount);
+
+			if (allData.length > 0) {
+				$('#totalPageno').val(allData[0].totalPageno);
+				pages = allData[0].totalPageno;
+
+			}
+			
+		});
+	}
+	
+	/* -------------------search bar for mygrid------------------------ */
+
+	function onQuickFilterChanged() {
+	    
+		var id1 = document.getElementById("closeKey");
+		id1.style.display = "block";
+		var value = $("#quickFilter").val();
+
+			if(value == "" || value == null || value == 'null'){
+				$("#currentPageno").val("1"); 
+			    view();
+				$("#pagination").show();
+				id1.style.display = "none";
+			}else{
+				gridOptions.api.setRowData();
+				$('.loader').show();
+				agGrid.simpleHttpRequest({
+					url : 'production-logbook-of-view-search?value=' + value,
+				}).then(function(data) {
+					$('.loader').hide();
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.viewData;
+					gridOptions.api.setRowData(allData);
+					var totalRowCount = gridOptions.api.getModel().getRowCount();
+					$('#totalReq').find('span').html(totalRowCount);
+				})
+			}
+	}
+
+	function cancelBar() {
+		gridOptions.api.setQuickFilter(null);
+		$('#quickFilter').val('');
+		document.getElementById('closeKey').style.display='none';
+
+		view();
+	}
+	var columnDefs = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			//pinned: 'left',
+
+		},
+		{
+			headerName : 'Log Id',
+			field : "logId",
+			 cellRenderer : function(params) {
+			return '<a  onclick=editData("'
+			+params.data.logId  + '","' + params.data.aprvSts
+			+ '") href="javascript:void(0)"> <i class="bi bi-pencil-square")></i> '
+			+ params.data.logId + '</a>';
+
+		} 
+		}, {
+			headerName : 'Date',
+			field : "date",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		},{
+			headerName : 'Shift',
+			field : "shift",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		},  
+		 {
+			headerName : 'Approve Status',
+			field : "aprvSts",
+			cellStyle : {
+				textAlign : 'center'
+			},
+		cellRenderer : function(params) {
+			if (params.data.aprvSts =="Pending") { 
+				return '<div style="color:#a9a9a9">Pending</div>';
+			} else {
+				return '<div style="color:#0642f5">Approved</div>';
+			} 	
+		}
+		},
+		{
+			headerName : 'Created By',
+			field : "createdBy",
+			
+		},
+		 {
+			headerName : "PDF",
+			field : "list",
+			width : 200,
+			cellRenderer : function(params) {
+				if(params.data.logId){
+					return '<a  onclick=getLogPdf("'
+					+params.data.logId
+					+ '") href="javascript:void(0)"><i class="bi bi-cloud-download">Download</i></a>';
+				}else{
+					return '<a>N/A</a>';
+				}
+			},
+		} 
+		
+
+		];
+
+// let the grid know which columns and what data to use
+var gridOptions = {
+	columnDefs : columnDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 200
+	},
+	onSelectionChanged : onSelectionChanged,
+	getRowNodeId : function(data) {
+		return data.logId;
+	},
+};
+function getLogPdf(id){
+	let org = $("#orgName").val();
+	let orgDiv = $("#orgDivision").val();
+	window.open("/production/production-logbook-of-download?id="+window.btoa(id) + "&org=" + window.btoa(org) + "&orgDiv=" + window.btoa(orgDiv) , '_blank');  
+}
+var activityDefs1 = [
+	 /* {
+		headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly : false,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		pinned: 'left',
+
+	},  */
+	{ 
+    	headerName :"Grid No",
+    	field: 'gridNo' ,
+    	editable:false,
+    	width : 50,
+    	pinned: 'left',
+    	hide: true
+    },
+	 { 
+    	headerName :"sl no",
+    	field: 'slno' ,
+    	editable:false,
+    	width : 50,
+    	pinned: 'left',
+    	hide: true
+    }, { 
+    	headerName :"Variant",
+    	field: 'variant' ,
+    	width : 200,
+    	pinned: 'left',
+    	editable:false,
+    },{ 
+    	headerName :"Jumbo Bag Size",
+    	field: 'jumboBagSize',
+    	width : 200,
+    	editable:false,
+    	hide: true
+    },{ 
+    	headerName :"Batch No",
+    	field: 'batchNo' ,
+    	width : 200,
+    	cellClass: 'custom-color-column',  
+    }, {
+		headerName : 'No. Of Bags',
+		field : "noOfBags",
+		cellClass: 'custom-color-column',
+		
+	}, {
+		headerName : 'Re-Work QTY. Added',
+		field : "rewQtyAdd",
+		cellClass: 'custom-color-column',
+	}, {
+		headerName : 'Total (Batch/No Of Bag)',
+		field : "total",
+		cellClass: 'custom-color-column',
+		width : 200,
+	}, {
+		headerName : 'Total Quantity (MT)',
+		field : "totalQty",
+		editable:false,
+		cellStyle: { textAlign: 'center' },
+		valueGetter: (params) => {
+        	
+	   		 	var noOfBags = params.getValue('noOfBags');
+	             var jumboBagSize = params.getValue('jumboBagSize');
+	             var rewQtyAdd = params.getValue('rewQtyAdd');
+	             
+	             if(noOfBags == '' || noOfBags == null){
+	            	 noOfBags = 0;
+	             } if(jumboBagSize == '' || jumboBagSize == null){
+	            	 jumboBagSize = 0;
+	             } if(rewQtyAdd == '' || rewQtyAdd == null){
+	            	 rewQtyAdd = 0;
+	             }
+	             var resultTotalQty = parseFloat((parseFloat(noOfBags)*parseFloat(jumboBagSize))+parseFloat(rewQtyAdd))/1000;
+	             if (isNaN(resultTotalQty) || resultTotalQty === undefined){
+	            	 resultTotalQty=0;
+	           	  window.TotalQtyValue[params.node.rowIndex]=resultTotalQty.toFixed(3);
+	           	  return 0.0; 
+	             }else{
+	           	  window.TotalQtyValue[params.node.rowIndex]=resultTotalQty.toFixed(3);
+	           	  return resultTotalQty.toFixed(3);
+	             }
+	        },
+		width : 200,
+	}, {
+		headerName : 'Remark',
+		field : "remark",
+		cellClass: 'custom-color-column',
+		width : 200,
+	}];
+
+var rowData1 = [ {
+	slno : 1,
+	gridNo : '1',
+	variant : null,
+	batchNo : null,
+	noOfBags : null,
+	rewQtyAdd : null,
+	total : null,
+	totalQty : null,
+	remark : null
+
+} ];
+var activityOptions1 = {
+		columnDefs : activityDefs1,
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		//rowData : rowData1,
+		
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			editable:true,
+			width : 150,
+			autoHeight: true,
+	
+			singleClickEdit: true,
+			stopEditingWhenCellsLoseFocus: true,
+			 initialWidth: 117,
+			    wrapHeaderText: true,
+			    autoHeaderHeight: true,
+			
+			
+		},
+		//onSelectionChanged: onSelectionActivity1,
+	};
+	
+
+var activityDefs2 = [
+	 /* {
+		headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly : false,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		pinned: 'left',
+
+	}, */ 
+	{ 
+    	headerName :"Grid No",
+    	field: 'gridNo' ,
+    	editable:false,
+    	width : 50,
+    	pinned: 'left',
+    	hide: true
+    },
+	 { 
+    	headerName :"sl no",
+    	field: 'slno' ,
+    	editable:false,
+    	width : 50,
+    	pinned: 'left',
+    	hide: true
+    }, { 
+    	headerName :"Sku",
+    	field: 'sku' ,
+    	width : 200,
+    	pinned: 'left',
+    	editable:false,
+    }, { 
+    	headerName :"Cld Weight",
+    	field: 'cldWt' ,
+    	width : 200,
+    	editable:false,
+    	hide: true
+    },{
+		headerName : 'Type',
+		field : "skuType",
+		width : 150,
+		cellClass: 'custom-color-column',
+		cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+            values: ['', 'Cuttack', 'Complete'],
+        }
+	},{ 
+    	headerName :"L1 Prod. Qty (IN CLD)",
+    	field: 'l1Prod' ,
+    	width : 200,
+    	cellClass: 'custom-color-column',  
+    }, {
+		headerName : 'L2 Prod. Qty (IN CLD)',
+		field : "l2Prod",
+		cellClass: 'custom-color-column',
+		width : 200,
+	}, {
+		headerName : 'L3 Prod. Qty (IN CLD)',
+		field : "l3Prod",
+		cellClass: 'custom-color-column',
+		width : 200,
+	},{
+		headerName : 'Total CLD',
+		field : "totalCld",
+		editable:false,
+		cellStyle: { textAlign: 'center' },
+		valueGetter: (params) => {
+        	
+   		 	var q1 = params.getValue('l1Prod');
+             var q2 = params.getValue('l2Prod');
+             var q3 = params.getValue('l3Prod');
+             
+             if(q1 == '' || q1 == null){
+           	  q1 = 0;
+             } if(q2 == '' || q2 == null){
+           	  q2 = 0;
+             } if(q3 == '' || q3 == null){
+            	 q3 = 0;
+             }
+             var result = parseFloat(q1) + parseFloat(q2) + parseFloat(q3);
+             if (isNaN(result) || result === undefined){
+           	  result=0;
+           	  window.totalCldParam[params.node.rowIndex]=result.toFixed(3);
+           	  return 0.0; 
+             }else{
+           	  window.totalCldParam[params.node.rowIndex]=result.toFixed(3);
+           	  return result.toFixed(3);
+             }
+        },
+	},{
+		headerName : 'Prod. Qty (IN MT)',
+		field : "prodQty",
+		editable:false,
+		cellStyle: { textAlign: 'center' },
+		valueGetter: (params) => {
+        	
+	   		 	var l1Prod = params.getValue('l1Prod');
+	             var l2Prod = params.getValue('l2Prod');
+	             var l3Prod = params.getValue('l3Prod');
+	             var cldWt = params.getValue('cldWt');
+	             
+	             if(l1Prod == '' || l1Prod == null){
+	            	 l1Prod = 0;
+	             } if(l2Prod == '' || l2Prod == null){
+	            	 l2Prod = 0;
+	             } if(l3Prod == '' || l3Prod == null){
+	            	 l3Prod = 0;
+	             } if(cldWt == '' || cldWt == null){
+	            	 cldWt = 0;
+	             }
+	           
+	             var resultProdQty = (parseFloat(l1Prod)+parseFloat(l2Prod)+parseFloat(l3Prod))*parseFloat(cldWt);
+	             if (isNaN(resultProdQty) || resultProdQty === undefined){
+	            	 resultProdQty=0.0;
+	           	 window.ProdQtyValue[params.node.rowIndex]=resultProdQty.toFixed(3);
+	           	  return 0.0; 
+	             }else{
+	            	 resultProdQty = parseFloat(resultProdQty)/1000;
+	           	 window.ProdQtyValue[params.node.rowIndex]=resultProdQty.toFixed(3);
+	           	  return resultProdQty.toFixed(3);
+	             }
+	        },
+	},{
+		headerName : 'Dewarapped Laminate (KG)',
+		field : "dewrappedLami",
+		cellClass: 'custom-color-column',
+		onCellValueChanged: (event) => {
+		    /* console.log('Cell Value Changed');
+		    console.log('Old Value:', event.oldValue);
+		    console.log('New Value:', event.newValue);
+		    console.log('Row Data:', event.data); */
+		    // Call your custom function here
+		    caculateReworkGeneration();
+		  }
+	},{
+		headerName : 'Dewarap Constant',
+		field : "dewrapConst",
+		editable:false,
+		hide: true
+	},{
+		headerName : 'Dewarap Calculation',
+		field : "dewrapCalc",
+		cellStyle: { textAlign: 'center' },
+		valueGetter: (params) => {
+        	
+	   		 	var dewrappedLami = params.getValue('dewrappedLami');
+	             var dewrapConst = params.getValue('dewrapConst');
+	             var cldWt = params.getValue('cldWt');
+	             
+	             if(dewrappedLami == '' || dewrappedLami == null){
+	            	 dewrappedLami = 0;
+	             } if(dewrapConst == '' || dewrapConst == null){
+	            	 dewrapConst = 0;
+	             } if(cldWt == '' || cldWt == null){
+	            	 cldWt = 0;
+	             }
+	             var resultDewrapCalc = (parseFloat(dewrappedLami)/parseFloat(dewrapConst))*parseFloat(cldWt);
+	             if (isNaN(resultDewrapCalc) || resultDewrapCalc === undefined){
+	            	 resultDewrapCalc=0.00;
+	           	  window.DewrapCalcValue[params.node.rowIndex]=resultDewrapCalc.toFixed(3);
+	           	  return 0.00; 
+	             }else{
+	           	  window.DewrapCalcValue[params.node.rowIndex]=resultDewrapCalc.toFixed(3);
+	           	  return resultDewrapCalc.toFixed(3);
+	             }
+	        },
+	}, {
+		headerName : 'SAP Booking In CLD',
+		field : "sapBooking",
+		cellClass: 'custom-color-column',
+	}, {
+		headerName : 'Quality Hold & Rejection Qty.',
+		field : "qualityHold",
+		cellClass: 'custom-color-column',
+		width : 250,
+	}, {
+		headerName : 'Remark',
+		field : "remark",
+		width : 200,
+		cellClass: 'custom-color-column',
+	}];
+
+var rowData2 = [ {
+	slno : 1,
+	gridNo : '2',
+	sku : null,
+	skuType : null,
+	l1Prod : null,
+	l2Prod : null,
+	l3Prod : null,
+	prodQty : null,
+	sapBooking : null,
+	qualityHold : null,
+	remark : null
+
+} ];
+var activityOptions2 = {
+		columnDefs : activityDefs2,
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		//rowData : rowData2,
+		//onSelectionChanged: onSelectionActivity2,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			editable:true,
+			width : 150,
+			autoHeight: true,
+	
+			singleClickEdit: true,
+			stopEditingWhenCellsLoseFocus: true,
+			 initialWidth: 117,
+			    wrapHeaderText: true,
+			    autoHeaderHeight: true,
+			
+			
+		}
+	};
+	
+	
+	function caculateReworkGeneration(){
+		var starPac = 0;
+		var syntgeonCalc = 0;
+		activityOptions2.api.forEachNode((node) => {
+            if (node.data.sku.includes("20G") || node.data.sku.includes("24G") || node.data.sku.includes("10G")) {
+            	//console.log("IF>>>node.data.sku>>",node.data.sku," window.DewrapCalcValue[params.node.rowIndex]",window.DewrapCalcValue[node.rowIndex]); 
+            	starPac = parseFloat(starPac)+parseFloat(window.DewrapCalcValue[node.rowIndex]);
+            }else{
+            	//console.log("ELSE>>>node.data.sku>>",node.data.sku," window.DewrapCalcValue[params.node.rowIndex]",window.DewrapCalcValue[node.rowIndex]);
+            	syntgeonCalc = parseFloat(syntgeonCalc)+parseFloat(window.DewrapCalcValue[node.rowIndex]);
+            }
+            /* console.log("starPac>>>",starPac);
+            console.log("syntgeonCalc>>>",syntgeonCalc); */
+            $("#rewgStarpac").val(Math.round(starPac));
+            $("#rewgSyntegon").val(Math.round(syntgeonCalc));
+		});
+	}
+
+//function for row select parents
+var id = "";
+var apstatus="";
+function onSelectionChanged() {
+	var selectedNodes = gridOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	 id= selectedData.map(node => node.evalId);
+	 apstatus=selectedData.map(node => node.aprvSts);
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+	if (rowCount > 0) {
+		if(apstatus=='Approved'){
+			$('#reqDltBtn').attr("disabled", true);
+			$('#assignBtn').attr("disabled", true);
+			$('#newBtn').attr('disabled', false);
+		}else{
+		$('#newBtn').attr('disabled', true);
+		$('#reqDltBtn').attr("disabled", false);
+		$('#assignBtn').attr("disabled", false);
+		}
+	}else {
+		$('#inspectBtn').attr("disabled", true);
+		$('#reqDltBtn').attr("disabled", true);
+		$('#assignBtn').attr("disabled", true);
+		$('#newBtn').attr('disabled', false);
+	}
+}
+
+
+
+
+
+//parents new plan
+function newPlan() {
+	window.totalCldParam=[];
+	window.TotalQtyValue=[];
+	window.ProdQtyValue=[];
+	window.DewrapCalcValue=[];
+	
+					$(".loader").show();
+					var x = [];
+					activityOptions1.api.setRowData(x);
+					activityOptions2.api.setRowData(x);
+				   agGrid.simpleHttpRequest({
+						url : 'production-logbook-of-aggrid-show'
+					}).then(function(data) {
+						$(".loader").hide();
+						var jsonData = JSON.parse(data.body);
+						var allData=jsonData.gridData;
+						activityOptions1.api.setRowData(allData[0].grid1Data);
+						activityOptions2.api.setRowData(allData[0].grid2Data);
+						
+					});
+	
+	
+
+    var currentDate =  (new Date()).toISOString().split('T')[0];
+    var formattedDate = changeDateFormat(currentDate);
+	$("#myGrid").hide();
+	$("#reqTable").hide();
+	$(".btn-hs").show();
+	$("#btndiv").hide();
+	$("#listdiv").hide();
+	$("#totalReq").hide();
+	$("#searchRowDiv").hide();
+	$("#ttbtn").hide();
+	$("#pagination").hide();
+	$("#demo").show();
+	$("#deleteChild").attr('disabled', true);
+	$("#newchild").attr('disabled', false);
+	$("#save").attr('disabled', false);
+	$("#productionLogIdText").text('');
+	$("#productionLogId").val('');
+	$("#date").val(formattedDate);
+	$("#shift").val('');
+	$("#floorSweep").val('');
+	$("#asmGenerator").val('');
+	$("#totalQuantity1").val('');
+	$("#remark1").val('');
+	$("#lamStarpac").val('');
+	$("#lamSyntegon").val('');
+	$("#totalQuantity2").val('');
+	$("#remark2").val('');
+	$("#rewgStarpac").val('');
+	$("#rewgSyntegon").val('');
+	$("#communication").val('');
+	$('#deleteGrid1').attr("disabled", true);
+	$('#deleteGrid2').attr("disabled", true);
+}
+function changeDateFormat(inputDate){  // expects Y-m-d
+    var splitDate = inputDate.split('-');
+    if(splitDate.count == 0){
+        return null;
+    }
+    var year = splitDate[0];
+    var month = splitDate[1];
+    var day = splitDate[2]; 
+    return day + '-' + month + '-' + year;
+}
+//function for cancel
+function cancel() {
+
+	 $(".formValidation").remove();
+		$("#totalReq").show();
+		$("#searchRowDiv").show();
+		$(".btn-hs").show();
+		$("#myGrid").show();
+		$("#demo").hide();
+		$("#reqDltBtn").attr('disabled', true);
+		$("#assignBtn").attr('disabled', true);
+		$("#newBtn").attr('disabled', false);
+		$("#pagination").show();
+		 view();
+
+	}
+
+	
+	
+// master save
+
+function masterSaveData() {
+    $(".formValidation").remove();
+    activityOptions1.api.stopEditing();
+    activityOptions2.api.stopEditing();
+
+    var valid= true;
+	//var datas = [];
+	var item={};
+	
+	
+	
+	item.logId = $("#productionLogId").val();
+    item.date = $("#date").val();
+    item.shift = $("#shift").val();
+    
+    item.floorSweep = $("#floorSweep").val();
+    item.asmGenerator = $("#asmGenerator").val();
+    item.totalQuantity1 = $("#totalQuantity1").val();
+    item.remark1 = $("#remark1").val();
+    item.lamStarpac = $("#lamStarpac").val();
+    item.lamSyntegon = $("#lamSyntegon").val();
+    item.totalQuantity2 = $("#totalQuantity2").val();
+    item.remark2 = $("#remark2").val();
+    item.rewgStarpac = $("#rewgStarpac").val();
+    item.rewgSyntegon = $("#rewgSyntegon").val();
+    item.communication = $("#communication").val();
+
+		var data = [];
+		activityOptions1.api.forEachNode(function(rowNode, index) {
+				var obj1 = rowNode.data;
+				obj1.totalQty = window.TotalQtyValue[index];
+				data.push(obj1);
+		});
+		
+		var data1 = [];
+		activityOptions2.api.forEachNode(function(rowNode, index) {
+				var obj2 = rowNode.data;
+				obj2.totalCld = window.totalCldParam[index];
+				obj2.prodQty = window.ProdQtyValue[index];
+				obj2.dewrapCalc = window.DewrapCalcValue[index];
+				data1.push(obj2);
+		});
+		item.grid1Dtls = data;
+		item.grid2Dtls = data1;
+
+	
+		if (item.shift == null || item.shift == "") {
+			valid = validationUpdated("Shift Required", "shift");
+	    }
+		
+	console.log("datttaa===",JSON.stringify(data1))
+	if (valid) {
+		
+		savePlanDetails(item);
+		
+		}
+}
+
+function savePlanDetails(item) {
+	$(".loader").show();
+	setTimeout(function() {
+		$.ajax({
+			type : "POST",
+			url : "production-logbook-of-add",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(item),
+			success : function(response) {
+				$(".loader").hide();
+				 $("#totalReq").show();
+				 $("#searchRowDiv").show();
+				 $("#ttbtn").show();
+				 $("#pagination").show();
+				 
+				 $("#messageParagraph").text(response.message);
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+				
+				 
+				 $("#demo").hide();
+				 $("#myGrid").show();
+				 
+				 view();
+				 
+				
+			},
+			error : function(data) {
+				$('.loader').hide();
+			}
+		});
+	}, 1000)
+	
+}
+
+
+function editData(id,sts) {
+	window.totalCldParam=[];
+	window.TotalQtyValue=[];
+	window.ProdQtyValue=[];
+	window.DewrapCalcValue=[];
+	
+	$(".loader").show();
+			agGrid.simpleHttpRequest(
+					{
+						url : 'production-logbook-of-edit?id='+ id
+					}).then(function(data) {
+						var jsonData = JSON.parse(data.body);
+						
+						var allData=jsonData.viewData;
+						if(data.code == "success"){
+							 $("#myGrid").hide();
+							 $("#totalReq").hide();
+							 $("#searchRowDiv").hide();
+							 $("#ttbtn").hide(); 
+							 $("#pagination").hide();
+							 $('#deleteGrid1').attr("disabled", true);
+								$('#deleteGrid2').attr("disabled", true);
+							$("#demo").show();
+							
+							 if(sts == 'Approved'){
+								$("#save").hide();
+							}else{
+								$("#save").show();
+							} 
+							
+							$("#productionLogIdText").text(allData[0].logId);
+							$("#productionLogId").val(allData[0].logId);
+							$("#date").val(allData[0].date);
+							$("#shift").val(allData[0].shift);
+							$("#floorSweep").val(allData[0].floorSweep);
+							$("#asmGenerator").val(allData[0].asmGenerator);
+							$("#totalQuantity1").val(allData[0].totalQuantity1);
+							$("#remark1").val(allData[0].remark1);
+							$("#lamStarpac").val(allData[0].lamStarpac);
+							$("#lamSyntegon").val(allData[0].lamSyntegon);
+							$("#totalQuantity2").val(allData[0].totalQuantity2);
+							$("#remark2").val(allData[0].remark2);
+							$("#rewgStarpac").val(allData[0].rewgStarpac);
+							$("#rewgSyntegon").val(allData[0].rewgSyntegon);
+							$("#communication").val(allData[0].communication);
+							
+							activityOptions1.api.setRowData(allData[0].grid1Data); 
+							activityOptions2.api.setRowData(allData[0].grid2Data); 
+							$(".loader").hide();
+						}else{
+							$(".loader").hide();
+							$("#messageParagraph").text("Something went to wrong!");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							
+						}
+						
+					}); 
+	
+}
+
+
+
+function deleteFun() {
+	$('#msgModal2').modal('show');
+}
+
+
+function deleteOnclick() {
+	
+	var selectedRows = gridOptions.api.getSelectedRows();	
+	
+	var id = selectedRows[0].logId;
+	
+	
+	$.ajax({
+	type : "GET",
+	url : "production-logbook-of-delete?id="+ id,
+	success : function(response) {
+	  if (response.code == "success") {
+			$("#messageParagraph").text("Data Deleted sucessfully");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			$('#delete').modal('hide');
+			view();
+			 $('#msgModal2').modal('hide');
+			 $("#reqDltBtn").attr('disabled', true);
+			 $("#newBtn").attr('disabled',false);
+		} else {
+			$("#messageParagraph").text("Something went to wrong!");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+		} 
+	},
+	error : function(data) {
+		
+	}
+})
+
+}
+
+function downloadDetails() { 
+	var dataset = [];
+	gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		dataset.push(rowNode.data);
+	});
+    gridOptions.api.exportDataAsCsv(dataset);
+}
+
+
+
+function approveFun() {
+	$('#approveModal').modal('show');
+}
+
+
+function approveOnclick() {
+	
+	var selectedRows = gridOptions.api.getSelectedRows();	
+	
+	var id = selectedRows[0].logId;
+	
+	
+	$.ajax({
+	type : "GET",
+	url : "production-logbook-of-approve?id="+ id,
+	success : function(response) {
+	  if (response.code == "success") {
+			$("#messageParagraph").text("Data Approved sucessfully");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			//$('#approveModal').modal('hide');
+			view();
+			 $('#approveModal').modal('hide');
+			 $("#reqDltBtn").attr('disabled', true);
+			 $("#assignBtn").attr('disabled', true);
+			 $("#newBtn").attr('disabled',false);
+		} else {
+			$("#messageParagraph").text("Something went to wrong!");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+		} 
+	},
+	error : function(data) {
+		
+	}
+})
+
+}
+
+
+/* function addRowGrid1() {
+
+	const lastRowIndex = activityOptions1.api.getDisplayedRowCount() - 1;
+	const lastRowNode = activityOptions1.api
+			.getDisplayedRowAtIndex(lastRowIndex);
+	const fieldValue = lastRowNode.data.slno;
+
+	var newRow = {
+			gridNo : '1',
+			variant : null,
+			batchNo : null,
+			noOfBags : null,
+			rewQtyAdd : null,
+			total : null,
+			totalQty : null,
+			remark : null
+	};
+	var x = parseInt(fieldValue) + parseInt(1);
+	newRow.slno = x;
+
+	activityOptions1.api.applyTransaction({
+		add : [ newRow ]
+	});
+
+} */
+
+/* function addRowGrid2() {
+
+	const lastRowIndex = activityOptions2.api.getDisplayedRowCount() - 1;
+	const lastRowNode = activityOptions2.api
+			.getDisplayedRowAtIndex(lastRowIndex);
+	const fieldValue = lastRowNode.data.slno;
+
+	var newRow = {
+			gridNo : '2',
+			sku : null,
+			skuType : null,
+			l1Prod : null,
+			l2Prod : null,
+			prodQty : null,
+			sapBooking : null,
+			qualityHold : null,
+			remark : null
+	};
+	var x = parseInt(fieldValue) + parseInt(1);
+	newRow.slno = x;
+
+	activityOptions2.api.applyTransaction({
+		add : [ newRow ]
+	});
+
+} */
+
+/* function onSelectionActivity1(){
+	var selectedRows = activityOptions1.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(selectedRow, index) {
+		rowCount = rowCount + 1;
+	});
+	
+	if(rowCount > 0){
+		 $('#deleteGrid1').attr("disabled", false); 
+		 $('#addRowBtn1').attr("disabled", true);
+	}else{
+		 $('#deleteGrid1').attr("disabled", true); 
+		 $('#addRowBtn1').attr("disabled", false);
+	}
+} */
+
+/* function deleteGrid1() {
+    var selectedNodes = activityOptions1.api.getSelectedNodes(); // Get selected row nodes
+    var selectedData = selectedNodes.map(function(node) { return node.data; }); // Extract row data from selected nodes
+
+    activityOptions1.api.updateRowData({ remove: selectedData }); // Remove selected rows from the grid
+    
+    var allRowsCount = activityOptions1.api.getDisplayedRowCount();
+    //console.log("allRowsCount>>>",allRowsCount);
+    
+    if(allRowsCount == "0"){
+    	var newRow11 = {
+    			slno : 1,
+    			gridNo : '1',
+    			variant : null,
+    			batchNo : null,
+    			noOfBags : null,
+    			rewQtyAdd : null,
+    			total : null,
+    			totalQty : null,
+    			remark : null
+    		};
+    	activityOptions1.api.applyTransaction({
+			add : [ newRow11 ]
+		});
+
+    }
+
+    $('#deleteGrid1').attr("disabled", true); // Disable the delete button after deletion
+	 $('#addRowBtn1').attr("disabled", false); 
+} */
+
+/* function onSelectionActivity2(){
+	var selectedRows = activityOptions2.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(selectedRow, index) {
+		rowCount = rowCount + 1;
+	});
+	
+	if(rowCount > 0){
+		 $('#deleteGrid2').attr("disabled", false); 
+		 $('#addRowBtn2').attr("disabled", true);
+	}else{
+		 $('#deleteGrid2').attr("disabled", true); 
+		 $('#addRowBtn2').attr("disabled", false);
+	}
+} */
+
+/* function deleteGrid2() {
+    var selectedNodes = activityOptions2.api.getSelectedNodes(); // Get selected row nodes
+    var selectedData = selectedNodes.map(function(node) { return node.data; }); // Extract row data from selected nodes
+
+    activityOptions2.api.updateRowData({ remove: selectedData }); // Remove selected rows from the grid
+    
+    var allRowsCount1 = activityOptions2.api.getDisplayedRowCount();
+    //console.log("allRowsCount>>>",allRowsCount);
+    
+    if(allRowsCount1 == "0"){
+    	var newRow12 = {
+    			slno : 1,
+    			gridNo : '1',
+    			variant : null,
+    			batchNo : null,
+    			noOfBags : null,
+    			rewQtyAdd : null,
+    			total : null,
+    			totalQty : null,
+    			remark : null
+    		};
+    	activityOptions2.api.applyTransaction({
+			add : [ newRow12 ]
+		});
+
+    }
+
+    $('#deleteGrid2').attr("disabled", true); // Disable the delete button after deletion
+	 $('#addRowBtn2').attr("disabled", false); 
+} */
+
+
+
+function calculateTotal1(){
+	
+	var floorSweep = $("#floorSweep").val();
+	var asmGenerator = $("#asmGenerator").val();
+	
+	if(floorSweep == "" || floorSweep == null){
+		floorSweep = 0;
+	}
+	if(asmGenerator == "" || asmGenerator == null){
+		asmGenerator = 0;
+	}
+	
+	var calc1 = parseFloat(floorSweep) + parseFloat(asmGenerator);
+	
+	$("#totalQuantity1").val(calc1.toFixed(3));
+}
+
+function calculateTotal2(){
+
+	var lamStarpac = $("#lamStarpac").val();
+	var lamSyntegon = $("#lamSyntegon").val();
+	
+	if(lamStarpac == "" || lamStarpac == null){
+		floorSweep = 0;
+	}
+	if(lamSyntegon == "" || lamSyntegon == null){
+		lamSyntegon = 0;
+	}
+	
+	var calc2 = parseFloat(lamStarpac) + parseFloat(lamSyntegon);
+	
+	$("#totalQuantity2").val(calc2.toFixed(3));
+}
+
+    </script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="d-flex flex-wrap justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalReq">
+									List(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="cancelBar()"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+								<button class="download-btn" id="download"
+									onclick="downloadDetails()">Download</button>
+								<button class="delete-btn" id="reqDltBtn" onclick="deleteFun()">DELETE</button>
+								<button class="new-btn" id="assignBtn" onclick="approveFun()">APPROVE</button>
+								<button class="new-btn" id="newBtn" onclick="newPlan()">NEW</button>
+							</div>
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" /> <input
+							type="hidden" id="orgName" th:value="${orgName}" /> <input
+							type="hidden" id="orgDivision" th:value="${orgDivision}" />
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+						<div id="pagination" class="pagination" style="cursor: pointer;"></div>
+						
+						<div class="collapse" id="demo">
+							<div class="innercontent">
+								<div class="innerstickybg">
+									<div class="row">
+
+										<div class="col-md-6">
+											Production Log: <span id="productionLogIdText"></span>
+										</div>
+
+										<input type="hidden" class="form-control" id="productionLogId"
+											readonly="" fdprocessedid="f8yxwu">
+
+										<div class="col-md-6" align="right">
+											<button class="cancel-btn" id="cancelBtn" onclick="cancel()">Cancel</button>
+											<button class="approve-btn" id="save"
+												onclick="masterSaveData()">Save</button>
+										</div>
+									</div>
+
+								</div>
+								<div class="row mt-2">
+
+									<div class="col-md-6">
+										<div>
+											<div class="form-group calendar_box">
+												<label>Date :</label> <input type="text" id="date"
+													class="form-control" onblur="removeValid(event)"
+													th:attr="onkeyup=|formatDate('date','${session.DATEFORMAT_JS}')|"
+													readonly> <i class="ti-calendar picker_calendar"
+													id="DateCalendar3"></i>
+											</div>
+										</div>
+									</div>
+									<div class="col-md-6">
+										<div class="form-group">
+											<label> Shift </label>
+											<div class="select">
+												<select id="shift" onblur="removeValid(event)">
+													<option value="">Select</option>
+													<option th:each="c:${shiftLists}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select> <span class="focus"></span>
+											</div>
+										</div>
+									</div>
+
+
+								</div>
+
+								<div id="main" class="mt-4">
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingOne">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseOne"
+												aria-expanded="false" aria-controls="collapseOne">
+												Production Details :</button>
+										</h2>
+
+										<div id="collapseOne" class="accordion-collapse collapse show"
+											aria-labelledby="headingOne"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+												<div class="row">
+													<!-- <div class="buttonsec btn-hs">
+													<button class="delete-btn" id="deleteGrid1" onclick="deleteGrid1()">Delete</button>
+														<button class="new-btn" id="addRowBtn1"
+															onclick="addRowGrid1()">Add Row</button>
+													</div> -->
+													<div id="activity1"
+														style="width: 100%; height: 250px; margin: 0px 0px 15px 0px;"
+														class="ag-theme-alpine"></div>
+												</div>
+
+												<div class="row">
+													<!-- <div class="buttonsec btn-hs">
+													<button class="delete-btn" id="deleteGrid2" onclick="deleteGrid2()">Delete</button>
+														<button class="new-btn" id="addRowBtn2"
+															onclick="addRowGrid2()">Add Row</button>
+													</div> -->
+													<div id="activity2"
+														style="width: 100%; height: 350px; margin: 0px 0px 15px 0px;"
+														class="ag-theme-alpine"></div>
+												</div>
+
+											</div>
+										</div>
+									</div>
+								</div>
+
+								<div id="main1" class="mt-4">
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingOne">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseOne"
+												aria-expanded="false" aria-controls="collapseOne">
+												Wastage QTY.(in Kg) :</button>
+										</h2>
+
+										<div id="collapseOne" class="accordion-collapse collapse show"
+											aria-labelledby="headingOne"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+												<div class="row">
+													<div class="col-lg-3">
+														<div class="form-group">
+															<label>Floor Sweep :</label> <input type="number"
+																class="form-control" id="floorSweep"
+																oninput="calculateTotal1()">
+														</div>
+													</div>
+													<div class="col-lg-3">
+														<div class="form-group">
+															<label>Ams/Shifter/Magnet Generator :</label> <input
+																type="number" class="form-control" id="asmGenerator"
+																oninput="calculateTotal1()">
+														</div>
+													</div>
+													<div class="col-lg-3">
+														<div class="form-group">
+															<label>Total Quantity :</label> <input type="text"
+																class="form-control" id="totalQuantity1" readonly>
+														</div>
+													</div>
+													<div class="col-lg-3">
+														<div class="form-group">
+															<label>Remark :</label> <input type="text"
+																class="form-control" id="remark1">
+														</div>
+													</div>
+												</div>
+												<div class="row">
+													<div class="col-lg-3">
+														<div class="form-group">
+															<label>Laminate (STARPAC) :</label> <input type="number"
+																class="form-control" id="lamStarpac"
+																oninput="calculateTotal2()">
+														</div>
+													</div>
+													<div class="col-lg-3">
+														<div class="form-group">
+															<label>Laminate (SYNTEGON) : :</label> <input
+																type="number" class="form-control" id="lamSyntegon"
+																oninput="calculateTotal2()">
+														</div>
+													</div>
+													<div class="col-lg-3">
+														<div class="form-group">
+															<label>Total Quantity :</label> <input type="text"
+																class="form-control" id="totalQuantity2" readonly>
+														</div>
+													</div>
+													<div class="col-lg-3">
+														<div class="form-group">
+															<label>Remark :</label> <input type="text"
+																class="form-control" id="remark2">
+														</div>
+													</div>
+												</div>
+											</div>
+
+										</div>
+									</div>
+								</div>
+								<div id="main2" class="mt-4">
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingOne">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseOne"
+												aria-expanded="false" aria-controls="collapseOne">
+												Re-Work Generation QTY. (in Kg) :</button>
+										</h2>
+
+										<div id="collapseOne" class="accordion-collapse collapse show"
+											aria-labelledby="headingOne"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+												<div class="row">
+													<div class="col-lg-6">
+														<div class="form-group">
+															<label>STARPAC :</label> <input type="number"
+																class="form-control" id="rewgStarpac">
+														</div>
+													</div>
+													<div class="col-lg-6">
+														<div class="form-group">
+															<label>SYNTEGON :</label> <input type="number"
+																class="form-control" id="rewgSyntegon">
+														</div>
+													</div>
+
+
+												</div>
+												<div class="row">
+													<div class="col-md-12">
+														<div class="form-group">
+															<label> Communication : </label>
+															<textarea class="form-control" id="communication"
+																onblur="removeValid(event)"></textarea>
+														</div>
+													</div>
+
+												</div>
+											</div>
+
+										</div>
+									</div>
+								</div>
+
+
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+
+			<!-- delete modal start -->
+			<div id="msgModal2" class="modal fade show" aria-modal="true">
+				<div class="modal-dialog modal-confirm">
+					<div class="modal-content">
+						<div class="modal-header flex-column"></div>
+						<div class="modal-body">
+							<p style="color: #000000; font-weight: 400;">Do you really
+								want to delete these records? This process cannot be undone.</p>
+						</div>
+						<div class="modal-footer justify-content-center"
+							style="margin-top: 0px;">
+
+							<button type="button" class="cancel-btn" data-bs-dismiss="modal">Cancel</button>
+							<button type="button" class="delete-btn"
+								onclick="deleteOnclick()">Delete</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div id="approveModal" class="modal fade show" aria-modal="true">
+				<div class="modal-dialog modal-confirm">
+					<div class="modal-content">
+						<div class="modal-header flex-column"></div>
+						<div class="modal-body">
+							<p style="color: #000000; font-weight: 400;">Do you want to
+								Approve this record.</p>
+						</div>
+						<div class="modal-footer justify-content-center"
+							style="margin-top: 0px;">
+
+							<button type="button" class="cancel-btn" data-bs-dismiss="modal">Cancel</button>
+							<button type="button" class="approve-btn"
+								onclick="approveOnclick()">Approve</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- delete product modal start -->
+		</div>
+	</div>
+</body>
+</html>

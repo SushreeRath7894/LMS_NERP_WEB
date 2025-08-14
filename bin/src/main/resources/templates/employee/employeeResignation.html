@@ -1,0 +1,2052 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+
+<style type="text/css">
+.autocomplete {
+	position: relative;
+	display: inline-block;
+	width: 100%;
+}
+
+.sugg-cls ul {
+	height: 150px;
+	overflow-x: scroll;
+	position: relative;
+}
+
+.left-design {
+	text-align: left;
+}
+
+ul#autocomplete-list1 {
+	position: relative;
+	z-index: 999;
+}
+
+ul#autocomplete-list1 li {
+	position: relative;
+	color: #fff;
+	padding-left: 6px;
+	background-color: #1f57a8;
+	border-bottom: solid 1px #6189c2;
+	padding-top: 5px;
+	padding-bottom: 5px;
+}
+
+.modal-body-overview {
+	position: relative;
+	flex: 1 1 auto;
+	padding: 1rem;
+	text-align: left;
+}
+
+#subject:focus {
+	border: 1px solid #000000;
+	outline: none;
+}
+
+.textarea-desgn {
+	border: 1px solid #000000;
+	font-size: 17px;
+	font-weight: 400;
+	color: #000000;
+}
+</style>
+<head>
+<script>
+	$(document).ready(function() {
+		
+		
+		$(".chosen-select").chosen();
+		
+		var gridDivDraft = document.querySelector('#myGridDraft');
+		new agGrid.Grid(gridDivDraft, gridOptionsDraft);
+		
+		var userid = $("#sessionId").val();
+		var userrole = $("#sessionRole").val();
+		var userManager = $("#sessionManager").val();
+		var roleid = "reg";
+ 
+		
+
+		agGrid.simpleHttpRequest({
+			url : "employee-resignation-draft-view?userid=" + userid,
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq1').find('span').html(len);
+			if(len>0){
+				gridOptionsDraft.api.setRowData(data);
+			}else{
+				gridOptionsDraft.api.setRowData([]);
+			}
+		})
+		
+		$('#new').show();
+		$('#delete').attr('disabled', true);
+		$('#delete1').attr('disabled', true);
+		$('#approve').attr('disabled', true);
+		$('#reject').attr('disabled', true);
+		//Slim Select fromatte 
+
+	     CKEDITOR.replace('commentck', {
+	     	height: 150,
+	     	removePlugins: 'wsc',
+	     	scayt_autoStartup: true,
+	     	scayt_maxSuggestions: 3,
+	     	autoParagraph : false,
+	     	});
+		
+		
+	 	$('#docTbl').on('click', '.rmv1', function() {
+			openDeleteConfirm();
+			var value = $(this).parent("div").attr("id");
+
+			$("#dltValue").val(value);
+		});
+	 	
+	 	
+		var dateFormat = localStorage.getItem("dateFormat");
+
+		//Date fromatter for TO DATE 
+
+		$("#resignDateCalendar").datetimepicker({
+			format : 'd-m-Y',
+			closeOnDateSelect : true,
+			timepicker : false,
+			//minDate:0,
+		}).on("change", function() {
+			$('#resignDate').val($(this).val());
+			dateChange();
+		})
+
+		$('#resignDate').blur(function() {
+			$("#resignDateCalendar").val($(this).val());
+		})
+ 
+		//Date fromatter for FROM DATE
+
+		$("#releaseDateCalendar").datetimepicker({
+			format : 'd-m-Y',
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#releaseDate').val($(this).val());
+			dateChange();
+		})
+
+		$('#releaseDate').blur(function() {
+			$("#releaseDateCalendar").val($(this).val());
+		})
+ 
+
+	      $("#multipleResignationTo").chosen().change(function(){
+	            const selectedValue = $(this).val(); 
+	            disableOptions('multipleResignationCc',selectedValue)
+	      });
+
+	      $("#multipleResignationCc").chosen().change(function(){
+	            const selectedValue = $(this).val(); 
+	            disableOptions('multipleResignationTo',selectedValue)
+	      });
+ 
+});
+	
+	function disableOptions(id,optionsToDisable) {
+	    var selectElement = document.getElementById(id);
+
+	    Array.from(selectElement.options).forEach(option => {
+	      option.disabled = false;
+	    });
+
+	    optionsToDisable.forEach(value => {
+	      var option = selectElement.querySelector(`option[value="${value}"]`);
+	      if (option) {
+	        option.disabled = true;
+	      }
+	    });
+
+	    $(selectElement).trigger("chosen:updated");
+
+	}
+	
+	/* -------------------search bar for mygrid1------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptionsDraft.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+		
+	    var filteredRows = gridOptionsDraft.api.getDisplayedRowCount();
+	    
+	    $('#totalReq1').find('span').html(filteredRows);
+		
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+
+
+	
+	/* ------------ag grid for Resignation apply Draft(Draft table)----------------------- */
+
+	const columnDefsDraft = 
+	[
+			{
+				headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+			{
+				headerName : 'Exit ID',
+				field : "resignationDraftId",
+				cellRenderer : function(params) {
+					if (params.data.status == "DRAFTED") {
+						return '<a onclick=editResignationApplyDraft("'
+								+ params.data.resignationDraftId
+								+ '") href="javascript:void(0)">'
+								+ params.data.resignationDraftId + '</a>';
+				}else{
+					return params.data.resignationDraftId;
+					}
+				}
+			}, {
+				headerName : 'Employee ID',
+				field : "empId",
+				width : 120,
+			}, {
+				headerName : 'Employee Name',
+				field : "empName"
+			},{
+				headerName : 'Subject',
+				field : "subject",
+			} ,	{
+				headerName : 'Overview',
+				field : "logbook",
+				cellStyle : {
+					textAlign : 'center'
+				},cellRenderer : function(params) {
+						let encodedLogData = encodeURIComponent(JSON.stringify(params.data));
+
+					       return '<a id="id" onclick="openOverViewModal(decodeURIComponent(\'' + encodedLogData + '\'))" href="javascript:void(0)">'
+				             + '<i class="bi bi-clock-history"> Overview </i>'
+				             + '</a>';
+				}
+
+			}, {
+				headerName : 'Attachment',
+				field : "fileName",
+				cellStyle : {
+					textAlign : 'center'
+				},cellRenderer : function(params) {
+					if(params.data.documentURL!=null && params.data.documentURL!="null"){
+						var filename= extractFilename(params.data.documentURL);
+						var iurl="/document/resign/"+filename;
+						return '<a href="' + iurl+'" target="_blank"><i class="bi bi-file-earmark-image">View</i></a>';
+					}else{
+						if(params.data.dURL!=null && params.data.dURL!="null"){
+							return '<a href="' + params.data.dURL+'" target="_blank"><i class="bi bi-file-earmark-image">View</i></a>';
+						}else{
+							return "Not Available";
+						}
+					}
+					
+				},
+			},{
+				headerName : 'Resign Date',
+				field : "resignDate",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : 'Requested Release Date',
+				field : "releaseDate",
+				cellStyle : {
+					textAlign : 'center'
+				},
+				width : 200,
+			},  {
+				headerName : 'Created By',
+				field : "createdBy",
+			},{
+				headerName : 'Resign Status',
+				field : "status",
+				cellRenderer : function(params) {
+					if (params.data.status == 0) {
+						return 'InActive';
+					} else {
+						return 'Active';
+					}
+				},
+				hide : true
+			}, {
+				headerName : 'Draft Status',
+				field : "status",
+				
+			}]; 
+	
+	const gridOptionsDraft = {
+		columnDefs : columnDefsDraft,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 170,
+			height : 10
+		},
+		rowSelection : 'single',
+		pagination:true,
+		paginationPageSize: 15,
+		onSelectionChanged : rowSelectResignApplyDraft,
+		suppressRowClickSelection : true,
+		getRowNodeId : function(data) {
+			return data.resignationDraftId;
+		}
+
+	};
+
+	/* ----------function for rowselection for Draft apply parent table----------- */
+	var id="";
+	function rowSelectResignApplyDraft() {
+		var id="";
+		var selectedRows = gridOptionsDraft.api.getSelectedRows();
+		for (var i = 0; i < selectedRows.length; i++) {
+
+			id = id + '"' + selectedRows[i].resignationDraftId + '",';
+			
+		}
+		id = id.substring(0, id.length - 1);
+
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+		
+		 var selectedNodes = gridOptionsDraft.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		 var status= selectedData.map(node => node.status);
+		 var uid=$("#sessionId").val();
+		 
+		if (rowCount > 0) {
+			$('#new').attr("disabled", true);
+			
+			if(status == "APPLIED"){
+				$('#delete').attr("disabled", true);
+			}else{
+				$('#delete').attr("disabled", false);
+			}
+
+		} else {
+			$('#delete').attr("disabled", true);
+			$('#new').attr("disabled", false);
+		}
+
+	}
+	
+	function cancelModalBtnOverview(){
+		$('#resignationModal').modal('hide');
+	}
+	function openOverViewModal(data) {
+		$('#resignationModal').modal('show');
+		
+	    let allData = JSON.parse(decodeURIComponent(data));
+	    
+	    if (allData) {
+	        $("#resignId").text(allData.resignationDraftId || 'N/A');
+	        $("#empIdModal").text(allData.empId || 'N/A');
+	        $("#empNameModal").text(allData.empName || 'N/A');
+	        $("#regToModal").text(allData.regToName || 'N/A');
+	        $("#regCCModal").text(allData.regCCName || 'N/A');
+	        $("#subjectModal").text(allData.subject || 'N/A');
+	        $("#reasonModal").html(allData.reason || 'N/A'); 
+	        $("#resignDateModal").text(allData.resignDate || 'N/A');
+	        $("#releaseDateModal").text(allData.releaseDate || 'N/A');
+	        $("#createdByModal").text(allData.createdBy || 'N/A');
+	        $("#statusModal").text(allData.status || 'N/A');
+	    } else {
+	        $("#resignationDetails").html('<div style="color:#D2042D">No Data Available As Of Now</div>');
+	    } 
+
+	    
+	}
+
+	/*---------------function for edit reasignation apply------------ */
+
+	function editResignationApplyDraft(id) {
+		var imagesdiv="";
+		var scat="";
+		var tbl="";
+		
+		$(".loader").show();
+		$.ajax({
+			type : "GET",
+			url : "employee-resignation-draft-edit?id=" + id,
+			async : false,
+			success : function(response) {
+				if (response.code == "success") {
+					$(".loader").hide();
+					
+					var jsonData = JSON.parse(response.body);
+					
+					var allData = jsonData.editData[0];
+					
+					console.log('allData',allData)
+					
+					   var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+			    		+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+			    		+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_0"  onblur="checkForDuplicateEntry(event)"></div></td>'
+			    		+ '<td> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+			    		+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+			    		+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div><div id="dltImage_0" class="dltImage"></div><input type="hidden" id="editId_0></td>'
+			    		+ '</tr>';
+			    $("#doctbodyData").html(tbl);
+					
+			    
+					$("#new").hide();
+					$("#downloadBtn").hide();
+					$("#cancel").show();
+					$("#myGrid").hide();
+					$("#myGridDraft").hide();
+					$("#searchRowDiv").hide();
+					$("#totalReq").hide();
+					$("#totalReq1").hide();
+					$("#delete").hide();
+					$("#idDiv").show();
+					$("#demo").show();
+					$(".formValidation").remove();
+					
+					$("#empIDAuto").val("");
+					$("#empNameList").val("");
+					$("#empIdAutoPopup").val("");
+					$("#empIDAuto").val("");
+					$("#empNameList").val("");
+					$("#empIdAutoPopup").val("");
+					$("#suggesstion-box_").hide();
+					
+					$("#resignationDraftId").val(allData.resignationDraftId);
+					CKEDITOR.instances['commentck'].setData(allData.reason);
+					
+					//newBtn(0);
+					$('#idDiv').find('span').html(id);
+					$("#resignDate").val(allData.resignDate);
+					$("#releaseDate").val(allData.releaseDate);
+					$("#subject").val(allData.subject);
+					$("#emplManagerAutoSearch").val(allData.empId);					 
+					$('#empNameList').prop('disabled', true);
+					$("#empIDAuto").val(allData.empId);
+					$("#empNameList").val(allData.empName);
+					
+					var allData2=allData.docList;
+					
+				
+					
+					// if (allData.regTo) {
+						
+						    var disableTo= allData.regTo;
+							var disableCc = allData.regCC;
+							
+							disableTo = disableTo.split(',');
+						    disableCc = disableCc.split(',');
+							
+							console.log('disableCc',disableCc)
+							console.log('disableTo',disableTo)
+							 
+						 	 disableOptions('multipleResignationTo',disableCc)
+						 	 disableOptions('multipleResignationCc',disableTo)
+						 	 
+					        $('#multipleResignationTo').val(disableTo);
+						    $('#multipleResignationCc').val(disableCc);
+					     
+						    $('#multipleResignationTo').trigger("chosen:updated");
+						    $('#multipleResignationCc').trigger("chosen:updated");
+						//} 
+					 
+					// if (allData.regCC) {
+						 
+							
+					      	
+					// }
+					 
+					 
+						if(allData2!=null && allData2.length!=0){
+						$("#doctbodyData").empty();
+						
+						allData2.forEach(function(rowNode,index){
+							
+							var filename= extractFilename(rowNode.docurl);
+							var iurl="/document/resign/"+filename;
+							
+							if(getFileExtension(filename)=="jpg" || getFileExtension(filename)=="png" ||getFileExtension(filename)=="jpeg"){
+								imagesdiv += `<div class="col-lg-2 col-md-8 mb-4 mb-lg-0">
+									  <div class="bg-image hover-overlay ripple shadow-1-strong rounded" data-ripple-color="light">
+									  <img src=${iurl} class="w-100"  /> </div></div>`;
+							}		  
+							
+							tbl = '<tr>'
+								+ '<td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+								+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option>  </select> </div></td>'
+								+ '<td><div class="form-group"> <input type="text" value="'+rowNode.docName+'" class="form-control docNoclss" id="docnoid_'+index+'"> </div></td>'
+								+ '<td><div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_'+index+'" id="uploadFor_'+index+'"> <i class="ti-pencil" id="clickImg_'+index+'"></i> </label>'
+								+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_'
+								+ index
+								+ '"name="userImage" onchange="saveMultiFile(event)" value="'+rowNode.fileName+'" /> </div>'
+								+ '</div> <input type="hidden" id="uploadHidden_'+index+'" value="'+rowNode.docurl+'" class="uploadHidCls">'
+								+ '<div id="uploadedBillDiv_'+index+'" align="center" class="uploadedBillCls"><div class="uploadicon position-l"><i class="bi bi-file-earmark" onclick="viewDocuemntFile(&quot;'+window.btoa(rowNode.docurl)+'&quot;)"></i></div></div>'
+								+ '<div id="imageName_'+index+'" class="imageName">'
+								+ rowNode.fileName
+								+ '</div>'
+								+ '<input type="hidden" id="editId_'+index+'" value="'+ rowNode.exitId+'">'
+								+ '<div id="dltImage_'+index+'" class="custom-file-delete"><i class="ti-close position-l rmv1" onclick="openDeleteConfirm()"></i></div> </td>'
+								+ '</tr>';
+							$("#doctbodyData").append(tbl);
+							
+								  });
+				} 
+				} 
+
+			},
+			error : function(data) {
+			}
+		});
+
+	}
+	
+	function viewDocuemntFile(iurl){
+		window.open(window.atob(iurl), '_blank', 'width=800,height=600,top=100,left=100');
+	}
+
+	
+	function extractFilename(url) {
+        // Split the URL by '/'
+        var urlParts = url.split('/');
+        // Get the last part of the URL, which is the filename
+        var filename = urlParts[urlParts.length - 1];
+        return filename;
+    }
+	
+	function getFileExtension(filename) {
+	    return filename.split('.').pop();
+	}
+	
+	
+	/*------------- Function for delete Resignation apply ----------- */
+
+	function deleteResignationApply() {
+		 var selectedNodes = gridOptionsDraft.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		 var resignationDraftId= selectedData.map(node => node.resignationDraftId);
+		if(resignationDraftId){
+			$.ajax({
+				type : "GET",
+				url : "employee-resignation-delete?deleteId=" + resignationDraftId,
+				async : false,
+				success : function(response) {
+					if (response.code == "success") {
+						$("#messageParagraph").text(
+						"Data Deleted Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						cancelBtn();
+						
+					}
+
+				},
+				error : function(data) {
+				}
+			});
+		}
+	}
+ 
+	function viewData(){
+		agGrid.simpleHttpRequest({
+			url : "employee-resignation-draft-view?userid=" + userid+"&roleid="+roleid,
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+			if(len>0){
+				gridOptionsDraft.api.setRowData(data);
+			}else{
+				gridOptionsDraft.api.setRowData([]);
+			}
+		})
+	}
+	/* ------------------function for new button----------------- */
+
+	function newBtn(id) {
+		//Enable all disabled options and null previeous value(CC)
+		var $chosenSelect = $("#multipleResignationCc");
+
+		
+		$chosenSelect.find('option').prop('disabled', false);
+
+		$chosenSelect.val(null); 
+
+		$chosenSelect.trigger("chosen:updated");
+		
+		//Enable all disabled options and null previeous value(To)
+		var $chosenSelectTo = $("#multipleResignationTo");
+
+		$chosenSelectTo.find('option').prop('disabled', false);
+
+		$chosenSelectTo.val(null); 
+
+		$chosenSelectTo.trigger("chosen:updated");
+
+		$("#new").hide();
+		
+		$("#downloadBtn").hide();
+		$("#cancel").show();
+		$("#myGrid").hide();
+		$("#myGridDraft").hide();
+		$("#searchRowDiv").hide();
+		$("#totalReq").hide();
+		$("#totalReq1").hide();
+		$("#delete").hide();
+		$("#idDiv").show();
+		$("#demo").show();
+		$(".formValidation").remove();
+		
+		$("#multipleResignationTo").val('').trigger('chosen:updated');
+		$("#multipleResignationCc").val('').trigger('chosen:updated');
+		
+		$("#empIDAuto").val("");
+		$("#empNameList").val("");
+		$("#empIdAutoPopup").val("");
+		$('#idDiv').find('span').html("");
+	   	$("#empNameList").val("");
+			$("#empIdAuto").val("");
+			$("#suggesstion-box_").hide();
+			
+
+			var userid = $("#sessionId").val();
+			var userrole = $("#sessionRole").val();
+			$('#empNameList').prop('disabled', false);
+			
+			
+			var rolesArray = userrole.match(/rol\d{3}/g);
+
+			var hasRol001 = rolesArray.includes('rol001'); 
+			var hasRol010 = rolesArray.includes('rol010');
+			
+				if (hasRol010 || hasRol001) {
+					
+				}else{
+					getEmployeeList(userid);
+				}
+
+        var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+    		+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+    		+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_0"  onblur="checkForDuplicateEntry(event)"></div></td>'
+    		+ '<td> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+    		+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+    		+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div><div id="dltImage_0" class="dltImage"></div><input type="hidden" id="editId_0></td>'
+    		+ '</tr>';
+    $("#doctbodyData").html(tbl);
+		
+	var sm=$("#emplManagerAutoSearch").val();
+		
+		var date = (new Date()).toISOString().split('T')[0];
+		var newDate = changeDateFormat(date);
+		$("#leaveApplyDate").val(newDate);
+		$("#empID").val($("#sessionId").val());
+		$("#empName").val($("#sessionName").val());
+		
+		if(id=="1"){
+			$("#subject").val("Letter Of Resignation");
+		
+		}else{
+		}
+	}
+
+	
+	function changeDateFormat(inputDate){  // expects Y-m-d
+	    var splitDate = inputDate.split('-');
+	    if(splitDate.count == 0){
+	        return null;
+	    }
+
+	    var year = splitDate[0];
+	    var month = splitDate[1];
+	    var day = splitDate[2]; 
+
+	    return day + '-' + month + '-' + year;
+	}
+	/*----------------------- function for main cancel button----------- */
+
+	function cancelBtn() {
+		$("#addEmployeeModal").modal('hide')
+		$('#empNameList').prop('disabled', false);
+		$('.chosen-choices').closest('div').find('.search-choice1').hide();
+		window.str_array1 = [];
+		$("#totalReq").show();
+		$("#downloadBtn").show();
+		$("#totalReq1").show();
+		$("#myGrid").show();
+		$("#myGridDraft").show();
+		$("#searchRowDiv").show();
+		$("#demo").hide();
+		$('#new').show();
+		$('#delete').show();
+		$("#resignationDraftId").val("");
+		$("#multipleResignationCc").val("");
+		$("#subject").val("");
+		$("#commentck").val("");
+		CKEDITOR.instances.commentck.setData("");
+		$("#resignDate").val("");
+		$("#releaseDate").val("");
+ 
+		$('#new').attr("disabled", false);
+		$('#delete').attr("disabled", true);
+		
+		var userid = $("#sessionId").val();
+		var userrole = $("#sessionRole").val();
+		var roleid = "reg";
+		
+		
+
+		agGrid.simpleHttpRequest({
+			url : "employee-resignation-draft-view?userid=" + userid+"&roleid="+roleid,
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq1').find('span').html(len);
+			if(len>0){
+				gridOptionsDraft.api.setRowData(data);
+			}else{
+				gridOptionsDraft.api.setRowData([]);
+			}
+		})
+	}
+ 
+
+
+	/* ------------function for main save both parent and child table data---------- */
+	var data = [];
+	function saveResignApply(){
+		$(".formValidation").remove();
+		$(".loader").show();
+		
+		var validation = true;
+		obj = {};
+		 var reason = CKEDITOR.instances.commentck.getData();
+
+		    var participants = [];
+		    var uploadList = [];
+		    
+		    var to = $('#multipleResignationTo').val();
+			 var cc = $('#multipleResignationCc').val();
+			 var mailTo = to.join(",");
+			 var mailCc = cc.join(",");
+			 
+		    obj['resignationDraftId'] = $('#resignationDraftId').val();
+		    obj['regTo'] = mailTo;
+		    obj['regCC'] = mailCc;
+		    obj['subject'] = $('#subject').val();
+		    obj['reason'] = reason;
+		    obj['resignDate'] = $('#resignDate').val();
+		    obj['releaseDate'] = $('#releaseDate').val();
+		    obj['empId'] = $('#empIDAuto').val();
+	
+			 if (validation){
+				 $("#doctbodyData > tr").each(
+							function(i) {
+								var uFile = $(this).find(".document")[0].files[0];
+								var fileName = $(this).find(".document").val();
+								var fileNametxt = $(this).find('.imageName').text();
+								var data = [];
+								var x = [];
+								if (fileNametxt != '' && fileNametxt != 'undefined' && fileNametxt != null ) {
+									if (fileName != '' && fileName != 'undefined' && fileName != null ) {
+									
+										var lastIndex = fileName.lastIndexOf("\\");
+										if (lastIndex >= 0) {
+											fileName = fileName.substring(lastIndex + 1);
+										}
+										var reader = new FileReader();
+										reader.readAsDataURL(uFile);
+
+										reader.onload = function() {
+											data = reader.result.split(",");
+											x.push(data[1]);
+										};
+									}
+									uploadData = {};
+									uploadData['documnentName'] = $("#docnoid_" + i).val();
+									uploadData['documentFile'] = x;
+									uploadData['fileName'] = $(this).find('.imageName').text();
+									uploadData['documentURL'] = $(this).find(".uploadHidCls").val();
+									uploadData['imageNameEdit'] = $(this).find(
+											".uploadHidCls").val();
+									uploadList.push(uploadData);
+								}
+
+								obj.documentList = uploadList;
+							});
+				    //data.push(obj);
+					saveResignApplyDetails(obj);
+			 }
+
+	}
+	
+	function openDeleteConfirm() {
+		$("#dltValue").val("");
+		$('#deleteAttachment').modal('show');
+	}
+
+	function openDeleteConfirm() {
+		$("#dltValue").val("");
+		$('#deleteAttachment').modal('show');
+	}
+
+	
+	function saveResignApplyDetails(data) {
+
+		 setTimeout(()=>{
+		$.ajax({
+			type : "POST",
+			url : "employee-resignation-apply",
+			contentType : "application/json",
+			data : JSON.stringify(data),
+			success : function(response) {
+				if (response.code == "success") {
+					$(".loader").hide();
+					$("#messageParagraph").text(response.message);
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$("#myGrid").show();
+					$("#demo").hide();
+					$("#new").show();
+					cancelBtn();
+				}else if(response.code == "duplicate"){
+					$(".loader").hide();
+				 	$("#messageParagraph").text(response.message);
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$("#myGrid").show();
+					$("#demo").hide();
+					$("#new").show();
+					cancelBtn(); 
+				}else{
+						$(".loader").hide();
+					 	$("#messageParagraph").text("Something Went Wrong");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$("#myGrid").show();
+						$("#demo").hide();
+						$("#new").show();
+						cancelBtn(); 
+				}
+			},
+			error : function(datas) {
+			}
+		})
+		 },1000)
+
+	}
+	/* ------------function for main submit both parent and child table data---------- */
+	var datas = [];
+	function saveResignApplyDraft(){
+		$(".formValidation").remove();
+	
+		
+		obj = {};
+		var validation = true;
+		 var reason = CKEDITOR.instances.commentck.getData();
+
+		 var to = $('#multipleResignationTo').val();
+		 var cc = $('#multipleResignationCc').val();
+		 var mailTo = to.join(",");
+		 var mailCc = cc.join(",");
+		 
+		    var participants = [];
+		    var uploadList = [];
+		    obj['resignationDraftId'] = $('#resignationDraftId').val();
+		    obj['regTo'] = mailTo;
+		    obj['regCC'] = mailCc;
+		    obj['subject'] = $('#subject').val();
+		    obj['reason'] = reason;
+		    obj['resignDate'] = $('#resignDate').val();
+		    obj['releaseDate'] = $('#releaseDate').val();
+		    obj['empId'] = $('#empIDAuto').val();
+		    
+		    console.log('obj',obj)
+			
+		 if (reason == null || reason == "") {
+			 allValid = validationUpdated("Reason Required", "commentckdreason");
+ 		 } 
+			
+		  var mailTo = $('#multipleResignationTo').val();
+			 
+		 if(mailTo == null || mailTo == ""){
+			allValid = validationUpdated("To Required", "validationForTo")
+		 }
+			 
+		 if (obj['empId'] == null || obj['empId'] == "") {
+				validation = validationUpdated("Employee Name Required", "empNameList");
+				
+		 }
+		 if (obj['empId'] == null || obj['empId'] == "") {
+				validation = validationUpdated("Employee ID Required", "empIDAuto");
+				
+		 }
+		 if (obj['subject'] == null || obj['subject'] == "") {
+				validation = validationUpdated("Subject Required", "subject");
+			}
+		 if (obj['resignDate'] == null || obj['resignDate'] == "") {
+				validation = validationUpdated("Resign Date Required", "resignDate");
+			}
+		 if (obj['releaseDate'] == null || obj['releaseDate'] == "") {
+				validation = validationUpdated("Release Date Required", "releaseDate");
+			}
+		 
+		 if (validation) {
+			 
+					$("#doctbodyData > tr").each(
+							function(i) {
+								var uFile = $(this).find(".document")[0].files[0];
+								var fileName = $(this).find(".document").val();
+								var fileNametxt = $(this).find('.imageName').text();
+								var data = [];
+								var x = [];
+								if (fileNametxt != '' && fileNametxt != 'undefined' && fileNametxt != null ) {
+									if (fileName != '' && fileName != 'undefined' && fileName != null ) {
+									
+										var lastIndex = fileName.lastIndexOf("\\");
+										if (lastIndex >= 0) {
+											fileName = fileName.substring(lastIndex + 1);
+										}
+										var reader = new FileReader();
+										reader.readAsDataURL(uFile);
+
+										reader.onload = function() {
+											data = reader.result.split(",");
+											x.push(data[1]);
+										};
+									}
+									uploadData = {};
+									uploadData['documnentName'] = $("#docnoid_" + i).val();
+									uploadData['documentFile'] = x;
+									uploadData['fileName'] = $(this).find('.imageName').text();
+									uploadData['documentURL'] = $(this).find(".uploadHidCls").val();
+									uploadData['imageNameEdit'] = $(this).find(
+											".uploadHidCls").val();
+									uploadList.push(uploadData);
+								}
+
+								obj.documentList = uploadList;
+							});
+				saveResignApplyDetailsdraft(obj);
+				}
+			// datas.push(obj);
+			
+		 }
+	
+	function saveResignApplyDetailsdraft(datas) {
+		$(".loader").show();
+		 setTimeout(()=>{
+	
+		$.ajax({
+			type : "POST",
+			url : "employee-resignation-draft-apply",
+			contentType : "application/json",
+			data : JSON.stringify(datas),
+			success : function(response) {
+				if (response.code == "success") {
+					$(".loader").hide();
+					$("#messageParagraph").text(response.message);
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$("#myGrid").show();
+					$("#demo").hide();
+					$("#new").show();
+					cancelBtn();
+				}else if(response.code == "duplicate"){
+					$(".loader").hide();
+					$("#messageParagraph").text(response.message);
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$("#demo").hide();
+					$("#new").show();
+					cancelBtn();
+				}else{
+					$(".loader").hide();
+					$("#messageParagraph").text("Something Went Wrong.");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$("#demo").hide();
+					$("#new").show();
+					cancelBtn();
+				}
+			},
+			error : function(datas) {
+			}
+		})
+		 },1000)
+	}
+
+	
+	function deleteAttachmentRow() {
+		
+		var lengthOfTableRow1 = 0;
+ 		$("#docTbl > #doctbodyData > tr").each(function() {
+			lengthOfTableRow1 = lengthOfTableRow1 + 1;
+		})
+		var id = $("#dltValue").val();
+		$("#"+id).closest('tr').remove();
+		closeDeleteConfirm();
+		if (lengthOfTableRow1 == 1) {
+			var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+					+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0"  onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+					+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_0" onblur="checkForDuplicateEntry(event)"></div></td>'
+					+ '<td><div class="form-group"> <input type="text" value="" class="form-control docnotesCls" id="docnotes_0"></div></td>'
+					+ '<td> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+					+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+					+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div><div id="dltImage_0" class="dltImage"  ></div> </td>'
+					+ '</tr>';
+			$("#doctbodyData").append(tbl);
+		}
+	}
+
+
+	//for closing modal box for delete 
+
+	function closeDeleteConfirm() {
+		$("#dltValue").val("");
+		$('#deleteAttachment').modal('hide');
+	}
+	
+	
+	/* ------------function for showing the modal(delete record from my grid1)------------ */
+
+	function deleteDetail() {
+		$('#deleteDetails').modal('show');
+	}
+
+	/* -------------------function for cancel button in modal1------------------ */
+
+	function cancelModalBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+	}
+
+	/* -------------------for closeing modal box for delete---------------- */
+
+	function cancelModalDeleteBtn() {
+		$('#deleteDetails').modal('hide');
+		$('#alertModal').modal('hide');
+
+	}
+  
+	    
+
+	/* --------------------function for header status----------------- */
+
+	function headerStatus(rejectStatus) {
+
+		$("#statusDiv").show();
+		var createdDate = $("#createdDate").text();
+		//var approveDate = $("#approveDate").text();
+		var rejectDate = $("#rejectDate").text();
+
+		if (createdDate) {
+			$('#createdDiv').addClass('green-box');
+			$('#createdDiv').removeClass('grey-box');
+		} else {
+			$('#createdDiv').removeClass('green-box');
+			$('#createdDiv').addClass('grey-box');
+		}
+
+		if (rejectStatus == "2") {
+			$('#rejectDiv').removeClass('grey-box');
+			$('#rejectDiv').addClass('green-box');
+		} else {
+			$('#rejectDiv').removeClass('green-box');
+			$('#rejectDiv').addClass('grey-box');
+		}
+
+		if (rejectStatus == "3") {
+			$('#approveDiv').removeClass('grey-box');
+			$('#approveDiv').addClass('green-box');
+		} else {
+			$('#approveDiv').removeClass('green-box');
+			$('#approveDiv').addClass('grey-box');
+
+		}
+		if (rejectStatus == "0") {
+			$('#pendingDiv').removeClass('grey-box');
+			$('#pendingDiv').addClass('green-box');
+		} else {
+			$('#pendingDiv').removeClass('green-box');
+			$('#pendingDiv').addClass('grey-box');
+
+		}
+	}
+/* function downloadDetails() { 
+		  var dataset = [];
+		  gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		        dataset.push(rowNode.data);
+		    });
+		  gridOptions.api.exportDataAsCsv(dataset);
+		} */
+	
+		function getCurrentDate() {
+		    const today = new Date();
+
+		    // Extract the day, month, and year
+		    let day = today.getDate();
+		    let month = today.getMonth() + 1; // Months are 0-indexed in JavaScript
+		    let year = today.getFullYear();
+
+		    // Pad the day and month with leading zeros if needed
+		    day = day < 10 ? '0' + day : day;
+		    month = month < 10 ? '0' + month : month;
+
+		    // Format the date as dd-mm-yyyy
+		    return `${day}-${month}-${year}`;
+		}
+
+function downloadDetails() {
+	var rowCount = 0;
+	gridOptionsDraft.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+	    if (rowNode.data.resignationDraftId) {
+	        rowCount++;
+	    }
+	});
+	
+	var currDate =getCurrentDate();
+	if (rowCount > 0) {
+	    var name = "Resignation Apply-" + currDate;
+	    var allColumns = gridOptionsDraft.columnApi.getAllColumns();
+
+	    allColumns.forEach(col => {
+	        if (col.getColDef().headerName) {
+	            col.getColDef().headerName = col.getColDef().headerName.toUpperCase();
+	        }
+	    });
+
+	    var visibleColumns = allColumns.filter(col => {
+            const headerName = col.getColDef().headerName;
+            const isColumnVisible = !col.getColDef().hide;
+            const isNotOverview = col.getColDef().field !== "logbook"; // Skip 'Overview' column
+            return headerName !== undefined && headerName !== null && isColumnVisible && isNotOverview;
+        });
+
+	    var visibleColumnIds = visibleColumns.map(col => col.getColId());
+
+	    const params = {
+	        skipHeader: false,
+	        columnGroups: false,
+	        skipFooters: false,
+	        skipGroups: false,
+	        skipPinnedTop: false,
+	        skipPinnedBottom: false,
+	        allColumns: true,
+	        onlySelected: false,
+	        suppressQuotes: false,
+	        fileName: name + '.csv',
+	        sheetName: 'Sheet1',
+	        customHeader: null,
+	        customFooter: null,
+	        columnKeys: visibleColumnIds
+	    };
+	    gridOptionsDraft.api.exportDataAsCsv(params);
+	} else {
+	    $("#messageParagraph").text("NO DATA AVAILABLE FOR DOWNLOAD!");
+	    $("#msgOkModal").removeClass("btn3");
+	    $("#msgOkModal").addClass("btn1");
+	    $("#msgModal").modal('show');
+	}
+}
+function setFromToDate() {
+	$("#messageParagraph").text("Please choose release date greater than or equal to resign date ");
+	$("#msgOkModal").removeClass("btn3");
+	$("#msgOkModal").addClass("btn1");
+	$("#msgModal").modal('show');
+	$("#resignDate").val("");
+	$("#releaseDate").val("");
+}
+
+function dateChange() {
+	var fromdate = $('#resignDate').val();
+	var todate = $('#releaseDate').val();
+	var fd = fromdate.split("-");
+	var td = todate.split("-");
+	
+	if (fromdate != '' && todate != '') {
+		
+		if(fd[2]<=td[2]){
+			if(fd[1]==td[1]){
+				if(fd[0]<=td[0]){
+				}else{
+					setFromToDate();
+				}
+			}else if(fd[1]<td[1]){
+				
+			}else{
+				setFromToDate();
+			}
+		}else{
+			setFromToDate();
+		}
+	}else{
+		
+	}
+}
+/* Employee AutoSearch */
+
+function getEmployeeList(userid) {
+	if(userid){
+		var search = userid;
+	}else{
+		var search = $("#empNameList").val();
+	}
+	if (search) {
+		$.ajax({
+			type: "POST",
+			url: "employee-resignation-get-employee-list",
+			dataType: 'json',
+			contentType: 'application/json',
+			data: search,
+			success: function (response) {
+				if (response.code == "success") {
+					if (response.body!= null) {
+						
+						if(userid){
+							selectAutocompleteValueItem1(response.body[0].key,response.body[0].data,response.body[0].code,window.btoa(response.body[0].name),
+									response.body[0].key,response.body[0].name)
+									 $('#empNameList').prop('disabled', true);
+						}else{
+						$('#empNameList').prop('disabled', false);
+						$("#empNameList").css("background", "#FFF");
+						var content = '<ul id="autocomplete-list1" style="margin-left:-32px; font-weight:100; font-size:14px; color:#ccc;">';
+						for (var i = 0; i < response.body.length; i++) {
+							content += '<li class="autocompletedata cp" onClick="selectAutocompleteValueItem1(\''
+								+ response.body[i].key
+								+ '\',\''
+								+ response.body[i].data
+								+ '\',\''
+								+ response.body[i].code
+								+ '\',\''
+								+ window.btoa(response.body[i].name)
+								+ '\')">'
+								+ response.body[i].key
+								+ " - "
+								+ response.body[i].name
+								+ '</li>';
+							
+						}
+						//  var div = '<li class="search-choice search-choice1 default"><span>' + response.body[i].data + ' </span></li>';
+						content += '</ul>';
+						$("#suggesstion-box_").show();
+						$("#suggesstion-box_").html(content);
+						}
+					} else {
+						$("#empNameList").css("background", "#FFF");
+						var content = '<ul id="autocomplete-list1">';
+						content += '<font-weight:100; font-size:14px; color:#ccc; background-color: #0909e4;"li onClick="selectAutocompleteValueItem()">'
+							+ "No Data Found" + '</li>';
+						content += '</ul>';
+						$("#suggesstion-box_").show();
+						$("#suggesstion-box_").html(content);
+						
+					}
+				}
+			},
+			error: function (data) {
+				console.log(data);
+			}
+		})
+	} else {
+		$("#empIDAuto").val("");
+		$("#empNameList").val("");
+		$("#suggesstion-box_").hide();
+	}
+}
+function selectAutocompleteValueItem1(empid, manager, managerId, empName) {
+	if (empid) {
+		 
+		$("#emplManagerAutoSearch").val(managerId);					 
+		$("#empNameList").val(window.atob(empName));
+		$("#empIDAuto").val(empid);
+		$("#empIdAutoPopup").val(empid);
+		$("#empNameList").attr('data-procat', empid);
+		$("#suggesstion-box_").hide();
+	} else {
+	    $("#empNameList").val("");
+		$("#empIDAuto").val("");
+		$("#empIdAutoPopup").val("");
+		$("#empNameList").attr('data-procat', "");
+		$("#suggesstion-box_").hide();
+
+	}
+}
+
+function saveResignApplyModal(){
+	var allValid = true;
+	
+	 var reason = CKEDITOR.instances.commentck.getData();
+	 
+	if (reason == null || reason == "") {
+		allValid = validationUpdated("Reason", "commentckdreason");
+	}
+	
+	 var mailTo = $('#multipleResignationTo').val();
+	 
+	 if(mailTo == null || mailTo == ""){
+			allValid = validationUpdated("To Required", "validationForTo")
+		}
+	 
+	if (!validationUpdated("Employee Name Required", 'empNameList'))
+		allValid = false;
+	
+	if (!validationUpdated("Employee ID Required", 'empIDAuto'))
+		allValid = false;
+	
+	
+	if (!validationUpdated("Subject Required", 'subject'))
+		allValid = false;
+	
+	if (!validationUpdated("Resign Date Required", 'resignDate'))
+		allValid = false;
+	
+	if (!validationUpdated("Release Date Required", 'releaseDate'))
+		allValid = false;
+	
+	 
+	if(allValid){
+		$('#confirmExitModal').modal('show');
+	}
+	
+}
+
+/* 
+Document Section Function
+* 
+*/
+function checkEmpty() {
+	var infofileName = true;
+	$(".formValidation").remove();
+	$('.docNoclss').each(function() {
+		if ($(this).val() == null || $(this).val() == "") {
+			infofileName = false;
+			validationModal("Document Name Required", $(this).attr('id'));
+		}
+	});
+
+	var mulDocInfo = true;
+	if (infofileName) {
+		$('#doctbodyData > tr').each(function() {
+			if ($(this).closest('tr').find('.imageName').text()) {
+				mulDocInfo = true;
+			} else {
+				mulDocInfo = false;
+				$("#messageParagraph").text("Please Choose a File ");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				return false;
+			}
+
+		});
+	}
+	if (infofileName && mulDocInfo) {
+		addMore1()
+	}
+}
+
+//addmore fun for document upload
+function addMore1() {
+	var lengthOfTableRow = $("#doctbodyData").children('tr').length;
+	var cloneHtml = $("#docTbl tbody tr:first").clone();
+
+	$("#docTbl tbody").append($("#docTbl tbody tr:first").clone());
+	$("#myTable tbody tr td:last").html("");
+	//var addMore = '<button type="button" class="btn btn-primary tr_clone_add" name="add" onclick="addMore1();"><span class="ti-plus"></span></button>&nbsp;'
+
+	$("#docTbl tbody tr:last").find(".documentclss").val("");
+	$("#docTbl tbody tr:last").find(".docNoclss").val("");
+	$("#docTbl tbody tr:last").find(".documentclssup").val("");
+	$("#docTbl tbody tr:last").find(".uploadedBillCls").empty();
+	$("#docTbl tbody tr:last").find(".uploadHidCls").empty();
+	$("#docTbl tbody tr:last").find(".uploadHidCls").val('');
+	$("#docTbl tbody tr:last").find(".imageName").empty();
+	$("#docTbl tbody tr:last").find(".dltImage").empty();
+
+	var j = 0;
+	$("#docTbl > #doctbodyData > tr").each(function(i) {
+
+		var selectInput = $(this).find('select');
+		var textInput = $(this).find('input');
+		var fileInput = $(this).find('file');
+		var divInput = $(this).find('div');
+		var label = $(this).find('label');
+		var iInput = $(this).find('i');
+
+		selectInput.eq(0).attr('id', "docid_" + i);
+		textInput.eq(1).attr('id', "docnoid_" + i);
+		label.eq(1).attr('for', "uploadDoc_" + i);
+		iInput.eq(0).attr('id', "clickImg_" + i);
+		textInput.eq(2).attr('id', "uploadDoc_" + i);
+		textInput.eq(3).attr('id', "uploadHidden_" + i);
+		divInput.eq(4).attr('id', "uploadedBillDiv_" + i);
+		divInput.eq(5).attr('id', "imageName_" + i);
+		divInput.eq(6).attr('id', "dltImage_" + i);
+
+		j++;
+	})
+	$("#clickImg_" + (j - 1)).removeClass("ti-pencil");
+	$("#clickImg_" + (j - 1)).addClass("ti-plus");
+
+}
+//Document upload section 
+
+function saveMultiFile(event) {
+	var AssignItemQty = event.currentTarget.value;
+	var currentFldId = event.currentTarget.getAttribute('id');
+	var l = currentFldId.split("_");
+	var counter = l[1];
+	var currentFldId = "#" + currentFldId;
+
+	var uFile = $(currentFldId)[0].files[0];
+	var fileName = event.currentTarget.value;
+	var lastIndex = fileName.lastIndexOf("\\");
+	if (lastIndex >= 0) {
+		fileName = fileName.substring(lastIndex + 1);
+	}
+	var extension = fileName.split(".").pop();
+
+	var iURL = URL.createObjectURL(uFile);
+	$("#uploadedBillDiv_" + counter).html("");
+
+		if (extension == 'pdf' || extension == 'jpg' || extension == 'png'
+				|| extension == 'xls' || extension == 'doc' || extension == 'webp') {
+			window.st = 1;
+		} else {
+			$("#messageParagraph").text("Pick A Valid Document File");
+			$("#msgModal").modal('show');
+			window.st = 0;
+
+			var lengthOfTableRow1 = 0;
+			$("#docTbl > #doctbodyData > tr").each(function() {
+				lengthOfTableRow1 = lengthOfTableRow1 + 1;
+			})
+			var id = $("#dltValue").val();
+			$("#" + id).closest('tr').remove();
+			closeDeleteConfirm();
+			if (lengthOfTableRow1 == 1) {
+				var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+						+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0"  onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+						+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_0" onblur="checkForDuplicateEntry(event)"></div></td>'
+						+ '<td> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+						+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+						+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div><div id="dltImage_0" class="dltImage"  ></div> </td>'
+						+ '</tr>';
+				$("#doctbodyData").append(tbl);
+			}
+		}
+
+	
+	if (extension != null && extension != "") {
+		$("#uploadHidden_" + counter).val('');
+	}
+	if (extension == "jpg" || extension == "png" || extension == "jpeg" || extension == "webp") {
+		var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-picture-o'></i></a></span>";
+	} else if (extension == "pdf") {
+		var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-pdf-o'></i> </a></span>";
+	} else if (extension == "xls" || extension == "xlsx") {
+		var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-excel-o'></i></a></span>";
+	} else if (extension == "doc" || extension == "dox"
+			|| extension == "docx") {
+		var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-word-o'></i></a></span>";
+	} else if (extension == "mp4" || extension == "MOV"
+			|| extension == "MP4") {
+		var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-solid fa-video-camera'></i></a></span>";
+	} else if (extension == "mp3" || extension == "MP3"
+			|| extension == "WAV" || extension == "AAC") {
+		var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-solid fa-music'></i></a></span>";
+	} else {
+		var LightImg = "<span class='uploadicon position-l'> </div>";
+	}
+	var dltImg = "<i class='ti-close position-l rmv1' onclick='openDeleteConfirm()'></i>";
+	$("#uploadedBillDiv_" + counter).html(LightImg);
+	$("#imageName_" + counter).html(fileName);
+	$("#dltImage_" + counter).html(dltImg);
+	$("#dltImage_" + counter).addClass("custom-file-delete");
+
+	$("#clickImg_" + counter).removeClass("ti-plus");
+	$("#clickImg_" + counter).addClass("ti-pencil");
+
+}
+
+
+function openDeleteConfirm() {
+	$("#dltValue").val("");
+	$('#deleteAttachment').modal('show');
+}
+
+function deleteAttachmentRow() {
+	
+	var lengthOfTableRow1 = 0;
+		$("#docTbl > #doctbodyData > tr").each(function() {
+		lengthOfTableRow1 = lengthOfTableRow1 + 1;
+	})
+	var id = $("#dltValue").val();
+	$("#"+id).closest('tr').remove();
+	
+	closeDeleteConfirm();
+	if (lengthOfTableRow1 == 1) {
+		var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+				+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0"  onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+				+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_0" onblur="checkForDuplicateEntry(event)"></div></td>'
+				+ '<td> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+				+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+				+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div><div id="dltImage_0" class="dltImage"  ></div> </td>'
+				+ '</tr>';
+		$("#doctbodyData").append(tbl);
+	}
+}
+
+//for closing modal box for delete 
+
+function closeDeleteConfirm() {
+	$("#dltValue").val("");
+	$('#deleteAttachment').modal('hide');
+}
+
+function checkForDuplicateEntry(event) {
+	var document = event.currentTarget.value;
+	var currentFldId = event.currentTarget.getAttribute('id');
+	var l = currentFldId.split("_");
+	var counter = l[1];
+	var count = 0;
+	$(".docNoclss").each(function() {
+		if (document == $(this).val()) {
+			count++;
+		}
+	})
+	if (count >= 2) {
+		$("#messageParagraph").text("Document Name Already Entered");
+		$("#msgOkModal").removeClass("btn3");
+		$("#msgOkModal").addClass("btn1");
+		$("#msgModal").modal('show');
+
+		return false;
+	} else {
+		return true;
+	}
+
+}		
+
+
+/* function addEmployeeModal(){
+	
+	$("#new").hide();
+	$("#downloadBtn").hide();
+	$("#cancel").show();
+	$("#myGrid").hide();
+	$("#myGridDraft").hide();
+	$("#searchRowDiv").hide();
+	$("#totalReq").hide();
+	$("#totalReq1").hide();
+	$("#delete").hide();
+	$("#idDiv").show();
+	$("#demo").show();
+	$(".formValidation").remove();
+	
+	$("#multipleResignationTo").val('').trigger('chosen:updated');
+	$("#multipleResignationCc").val('').trigger('chosen:updated');
+	
+	$("#empIDAuto").val("");
+	$("#empNameList").val("");
+	$("#empIdAutoPopup").val("");
+	
+   	$("#addEmployeeModal").modal('show')
+   	
+   	$("#empNameList").val("");
+		$("#empIdAuto").val("");
+		$("#suggesstion-box_").hide();
+		
+
+		var userid = $("#sessionId").val();
+		var userrole = $("#sessionRole").val();
+		$('#empNameList').prop('disabled', false);
+		
+		
+		var rolesArray = userrole.match(/rol\d{3}/g);
+
+		var hasRol001 = rolesArray.includes('rol001'); 
+		var hasRol010 = rolesArray.includes('rol010');
+		
+			if (hasRol010 || hasRol001) {
+				
+			}else{
+				getEmployeeList(userid);
+			}
+   } */
+
+function closeAddEmpModal(){
+	$("#addEmployeeModal").modal('hide')
+}
+
+function closeList(element) {
+	console.log("element:::",element)
+	var fieldId = element.getAttribute('data-fieldid');
+	var empId = element.getAttribute('data-id');
+    element.closest('li').remove();
+	$(fieldId + ' option[value="' + empId + '"]').prop('disabled', false);// Remove the clicked item
+	$(fieldId).trigger('chosen:updated');
+}
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+
+
+					<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+						type="hidden" id="sessionName" th:value="${userName}" /> <input
+						type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+						type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+						type="hidden" id="sessionManager" th:value="${userManager}" /> <input
+						type="hidden" id="emplManagerAutoSearch" />
+					<!------------- parent table my grid ---------------------->
+
+					<!-- <div id="myGrid" style="width: 100%; height: 200px;"
+						class="ag-theme-alpine"></div>
+ -->
+					<div class="d-flex justify-content-between mt-4">
+						<div class="btn-hs">
+							<div class="font-design" id="totalReq1">
+								Resignation List(<span></span>)
+							</div>
+						</div>
+						<div id="searchRowDiv">
+							<div class="input-style">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter"
+									autocomplete="off">
+								<div class="searchicon">
+									<a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptionsDraft.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+						</div>
+						<div class="buttonsec btn-hs">
+							<input type="button" class="new-btn" id="new" value="NEW"
+								onclick="newBtn(1)" readonly>
+							<button class="delete-btn" id="delete"
+								onclick="deleteResignationApply()">Delete</button>
+							<button class="btn4" onclick="downloadDetails()" id="downloadBtn">Download</button>
+						</div>
+					</div>
+
+					<div id="myGridDraft" style="width: 100%; height: 500px;"
+						class="ag-theme-alpine"></div>
+
+					<div class="collapse" id="demo">
+						<div class="innercontent">
+							<div class="innerstickybg">
+								<div class="row">
+
+									<div class="col-md-4" id="idDiv">
+										Resignation Apply <span></span>
+									</div>
+									<div class="col-md-4">
+										<div id="statusDiv"></div>
+									</div>
+									<div class="col-md-4">
+										<button class="new-btn" id="mainsave"
+											onclick="saveResignApplyModal()">Submit</button>
+										<button class="save-btn" id="mainsave"
+											onclick="saveResignApplyDraft()">Draft</button>
+										<button class="cancel-btn" id="cancel" onclick="cancelBtn()">Cancel</button>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<input type="hidden" id="resignationDraftId">
+								<div class="row">
+									<div class="col-md-6" id="empDdownDiv">
+										<div class="form-group">
+											<div class="autocomplete" >
+												<label>Employee Name</label> <input type="text"
+													class="form-control" id="empNameList" autocomplete="off"
+													onkeyup='getEmployeeList()' onblur="removeValid(event)"
+													placeholder="Enter Employee Id Or Name" />
+
+											</div> 
+											<div id="suggesstion-box_" class="sugg-cls" style="width: 100%"></div>
+										</div>
+									</div>
+									<div class="col-md-6">
+										<div class="form-group">
+											<!-- <input type="hidden" id="sessionempId" th:text="${session.USER_ID}"/> -->
+											<label>Employee ID</label> <input type="text"
+												class="form-control" id="empIDAuto" autocomplete="off"
+												onblur="removeValid(event)" readonly />
+										</div>
+									</div>
+
+									<div class="col-md-6">
+										<div class="form-group">
+											<div>To :</div>
+											<select data-placeholder="Search Employee for TO" multiple
+												class="chosen-select" tabindex="8"
+												id="multipleResignationTo" onblur="removeValid(event)">
+												<option th:each="c,iter:${emplists}" th:value='${c.key}'
+													th:text="${c.name}"></option>
+											</select> 
+										<input type="hidden" id="validationForTo">
+										</div>
+										</div>
+										<div class="col-md-6">
+										<div class="form-group">
+											<div>CC :</div>
+											<select data-placeholder="Search Employee for CC" multiple
+												class="chosen-select" tabindex="8"
+												id="multipleResignationCc" onblur="removeValid(event)">
+												<option th:each="c,iter:${emplistscc}" th:value='${c.key}'
+													th:text="${c.name}"></option>
+											</select> 
+											<input type="hidden" id="validationForCc">
+
+										</div>
+									</div>
+								</div>
+
+								<div class="row">
+									<div class="col-md-12">
+										<div class="form-group">
+											<label>Subject</label>
+											<textarea class="textarea-desgn"
+												placeholder="Enter Resignation Subject Here.." id="subject"
+												autocomplete="off" onblur="removeValid(event)"></textarea>
+										</div>
+									</div>
+								</div>
+
+								<div class="row">
+									<div class="col-lg-12">
+										<div class="form-group">
+											<label>Reason</label>
+											<textarea id="commentck"></textarea>
+										</div>
+										<input type="hidden" id="commentckdreason"
+											onblur="removeValid(event)">
+									</div>
+
+									<div class="col-md-6 mt-4">
+										<div class="form-group calendar_box">
+											<label>Resign Date</label> <input type="text" id="resignDate"
+												onblur="removeValid(event)" class="form-control"
+												th:attr="onkeyup=|formatDate('resignDate','${session.DATEFORMAT_JS}')|"
+												readonly> <i class="ti-calendar picker_calendar"
+												id="resignDateCalendar"></i>
+										</div>
+									</div>
+
+									<div class="col-md-6 mt-4">
+										<div class="form-group calendar_box">
+											<label>Release Date</label> <input type="text"
+												id="releaseDate" class="form-control"
+												onblur="removeValid(event)"
+												th:attr="onkeyup=|formatDate('releaseDate','${session.DATEFORMAT_JS}')|"
+												readonly> <i class="ti-calendar picker_calendar"
+												id="releaseDateCalendar"></i>
+										</div>
+									</div>
+
+
+
+									<div id="main3" class="mt-4">
+										<div class="accordion-item">
+											<h2 class="accordion-header" id="headingOne">
+												<button class="accordion-button" type="button"
+													data-bs-toggle="collapse" data-bs-target="#collapseOne"
+													aria-expanded="false" aria-controls="collapseOne">
+													Attach Document</button>
+											</h2>
+
+											<div id="collapseOne"
+												class="accordion-collapse collapse show"
+												aria-labelledby="headingOne"
+												data-bs-parent="#accordionExample">
+												<div class="accordion-body">
+
+													<div id="collapseThree"
+														class="panel-collapse collapse show" role="tabpanel"
+														aria-labelledby="headingThree"></div>
+													<!-- <div class="col-md-6 btn-hs1 padding-7" align="right">
+																<button class="btn1" id="saveAttachmentBtn"
+																	onclick="checkEmpty();">New</button>
+															</div> -->
+												</div>
+												<div class="form-group">
+
+													<table id="docTbl" cellspacing="7" cellpadding="7">
+														<thead id="docthead">
+															<tr class="tr_clone">
+																<!-- <th align="center"></th> -->
+
+																<th width="320">Document Name</th>
+																<th width="380">Attachment</th>
+															</tr>
+														</thead>
+														<tbody id="doctbodyData">
+															<!-- Modal gallery -->
+														</tbody>
+													</table>
+												</div>
+											</div>
+										</div>
+									</div>
+
+
+
+								</div>
+							</div>
+
+							<!------------------------- delete attachment modal for Document Upload ------------------------------->
+							<div id="deleteAttachment" class="modal fade show"
+								aria-modal="true">
+								<div class="modal-dialog modal-confirm">
+									<div class="modal-content">
+										<div class="modal-header flex-column">
+											<!-- <button type="button" class="close" data-dismiss="modal"
+									aria-hidden="true" onclick="closeDeleteConfirm()">
+									<i class="ti-close modal-close"></i>
+								</button> -->
+										</div>
+										<div class="modal-body">
+											<p>Do you really want to delete this records? This
+												process cannot be undone.</p>
+											<input type="hidden" id="dltValue">
+										</div>
+										<div class="modal-footer justify-content-center">
+
+											<button type="button" class="btn4" data-dismiss="modal"
+												onclick="closeDeleteConfirm();">Cancel</button>
+											<button type="button" class="btn3"
+												onclick="deleteAttachmentRow();">Delete</button>
+										</div>
+									</div>
+								</div>
+							</div>
+
+
+							<!------------- delete Exit modal start -------------------->
+
+							<div id="deleteDetails" class="modal fade show" aria-modal="true">
+								<div class="modal-dialog modal-confirm">
+									<div class="modal-content">
+										<div class="modal-header flex-column">
+											<button type="button" class="close" data-bs-dismiss="modal"
+												aria-hidden="true" onclick="cancelModalDeleteBtn()">
+												<i class="ti-close modal-close"></i>
+											</button>
+										</div>
+										<div class="modal-body">
+											<p>Do you really want to delete these records? This
+												process cannot be undone.</p>
+										</div>
+										<div class="modal-footer justify-content-center"
+											style="margin-top: -30px;">
+
+											<button type="button" class="btn1" data-bs-dismiss="modal"
+												onclick="cancelModalBtn();">Cancel</button>
+											<button type="button" class="btn3"
+												onclick="deleteDetailsOnclick()">Delete</button>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<!------------- Confirmation Exit modal start -------------------->
+
+							<div id="confirmExitModal" class="modal fade show"
+								aria-modal="true">
+								<div class="modal-dialog modal-confirm">
+									<div class="modal-content">
+										<div class="modal-header flex-column">
+											<!-- 	<button type="button" class="close" data-bs-dismiss="modal"
+												aria-hidden="true" onclick="cancelModalDeleteBtn()">
+												<i class="ti-close modal-close"></i>
+											</button> -->
+										</div>
+										<div class="modal-body">
+											<p>Do You Really Want To Apply Resignation? This Process
+												Cannot Be Undone.</p>
+										</div>
+										<div class="modal-footer justify-content-center mt-2"
+											style="margin-top: -30px;">
+
+											<button type="button" class="btn3" data-bs-dismiss="modal">Cancel</button>
+											<button type="button" class="btn1" data-bs-dismiss="modal"
+												onclick="saveResignApply()">Yes</button>
+										</div>
+									</div>
+								</div>
+							</div>
+
+						</div>
+					</div>
+					<!--Add Employees for resignation-->
+
+					<div class="modal fade show" id="addEmployeeModal"
+						data-bs-backdrop="static" data-bs-keyboard="false">
+						<div class="modal-dialog modal-lg" style="margin-top: 130px;">
+							<div class="modal-content">
+								<!-- Modal Header -->
+								<div class="modal-header">
+									<h4 class="modal-title md-color">
+										<b>Add Employee For Resignation : </b>
+									</h4>
+								</div>
+								<!-- Modal Body -->
+								<div class="modal-body modal-cat">
+									<div id="ClearanceDetails" class="col-md-12 row"
+										style="font-weight: 400">
+										<div class="row mt-2">
+											<div class="col-md-6" id="empDdownDiv">
+												<div class="form-group">
+													<div class="autocomplete" style="width: 100%">
+														<label>Employee Name</label> <input type="text"
+															class="form-control" id="empNameList" autocomplete="off"
+															onkeyup='getEmployeeList()' onblur="removeValid(event)"
+															placeholder="Enter Employee Id Or Name" />
+
+													</div>
+
+													<div id="suggesstion-box_" class="sugg-cls"></div>
+												</div>
+											</div>
+
+											<div class="col-md-6">
+												<div class="form-group">
+													<label>Employee ID</label> <input type="text"
+														class="form-control div-readonly" id="empIdAutoPopup"
+														autocomplete="off" readonly />
+												</div>
+											</div>
+
+											<!-- <div class="col-md-6">
+								<div class="form-group">
+									<label>Employee Name</label> <input type="text"
+										class="form-control div-readonly" id="empNameAuto" autocomplete="off" readonly/>
+								</div>
+							</div> -->
+										</div>
+									</div>
+								</div>
+
+
+								<!-- Modal Footer -->
+								<div class="modal-footer">
+									<button class="approve-btn" data-dismiss="modal"
+										onclick="newBtn(1)">Proceed</button>
+									<button class="delete-btn" data-dismiss="modal"
+										onclick="cancelBtn()">CLOSE</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="modal fade show" id="resignationModal">
+						<div class="modal-dialog modal-lg" style="margin-top: 130px;">
+							<div class="modal-content">
+								<!-- Modal Header -->
+								<div class="modal-header">
+									<h4 class="modal-title md-color">
+										<b>Resignation Letter : <span id="resignId"></span></b>
+									</h4>
+								</div>
+
+								<!-- Modal Body -->
+								<div class="modal-body-overview modal-cat">
+									<div id="resignationDetails">
+
+										<p>
+											<strong>Resign Date:</strong> <span id="resignDateModal"></span>
+										</p>
+										<p>
+											<strong>Requested Release Date:</strong> <span
+												id="releaseDateModal"></span>
+										</p>
+
+
+										<p>
+											<strong>Employee Id:</strong> <span id="empIdModal"></span>
+										</p>
+
+
+										<p>
+											<strong>Employee Name:</strong> <span id="empNameModal"></span>
+										</p>
+
+
+										<p>
+											<strong>To:</strong> <span id="regToModal"></span>
+										</p>
+
+
+										<p>
+											<strong>CC:</strong> <span id="regCCModal"></span>
+										</p>
+
+
+										<p>
+											<strong>Subject:</strong> <span id="subjectModal"></span>
+										</p>
+
+										<p>
+											<strong>Reason:</strong> <span id="reasonModal"></span>
+										</p>
+
+
+										<p>
+											<strong>Status:</strong> <span id="statusModal"></span>
+										</p>
+
+									</div>
+								</div>
+
+								<!-- Modal Footer -->
+								<div class="modal-footer">
+									<button class="delete-btn" data-dismiss="modal"
+										onclick="cancelModalBtnOverview()">CLOSE</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

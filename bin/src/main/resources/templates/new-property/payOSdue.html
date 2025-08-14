@@ -1,0 +1,511 @@
+
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<style>
+#myReq .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff;
+	text-indent: 10px !important;
+}
+
+.blank_row {
+	height: 10px !important; /* overwrites any other rules */
+	background-color: #FFFFFF;
+}
+
+#myReq .ag-row-selected::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 3px;
+	right: 4px;
+}
+
+/* #staticEmail {
+	margin-left: -45px;
+} */
+</style>
+<script>
+	//Multiple Document Upload Ends
+
+	$(function() {
+
+		agGrid.simpleHttpRequest({
+			url : 'view-candidate-view-ajax'
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalCandidate').find('span').html(len);
+			gridOptions.api.setRowData(data);
+		});
+	});
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+
+	var columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+
+			{
+				headerName : "Instrument No",
+				field : "instrno",
+				width : 150,
+				cellRenderer : function(params) {
+					return '<a instrno="editId" onclick=editId("'
+							+ params.data.instrno
+							+ '") href="javascript:void(0)">'
+							+ params.data.instrno + '</a>';
+				},
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : "Date",
+				field : "paymentdate",
+				width : 150
+			}, {
+				headerName : "Property No",
+				field : "propertyno",
+			}, {
+				headerName : "O/S Amount",
+				field : "totalos",
+				width : 150
+			}, {
+				headerName : "Due Date",
+				field : "duedate",
+				width : 150
+			}, {
+				headerName : "Payment Date",
+				field : "paydate",
+				width : 150
+			}, {
+				headerName : "Pay",
+				field : "paystatus",
+				width : 150
+			}, {
+				headerName : "Download",
+				field : "download",
+				width : 150
+			}, ];
+
+	$("#stationId").click(function() {
+		$("#a").css("display", "block");
+		$("#b").css("display", "block");
+	});
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 277,
+			height : 20
+		},
+		rowSelection : 'multiple',
+		onSelectionChanged : onSelectionChanged
+	};
+
+	function addCandidate() {
+
+		$('#hideTbl').hide();
+		$('#buttonDetails').hide();
+		$('#myGrid').hide();
+		$('#demo').show();
+		$("#btn1").show();
+		$('#candidateId').val("");
+
+		$("#collapseOne").collapse({
+			toggle : false
+		}).collapse('show');
+
+	}
+
+	/* APPLY FOR REQUISITION ENDS */
+
+	// setup the grid after the page has finished loading
+	$(document).ready(function() {
+
+		$('#reqDltBtn').attr('disabled', true);
+		var today = new Date();
+		var dd = String(today.getDate()).padStart(2, '0');
+		var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+		var yyyy = today.getFullYear();
+
+		today = dd + '-' + mm + '-' + yyyy;
+
+		$('#fromDate').val(today);
+		$('#toDate').val(today);
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#fromDate').val($(this).val());
+		})
+
+		$('#fromDate').blur(function() {
+			$("#fromDateCalendar").val($(this).val());
+		})
+
+		//     date format TO date
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#toDate').val($(this).val());
+		})
+
+		$('#toDate').blur(function() {
+			$("#toDateCalendar").val($(this).val());
+		})
+		search();
+
+	});
+
+	function search() {
+		var fromDate = $("#fromDate").val();
+		var toDate = $("#toDate").val();
+		var fromDate = fromDate.split('-');
+		var fromDate = fromDate[2] + '-' + fromDate[1] + '-' + fromDate[0];
+		var toDate = toDate.split('-');
+		var toDate = toDate[2] + '-' + toDate[1] + '-' + toDate[0];
+
+		var userid = $("#sessionId").val();
+
+		agGrid.simpleHttpRequest(
+				{
+					url : "pay-osdue-details-view?userid=" + userid
+							+ "&fromDate=" + fromDate + "&toDate=" + toDate,
+				}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+			if (len > 0) {
+				gridOptions.api.setRowData(data);
+			} else {
+				gridOptions.api.setRowData();
+			}
+		});
+
+	}
+
+	function cancelbtn() {
+		$('#reqDltBtn').attr('disabled', true);
+		$("#myGrid").show();
+		$("#btn1").hide();
+		$("#demo").hide();
+		$("#hideTbl").show();
+		$("#buttonDetails").show();
+	}
+
+	function onSelectionChanged() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			$('#reqDltBtn').attr('disabled', false);
+		} else {
+			$('#reqDltBtn').attr('disabled', true);
+		}
+
+	}
+	function editId(stationId) {
+		$("#date").val("11-01-2022");
+		$("#upperline").hide();
+		$("#upperOne").hide();
+		addCandidate();
+	}
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="row" id="upperline">
+							<div class="col-md-6  btn-hs">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter">
+									<div class="searchicon">
+										<a href="javascript: void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptionsEmployee.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript: void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+								<input type="hidden" id="sessionId" th:value="${userId}" />
+
+							</div>
+							<div class="col-md-2">
+								<div class="form-group calendar_box">
+									<label>From Date</label> <input type="text" id="fromDate"
+										value="19-04-2022" class="form-control"
+										onblur="removeValid(event)"
+										th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+										readonly> <i class="ti-calendar picker_calendar"
+										id="fromDateCalendar" onchange="dateChange(); validate();"></i>
+								</div>
+
+							</div>
+							<div class="col-md-2">
+								<div class="form-group calendar_box">
+									<label>To Date</label> <input type="text" id="toDate"
+										value="19-08-2022" class="form-control"
+										onblur="removeValid(event)"
+										th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+										readonly> <i class="ti-calendar picker_calendar"
+										id="toDateCalendar" onchange="dateChange(); validate();"></i>
+								</div>
+							</div>
+
+
+							<div class="col-md-1" align="right">
+								<button class="btn2" onclick="search()">Search</button>
+							</div>
+
+						</div>
+						<div class="row">
+							<div class="col-md-4"></div>
+						</div>
+						<div class="row" id="upperOne">
+							<div class="innerstickybg">
+								<div class="row">
+									<div class="col-md-6 btn-hs">
+										<h3>Payment History</h3>
+									</div>
+									<div class="col-md-12" align="right"></div>
+								</div>
+							</div>
+						</div>
+
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+
+
+						<div class="collapse" id="demo">
+							<div class="innerstickybg">
+
+								<div class="row">
+
+									<div class="col-md-4"></div>
+									<div class="col-md-4" align="middle">
+										<b>TAX INVOICE</b>
+									</div>
+									<div class="col-md-4" align="right" id="btn1">
+										<button class="btn3" id="cancelBtn" onclick="cancelbtn()">Cancel
+										</button>
+
+									</div>
+								</div>
+
+							</div>
+							<div class="innercontent">
+								<div class="row">
+
+									<div class="col-md-9" id="candidateDetailsBar">
+
+
+										<div class="name" id="nameDtls"></div>
+
+										<div class="mt-0">
+											<div class="details" id="locationDtls"></div>
+										</div>
+
+										<div class="mt-20">
+											<div class="details" id="mobileNoDtls"></div>
+
+											<div class="details" id="emailDtls"></div>
+										</div>
+
+
+
+
+
+									</div>
+								</div>
+							</div>
+							<div id="main">
+
+
+								<div class="row">
+									<div class="col-lg-4">
+
+										<b><label>Instrument No.</label></b>
+
+									</div>
+									<div class="col-lg-2">ORSTC/INV/001</div>
+									<div class="col-lg-4">
+
+										<b><label>Date</label></b>
+
+									</div>
+									<div class="col-lg-2" align="right">11-01-2022</div>
+								</div>
+
+
+								<div class="row">
+									<div class="col-sm-6">
+										<div class="innerstickybg">
+											<b>TO</b>
+										</div>
+									</div>
+									<div class="col-sm-6">
+										<div class="innerstickybg">
+											<b>FROM</b>
+										</div>
+									</div>
+								</div>
+								<div class="row">
+									<div class="col-sm-6">
+										<div>Mr. Satya Mallick</div>
+										<div>Bhubaneswar, Odisha</div>
+										<div>GSTIN</div>
+										<div>PAN</div>
+									</div>
+									<div class="col-sm-6">
+										<div>OSRTC</div>
+										<div>Bhubaneswar</div>
+										<div>GSTIN</div>
+										<div>PAN</div>
+									</div>
+								</div>
+								<div>
+									<table style="width: 100%" width="400">
+
+										<tr>
+											<th align="left">Sr. No.</th>
+											<th align="center">Property ID/Name</th>
+											<th align="center">Description</th>
+											<th align="right">Amount</th>
+										</tr>
+
+										<tr>
+											<td>1</td>
+											<td>OSRTC001/Bhubaneswar</td>
+											<td>Rent for May-2021</td>
+											<td align="right">20000</td>
+										</tr>
+										<tr class="blank_row">
+											<td colspan="3"></td>
+										</tr>
+										<tr class="blank_row">
+											<td colspan="3"></td>
+										</tr>
+										<tr class="blank_row">
+											<td colspan="3"></td>
+										</tr>
+										<tr class="blank_row">
+											<td colspan="3"></td>
+										</tr>
+
+
+										<tr>
+											<td></td>
+											<td></td>
+											<td>Total</td>
+											<td align="right">20000</td>
+										</tr>
+										<tr>
+											<td></td>
+											<td></td>
+											<td>CGST(9%)</td>
+											<td align="right">1800</td>
+										</tr>
+										<tr>
+											<td></td>
+											<td></td>
+											<td>IGST(9%)</td>
+											<td align="right">1800</td>
+										</tr>
+										<tr>
+											<td></td>
+											<td></td>
+											<td>Grand Total</td>
+											<td align="right">23600</td>
+										</tr>
+										<tr class="blank_row">
+											<td colspan="3"></td>
+										</tr>
+										<tr class="blank_row">
+											<td colspan="3"></td>
+										</tr>
+										<tr class="blank_row">
+											<td colspan="3"></td>
+										</tr>
+										<tr class="blank_row">
+											<td colspan="3"></td>
+										</tr>
+										<tr class="blank_row">
+											<td colspan="3"></td>
+										</tr>
+										<tr class="blank_row">
+											<td colspan="3"></td>
+										</tr>
+										<tr class="blank_row">
+											<td colspan="3"></td>
+										</tr>
+										<tr class="blank_row">
+											<td colspan="3"></td>
+										</tr>
+										<tr>
+											<td>Due Date</td>
+											<td>15-05-2021</td>
+											<td></td>
+											<td align="right">Authorized Signature</td>
+										</tr>
+									</table>
+
+								</div>
+
+
+
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	</div>
+</body>
+
+</html>

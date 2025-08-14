@@ -1,0 +1,2071 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<!-- <script src="../javaScript/his/inventory/manage-invoice-return.js"></script> -->
+<style type="text/css">
+.disabledCalender {
+	pointer-events: none; /* Prevents any mouse event */
+	opacity: 0.5; /* Makes it appear disabled */
+}
+</style>
+<script type="text/javascript">
+$(document).ready(function() {
+	
+	$('#docTbl').on('click', '.rmv1', function() {
+			
+			var value = $(this).parent("div").attr("id");
+			$("#dltValue").val(value);
+			
+			//openDeleteConfirm();
+			deletAttachmentRow();
+		});
+
+	var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+
+	var gridDiv = document.querySelector('#product');
+	new agGrid.Grid(gridDiv, itemOptions);
+	
+	var gridDivDoc = document.querySelector('#myDocumentGrid');
+	new agGrid.Grid(gridDivDoc, gridOptionsDoc); 
+	
+	gridOptionsDoc.api.setRowData();
+
+	viewData();
+
+
+	//selectFirstRow();
+	$("#grnDiv").hide();
+	$("#dltProductDetails").hide();
+	$("#approve-btn").hide();
+	var dateFormat = localStorage.getItem("dateFormat");
+
+	$("#toDateCalendarInvoice").datetimepicker({
+		format: dateFormat,
+		closeOnDateSelect: true,
+		timepicker: false,
+		//minDate : new Date(),
+	}).on("change", function() {
+		$('#invoiceDate').val($(this).val());
+	})
+
+	$('#invoiceDate').blur(function() {
+		$("#toDateCalendarInvoice").val($(this).val());
+	});
+
+
+	$(".max-btn").on("click", function() {
+		var parentCol = $(this).closest(".col-md-6, .col-md-12");
+
+		if (parentCol.hasClass("col-md-6")) {
+			parentCol.removeClass("col-md-6 pd-r pd-l").addClass("col-md-12");
+			parentCol.siblings(".col-md-6").hide().fadeOut(500);
+		} else {
+			parentCol.removeClass("col-md-12").addClass("col-md-6 pd-r pd-l");
+			parentCol.siblings(".col-md-6").show().fadeIn(500);
+		}
+	});
+
+
+
+});
+
+
+function viewData() {
+	agGrid.simpleHttpRequest({
+		url: "manage-invoice-returnView-through-ajax"
+	}).then(function(data) {
+		$('.loader').hide();
+		
+		window.gridOptions.api.setRowData(data);
+
+		if (data && data.length > 0) {
+			window.gridOptions.api.forEachNode(function(node) {
+				if (node.rowIndex === 0) {
+					node.setSelected(true);
+				}
+			});
+		}else{
+			addNew();
+		}
+		//gridOptions.api.setRowData(data);
+	});
+}
+
+
+function selectFirstRow() {
+
+	//Automatically Select And Call The Starting Data
+	setTimeout(function() {
+		var firstRowNode = gridOptions.api.getDisplayedRowAtIndex(0);
+		console.log("First Row Node:", firstRowNode);
+		if (firstRowNode) {
+			firstRowNode.setSelected(true); // Select the first row
+			var selectedRows = gridOptions.api.getSelectedRows();
+			if (selectedRows.length > 0) {
+				var id = selectedRows[0].invoiceReturnId;
+				editInvoiceReturn(id);
+				/*editTicket(id);*/
+			}
+		}
+	}, 1000);
+}
+
+
+
+var columnDefs = [
+	{
+		headerCheckboxSelection: false,
+		headerCheckboxSelectionFilteredOnly: true,
+		checkboxSelection: true,
+		width: 10,
+		sortable: false,
+		filter: false,
+		resizable: true
+
+	},
+	{
+		headerName: "GRN Return Id",
+		field: "invoiceReturnId",
+		width: 120,
+		/*cellRenderer: function(params) {
+			return '<a onclick=editInvoiceReturn("' + params.data.invoiceReturnId
+				+ '") href="javascript:void(0)">'
+				+ params.data.invoiceReturnId + ' ' + '<i class="bi bi-pencil-square"></i></a>';
+		}*/
+	}, {
+		headerName: 'Po Id',
+		field: "poId",
+		width: 100,
+	}, {
+		headerName: 'Vendor name',
+		field: "vendorName",
+		width: 150,
+
+	},
+	{
+		headerName: 'vendorId',
+		field: "vendorId",
+		width: 150,
+		hide: true,
+	}, {
+		headerName: 'GRN Receipt Id',
+		field: "invoiceId",
+		width: 120,
+		cellStyle: {
+			textAlign: 'center'
+		}
+	}, {
+		headerName: 'Date',
+		field: "updatedOn",
+		width: 100,
+		cellStyle: {
+			textAlign: 'center'
+		}
+	}, {
+
+
+		headerName: 'Return Quantity',
+		field: "returningQuantity",
+		width: 130,
+		cellStyle: { textAlign: 'right' },
+		cellRenderer: function(params) {
+			var value = parseFloat(params.value).toFixed(2);
+			return amountFormatter(value);
+		}
+	}, {
+		headerName: 'Project',
+		field: "project",
+		width: 190,
+		hide: true
+	}, {
+		headerName: 'Amount',
+		field: "creditNoteAmt",
+		width: 110,
+		type: 'rightAligned',
+		cellRenderer: function(params) {
+			var value = parseFloat(params.value).toFixed(2);
+			return amountFormatter(value);
+		}
+	}, {
+		headerName: 'Gst Amount',
+		field: "gstAmount",
+		width: 130,
+		type: 'rightAligned',
+		cellRenderer: function(params) {
+			var value = parseFloat(params.value).toFixed(2);
+			return amountFormatter(value);
+		}
+
+	}, {
+		headerName: 'Total Amount',
+		field: "grandTotal",
+		width: 150,
+		type: 'rightAligned',
+		cellRenderer: function(params) {
+			var value = parseFloat(params.value).toFixed(2);
+			return amountFormatter(value);
+		}
+	},
+
+	{
+		headerName: 'Approve Status',
+		field: "approveStatus",
+		width: 150,
+		cellStyle: {
+			textAlign: 'center'
+		},
+		cellRenderer: function(params) {
+			if (params.data.approveStatus == "Pending") {
+				return '<div style="color:#a9a9a9">Pending</div>';
+			} else {
+				return '<div style="color:#0642f5">Approved</div>';
+			}
+		}
+	}, {
+		headerName: 'Created By',
+		field: "createdBy",
+		width: 150,
+	}, {
+		headerName: 'Term and Condition',
+		field: "terms",
+		width: 180,
+	},];
+
+
+var itemDefs = [
+	{
+		headerCheckboxSelection: false,
+		headerCheckboxSelectionFilteredOnly: true,
+		checkboxSelection: true,
+		width: 10,
+		sortable: false,
+		filter: false,
+		resizable: true
+
+	},
+	{
+		headerName: "SL NO",
+		field: "slNo",
+		width: 70,
+		/* 	cellRenderer : function(params) {
+				if (params.data.slNo) {
+					return '<a onclick=editProduct("' + params.data.slNo
+							+ '") href="javascript:void(0)">'
+							+ params.data.slNo + '</a>';
+				} else {
+					return '<a onclick=editProduct("' + params.data.slNo
+							+ '") href="javascript:void(0)">'
+							+ params.data.slNo + '</a>';
+				}
+			} */
+	}, {
+		headerName: 'SKU',
+		field: "sku",
+		width: 100,
+
+	}, {
+		headerName: 'HSN Code',
+		field: "hsnCode",
+		width: 120,
+	}, {
+
+
+		headerName: 'Item Name',
+		field: "itemName",
+		width: 175,
+	}, {
+		headerName: 'Item Id',
+		field: "itemId",
+		width: 100,
+		hide: true,
+	}, {
+		headerName: 'Ordered Quantity',
+		field: "quantity",
+		type: 'rightAligned',
+		width: 180,
+		valueFormatter: currencyFormatter
+	}, {
+		headerName: 'Received Quantity',
+		field: "receivedQuantity",
+		type: 'rightAligned',
+		width: 180,
+		valueFormatter: currencyFormatter
+	}, {
+
+		headerName: 'Unit',
+		field: "unitName",
+		width: 70,
+	}, {
+		headerName: 'Unit',
+		field: "unit",
+		hide: true,
+
+	}, {
+		headerName: 'Return Quantity',
+		field: "returningQuantity",
+		type: 'rightAligned',
+		width: 180,
+		valueFormatter: currencyFormatter
+	}, {
+		headerName: 'Unit Price',
+		field: "unitPrice",
+		type: 'rightAligned',
+		width: 120,
+		//valueFormatter : currencyFormatter
+	}, {
+		headerName: 'Discount',
+		field: "discount",
+		type: 'rightAligned',
+		width: 120,
+		valueFormatter: currencyFormatter
+	}, {
+		headerName: 'Amount',
+		field: "lineTotal",
+		type: 'rightAligned',
+		width: 100,
+
+		aggFunc: 'sum'
+
+	}, {
+		headerName: 'GST Rate',
+		field: "gstRate",
+		type: 'rightAligned',
+		width: 100,
+		//hide: true,
+	}, {
+		headerName: 'CGST',
+		field: "itemCgst",
+		type: 'rightAligned',
+		width: 70,
+		hide: true,
+	}, {
+		headerName: 'SGST',
+		field: "itemSgst",
+		type: 'rightAligned',
+		width: 70,
+		hide: true,
+	}, {
+		headerName: 'IGST',
+		field: "itemIgst",
+		type: 'rightAligned',
+		width: 70,
+		hide: true,
+	}, {
+		headerName: 'Taxable Amount',
+		field: "taxableAmt",
+		type: 'rightAligned',
+		width: 170,
+		//valueFormatter : currencyFormatter
+	}, {
+		headerName: 'Pending Quantity',
+		field: "pendingQuantity",
+		type: 'rightAligned',
+		width: 153,
+		hide: true,
+		valueFormatter: currencyFormatter
+	}, {
+		headerName: 'Description',
+		field: "description",
+		type: 'leftAligned',
+		width: 153,
+		hide: true
+	},];
+
+var gridOptions = {
+	columnDefs: columnDefs,
+	rowSelection: 'single',
+
+	groupSelectsChildren: true,
+	suppressRowClickSelection: true,
+	suppressAggFuncInHeader: true,
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 251,
+		height: 10
+	},
+
+	onSelectionChanged: rowSelect,
+	 pagination: true, 
+	 paginationPageSize: 15,
+	 paginationPageSizeSelector: [15, 30, 45],
+	 onPaginationChanged: function () {
+	        const currentPage = gridOptions.api.paginationGetCurrentPage() + 1;
+	    }
+
+};
+
+var itemOptions = {
+	columnDefs: itemDefs,
+	rowSelection: 'single',
+	groupSelectsChildren: true,
+	suppressRowClickSelection: true,
+	suppressAggFuncInHeader: true,
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 100,
+		height: 10
+	},
+	onSelectionChanged: rowSelectItem,
+	getRowNodeId: function(data) {
+		return data.slNo;
+	}
+};
+
+
+function rowSelect() {
+	previousButton();
+	$("#suggesstion-box2_").hide();
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(selectedRow, index) {
+		rowCount = rowCount + 1;
+	});
+	var selectedNodes = gridOptions.api.getSelectedNodes();
+	var selectedData = selectedNodes.map(node => node.data);
+	var approveStatus = selectedData.map(node => node.approveStatus);
+	let rowCount1 = rowCount;
+	if (rowCount1 == 0) {
+		newPhysicalVerification();
+	} else {
+		disableField();
+	}
+	if (rowCount > 0) {
+		$("#add-btn").show();
+		$("#mstrSaveBtn").hide();
+		$("#cancelMainBtn").hide();
+		if (approveStatus == 'Approved') {
+			$('#approveGRNReturn').attr("disabled", true);
+			$("#approve-btn").hide();
+			$("#mstrEditBtn").hide();
+		} else {
+			$('#approveGRNReturn').attr("disabled", false);
+			$("#approve-btn").show();
+			$("#mstrEditBtn").show();
+		}
+		var id = selectedRows[0].invoiceReturnId;
+		editInvoiceReturn(id);
+	} else {
+		$("#add-btn").hide();
+		$("#mstrSaveBtn").show();
+		$("#cancelMainBtn").show();
+		$('#approveGRNReturn').attr("disabled", true);
+		$("#approve-btn").hide();
+		$("#mstrEditBtn").hide();
+	}
+}
+
+function rowSelectItem() {
+	var selectedRows = itemOptions.api.getSelectedRows();
+	var invoiceReturnId = $("#invoiceReturnheadId").text();
+	var rowCount = 0;
+	selectedRows.forEach(function(selectedRow, index) {
+		rowCount = rowCount + 1;
+	});
+	var selectedNodes = itemOptions.api.getSelectedNodes();
+	var selectedData = selectedNodes.map(node => node.data);
+	var receivedQuantity = selectedData.map(node => node.receivedQuantity);
+	if (rowCount > 0) {
+		$('#delete1').attr("disabled", false);
+		//$('#grnReturn').attr("disabled", false);
+		$('#newItem').attr("disabled", true);
+		$('#addMoreDetails').attr("disabled", false);
+		if (receivedQuantity > 0) {
+			$('#grnReturn').attr("disabled", false);
+		}
+		else {
+			$('#grnReturn').attr("disabled", true);
+		}
+
+	} else {
+		$('#newItem').attr("disabled", false);
+		$('#delete1').attr("disabled", true);
+		$('#grnReturn').attr("disabled", true);
+		$('#addMoreDetails').attr("disabled", true);
+	}
+}
+
+function amountFormatter(value) {
+	if (value !== null && value !== undefined) {
+		var parts = value.toString().split('.');
+		var integerPart = parts[0];
+		var decimalPart = parts.length > 1 ? '.' + parts[1] : '';
+		var formattedIntegerPart = new Intl.NumberFormat('en-IN').format(integerPart);
+		return formattedIntegerPart + decimalPart;
+	} else {
+		return '';
+	}
+}
+
+
+
+//Document Upload Grid Defination.
+
+const columnDefsDoc = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : true,
+			checkboxSelection : true,
+			cellEditorPopup: true,  
+			width : 10,
+			pinned: 'left',
+			sortable : false,
+			filter : false,
+			resizable : true
+		},
+		{
+			headerName : "Sl No",
+			field : "slno",
+			width : 70,
+			pinned: 'left',
+		},
+		{
+			headerName : "isEdit",
+			field : "isEditDoc",
+			width : 60,
+			pinned: 'left',
+			hide:true
+		},
+		{
+			headerName : 'Document Name',
+			field : "docName",
+			width : 230,
+			pinned: 'left',
+			editable: true,
+			cellStyle: { 
+	            color: '#333', 
+	            backgroundColor:  '#f5f5f5', 
+	            borderColor : '#cdcdcd !important'   
+	        },
+		},
+		{
+			headerName : 'Type',
+			field : "docType",
+			width : 80,
+			cellRenderer: function(params) {
+				if(params.value != null || params.value != ""){
+					
+				if (params.value == "jpg" || params.value == "png" || params.value == "jpeg"){
+					
+					return `<div style = "font-style: italic;"><i style="color: blue" class='bi bi-image'></i> ${params.value.toUpperCase()}</div>`;
+					
+				}else if(params.value == "pdf"){
+				
+					return `<div style = "font-style: italic;"><i style="color: red" class="bi bi-file-pdf"></i> ${params.value.toUpperCase()}</div>`;
+					
+				}else{
+					
+					return `<div><i style="color: blue" class='bi bi-image'> ${params.value.toUpperCase()}</i></div>`;
+					
+				}
+				
+				}else{
+					return "N/A"
+				}
+	            
+	        }
+		},
+		{
+			headerName : 'iURL',
+			field : "dociURL",
+			width : 100,
+			hide:true
+		},
+		{
+			headerName : 'docFile',
+			field : "documentFile",
+			width : 100,
+			hide:true
+		},
+		{
+			headerName : 'Document View',
+			field : "docView",
+			width : 300,
+			cellRenderer: function(params) {
+				const iURL = params.data.dociURL;
+	            return `<a style="text-decoration: none" href="${iURL}" target="_blank"><b>${params.value}</b></a>`;
+	        }
+		}
+	];
+	const gridOptionsDoc = {
+			columnDefs : columnDefsDoc,
+			rowSelection : 'multiple',
+			groupSelectsChildren : true,
+			suppressRowClickSelection : true,
+			suppressAggFuncInHeader : true,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 190,
+				singleClickEdit : true,
+			},
+			onSelectionChanged : rowSelectDetailsDoc,
+		};
+	
+	function rowSelectDetailsDoc() {
+		
+		var selectedRows = gridOptionsDoc.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+
+		
+		if (rowCount > 0) {
+			$('#docAddBtn').attr("disabled", true);
+			$('#docDeleteBtn').attr("disabled", false);
+		} else {
+			$('#docAddBtn').attr("disabled", false);
+			$('#docDeleteBtn').attr("disabled", true);
+		}
+	}
+
+
+
+
+function editInvoiceReturn(invoiceReturnId) {
+
+	agGrid.simpleHttpRequest({
+		url: 'manage-invoice-return-edit-new?id=' + invoiceReturnId
+	}).then(
+		function(data) {
+
+
+			getPoList(data.vendorId, 'edit', data.poId);
+
+
+			$("#reqHeadId").html(data[0].invoiceReturnId);
+			$(".reqHeadClass").html(data[0].vendorName);
+			$("#invoiceReturnRefId").val(data[0].invoiceReturnId);
+			$("#vendorId").val(data[0].vendorId);
+			getVendorDtls(data[0].vendorId, 'edit');
+			getAddressDetails(data[0].vendorId);
+			$("#vendorName").val(data[0].vendorName);
+			$("#invoiceReturnId").val(data[0].invoiceReturnId);
+			$("#poId").val(data[0].poId);
+			$("#terms").val(data[0].terms);
+			$("#invoiceId").val(data[0].invoiceId);
+			$("#adjustment").val(data[0].adjustment);
+			$("#tcsName").val(data[0].tcs);
+			$("#tcsId").val(data[0].tcsId);
+			$("#tcsAmount").val(data[0].tcsAmount);
+			$("#taxType").val(data[0].taxType);
+			$("#invoiceDate").val(data[0].updatedOn);
+			$("#project").val(data[0].project);
+
+			$("#grandTotal").val(data[0].grandTotal);
+			$("#qIGST").val(data[0].qIGST);
+
+			$("#qSGST").val(data[0].qSGST);
+			$("#qCGST").val(data[0].qCGST);
+			$("#subTotal").val(data[0].subTotal);
+			$("#grandTotal").val(data[0].grandTotal);
+
+			itemOptions.api.setRowData(data);
+
+			gridOptionsDoc.api.setRowData([]);
+			let documentData=data[0].documentList;
+			gridOptionsDoc.api.setRowData(documentData);
+
+			/* $("#doctbodyData").empty();
+
+
+			if (data[0].documentList != null
+				&& data[0].documentList != "") {
+
+				for (var i = 0; i < data[0].documentList.length; i++) {
+
+
+
+					var tbl = '<tr>'
+						+ '<td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+						+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option>  </select> </div></td>'
+						+ '<td><div class="form-group"> <input type="text" value="' + data[0].documentList[i].documnentName + '" class="form-control docNoclss" id="docnoid_' + i + '"> </div></td>'
+						+ '<td><div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_' + i + '" id="uploadFor_' + i + '"> <i class="ti-pencil" id="clickImg_' + i + '"></i> </label>'
+						+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_'
+						+ i
+						+ '"name="userImage" onchange="saveMultiFile(event)" /> </div>'
+						+ '</div> <input type="hidden" id="uploadHidden_' + i + '" value="' + data[0].documentList[i].fileName + '" class="uploadHidCls">'
+						+ '<div id="uploadedBillDiv_' + i + '" align="center" class="uploadedBillCls"><div class="uploadicon position-l">'
+						+ data[0].documentList[i].action
+						+ '</div></div>'
+						+ '<div id="imageName_' + i + '" class="imageName">'
+						+"<a style=\"text-decoration: none;\" href=\"/document/document/" + data[0].documentList[i].fileName + "\" target=\"_blank\" >"
+						+ data[0].documentList[i].fileName
+						+ '</div>'
+						+ '<input type="hidden" id="editId_' + i + '" value="' + data[0].documentList[i].vendorRfqId + '">'
+						+ '<div id="dltImage_' + i + '" class="custom-file-delete"><i class="ti-close position-l rmv1" onclick="openDeleteConfirm()"></i></div> </td>'
+						+ '</tr>';
+
+					$("#doctbodyData").append(tbl);
+				}
+			} else {
+				var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+					+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+					+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_"></div></td>'
+					+ '<td> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+					+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+					+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div><div id="dltImage_0" ></div><input type="hidden" id="editId_0></td>'
+					+ '</tr>';
+				$("#doctbodyData").append(tbl);
+			} */
+
+		});
+
+
+}
+
+function getVendorDtls(vendorId, id1) {
+
+	$.ajax({
+		type: "GET",
+		url: "manage-invoice-get-vendor_state_data?id=" + vendorId + "&type=" + id1,
+		success: function(response) {
+			if (response.code == "success") {
+
+				var jsonData = JSON.parse(response.body);
+				console.log("jsonData", jsonData);
+				var stateId = jsonData[0].stateId;
+				console.log("stateId", stateId);
+				if (stateId == "st019") {
+
+					$("#sgstTR").show();
+					$("#cgstTR").show();
+					$("#igstTR").hide();
+					$("#taxType").val("true")
+				} else {
+
+					$("#sgstTR").hide();
+					$("#cgstTR").hide();
+					$("#igstTR").show();
+					$("#taxType").val("false")
+				}
+			}
+		},
+		error: function(e) {
+		}
+	});
+}
+
+
+function getPoList(vendorId, id1, id2) {
+
+	if (vendorId) {
+		var option = $("<option></option>");
+		$(option).val(null);
+		$(option).html("Select");
+
+		$.ajax({
+			type: "GET",
+			url: "manage-invoice-polist?id=" + vendorId + "&type=" + id1,
+			success: function(response) {
+				if (response.message == "success") {
+
+
+					$("#poId").empty();
+					var option = $("<option></option>");
+					$(option).val(null);
+					$(option).html("Select");
+					$("#poId").append(option);
+					for (var i = 0; i < response.body.length; i++) {
+						var option = $("<option></option>");
+						$(option).val(response.body[i].name);
+						$(option).html(response.body[i].name);
+						$("#poId").append(option);
+					}
+					if (id2 != "") {
+						$("#poId").val(id2);
+					}
+
+				}
+			},
+			error: function(e) {
+			}
+		});
+	} else {
+		$("#poId").empty();
+		var option = $("<option></option>");
+		$(option).val(null);
+		$(option).html("poId");
+		$("#poId").append(option);
+		$("#poId").empty();
+		var option = $("<option></option>");
+		$(option).val(null);
+		$(option).html("Select");
+
+	}
+}
+
+
+function getAddressDetails(vendorId) {
+	$.ajax({
+		type: "GET",
+		url: "manage-invoice-get-address?id=" + vendorId,
+
+		async: false,
+		success: function(response) {
+			console.log("response.body", response.message);
+
+			if (response.message == "Success") {
+				$("#con").html(response.body.country);
+				$("#bstate").html(response.body.states);
+				$("#bcity").html(response.body.city);
+				$("#bstreet1").html(response.body.street1);
+				$("#bstreet2").html(response.body.street2);
+				$("#bzipcode").html(response.body.zipCode);
+				$("#bphone").html(response.body.phone);
+				$("#bfax").html(response.body.fax);
+				$("#con1").html(response.body.country1);
+				$("#bstate1").html(response.body.states1);
+				$("#bcity1").html(response.body.city1);
+				$("#bstreet11").html(response.body.street11);
+				$("#bstreet21").html(response.body.street21);
+				$("#bzipcode1").html(response.body.zipCode1);
+				$("#bphone1").html(response.body.phone1);
+				$("#bfax1").html(response.body.fax1);
+
+			}
+		}
+	});
+}
+
+function newPhysicalVerification() {
+	//readOnlyField();
+	$("#reqHeadId").html('');
+	$(".reqHeadClass").html('');
+	$("#vendorName").val('');
+	$("#vendorId").val('');
+	$("#custGSTNo").val('');
+	$("#taxType").val();
+
+	enableField();
+
+	
+	$("#poId").val('');
+	$("#invoiceId").val('');
+	$("#varificationRefId").val('');
+	$("#invoiceDate").val('');
+	$("#grnDiv").show();
+	$("#itemName").val('');
+	$("#quantity").val('');
+	$("#receivedQuantity").val('');
+	$("#returningQuantity").val('');
+	$('#invoiceDate').val("");
+	$('#terms').val("");
+	
+	
+	gridOptionsDoc.api.setRowData([]);
+	itemOptions.api.setRowData();
+	var currentDate = new Date();
+
+	// Format the date as DD-MM-YYYY
+	var formattedDate = String(currentDate.getDate()).padStart(2, '0') + "-" +
+		String(currentDate.getMonth() + 1).padStart(2, '0') + "-" +
+		currentDate.getFullYear();
+	//$('#invoiceDate').val(formattedDate);
+	/*	$("#toDateCalendarInvoice").css("pointer-events", "none");
+				$("#toDateCalendarInvoice").css("opacity", "0.5");*/
+
+	$("#doctbodyData").empty();
+	var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+		+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+		+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_"></div></td>'
+		+ '<td> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+		+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+		+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div><div id="dltImage_0" ></div><input type="hidden" id="editId_0></td>'
+		+ '</tr>';
+	$("#doctbodyData").append(tbl);
+}
+
+
+function getRfqDetails() {
+	var search = $("#invoiceId").val();
+	console.log("search>>>>>",search);
+	if (search) {
+		$.ajax({
+			type: "POST",
+			url: "manage-invoice-return-get-grnid",
+			dataType: 'json',
+			contentType: 'application/json',
+			data: search,
+			success: function(response) {
+				if (response.message == "success") {
+					if (response.body.length != 0) {
+						$("#itemId").val("");
+						$("#gstRate").val("");
+						$("#sku").val("");
+						$("#brandName").val("");
+						$("#brandId").val("");
+						$("#hsnCode").val("");
+						$("#unit").val("");
+						$("#model").val("");
+						$("#itemName").css("background", "#FFF");
+						var content = '<ul id="autocomplete-list1" style="margin-left:-40px; font-weight:100; font-size:14px; color:#ccc;">';
+						for (var i = 0; i < response.body.length; i++) {
+							content += '<li class="autocompletedata cp" onClick="selectAutocompleteValueItem2(\''
+								+ response.body[i].carrierId
+								+ '\',\''
+								+ response.body[i].poId
+								+ '\',\''
+								+ response.body[i].appoveStatus
+								+ '\',\''
+								+ response.body[i].brandId
+								+ '\',\''
+								+ window.btoa(response.body[i].brandName)
+								+ '\',\''
+								+ window.btoa(response.body[i].hsnCode)
+								+ '\',\''
+								+ window.btoa(response.body[i].unit)
+								+ '\',\''
+								+ window.btoa(response.body[i].gstRate)
+								+ '\',\''
+								+ window.btoa(response.body[i].model)
+								+ '\')">'
+								+ response.body[i].carrierId
+								+ '</li>';
+						}
+						content += '</ul>';
+						$("#suggesstion-box2_").show();
+						$("#suggesstion-box2_").html(content);
+
+					} else {
+						$("#itemName").css("background", "#FFF");
+						var content = '<ul id="autocomplete-list1">';
+						content += '<font-weight:100; font-size:14px; color:#ccc;     background-color: #0909e4;"li onClick="selectAutocompleteValueItem2()">'
+							+ "No Data Found" + '</li>';
+						content += '</ul>';
+						$("#suggesstion-box2_").show();
+						$("#suggesstion-box2_").html(content);
+					}
+				}
+			},
+			error: function(data) {
+				//console.log(data);
+			}
+		})
+	} else {
+		$("#itemId").val("");
+		$("#itemName").val("");
+		$("#gstRate").val("");
+		$("#sku").val("");
+		$("#brandName").val("");
+		$("#brandId").val("");
+		$("#hsnCode").val("");
+		$("#unit").val("");
+		$("#model").val("");
+		$("#suggesstion-box2_").hide();
+	}
+}
+function selectAutocompleteValueItem2(rfqId, poId, appoveStatus, brandId, brandName,
+	hsnCode, unit, gstRate, model) {
+	if (rfqId) {
+		//$("#sku").val(sku);
+		$("#invoiceId").val(rfqId);
+		$("#suggesstion-box2_").hide();
+		//getItemDetails(rfqId);
+		returnInvoiceEdit(rfqId);
+	} else {
+		$("#suggesstion-box2_").hide();
+
+	}
+}
+
+
+function returnInvoiceEdit(invoiceReturnId) {
+
+	agGrid.simpleHttpRequest({
+		url: 'manage-invoice-return-invoiceEdit?id=' + invoiceReturnId
+	}).then(
+		function(data) {
+
+			console.log("data-->", data);
+
+
+			//getPoList(data[0].vendorId,'edit',data[0].poId);
+
+			if (data.length > 0) {
+				$("#invoiceReturnheadId").html(data[0].invoiceReturnId);
+				$("#invoiceReturnRefId").val(data[0].invoiceReturnId);
+				$("#vendorId").val(data[0].vendorId);
+				getVendorDtls(data[0].vendorId, 'edit');
+				getAddressDetails(data[0].vendorId);
+				$("#vendorName").val(data[0].vendorName);
+				$("#invoiceReturnId").val(data[0].invoiceReturnId);
+				$("#poId").val(data[0].poId);
+				$("#terms").val(data[0].terms);
+				$("#invoiceId").val(data[0].invoiceId);
+				$("#invoiceDate").val(data[0].invoiceDate);
+				$("#adjustment").val(data[0].adjustment);
+				$("#tcsName").val(data[0].tcs);
+				$("#tcsId").val(data[0].tcsId);
+				$("#tcsAmount").val(data[0].tcsAmount);
+				$("#taxType").val(data[0].taxType);
+				//$("#invoiceDate").val(data[0].updatedOn);
+				$("#project").val(data[0].project);
+				$("#terms").val(data[0].paymentTermId);
+				//hideShowS();
+
+				$("#grandTotal").val(data[0].grandTotal);
+				$("#qIGST").val(data[0].qIGST);
+
+				$("#qSGST").val(data[0].qSGST);
+				$("#qCGST").val(data[0].qCGST);
+				$("#subTotal").val(data[0].subTotal);
+				$("#grandTotal").val(data[0].grandTotal);
+
+				data = data.map((item, index) => ({
+					...item,
+					slNo: index + 1 // Assign serial numbers
+				}));
+
+				console.log("after data-->", data);
+				itemOptions.api.setRowData(data);
+				
+				gridOptionsDoc.api.setRowData([]);
+				let documentData=data[0].documentList;
+				console.log("documentData data-->", documentData);
+				gridOptionsDoc.api.setRowData(documentData);
+
+
+			}
+			else {
+				itemOptions.api.setRowData([]);
+			}
+		});
+
+
+}
+
+function openDeleteConfirm() {
+		 $("#dltValue").val("");
+		//deletAttachmentRow()
+	}
+function deletAttachmentRow() {
+		var lengthOfTableRow1 = 0;
+		$("#docTbl > #doctbodyData > tr").each(function() {
+			lengthOfTableRow1 = lengthOfTableRow1 + 1;
+		})
+		var id = $("#dltValue").val();
+		
+		$("#" + id).closest('tr').remove();
+		//closeDeleteConfirm();
+		if (lengthOfTableRow1 == 1) {
+			var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+					+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+					+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_"></div></td>'
+					+ '<td> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+					+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+					+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div><div id="dltImage_0"></div> </td>'
+					+ '</tr>';
+			$("#doctbodyData").append(tbl);
+		}
+	}
+
+function nextBtnFunction() {
+
+	
+	var tabTrigger = new bootstrap.Tab(document.querySelector('a.nav-link[href="#itemDetails"]'));
+	tabTrigger.show();
+}
+
+
+function previousButton() {
+
+	var tabTrigger = new bootstrap.Tab(document.querySelector('a.nav-link[href="#raiseTicket"]'));
+	tabTrigger.show();
+}
+
+
+function save() {
+	//if (validFormData() && validProductData()) {
+		$("#saveMstrBtn").attr('disabled', true);
+		gridOptionsDoc.api.stopEditing();
+	var datas = [];
+	var imageValid = true;
+	var uploadList = [];
+	let valid = true;
+	let grnId = $("#invoiceId").val();
+	if (grnId == null || grnId == "") {
+		var tabTrigger = new bootstrap.Tab(document.querySelector('a.nav-link[href="#raiseTicket"]'));
+		tabTrigger.show();
+		toastr.error("GRN-Receipt Id Required.");
+		return;
+	}
+	if(valid){
+		if (gridOptionsDoc.api.getDisplayedRowCount() > 0) {
+			 gridOptionsDoc.api.forEachNode(function(rowNode, indrx) {
+					
+						var objDoc = rowNode.data;		
+						uploadList.push(objDoc);
+				});
+			}
+		
+		console.log("uploadList>>>", uploadList);
+	setTimeout(function() {
+		//	if (itemOptions.api.getDisplayedRowCount() > 0) {
+
+		itemOptions.api.forEachNode(function(rowNode, indrx) {
+
+			var obj = rowNode.data;
+			obj.invoiceReturnId = $("#reqHeadId").html();
+			obj.vendorId = $("#vendorId").val();
+			obj.vendorName = $("#vendorName").val();
+			obj.poId = $("#poId").val();
+			obj.invoiceId = $("#invoiceId").val();
+			obj.adjustment = $("#adjustment").val();
+			obj.tcs = $("#tcsId").val();
+			obj.tcsAmount = $("#tcsAmount").val();
+			obj.project = $("#project").val();
+			obj.projectName = $("#project").find('option:selected').text();
+			obj.subTotal = $("#subTotal").val();
+			obj.grandTotal = $("#grandTotal").val();
+			obj.qIGST = $('#qIGST').val();
+			obj.qCGST = $('#qCGST').val();
+			obj.qSGST = $('#qSGST').val();
+
+			obj.shippingDetails = $("input[name='checkbox']:checked").val();
+
+			obj.qutDescription = $('#qutDescription').val();
+			obj.terms = $('#terms').val();
+			obj.taxType = $('#taxType').val();
+
+			obj.documentList = uploadList;
+
+			console.log('Object', obj)
+			datas.push(obj);
+
+		});
+
+
+		saveAllInvoice(datas);
+		//}
+	}, 1000)
+}
+	
+}
+
+//saveTableDataSale()
+function saveAllInvoice(datas) {
+	//window.location.reload();
+	console.log('datas>>>>>', datas)
+	$("#saveMstrBtn").attr('disabled', false);
+	$(".loader").show();
+	$.ajax({
+		type: "POST",
+		url: "manage-invoice-return-add",
+		contentType: "application/json",
+		data: JSON.stringify(datas),
+		success: function(response) {
+			$(".loader").hide();
+			if (response.message == "Success") {
+				
+			console.log("response.code>>",response.code);
+			nextTab("basicInfLiId");
+				toastr.success(response.code);
+				viewData();
+				
+				//selectFirstRow();
+
+			}else{
+				toastr.error("Something Went Wrong");
+			}
+
+		},
+		error: function(datas) {
+			console.log(datas)
+		}
+	})
+
+}
+
+
+function approveGRNReturn() {
+
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var invoiceReturnId = selectedRows[0].invoiceReturnId;
+	var poId = selectedRows[0].poId;
+	var vendorId = selectedRows[0].vendorId;
+	var invoiceId = selectedRows[0].invoiceId;
+	var returningQuantity = selectedRows[0].returningQuantity;
+	var creditNoteAmt = selectedRows[0].creditNoteAmt;
+	var grandTotal = selectedRows[0].grandTotal;
+	var gstAmount = selectedRows[0].gstAmount;
+	obj = {};
+
+	obj.invoiceReturnId = invoiceReturnId;
+	obj.poId = poId;
+	obj.vendorId = vendorId;
+	obj.invoiceId = invoiceId;
+	obj.returningQuantity = returningQuantity;
+	obj.approveStatus = 1;
+	obj.creditNoteId = '';
+	obj.creditNoteAmt = creditNoteAmt;
+	obj.grandTotal1 = grandTotal;
+	obj.gstAmount = gstAmount;
+	var validation = true;
+
+	if (validation) {
+		$('.loader').show();
+		$.ajax({
+			type: "POST",
+			url: "manage-invoice-return-approve",
+			contentType: "application/json",
+			data: JSON.stringify(obj),
+			success: function(response) {
+				
+				if (response.message == "Success") {
+					$('.loader').hide();
+					/*$("#messageParagraph").text("Data Approved Successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');*/
+					viewData();
+					toastr.success('GRN Return Approved Successfully.');
+					//selectFirstRow();
+
+				}else{
+					$('.loader').hide();
+					toastr.error('Something Went Wrong !!');
+				}
+			},
+			error: function(data) {
+			}
+		})
+	}
+}
+
+
+
+
+
+function checkEmpty() {
+	var infofileName = true;
+	$(".formValidation").remove();
+	$('.docNoclss').each(function() {
+		if ($(this).val() == null || $(this).val() == "") {
+			infofileName = false;
+			validationModal("Document Name Required", $(this).attr('id'));
+		}
+	});
+
+	var mulDocInfo = true;
+	if (infofileName) {
+		$('#doctbodyData > tr').each(function() {
+			if ($(this).closest('tr').find('.imageName').text()) {
+				mulDocInfo = true;
+			} else {
+				mulDocInfo = false;
+				$("#messageParagraph").text("Please Choose a File ");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				return false;
+			}
+
+		});
+	}
+	if (infofileName && mulDocInfo) {
+		addMore1()
+	}
+}
+function saveMultiFile(event) {
+	var AssignItemQty = event.currentTarget.value;
+	var currentFldId = event.currentTarget.getAttribute('id');
+	var l = currentFldId.split("_");
+	var counter = l[1];
+	var currentFldId = "#" + currentFldId;
+
+	var uFile = $(currentFldId)[0].files[0];
+	var fileName = event.currentTarget.value;
+	var lastIndex = fileName.lastIndexOf("\\");
+	if (lastIndex >= 0) {
+		fileName = fileName.substring(lastIndex + 1);
+	}
+	var extension = fileName.split(".");
+
+	var iURL = URL.createObjectURL(uFile);
+	$("#uploadedBillDiv_" + counter).html("");
+	if (extension[1] != null && extension[1] != "") {
+		$("#uploadHidden_" + counter).val('');
+	}
+	/* if (extension[1] == "jpg" || extension[1] == "png"
+		|| extension[1] == "jpeg") {
+		var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='bi bi-image' style='font-size: 12px'></i></a></span>";
+	} else if (extension[1] == "pdf") {
+		var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-pdf-o'></i> </a></span>";
+	} else if (extension[1] == "xls" || extension[1] == "xlsx") {
+		var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-excel-o'></i></a></span>";
+	} else if (extension[1] == "doc" || extension[1] == "dox"
+		|| extension[1] == "docx") {
+		var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-word-o'></i></a></span>";
+	} else {
+		var LightImg = "<span class='uploadicon position-l '> </div>";
+	} */
+	//var dltImg = "<i class='ti-close position-l rmv1' onclick='openDeleteConfirm()'></i>";
+	/* $("#uploadedBillDiv_" + counter).html(LightImg);
+	$("#imageName_" + counter).html(fileName);
+	$("#dltImage_" + counter).html(dltImg);
+	$("#dltImage_" + counter).addClass("custom-file-delete");
+
+	$("#clickImg_" + counter).removeClass("ti-plus");
+	$("#clickImg_" + counter).addClass("ti-pencil"); */
+	
+	var fileData = new FormData();
+	fileData.append('file', uFile);
+	fileData.append('path', 'none');
+	
+	var details = {};
+    var data = [];
+    var x = [];
+    var reader = new FileReader();
+	reader.readAsDataURL(uFile);
+	var iURL = URL.createObjectURL(uFile);
+	reader.onload = function() {
+		data = reader.result.split(",");
+		x.push(data[1]);
+		//details.fileName=fileName;
+	};
+	
+	const lastRowIndex = gridOptionsDoc.api.getDisplayedRowCount();
+	//console.log("lastRowIndex>>>",lastRowIndex);
+	
+	 let newRow = {
+			 slno : parseInt(lastRowIndex) + parseInt(1),
+				docName : null,
+				isEditDoc : 0,
+				docType : extension[1],
+				dociURL : iURL,
+				documentFile : x,
+				docView : fileName
+		};
+	
+	 gridOptionsDoc.api.applyTransaction({
+		add : [ newRow ] 
+	 });
+
+}
+function addMore1() {
+
+	var lengthOfTableRow = $("#doctbodyData").children('tr').length;
+	var cloneHtml = $("#docTbl tbody tr:first").clone();
+
+	$("#docTbl tbody").append($("#docTbl tbody tr:first").clone());
+	$("#myTable tbody tr td:last").html("");
+
+	$("#docTbl tbody tr:last").find(".documentclss").val("");
+	$("#docTbl tbody tr:last").find(".docNoclss").val("");
+	$("#docTbl tbody tr:last").find(".documentclssup").val("");
+	$("#docTbl tbody tr:last").find(".uploadedBillCls").empty();
+	$("#docTbl tbody tr:last").find(".uploadHidCls").empty();
+	$("#docTbl tbody tr:last").find(".uploadHidCls").val('');
+	$("#docTbl tbody tr:last").find(".imageName").empty();
+	var j = 0;
+	$("#docTbl > #doctbodyData > tr").each(function(i) {
+
+		var selectInput = $(this).find('select');
+		var textInput = $(this).find('input');
+		var fileInput = $(this).find('file');
+		var divInput = $(this).find('div');
+		var label = $(this).find('label');
+		var iInput = $(this).find('i');
+		selectInput.eq(0).attr('id', "docid_" + i);
+
+		textInput.eq(1).attr('id', "docnoid_" + i);
+		textInput.eq(2).attr('id', "uploadDoc_" + i);
+		label.eq(1).attr('for', "uploadDoc_" + i);
+		textInput.eq(3).attr('id', "uploadHidden_" + i);
+		divInput.eq(4).attr('id', "uploadedBillDiv_" + i);
+		divInput.eq(5).attr('id', "imageName_" + i);
+		divInput.eq(6).attr('id', "dltImage_" + i);
+		iInput.eq(0).attr('id', "clickImg_" + i);
+		j++;
+	})
+	$("#clickImg_" + (j - 1)).removeClass("ti-pencil");
+	$("#clickImg_" + (j - 1)).addClass("ti-plus");
+
+}
+
+function checkForDuplicateEntry(event) {
+	var document = event.currentTarget.value;
+	var currentFldId = event.currentTarget.getAttribute('id');
+	var l = currentFldId.split("_");
+	var counter = l[1];
+	var count = 0;
+	$(".docNoclss").each(function() {
+		if (document == $(this).val()) {
+			count++;
+		}
+	})
+	if (count >= 2) {
+		$("#messageParagraph").text("Document Name Already Entered");
+		$("#msgOkModal").removeClass("btn3");
+		$("#msgOkModal").addClass("btn1");
+		$("#msgModal").modal('show');
+
+		return false;
+	} else {
+		return true;
+	}
+
+}
+
+function disableField() {
+
+	$("#invoiceId").attr("disabled", true);
+
+}
+
+function enableField() {
+
+	$("#invoiceId").attr("disabled", false);
+
+}
+
+/* function nextTab(id) {
+	
+
+	var tabTrigger = new bootstrap.Tab(document.querySelector('a.nav-link[href="#' + id + '"]'));
+	tabTrigger.show();
+} */
+
+function addNew(){
+	gridOptions.api.deselectAll();
+}
+
+
+function enterToSearch(event){
+	console.log("event.keyCode>>",event.keyCode);
+	if(event.keyCode == 13){
+		let filterData = $("#quickFilter").val();
+		if(filterData){
+			onQuickFilterChanged();
+		}
+	}
+	
+}
+
+function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+				
+		gridOptions.api.getDisplayedRowAtIndex(0).setSelected(true);
+	}
+	
+	function reset(){
+		let data = $("#quickFilter").val('');
+		if(data!=null && data!=""){
+			$("#quickFilter").val('');
+			onQuickFilterChanged();
+		}
+	}
+	
+	
+
+	function editMain(){
+		enableField();
+		$("#add-btn").hide();
+		$("#mstrSaveBtn").show();
+		$("#cancelMainBtn").show();
+		$("#approve-btn").hide();
+		$("#mstrEditBtn").hide();
+	}
+
+	function cancelMain(){
+		let selectedRows = gridOptions.api.getSelectedRows();
+		
+		let rowCount = 0;
+	    selectedRows.forEach(function(selectedRow, index) {
+	        rowCount = rowCount + 1;
+	    });
+	    
+	    if(rowCount == 0){
+	    	gridOptions.api.getDisplayedRowAtIndex(0).setSelected(true);
+	    }else{
+	    	
+	    	var selectedNodes = gridOptions.api.getSelectedNodes();
+	    	const selectedRowIndex = selectedNodes[0].rowIndex;
+	    	gridOptions.api.getDisplayedRowAtIndex(selectedRowIndex).setSelected(true);
+	    	rowSelect();
+	    }
+
+	}
+	
+
+	//Upload Grid Document.
+
+	function uploadDocOnClick(){
+		$('#uploadDoc_0').click();
+	}
+
+	// Document Delete
+
+	function deleteDocDetailsOnclick() {
+		var selectedRows = gridOptionsDoc.api.getSelectedRows();
+		gridOptionsDoc.api.applyTransaction({
+			remove : selectedRows
+		});
+		
+		// Reorder the serial numbers
+	    const allRowNodes = [];
+	    gridOptionsDoc.api.forEachNode((node) => {
+	        allRowNodes.push(node);
+	    });
+
+	    allRowNodes.forEach((node, index) => {
+	        node.data.slno = index + 1;
+	    });
+
+	    gridOptionsDoc.api.refreshCells({ force: true });
+		
+	}
+	
+	
+	function nextTab(id) {
+		const tabElement = document.querySelector('#' + id + ' a');
+		const tab = new bootstrap.Tab(tabElement);
+		tab.show();
+	}
+
+</script>
+
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<!-- 	<div class="row">
+						<div class="col-md-12">
+							Nav pills
+							<ul class="nav nav-pills mb-20" role="tablist">
+								<li class="nav-item wd-33"><a
+									class="nav-link active tab-ht" data-bs-toggle="pill"
+									href="#opd">OPD</a></li>
+								<li class="nav-item wd-33"><a class="nav-link tab-ht"
+									data-bs-toggle="pill" href="#requisition1"></a></li>
+								<li class="nav-item wd-33 tab-ht"><a
+									class="nav-link tab-ht" data-bs-toggle="pill"
+									href="#requisition2"></a></li>
+							</ul>
+						</div>
+					</div> -->
+
+
+
+					<!--Tabbination 1 Start-->
+					<div id="opd" class="tab-pane" role="tabpanel">
+						<div class="d-flex flex-column flex-lg-row">
+
+							<!--Left Sec Start-->
+							<div class="box-sec" id="collapseWidthR1">
+								<div class="out-box">
+									<div class="h-100 mb-20">
+										<div class="d-flex justify-content-between p-2 gap-3 bdr-line">
+											<div class="col-md-8 col-12">
+												<div class="d-flex search-sec position-relative">
+													<input class="form-control me-2 search_input_bar"
+														placeholder="Search.." type="text" name="search" onkeydown="enterToSearch(event)"
+														id="quickFilter" autocomplete="off">
+													<button class="btn btn-primary go-btn"
+														onclick="onQuickFilterChanged()" id="SearchBtn"
+														type="button">Go</button>
+													&nbsp;
+													<button class="btn go-btn w-auto" type="button"
+														onclick="reset()">Reset</button>
+												</div>
+											</div>
+											<div class="col-md-2 d-flex justify-content-end">
+												<button class="btn btn-primary max-btn"
+													id="collapseButtonR1" onclick="triggerExpansionR(1)"
+													data-bs-toggle="tooltip" data-bs-placement="top"
+													title="Expand">
+													<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+														class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+												</button>
+											</div>
+
+										</div>
+										<div class="card-scroll m-2">
+											<div class="requisition-tbl table-responsive">
+												<!-- <div class="">
+												<div class="font-design" id="totalReq">
+													invoice Return List (<span></span>)
+												</div>
+											</div> -->
+
+												<div id="myGrid" style="width: 100%; height: 550px"
+													class="ag-theme-alpine"></div>
+											</div>
+										</div>
+									</div>
+								</div>
+
+							</div>
+
+							<!--Left Sec End-->
+
+
+
+							<!--Right Sec Start-->
+							<div class="box-sec" id="collapseWidthL1">
+								<div class="out-box" id="rightSideDiv">
+									<div
+										class="d-flex justify-content-between flex-row-reverse align-items-center p-2 bdr-line">
+										<button class="btn btn-primary max-btn" id="collapseButtonL1"
+											type="button" onclick="triggerExpansionL(1)"
+											data-bs-toggle="tooltip" data-bs-placement="top"
+											title="Expand">
+											<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+												class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+										</button>
+
+
+
+										<!--Right Inner Tab Start-->
+										<div class="d-flex gap-2">
+											<ul class="nav nav-pills newtab tablistUl" role="tablist">
+												<!-- <li class="nav-item"><a class="nav-link active"
+													data-bs-toggle="pill" href="#raiseTicket"> Information</a></li>
+												<li class="nav-item"><a class="nav-link"
+													data-bs-toggle="pill" id="itemDetailsLink"
+													href="#itemDetails"> Details</a></li> -->
+
+												<li class="nav-item" role="presentation" id="basicInfLiId"><a
+													class="nav-link active" data-bs-toggle="pill"
+													href="#raiseTicket" aria-selected="true" role="tab">
+														Information</a></li>
+												<li class="nav-item" role="presentation"
+													id="itemDetailsLiId"><a class="nav-link"
+													data-bs-toggle="pill" href="#itemDetails"
+													aria-selected="true" role="tab"> Details</a></li>
+											</ul>
+										</div>
+									</div>
+
+									<!-- Tab panes -->
+									<div class="tab-content flex-fill h-25">
+
+										<div id="raiseTicket" class="tab-pane active p-2 h-100">
+
+											<div class="requisition-tbl d-flex flex-column h-100">
+
+												<div class="mb-2">
+													<table class="table table-bordered mb-0" width="100%">
+														<tr valign="middle">
+															<!-- <td width="50%"><strong><div
+																		class="col-md-12 requisition_ids_text">
+																		GRN-RETURN ID: <span id="reqHeadId"></span>
+																	</div></strong></td> -->
+															<div class="d-none">
+																<span id="reqHeadId"></span>
+															</div>
+															<td width="50%"><span class="reqHeadClass"></span></td>
+															<!-- <td width="10%">Male</td>
+																<td width="10%">45</td> -->
+															<td>
+																<div class="d-flex justify-content-end flxwrap">
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn" type="button"
+																			id="add-btn" onclick="addNew()">Add</button>
+																	</div>
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn" type="button"
+																			id="mstrEditBtn" onclick="editMain()">Edit</button>
+																		<input type="hidden" class="form-control"
+																			id="editTktId">
+
+																	</div>
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn" type="button"
+																			id="approve-btn" onclick="approveGRNReturn()">Approve</button>
+
+																	</div>
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn"
+																			id="cancelMainBtn" type="button"
+																			onclick="cancelMain()">Cancel</button>
+																	</div>
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn" type="button"
+																			id="save-btn" onclick="nextTab('itemDetailsLiId')">Next</button>
+																	</div>
+
+																	<div class="mr-0">
+																		<!-- <button
+																				class="btn btn-primary edit-btn operation-btn"
+																				type="button" id="delete-btn" onclick="deleteFun()">Delete</button> -->
+																		<input type="hidden" class="form-control"
+																			id="editTktId">
+
+																	</div>
+																</div>
+
+															</td>
+														</tr>
+													</table>
+												</div>
+												<div class="card p-2">
+													<div class="bdr-btn d-flex justify-content-between mb-2">
+
+														<div
+															style="text-align: right; color: red; font-weight: bold; font-size: 12px;">
+															Note: All fields marked with <span>*</span> are
+															mandatory.
+														</div>
+													</div>
+													<form>
+														<div class="mb-3 form-parent-div">
+															<div class="row">
+
+																<div class="col-lg-12">
+																	<div class="row" id="mainPage">
+																		<input type="hidden" id="varificationId"><input
+																			type="hidden" id="purchaseOrderId">
+
+																		<!-- <div class="col-md-6" id="grnDiv">
+																			<div class="form-group calendar_box">
+																				<label>Search GRN ID</label> <input type="text"
+																					id="rfqValue" onblur="removeValid(event)"
+																					class="form-control" onkeyup='getRfqDetails()'>
+																			</div>
+																			<div id="suggesstion-box2_" class="sugg-cls"></div>
+																		</div> -->
+
+																		<div class="col-lg-6">
+																			<div class="form-group">
+																				<label>GRN-Receipt Id<span class="mandatory">*</span></label>
+																				<input type="text" id="invoiceId"
+																					class="form-control" onkeyup='getRfqDetails()'>
+																			</div>
+																			<div id="suggesstion-box2_" class="sugg-cls"></div>
+																		</div>
+
+
+																		<div class="col-lg-6">
+
+																			<div class="form-group">
+																				<div class="autocomplete" style="width: 100%;">
+																					<label>Vendor Name</label> <input type="text"
+																						id="vendorName" placeholder="Vendor Name"
+																						class="form-control" onkeyup='getVendorList()'
+																						readonly><input type="hidden"
+																						id="vendorId"> <input type="hidden"
+																						id="custGSTNo"> <input type="hidden"
+																						id="taxType">
+																				</div>
+																				<div id="suggesstion-box1_" class="sugg-cls"
+																					style="max-height: 109px; overflow: hidden; overflow-y: auto;"></div>
+
+																			</div>
+
+
+																		</div>
+
+
+																		<div class="col-lg-6">
+																			<div class="form-group">
+																				<label>Purchase Order Id</label><input type="text"
+																					id="poId" class="form-control" readonly>
+																			</div>
+																		</div>
+
+
+
+																		<div class="col-lg-6" hidden>
+																			<div class="form-group">
+																				<label>Project</label>
+																				<div class="select">
+																					<select id="project">
+																						<option value="">Select</option>
+																						<option th:each="c:${ProjectList}"
+																							th:value='${c.key}' th:text="${c.name}"></option>
+																					</select>
+																				</div>
+																			</div>
+																		</div>
+
+
+																		<div class="col-lg-6">
+																			<div class="form-group calendar_box">
+																				<label>GRN-Receipt Date</label> <input type="text"
+																					id="invoiceDate" class="form-control"
+																					th:attr="onkeyup=|formatDate('purchaseDate','${session.DATEFORMAT_JS}')|"
+																					disabled>
+																				<!-- <i class="ti-calendar picker_calendar"
+																					id="toDateCalendarInvoice"></i> -->
+																			</div>
+																		</div>
+
+
+
+
+																	</div>
+																</div>
+
+																<div class="col-lg-6" style="display: none">
+																	<div class="col-md-12">
+																		<div class="form-group">
+																			<div class="autocomplete"
+																				style="width: 100% !important">
+																				<input type="hidden" id="itemId"> <label>Item
+																					Name</label> <input type="text" id="itemName"
+																					onblur="removeValid(event)" class="form-control"
+																					onkeyup='getItemQutotationList()'> <input
+																					type="hidden" id="modelTemp" /> <input
+																					type="hidden" id="gstRateTemp" /> <input
+																					type="hidden" id="itemNameTemp" /> <input
+																					type="hidden" id="itemIdTemp" /> <input
+																					type="hidden" id="brandNameTemp" /> <input
+																					type="hidden" id="brandIdTemp" /> <input
+																					type="hidden" id="unitTemp" /><input type="hidden"
+																					id="skuTemp" /><input type="hidden"
+																					id="hsnCodeTemp" /> <input type="hidden"
+																					id="prodCatIdTemp" /> <input type="hidden"
+																					id="prodCatNameTemp" />
+																			</div>
+																			<div id="suggesstion-box_" class="sugg-cls"></div>
+																		</div>
+																	</div>
+																	<div class="row">
+
+																		<div class="col-md-6">
+																			<div class="form-group">
+																				<label>Order Quantity</label> <input type="text"
+																					class="form-control transparenttxtbox"
+																					id="quantity">
+																			</div>
+																		</div>
+																		<div class="col-md-6">
+																			<div class="form-group">
+																				<div class="autocomplete" style="width: auto">
+																					<label>Received Quantity</label> <input type="text"
+																						id="receivedQuantity" onblur="removeValid(event)"
+																						class="form-control"
+																						onkeyup='getItemQutotationList()'>
+																				</div>
+																				<div id="suggesstion-boxx_" class="sugg-cls"></div>
+																			</div>
+																		</div>
+																	</div>
+																	<div class="row">
+																		<div class="col-md-6">
+																			<div class="form-group">
+																				<label>Rejecting Quantity</label> <input type="text"
+																					class="form-control transparenttxtbox"
+																					id="returningQuantity">
+																			</div>
+																		</div>
+
+																		<!-- <div class="col-md-6">
+																			<div class="form-group">
+																				<label>Quantity Requested</label> <input
+																					type="number"
+																					class="form-control transparenttxtbox"
+																					id="quantity" onblur="removeValid(event)">
+																			</div>
+																		</div> -->
+																	</div>
+																	<!-- <div class="row">
+
+																		<div class="col-md-6">
+																			<div class="form-group">
+																				<label>UNIT</label>
+																				<div class="select">
+																					<select id="unit">
+																						<option th:each="c:${unitList}"
+																							th:value='${c.key}' th:text="${c.name}"></option>
+																					</select>
+																				</div>
+
+																			</div>
+																		</div>
+																		<div class="col-md-6">
+																			<div class="form-group">
+																				<label>Quantity Issued</label> <input type="number"
+																					class="form-control transparenttxtbox"
+																					id="quantityIssued" onblur="removeValid(event)">
+																			</div>
+																		</div>
+																		<div class="col-lg-12">
+																			<div class="form-group">
+																				<label>GRN Number</label> <input type="text"
+																					class="form-control transparenttxtbox" id="grnNo"
+																					onblur="removeValid(event)">
+																			</div>
+																		</div>
+																	</div> -->
+
+
+																</div>
+
+																<div class="col-md-12" style="margin-top: 13px;">
+																	<div class="row ">
+																		<div class="row">
+																			<div class="col-md-6">
+																				<h5 class="sub-header-new">Item Details :</h5>
+																			</div>
+																			<div class="col-md-6"
+																				style="display: flex; justify-content: end; gap: 10px; margin-bottom: 4px;">
+																				<!-- <button class="btn1" id="assignIssue"
+																					onclick="newItemAdd()">ADD</button> -->
+																				<!-- <button class="btn  edit-btn" id="saveDetails"
+																					onclick="saveTableData(event)">SAVE</button>
+																				<button class="btn edit-btn" id="dltProductDetails"
+																					onclick="deleteProduct(event)">DELETE</button> -->
+																				<input type="hidden" id="editProduct">
+																			</div>
+																		</div>
+																		<div id="product" style="width: 100%; height: 200px;"
+																			class="ag-theme-alpine"></div>
+																	</div>
+																</div>
+
+
+															</div>
+													</form>
+												</div>
+
+
+
+
+											</div>
+										</div>
+
+									</div>
+									<div id="itemDetails" class="tab-pane fade p-2 h-100">
+										<div class="requisition-tbl d-flex flex-column h-100">
+											<div class="mb-2">
+												<table class="table table-bordered mb-0" width="100%">
+													<tr valign="middle">
+														<td width="50%"><span class="reqHeadClass"></span></td>
+														<!-- <td width="50%"><strong>Soumya Ranjan Dash</strong></td>
+														<td width="10%">Male</td>
+														<td width="10%">45</td> -->
+														<td>
+															<div class="d-flex justify-content-end flxwrap">
+																<!-- <div class="mr-2">
+																	<button class="btn btn-primary edit-btn active"
+																		type="button">Add</button>
+																</div> -->
+																<div class="mr-2">
+																	<button class="btn btn-primary edit-btn" type="button"
+																		onclick="nextTab('basicInfLiId')">Prev</button>
+																</div>
+																<!-- <div class="mr-2">
+																		<button class="btn btn-primary edit-btn" type="button"
+																			onclick="nextTab('termsandconditions')">Next</button>
+																	</div> -->
+																<div class="mr-0">
+																	<button id="mstrSaveBtn"
+																		class="btn btn-primary edit-btn" type="button"
+																		onclick="save()">Save</button>
+																</div>
+															</div>
+
+														</td>
+													</tr>
+												</table>
+											</div>
+											<div class="card p-2">
+												<div>
+													<!-- <div class="row">
+															<div class="col-md-12">
+																<h5 class="sub-header-new">Documents</h5>
+															</div>
+														</div> -->
+
+													<div class="row">
+														<div class="col-md-12">
+															<div class="d-flex justify-content-between">
+																<div>
+																	<h5 class="sub-header-new">Document Details :</h5>
+																</div>
+																<div class="row">
+																	<div class="col-md-12 cnt-sp-end">
+																		<div class="d-flex gap-1 task-btn-sec">
+
+																			<button id="docAddBtn"
+																				class="border-0 btn-transition btn btn-outline-primary"
+																				title="Add Doc" onClick="uploadDocOnClick()"
+																				data-bs-toggle="tooltip">
+																				<i class="fa fa-plus-square" aria-hidden="true"></i>
+
+																			</button>
+																			<button id="docDeleteBtn"
+																				class="border-0 btn-transition btn btn-outline-primary"
+																				title="Remove Doc" disabled
+																				onclick="deleteDocDetailsOnclick()"
+																				data-bs-toggle="tooltip">
+																				<i class="fa fa-trash"></i>
+																			</button>
+
+																		</div>
+																	</div>
+																</div>
+															</div>
+															<div class="controls" hidden>
+																<input type="file" class="document" id="uploadDoc_0"
+																	accept=".jpeg, .jpg, .png, .pdf" name="userImage"
+																	onchange="saveMultiFile(event)" />
+															</div>
+
+															<div class="row mt-2">
+																<div id="myDocumentGrid"
+																	style="width: 100%; height: 200px;"
+																	class="ag-theme-alpine"></div>
+															</div>
+														</div>
+													</div>
+												</div>
+												<div>
+													<div class="row">
+														<div class="col-md-12">
+															<h5 class="sub-header-new">Terms & Conditions</h5>
+														</div>
+													</div>
+													<div class="form-group col-lg-12">
+
+														<textarea id="terms" class="mt-2 form-controls"
+															style="height: 129px;"> </textarea>
+
+													</div>
+												</div>
+
+
+											</div>
+
+											<!--Right Inner Tab End-->
+										</div>
+									</div>
+
+
+									<div id="RateUs" class="tab-pane fade p-2 h-100"></div>
+								</div>
+								<!--Right Sec End-->
+
+
+
+							</div>
+						</div>
+						<!--Tabbination 1 End-->
+
+					</div>
+
+
+				</div>
+
+			</div>
+		</div>
+	</div>
+</body>
+</html>

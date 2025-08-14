@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:fragment="attendanceReport">
+<head>
+<meta charset="UTF-8">
+<style>
+.wh-img {
+	height: 50px;
+	width: 50px;
+	cursor: pointer;
+}
+.pd-10-0 {
+	padding: 10px 0px;
+	display: flex;
+	align-items: center;
+}
+.remove-url {
+	font-size: 30px;
+    padding-left: 10px;
+    cursor: pointer;
+}
+.disabled-rmv-btn {
+    pointer-events: none;
+    opacity: 0.5;
+}
+</style>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ag-grid/26.2.0/ag-grid.min.noStyle.js"></script>
+<script>
+
+ $(document).ready(function() {
+ 	var curDate = new Date();
+ 	var currMonth=curDate.getMonth()+1;
+     $("#attndyear").val(curDate.getFullYear());
+     $("#attndmonth").val(currMonth)
+     getCurrentDateMonthYear();
+     var gridDiv = document.querySelector('#myGridAR');
+ 	new agGrid.Grid(gridDiv, gridOptionsAR);
+ 	updateGridColumns(currMonth ,curDate.getFullYear());
+ 	viewReport();
+ });
+ function convertToISOFormat(dateStr) {
+	    if (!dateStr) return "";
+	    
+	    const parts = dateStr.split("-");
+	    if (parts.length !== 3) return "";
+
+	    const day = parts[0].padStart(2, '0');   // ensures 01 instead of 1
+	    const month = parts[1].padStart(2, '0'); // ensures 04 instead of 4
+	    const year = parts[2];
+
+	    return `${year}-${month}-${day}`;
+	}
+ function viewReport() {
+	 
+     var staff = $("#designation").val();
+     var fromDate1 = $("#fromDate").val();
+     var toDate1 = $("#endDate").val();
+     var fromDate = convertToISOFormat(fromDate1);  // "2025-04-01"
+     var toDate = convertToISOFormat(toDate1); 
+     var employedBy = $("#employedBy").val();
+    
+     $('.loader').show();
+     $("body").addClass("overlay");
+     agGrid.simpleHttpRequest({
+         url : "get-attendance-list-data?fromDate="
+             + fromDate + "&toDate=" + toDate,
+             
+     }).then(function(data) {
+         var jsonData = JSON.parse(data.body);
+         var allData = jsonData.employees;
+         console.log("jsonData====",jsonData)
+         console.log("allData====",allData)
+         if(allData == null || allData == 'null'){
+             allData = [];
+         }
+         gridOptionsAR.api.setRowData(allData);
+         var len = allData.length;
+         $('#totalReq').text(len);
+         $('.loader').hide();
+         $("body").removeClass("overlay");
+     });
+ }
+ function getCurrentDateMonthYear() {
+     var curDate = new Date();
+     var selectedYear = $("#attndyear").val();
+     var selectedMonth = $("#attndmonth").val();
+     var startDay = $("#startDayForAtten").val();    
+     if (!selectedYear) {
+         selectedYear = curDate.getFullYear();
+     }
+     selectedYear = selectedYear.split("-")[0];
+     var fromDate, toDate;
+     if (selectedMonth === "0") {
+         fromDate = "01-01-" + selectedYear;
+         toDate = "31-012-" + (parseInt(selectedYear) + 1);
+     } else {
+         var month = parseInt(selectedMonth);
+         if (startDay > 1 && curDate.getDate() > startDay) {
+             month = curDate.getMonth() + 1;
+         }
+         fromDate = startDay + "-" + String(month).padStart(2, '0') + "-" + selectedYear;
+         toDate = startDay + "-" + String(month + 1).padStart(2, '0') + "-" + selectedYear;
+     }
+     $("#fromDate").val(fromDate);
+     $("#fromDateCalendar").val(fromDate);
+     $("#endDate").val(toDate);
+     $("#endDateCalendar").val(toDate);
+ }
+
+ var columnDefsAR = [];
+ var rowData = [];
+ var gridOptionsAR = {
+ 	columnDefs: columnDefsAR,
+ 	rowData: rowData,
+ 	defaultColDef: {
+ 		sortable: true,
+ 		filter: true,
+ 		resizable: true,
+ 		width: 149,
+ 		height: 10
+ 	},
+ 	rowSelection: 'multiple',
+ 	suppressRowClickSelection: true,
+ };
+ function formatDate(date) {
+     const day = String(date.getDate()).padStart(2, '0'); // Get day and pad with leading zero if necessary
+     const month = String(date.getMonth() + 1).padStart(2, '0'); // Get month and pad with leading zero (months are 0-based)
+     const year = date.getFullYear(); // Get full year
+     return `${day}-${month}-${year}`;
+ }
+ function changeMonthYear() {
+ 	var selectedYear = parseInt($("#attndyear").val());
+ 	var month = parseInt($("#attndmonth").val());
+ 	var currentDate = new Date();
+ 	var currentYear = currentDate.getFullYear();
+ 	var currentMonth = currentDate.getMonth() + 1;
+     if (selectedYear === currentYear && month > currentMonth) {
+     	fromDate = new Date(currentYear, currentMonth - 1, 1);
+         toDate = currentDate; 
+         month=currentMonth;
+         $("#attndmonth").val(currentMonth);
+         $("#fromDate").val(formatDate(fromDate));
+         $("#fromDateCalendar").val(formatDate(fromDate));
+         $("#endDate").val(formatDate(toDate));
+         $("#endDateCalendar").val(formatDate(toDate));
+         $("#messageParagraph").text("Select A Passed Month");
+ 	    $("#msgOkModal").removeClass("btn3");
+ 	    $("#msgOkModal").addClass("btn1");
+ 	    $("#msgModal").modal('show');
+     } else if (month === 0) { // If "All" is selected
+     	var fromDate = new Date(selectedYear, 0, 1); // January 1st
+         var toDate = new Date(selectedYear, 11, 31); // December 31st
+         $("#fromDate").val(formatDate(fromDate));
+         $("#fromDateCalendar").val(formatDate(fromDate));
+         $("#endDate").val(formatDate(toDate));
+         $("#endDateCalendar").val(formatDate(toDate));
+     }else {
+         fromDate = new Date(selectedYear, month - 1, 1);
+         toDate = new Date(selectedYear, month, 0); // Last day of the month
+         $("#fromDate").val(formatDate(fromDate));
+         $("#fromDateCalendar").val(formatDate(fromDate));
+         $("#endDate").val(formatDate(toDate));
+         $("#endDateCalendar").val(formatDate(toDate));
+     }
+     updateGridColumns(month ,selectedYear);
+     viewReport();
+ }
+ function getDaysInMonth(month, year) {
+ 	console.log(month)
+     const today = new Date();
+ 	console.log(today)
+ 	var curr_month=today.getMonth()+1;
+ 	console.log(curr_month)
+     if (month === curr_month && year === today.getFullYear()) {
+         return today.getDate();
+     } else {
+         return new Date(year, month, 0).getDate();
+     }
+ }
+ function updateGridColumns(month, year) {
+      columnDefsAR = [ {
+             headerName: "Employee ID",
+             field: "empId",
+             pinned: 'left',
+             cellStyle: { textAlign: 'center' },
+             width: 120
+         }, {
+             headerName: "Employee Name",
+             field: "empName",
+             pinned: 'left',
+             cellStyle: { textAlign: 'left' },
+             width: 200
+         }, {
+             headerName: "Department",
+             field: "dept",
+             cellStyle: { textAlign: 'center' },
+             width: 150,
+             hide: true,
+         }, {
+             headerName: "Sub Department",
+             field: "subDept",
+             cellStyle: { textAlign: 'center' },
+             width: 160,
+             hide: true,
+         }, {
+             headerName: "Designation",
+             field: "desg",
+             cellStyle: { textAlign: 'center' },
+             width: 150,
+         }
+     ];
+     // Get the number of days in the specified month
+     var numberOfDays = getDaysInMonth(month, year);
+     
+     // Loop to create columns for each day of the month
+     for (var day = 1; day <= numberOfDays; day++) {
+         var date = new Date(year, month - 1 , day);
+         var formattedDate = date.toISOString().split('T')[0]; // yyyy-mm-dd
+         var dayName = date.toLocaleDateString('en-US', { weekday: 'short' }); // e.g., Mon
+ 		console.log(date,"===",day,"---",dayName);
+         columnDefsAR.push({
+             headerName: `${day} (${dayName})`,
+             headerClass: 'header-center',
+             children: [ {
+                 headerName: "A",
+                 field: `sts_${day}`,
+                 cellStyle: { textAlign: 'center' },
+                 width: 45,
+                 suppressMenu: true
+             },{
+                     headerName: "In",
+                     field: `punchIn_${day}`,
+                     cellStyle: { textAlign: 'center' },
+                     width: 45,
+                     suppressMenu: true
+                 }, {
+                     headerName: "Out",
+                     field: `punchOut_${day}`,
+                     cellStyle: { textAlign: 'center' },
+                     width: 45,
+                     suppressMenu: true
+                 }, {
+                     headerName: "Late By",
+                     field: `lateBy_${day}`,
+                     cellStyle: { textAlign: 'center' },
+                     width: 45,
+                     suppressMenu: true
+                 }
+             ]
+         });
+     }
+     console.log("columnDefs==",columnDefsAR)
+      gridOptionsAR.api.setColumnDefs(columnDefsAR);
+      gridOptionsAR.api.refreshClientSideRowModel();
+ }
+
+ function getListForEmp() {
+ 	gridOptionsAR.api.setQuickFilter(document.getElementById('empSort').value);
+ 	var totalRowCount = gridOptionsAR.api.getModel().getRowCount();
+
+     $('#totalReq').text(totalRowCount);
+ }
+function downloadBtn(){
+	
+	 var fromDate1 = $("#fromDate").val();
+     var toDate1 = $("#endDate").val();
+     var fromDate = convertToISOFormat(fromDate1);  
+     var toDate = convertToISOFormat(toDate1); 
+     
+	 const url = `get-attendance-Pdf?fromDate=${fromDate}&toDate=${toDate}`;
+	    window.open(url, '_blank');
+}
+
+</script>
+</head>
+<body>
+  <div class="row">
+    <div class="col-md-6"><h6>Attendance List</h6></div>
+    <div class="col-md-6 text-end">
+      <button class="btn go-btn" type="button" onclick="downloadBtn()">Download</button>
+    </div>
+  </div>
+	<div class="mb-2">
+	<div class="d-flex flex-column flex-xl-row gap-2">
+		<div class="col-md-3">
+			<div class="flex-1 form-group" id="finYearData">
+			<input type="hidden" id="startDayForAtten" th:value="${startDayForAtten}" />
+				<label>Year</label>
+				<div class="select">
+					<select id="attndyear" class="form-control"
+						onchange="changeMonthYear()">
+						<option th:each="c,iter:${yearList1}" th:value="${c.name}"
+							th:text="${c.name}"></option>
+					</select>
+				</div>
+			</div>
+		</div>
+		<div class="col-md-3">
+			<div class="form-group" id="finMonthData">
+				<label>Month Name</label>
+				<div class="select">
+					<select id="attndmonth" class="form-control"
+						onchange="changeMonthYear()">
+						<!-- 	<option value="0">All</option> -->
+						<option value="1" text="JANUARY">JANUARY</option>
+						<option value="2" text="FEBRUARY">FEBRUARY</option>
+						<option value="3" text="MARCH">MARCH</option>
+						<option value="4" text="APRIL">APRIL</option>
+						<option value="5" text="MAY">MAY</option>
+						<option value="6" text="JUNE">JUNE</option>
+						<option value="7" text="JULY">JULY</option>
+						<option value="8" text="AUGUST">AUGUST</option>
+						<option value="9" text="SEPTEMBER">SEPTEMBER</option>
+						<option value="10" text="OCTOBER">OCTOBER</option>
+						<option value="11" text="NOVEMBER">NOVEMBER</option>
+						<option value="12" text="DECEMBER">DECEMBER</option>
+					</select>
+				</div>
+			</div>
+		</div>
+		<div class="col-md-3">
+			<label>From Date</label>
+			<div class="form-group calendar_box">
+				<input type="text" id="fromDate" value="" class="form-control"
+					th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+					readonly>
+			</div>
+		</div>
+		<div class="col-md-3">
+			<label>To Date</label>
+			<div class="form-group calendar_box">
+				<input type="text" id="endDate" value="" class="form-control"
+					th:attr="onkeyup=|formatDate('endDate','${session.DATEFORMAT_JS}')|"
+					readonly>
+			</div>
+		</div>
+		
+		</div>
+	</div>
+	<div class="grid-container">
+		<div id="myGridAR" class="ag-theme-alpine grid-size"></div>
+	</div>
+
+
+
+</body>
+</html>

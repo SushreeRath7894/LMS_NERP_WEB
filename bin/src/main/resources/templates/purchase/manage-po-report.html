@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<script>
+	/** AG Grid **/
+
+	var columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+			/* {
+				headerName : "ID",
+				field : "locationId",
+				cellRenderer : function(params) {
+					return '<a onclick=openDetails("' + params.data.locationId
+							+ '") href="javascript:void(0)">'
+							+ params.data.locationId + '</a>';
+				}
+			},
+			{
+				headerName : "Code",
+				field : "locationCode",
+				cellRenderer : function(params) {
+					return '<a onclick=openDetails("' + params.data.locationId
+							+ '") href="javascript:void(0)">'
+							+ params.data.locationCode + '</a>';
+				}
+			} */
+			, {
+				headerName : "PO ID",
+				field : "poId"
+			}, {
+				headerName : "Vendor",
+				field : "vendorName"
+			}, {
+				headerName : "Product Id",
+				field : "itemId"
+			}, {
+				headerName : "Product Name",
+				field : "itemName"
+			}, {
+				headerName : "Quantity",
+				field : "quantity"
+			}, {
+				headerName : "Unit",
+				field : "unit"
+			},  {
+				headerName : "Create Date",
+				field : "qutValidDate",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			} ];
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowSelection : 'multiple',
+		suppressRowClickSelection : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 149,
+			height : 10
+		},
+//	onSelectionChanged : onSelectionChanged,
+	rowSelection : 'multiple',
+		suppressRowClickSelection : true,
+		onSelectionChanged : onSelectionChanged,
+		getRowNodeId : function(data) {
+			return data.locationId;
+		}
+	};
+	
+	
+	function onSelectionChanged() {
+		
+		 var selectedNodes = gridOptions.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		 treq= selectedData.map(node => node.locationId);
+
+		 
+		var selectedRows = gridOptions.api.getSelectedRows();
+		id = "";
+		for (var i = 0; i < selectedRows.length; i++) {
+
+			id = id + '"' + selectedRows[i].locationId + '",';
+			
+		}
+		id = id.substring(0, id.length - 1);
+		console.log(id);
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+	 
+		
+		 var uid=$("#sessionId").val();
+
+		if (rowCount > 0) {
+			$('#newBtn').attr('disabled', true);
+			$('#locdeletebtn').attr('disabled', false);
+			$('#delete').attr("disabled", false);
+		
+			
+
+		} else {
+			$('#locdeletebtn').attr('disabled', true);
+			$('#newBtn').attr('disabled', false);
+			$('#delete').attr("disabled", true);
+		}
+
+	}
+
+	document.addEventListener('DOMContentLoaded', function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+	});
+
+	$(document).ready(function() {
+		$('#locdeletebtn').attr('disabled', true);
+		agGrid.simpleHttpRequest({
+			url : 'vendor-item-report-through-ajax'
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+			console.log(data)
+			gridOptions.api.setRowData(data);
+		});
+	})
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	
+	
+	function downloadDetails() {
+		var dataset = [];
+		gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+		gridOptions.api.exportDataAsCsv(dataset);
+	}
+	
+</script>
+<script type="text/javascript">
+	$(document).ready(function() {
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+		$('.collapse').on('hide.bs.collapse', function() {
+			$(this).siblings('.panel-heading').removeClass('active');
+		});
+	});
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="d-flex justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalReq">
+									PO LIST (<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+
+								<button class="btn4" onclick="downloadDetails();">Download</button>
+							</div>
+						</div>
+
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+						<!--  </div> -->
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

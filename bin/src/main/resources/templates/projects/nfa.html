@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+
+<head>
+<head>
+<script src="https://cdn.ckeditor.com/4.16.0/standard/ckeditor.js"></script>
+<script>
+$(document).ready(function() {
+	var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+
+	
+	agGrid.simpleHttpRequest({
+		url : "note-for-appriasal-project-view"
+	}).then(function(data) {
+		var jsonData = JSON.parse(data.body);
+		var allData = jsonData.viewProjectData;
+		var len = allData.length;
+		$('#totalPrj').find('span').html(len);
+		gridOptions.api.setRowData(allData);
+		var firstRowNode = gridOptions.api.getDisplayedRowAtIndex(0); // Get the first row node
+			  if (firstRowNode) {
+			    firstRowNode.setSelected(true); // Set the row as selected
+			  }
+			
+	});
+	
+	
+	
+	
+	CKEDITOR.replace('nfaDescription', {
+     	height: 150,
+     	removePlugins: 'wsc',
+     	scayt_autoStartup: true,
+     	scayt_maxSuggestions: 3,
+     	autoParagraph : false,
+     	});
+	 
+	/* var customerNoteQuot=	
+		""
+		CKEDITOR.instances.nfaDescription.setData(customerNoteQuot); */
+		
+	//var ckeditorId = $("#ckeditorId").val();
+	//CKEDITOR.instances.nfaDescription.setData(ckeditorId); 
+	
+	
+});
+
+
+var columnDefs = [ {
+	headerCheckboxSelection : false,
+	headerCheckboxSelectionFilteredOnly : true,
+	checkboxSelection : true,
+	width : 10,
+	sortable : false,
+	filter : false,
+	resizable : true,
+	
+},
+{
+	headerName : "Project ID",
+	field : "projectId",
+	type : 'leftAligned',
+	cellRenderer : function(params) {
+		return '<a onclick=editPage("' + params.data.projectId
+				+ '") href="javascript:void(0)">'
+				+ params.data.projectId + '</a>';
+	},
+	
+}, {
+	headerName : "Project Name",
+	field : "projectName",
+	type : 'leftAligned',
+	width : 250,
+	
+}, {
+	headerName : "Creation Date",
+	field : "creationDate",
+	type : 'leftAligned',
+	width : 250,
+}, {
+	headerName : 'Location',
+	field : "location",
+	type : 'leftAligned',
+	width : 230,
+}, {
+	headerName : 'Country',
+	field : "country2",
+	type : 'leftAligned',
+	width : 130,
+	hide : true
+}, {	
+	headerName : "State",
+	field : "stateid2",
+	type : 'leftAligned',
+	width : 150,
+	hide : true
+}, {
+	headerName : 'Pin',
+	field : "pPin",
+	type : 'leftAligned',
+	hide : true
+}, {
+	headerName : 'Project Incharge',
+	field : "pIncharge",
+	type : 'leftAligned',
+	width : 250,
+}, {
+	headerName : 'Billing Name',
+	field : "cName",
+	type : 'leftAligned',
+	hide : true
+}, {
+	headerName : 'Billing Address',
+	field : "cAddress",
+	type : 'leftAligned',
+	hide:true
+}, {
+	headerName : 'Billing Country',
+	field : "country",
+	width : 150,
+	type : 'leftAligned',
+	hide : true
+}, {
+	headerName : 'Billing State',
+	field : "stateid",
+	width : 150,
+	type : 'leftAligned',
+	hide : true
+}, {
+	headerName : 'Billing Pin',
+	field : "cPin",
+	width : 150,
+	hide : true,
+	type : 'leftAligned',
+	hide : true
+
+}, {
+	headerName : 'Billing Email',
+	field : "email",
+	width : 150,
+	type : 'leftAligned',
+	hide : true
+
+}, {
+	headerName : 'Billing Mobile',
+	field : "mobile",
+	width : 150,
+	type : 'leftAligned',
+	hide : true
+
+}, {
+	headerName : 'Remarks',
+	field : "remark",
+	width : 150,
+	type : 'leftAligned',
+	hide : true
+
+}, {
+	headerName : 'status',
+	field : "status",
+	width : 150,
+	type : 'leftAligned',
+	
+} ];
+
+var gridOptions = {
+	columnDefs : columnDefs,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 200,
+		height : 20
+	},
+	rowSelection : 'single',
+	
+	onSelectionChanged : rowSelect,
+
+};
+
+var id ="";
+function rowSelect() {
+	
+	var selected = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	
+	selected.forEach(function(selectedRow, index) {
+		rowCount = rowCount + 1;
+	});
+	for (var i = 0; i < selected.length; i++) {
+		id = id  + selected[i].projectId ;
+	}
+	$("#projectId").val(id);
+	
+	callNfa(id)
+	id="";
+}
+
+function save(){
+	var item = {};
+    var validation = true;
+	if (validation) {
+		item.nfaId = $('#nfaId').val();
+		item.projectId = $("#projectId").val();
+		item.documentTypeId = $("#typeId").val();
+		
+        var editorInstance = CKEDITOR.instances.nfaDescription;
+        if (editorInstance) {
+            var content = editorInstance.getData();
+            item.nfaDescription = content;
+        } else {
+            console.error("CKEditor instance not found or not initialized");
+        }
+		
+		
+	}
+	console.log(item);
+	  $.ajax({
+			type : "POST",
+			url : "note-for-appriasal-add",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(item),
+
+			success : function(response) {
+				if (response.message == "Success") {
+					$("#messageParagraph").text("Data Saved Successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					var pidd = $("#projectId").val();
+					callNfa(pidd);
+									
+				}
+
+			},
+			error : function(response) {
+				console.log(response);
+
+			}
+			
+		});  
+
+}
+
+function callNfa(idd){
+	var type = $("#typeId").val();
+	agGrid.simpleHttpRequest({
+			url: "note-for-appriasal-view?id=" + idd + "&id2="+type,
+	}).then(function(data) {
+		var jsonData = JSON.parse(data.body);
+		if(jsonData == null ){
+			var ckeditorId = $("#ckeditorId").val();
+			CKEDITOR.instances.nfaDescription.setData(ckeditorId); 
+			 $("#nfaId").val("");
+			//$("#projectId").val("");
+		
+		}else{
+			console.log(jsonData)
+			CKEDITOR.instances['nfaDescription'].setData(jsonData[0].nfaDescription);
+			$("#nfaId").val(jsonData[0].nfaId);
+			$("#projectId").val(jsonData[0].projectId);
+			
+		}
+			
+		
+		
+		
+	});
+	
+}
+
+
+function downloadData(){
+	var pjId = $("#projectId").val();
+	var type = $("#typeId").val();
+	
+	window.open("/projects/note-for-appriasal-pdf?id="+ window.btoa(pjId) + "&id2=" + window.btoa(type) , '_blank');
+	//window.open("/user/view-patient-test-report-pdf-download-digital?id=" +id+'&id2='+id2 , '_blank');
+}
+
+
+function onQuickFilterChanged() {
+	gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+		  var displayedRowCount = gridOptions.api.getDisplayedRowCount();
+		    var len = displayedRowCount;
+			$('#totalPrj').find('span').html(len);
+	}
+	
+
+</script>
+
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding" id="mainId">
+
+						<div class="row" id="upperOne">
+
+							<div class="col-md-4 btn-hs">
+								<div class="font-design" id="totalPrj">
+									<h4>
+										Project Creation (<span></span>)
+									</h4>
+								</div>
+							</div>
+							<div class="col-md-4 btn-hs">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+
+
+
+
+							<div class="col-md-4 buttonsec btn-hs" align="right" id="btndiv">
+
+
+							</div>
+
+							<div id="myGrid" style="width: 100%; height: 300px;"
+								class="ag-theme-alpine"></div>
+						</div>
+
+
+
+						<div class="col-md-12 buttonsec btn-hs" id="btndiv">
+							<button class="btn4" id="downloadBtn" onclick="downloadData()">DOWNLOAD</button>
+							<button class="new-btn" id="save" onclick="save()">save</button>
+
+						</div>
+
+						<div class="row">
+
+							<div class="row">
+								<div class="col-md-12 btn-hs1">
+									<input type="hidden" id="nfaId"> <input type="hidden"
+										id="projectId"> <input type="hidden" id="typeId"
+										th:value="${documentTypeList[0].key}"> <input
+										type="hidden" id="typeName"
+										th:value="${documentTypeList[0].name}">
+									<div class="form-group" id="descDiv">
+										<label><strong th:text="${documentTypeList[0].name}"></strong></label>
+
+										<textarea id="nfaDescription" class="mt-2 form-controls"
+											style="height: 30px;"></textarea>
+										<input type="hidden" id="ckeditorId"
+											th:value="${documentTypeList[0].code}">
+									</div>
+
+
+
+								</div>
+
+							</div>
+
+
+
+						</div>
+
+
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>

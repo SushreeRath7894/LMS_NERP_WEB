@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+#myReq .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff;
+	text-indent: 10px !important;
+}
+
+#myReq .ag-row-selected::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 3px;
+	right: 4px;
+}
+
+.formValidation1 {
+	font-size: 10px;
+	font-weight: 100;
+	color: #f60909f7;
+	background-color: transparent;
+	position: relative;
+	top: -1px;
+	padding: 3px 0px;
+}
+
+.sugg-cls ul {
+	height: 150px;
+	overflow-x: scroll;
+	position: relative;
+}
+
+ul#autocomplete-list1 {
+	position: relative;
+	z-index: 999;
+}
+
+ul#autocomplete-list1 li {
+	position: relative;
+	color: #fff;
+	padding-left: 6px;
+	background-color: #1f57a8;
+	border-bottom: solid 1px #6189c2;
+	padding-top: 5px;
+	padding-bottom: 5px;
+}
+</style>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script
+	src="https://cdnjs.cloudflare.com/ajax/libs/ag-grid/26.2.0/ag-grid.min.noStyle.js"></script>
+<script>
+
+$(document).ready(function() {
+	
+    var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+	
+	  var gridDiv = document.querySelector('#leaveGrid');
+	    new agGrid.Grid(gridDiv, leaveGridOptions);
+	    
+	 /*    const currentYear = new Date().getFullYear();
+        const selectElement = document.getElementById("attndyear1");
+        
+        // Set the current year as the default selected option
+        for (let i = 0; i < selectElement.options.length; i++) {
+            if (selectElement.options[i].value == currentYear) {
+                selectElement.selectedIndex = i;
+                break;
+            }
+        } */
+	    
+	viewEmployee();
+        
+	 $("#closeKey").click(function(){
+	    	var rowLength = gridOptions.api.getDisplayedRowCount();
+	    	$("#total").find('span').html(rowLength);
+	    })
+	
+});
+var sums = {};
+
+function viewEmployee() {
+    $('.loader').show();
+    $("body").addClass("overlay");
+    agGrid.simpleHttpRequest({
+        url : "view-leave-wages-report-employee"
+    }).then(function(data) {
+        var jsonData = JSON.parse(data.body);
+        var allData = jsonData.viewEmpData;
+        if(allData == null || allData == 'null'){
+            allData = [];
+        }
+        gridOptions.api.setRowData(allData);
+        var len = allData.length;
+        $('#total').find('span').html(len)
+        $('.loader').hide();
+        $("body").removeClass("overlay");
+    });
+    
+}
+function getCurrentDateMonthYear() {
+    var curDate = new Date();
+    var selectedYear = $("#attndyear").val();
+    var selectedMonth = $("#attndmonth").val();
+    var startDay = $("#startDayForAtten").val();
+    
+    if (!selectedYear) {
+        selectedYear = curDate.getFullYear();
+    }
+    selectedYear = selectedYear.split("-")[0];
+
+    var fromDate, toDate;
+
+    if (selectedMonth === "0") {
+        fromDate = "01-04-" + selectedYear;
+        toDate = "31-03-" + (parseInt(selectedYear) + 1);
+    } else {
+        var month = parseInt(selectedMonth);
+        if (startDay > 1 && curDate.getDate() > startDay) {
+            month = curDate.getMonth() + 1;
+        }
+        fromDate = startDay + "-" + String(month).padStart(2, '0') + "-" + selectedYear;
+        toDate = startDay + "-" + String(month + 1).padStart(2, '0') + "-" + selectedYear;
+    }
+    $("#fromDate").val(fromDate);
+    $("#fromDateCalendar").val(fromDate);
+    $("#endDate").val(toDate);
+    $("#endDateCalendar").val(toDate);
+}
+var columnDefs = [ 	
+	{
+		//headerCheckboxSelection : true,
+		//headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true
+
+	},
+	
+	{
+	    headerName: "Employee Id",
+	    field: "empId",
+	    width: 150,
+	    cellRenderer: function(params) {
+	        const empId = params.data.empId;
+	        const empName = encodeURIComponent(params.data.empName); // Encode empName to handle spaces and special characters
+	        return '<a onclick="viewLeaveWageDetails(\'' + empId + ',' + empName + '\')" href="javascript:void(0)">' +
+	               empId + '<i class="bi bi-box-arrow-in-right"></i></a>';
+	    }
+	}
+	
+   ,{
+		 headerName: "Employee Name",
+		    field: "empName",
+		width : 180,
+	},{
+	    headerName: "Father's Name",
+	    field: "fatherName",
+	    
+	    width: 150,
+	}, {
+	    headerName: "Date Of Joining",
+	    field: "doj",
+	    filter: 'agDateColumnFilter', // Enable date filtering
+	    valueGetter: (params) => {
+	        // Convert DD-MM-YYYY to a Date object for filtering
+	        const [day, month, year] = params.data.doj.split('-');
+	        return new Date(`${year}-${month}-${day}`); // Convert to YYYY-MM-DD format
+	    },
+	    valueFormatter: (params) => {
+	        // Format the date back to DD-MM-YYYY for display
+	        const date = new Date(params.value);
+	        return `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getFullYear()}`;
+	    },
+	    cellStyle: { textAlign: 'center' },
+	    width: 160,
+	}, {
+	    headerName: "Total Wages",
+	    field: "totalGross",
+	    cellStyle: { textAlign: 'center' },
+	    width: 150,
+	}, {
+	    headerName: "Total Days Worked",
+	    field: "totalDaysWork",
+	    cellStyle: { textAlign: 'center' },
+	    width: 180,
+	}, {
+	    headerName: "Total Leave",
+	    field: "totalLeave",
+	    cellStyle: { textAlign: 'center' },
+	    width: 150,
+	}, {
+	    headerName: "Total Days",
+	    field: "totalDays",
+	    cellStyle: { textAlign: 'center' },
+	    width: 150,
+	} 
+	];
+/* var rowData = [];
+var lastRow = [ {
+	empId: 'Total'
+},]; */
+
+var gridOptions = {
+		columnDefs : columnDefs,
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 210,
+			height : 10
+		},
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		onSelectionChanged : rowSelectId,
+		getRowNodeId : function(data) {
+			return data.empId;
+		}
+	}; 
+
+function rowSelectId() {
+	 var selectedNodes = gridOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	var id= selectedData.map(node => node.empId);
+
+}
+function formatDate(date) {
+    const day = String(date.getDate()).padStart(2, '0'); // Get day and pad with leading zero if necessary
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Get month and pad with leading zero (months are 0-based)
+    const year = date.getFullYear(); // Get full year
+    return `${day}-${month}-${year}`;
+}
+function changeMonthYear() {
+	var selectedYear = parseInt($("#attndyear").val());
+	var month = parseInt($("#attndmonth").val());
+	var currentDate = new Date();
+	var currentYear = currentDate.getFullYear();
+	var currentMonth = currentDate.getMonth() + 1;
+    if (selectedYear === currentYear && month > currentMonth) {
+    	fromDate = new Date(currentYear, currentMonth - 1, 1);
+        toDate = currentDate; 
+        month=currentMonth;
+        $("#attndmonth").val(currentMonth);
+        $("#fromDate").val(formatDate(fromDate));
+        $("#fromDateCalendar").val(formatDate(fromDate));
+        $("#endDate").val(formatDate(toDate));
+        $("#endDateCalendar").val(formatDate(toDate));
+        $("#messageParagraph").text("Select A Passed Month");
+	    $("#msgOkModal").removeClass("btn3");
+	    $("#msgOkModal").addClass("btn1");
+	    $("#msgModal").modal('show');
+    } else if (month === 0) { // If "All" is selected
+    	var fromDate = new Date(selectedYear, 0, 1); // January 1st
+        var toDate = new Date(selectedYear, 11, 31); // December 31st
+        $("#fromDate").val(formatDate(fromDate));
+        $("#fromDateCalendar").val(formatDate(fromDate));
+        $("#endDate").val(formatDate(toDate));
+        $("#endDateCalendar").val(formatDate(toDate));
+    }else {
+        fromDate = new Date(selectedYear, month - 1, 1);
+        toDate = new Date(selectedYear, month, 0); // Last day of the month
+        $("#fromDate").val(formatDate(fromDate));
+        $("#fromDateCalendar").val(formatDate(fromDate));
+        $("#endDate").val(formatDate(toDate));
+        $("#endDateCalendar").val(formatDate(toDate));
+    }
+  //  updateGridColumns(month ,selectedYear);
+    
+}
+function getDaysInMonth(month, year) {
+    const today = new Date();
+    if (month === today.getMonth() && year === today.getFullYear()) {
+        return today.getDate();
+    } else {
+        return new Date(year, month, 0).getDate();
+    }
+}
+function cancelBar() {
+	var id = document.getElementById("closeKey");
+	id.style.display = "block";
+
+	if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+		id.style.display = "none";
+	}
+}
+
+function onQuickFilterChanged() {
+	gridOptions.api.setQuickFilter(document.getElementById('quickFilter').value);
+	var totalRowCount = gridOptions.api.getDisplayedRowCount();
+	$('#total').find('span').html(totalRowCount);
+}
+
+
+
+
+//changeStaff
+function changeStaff() {
+	viewReport();
+}
+function createMonthColsRec() {
+    sums = {};
+    var monthColumns = [];
+    var selectedFinancialYear = $("#attndyear").val(); // Example selected year
+    var curDate = new Date();
+    var curMonth = curDate.getMonth(); // Get current month (0 = Jan, 11 = Dec)
+    var curYear = curDate.getFullYear();
+    var selectedMonth = $("#attndmonth").val();
+
+    // Extract the start year and end year from the selected financial year
+    var [startYear, endYear] = selectedFinancialYear.split('-').map(Number);
+
+    // Define the months in order of the financial year (Apr to Mar)
+    var months = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+    var months1 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    // Determine if the selected financial year is the current financial year
+    var isCurrentFinancialYear = (curYear === startYear && curMonth >= 3) || (curYear === endYear && curMonth < 3);
+
+    if (selectedMonth > 0) {
+        // If a specific month is selected, return only that month's column
+        var monthIndex = selectedMonth - 1; // Adjust for zero-based index
+        var monthName = months1[monthIndex];
+        var year = (selectedMonth >= 4 && selectedMonth <= 12) ? startYear : endYear; // Apr to Dec use startYear, Jan to Mar use endYear
+
+        // Add to sums object
+        sums[`${monthName.toLowerCase()}_lic`] = 0;
+        monthColumns = [
+            {
+                headerName: `${monthName}-${year.toString().slice(-2)}`, // Format "mon-yr"
+                field: `${monthName.toLowerCase()}_lic`, // Assumes fields like 'apr_lic', 'may_lic', etc.
+                width: 85,
+            }
+        ];
+    } else if (isCurrentFinancialYear) {
+        // If the selected financial year is the current year, limit columns to the current month
+        var monthLimit;
+        if (curMonth >= 3) {
+            // Current month is April or later
+            monthLimit = curMonth - 3; // Adjust to match index of the months array (Apr = 0)
+        } else {
+            // Current month is Jan, Feb, or Mar
+            monthLimit = 9 + curMonth; // Adjust to include Jan, Feb, Mar in the next financial year
+        }
+
+        // Generate columns up to the current month
+        monthColumns = months.slice(0, monthLimit + 1).map((month, index) => {
+            var year = index <= 8 ? startYear : endYear; // Apr to Dec use startYear, Jan to Mar use endYear
+            var fieldName = `${month.toLowerCase()}_lic`;
+
+            // Add to sums object
+            sums[fieldName] = 0;
+            return {
+                headerName: `${month}-${year.toString().slice(-2)}`, // Format "mon-yr"
+                field: fieldName, // Assumes fields like 'apr_lic', 'may_lic', etc.
+                width: 85,
+            };
+        });
+    } else {
+        // If the selected financial year is a past year, generate columns for all 12 months
+        monthColumns = months.map((month, index) => {
+            var year = index >= 9 ? startYear : endYear; // Apr to Dec use startYear, Jan to Mar use endYear
+            var fieldName = `${month.toLowerCase()}_lic`;
+
+            // Add to sums object
+            sums[fieldName] = 0;
+            return {
+                headerName: `${month}-${year.toString().slice(-2)}`, // Format "mon-yr"
+                field: fieldName, // Assumes fields like 'apr_lic', 'may_lic', etc.
+                width: 85,
+            };
+        });
+    }
+
+    // Ensure the columns are sorted in ascending order of the financial year (Apr to Mar)
+    monthColumns.sort((a, b) => months.indexOf(a.headerName.split('-')[0]) - months.indexOf(b.headerName.split('-')[0]));
+
+    return monthColumns;
+}
+
+function downloadApproveCSV1() {
+    var selectedNodes = gridOptions.api.getSelectedNodes();
+    var selectedData = selectedNodes.map(node => node.data);
+    var id = selectedData.map(node => node.empId).join(',');
+    var empNames = selectedData.map(node => node.empName).join(', '); // Join names for the first row
+
+    if (!id || id.trim() === '') {
+        $("#messageParagraph").text("Please select at least one checkbox.");
+        $("#msgOkModal").removeClass("btn3");
+        $("#msgOkModal").addClass("btn1");
+        $("#msgModal").modal('show');
+        return; // Exit the function if no checkboxes are selected
+    }
+
+    agGrid.simpleHttpRequest({
+        url: "view-leave-wages-report-employee-data?id=" + id
+    }).then(function(data) {
+        var jsonData = JSON.parse(data.body);
+        var allData = jsonData.employeeData || [];
+        var totalELeave = jsonData.totalELeave;
+        var balanceLeavePrecedingYear = jsonData.balanceLeavePrecedingYear;
+        var leaveEarnedDuringTheYear = jsonData.leaveEarnedDuringTheYear;
+        
+        const totalRow = {
+            empName: "Total",	
+            calendarYear: "",
+            wagePeriod: "",
+            wageEarned: 0,
+            daysWorked: 0,
+            leaveEnjoyed: 0,
+            totalL: 0,
+            totalELeave: 0,
+            leaveEarnedDuringTheYear: 0,
+            balanceOfLeaveToCredit: 0,
+        };
+
+        let empNameSet = false; // Use a boolean flag to track first row
+
+        allData.forEach(row => {
+            // Set empName only for the first matching row
+            if (!empNameSet) {
+                row.empName = empNames; // Set the combined empNames
+                empNameSet = true; // Prevent further assignments
+            } else {
+                // Clear values for other rows
+                row.totalELeave = "";
+                row.leaveEarnedDuringTheYear = "";
+                row.balanceLeavePrecedingYear = "";
+            }
+
+            // Calculate totals
+            totalRow.wageEarned += Number(row.wageEarned) || 0;
+            totalRow.daysWorked += Number(row.daysWorked) || 0;
+            totalRow.leaveEnjoyed += Number(row.leaveEnjoyed) || 0;
+            totalRow.totalL += Number(row.totalL) || 0;
+            totalRow.totalELeave += Number(row.totalELeave) || 0;
+        });
+
+        totalRow.leaveEarnedDuringTheYear = totalRow.daysWorked > 0 ? totalRow.daysWorked / 20 : 0;
+        totalRow.balanceOfLeaveToCredit = totalRow.totalELeave - totalRow.leaveEnjoyed;
+        
+        
+        totalRow.totalELeave = "";
+        /* // Set totalELeave to an empty string if it is 0
+        if (totalRow.totalELeave === 0) {
+            totalRow.totalELeave = ""; // Or use `null` if preferred
+        }
+ */
+        // Add the total row to the data
+        allData.push(totalRow);
+        leaveGridOptions.api.setRowData(allData);
+        
+        // Export to CSV
+        exportToCSV(allData);
+    });
+}
+
+function exportToCSV(data) {
+    var rowCount = data.length;
+
+    if (rowCount > 0) {
+        var name = "Leave Wages Report-" + $("#attndmonth option:selected").text();
+        var allColumns = leaveGridOptions.columnApi.getAllColumns();
+
+        // Capitalize all headers for CSV
+        allColumns.forEach(col => {
+            if (col.getColDef().headerName) {
+                col.getColDef().headerName = col.getColDef().headerName.toUpperCase();
+            }
+        });
+
+        // Filter visible columns
+        var visibleColumns = allColumns.filter(col => !col.getColDef().hide);
+        var visibleColumnIds = visibleColumns.map(col => col.getColId());
+
+        // CSV Export Parameters
+        const params = {
+            skipHeader: false,
+            skipFooters: false,
+            skipGroups: false,
+            allColumns: false,
+            onlySelected: false,
+            suppressQuotes: false,
+            fileName: name + '.csv',
+            sheetName: 'Sheet1',
+            columnKeys: visibleColumnIds // Use only the visible column keys
+        };
+
+        // Perform export
+        leaveGridOptions.api.exportDataAsCsv(params);
+    } else {
+        // Display message if no data available
+        $("#messageParagraph").text("NO DATA AVAILABLE FOR DOWNLOAD!");
+        $("#msgOkModal").removeClass("btn3");
+        $("#msgOkModal").addClass("btn1");
+        $("#msgModal").modal('show');
+    }
+}
+
+
+
+
+const columnleaveDefs = [
+	 { headerName: "empId", field: "empId",width : 140 ,hide:true},
+	{ headerName: "emp Name", field: "empName",width : 140 ,},
+    { headerName: "CALENDER YEAR", field: "calendarYear",width : 140 },
+    { headerName: "WAGE PERIOD", field: "wagePeriod",width : 140 },
+    { headerName: "WAGE EARNED", field: "wageEarned",width : 140,
+        cellStyle: { textAlign: 'right' } },
+    { headerName: "DAYS WORKED", field: "daysWorked" ,width : 140,
+            cellStyle: { textAlign: 'right' }},
+    { headerName: "LEAVE ENJOYED", field: "leaveEnjoyed" ,width : 140,
+                cellStyle: { textAlign: 'right' }},
+    { headerName: "DAYS LAY-OFF", field: "daysLayOff" ,width : 140,
+                    cellStyle: { textAlign: 'right' }},
+    { headerName: "DAYS MATERNITY LEAVE", field: "daysMaternityLeave" ,width : 180,
+                        cellStyle: { textAlign: 'right' }},
+    { headerName: "TOTAL", field: "totalL" ,width : 120,
+                            cellStyle: { textAlign: 'right' }},
+    { headerName: "BALANCE LEAVE PRECEDING YEAR", field: "balanceLeavePrecedingYear" ,
+                                cellStyle: { textAlign: 'right' }},
+    { headerName: "LEAVE EARNED DURING THE YEAR", field: "leaveEarnedDuringTheYear",
+                                    cellStyle: { textAlign: 'right' } },
+    { headerName: "TOTAL LEAVE", field: "totalELeave",width : 120,
+                                        cellStyle: { textAlign: 'right' }},
+    { 
+        headerName: "Whether leave is accordance with scheme under Sec.79(8) was refused", 
+        field: "whetherLeaveSchemeRefused", 
+        valueGetter: params => {
+            // Check if the row is the total row
+            if (params.data && params.data.empName === "Total") {
+                return ""; // Return empty for total row
+            }
+            return "No"; // Return "No" for other rows
+        },
+       
+        cellStyle: { textAlign: 'center' }
+    },
+    { headerName: "leave enjoyed From-To", field: "leaveEnjoyedFromTo" },
+    { headerName: "BALANCE OF LEAVE TO CREDIT", field: "balanceOfLeaveToCredit",
+        cellStyle: { textAlign: 'right' } },
+    { headerName: "NORMAL RATE OF WAGES", field: "normalRateOfWages" ,
+            cellStyle: { textAlign: 'right' }},
+    { headerName: "Cash equipment of advantage accuring through concessional sale of foodgrains and other articles", field: "cashEquipment" ,
+                cellStyle: { textAlign: 'right' }},
+    { headerName: "RATE OF WAGES FOR THE LEAVE", field: "rateOfWagesForLeave" ,
+                    cellStyle: { textAlign: 'right' }},
+    { headerName: "REMARKS", field: "remarks" ,width : 120},
+    { headerName: "ENCASH AMOUNT", field: "encashAmount",width : 160,
+        cellStyle: { textAlign: 'right' }},
+];
+
+// Initialize AG Grid
+const leaveGridOptions = {
+    columnDefs: columnleaveDefs,
+   // rowData: rowData1,
+};
+
+function viewLeaveWageDetails(idd) {
+    console.log("Received IDD:", idd);
+    var datas = idd.split(",");
+    console.log("Split datas:", datas);
+    var id = datas[0]; // Employee ID
+    var empName = decodeURIComponent(datas[1]); // Decode the employee name
+
+    $("#demo").show();
+    $("#myGrid").hide();
+    $("#leaveGrid").show();
+    $("#searchDiv").hide();
+    $("#srch").hide();
+    $("#total").hide();
+    $("#btndiv").hide();
+    $("#yearData").hide();
+    $("#empList").hide();
+
+    $('#empName').html(empName); // Display empName
+
+    $('.loader').show();
+    $("body").addClass("overlay");
+    agGrid.simpleHttpRequest({
+        url: "view-leave-wages-report-employee-data?id=" + id
+    }).then(function(data) {
+        var jsonData = JSON.parse(data.body);
+        var allData = jsonData.employeeData;
+        var totalELeave = jsonData.totalELeave;
+        var balanceLeavePrecedingYear = jsonData.balanceLeavePrecedingYear;
+        var leaveEarnedDuringTheYear = jsonData.leaveEarnedDuringTheYear;
+        
+        if (allData == null || allData === 'null') {
+            allData = [];
+        }
+
+        // Initialize the total row
+        const totalRow = {
+            empName: "Total",	
+            calendarYear: "",
+            wagePeriod: "",
+            wageEarned: 0,
+            daysWorked: 0,
+            leaveEnjoyed: 0,
+            daysLayOff: "",
+            daysMaternityLeave: "",
+            totalL: 0,
+            balanceLeavePrecedingYear: "",
+            leaveEarnedDuringTheYear: "",
+            totalELeave: "",
+            whetherLeaveSchemeRefused: "",
+            leaveEnjoyedFromTo: "",
+            balanceOfLeaveToCredit: "",
+            normalRateOfWages: "",
+            cashEquipment: "",
+            rateOfWagesForLeave: "",
+            remarks: "",
+            encashAmount: "",
+        };
+
+        // Add empName only to the first row of employee data
+        let empNameSet = false;
+
+        allData.forEach((row, index) => {
+            // Set empName only for the first row
+            if (!empNameSet && row.empId === id) {
+                row.empName = empName; // Set empName for the first matching row
+                empNameSet = true; // Prevent further assignments
+            } else {
+                // Clear out the values for other rows
+                row.balanceLeavePrecedingYear = "";
+                row.leaveEarnedDuringTheYear = "";
+                row.totalELeave = "";
+            }
+
+            // Calculate totals
+            totalRow.wageEarned += Number(row.wageEarned) || 0;
+            totalRow.daysWorked += Number(row.daysWorked) || 0;
+            totalRow.leaveEnjoyed += Number(row.leaveEnjoyed) || 0;
+            totalRow.totalL += Number(row.totalL) || 0;
+        });
+
+        totalRow.leaveEarnedDuringTheYear = totalRow.daysWorked > 0 ? totalRow.daysWorked / 20 : 0;
+        totalRow.balanceOfLeaveToCredit = totalRow.totalELeave - totalRow.leaveEnjoyed;
+
+        // Add the total row to the data
+        allData.push(totalRow);
+
+        // Set the row data
+        leaveGridOptions.api.setRowData(allData);
+        var len = allData.length;
+        $('#totalReq').text(len);
+        $('.loader').hide();
+        $("body").removeClass("overlay");
+    });
+}
+
+
+function getListForEmp() { 
+    const empFilterValue = document.getElementById('empSort').value;
+
+    // Check if "All Employees" is selected
+    if (empFilterValue === "All Employees") {
+        // Clear any filters and show all data
+        gridOptions.api.setFilterModel(null);
+    } else {
+        // Set quick filter to filter based on employee name
+        gridOptions.api.setQuickFilter(empFilterValue);
+    }
+
+    // Update the total row count
+    var totalRowCount = gridOptions.api.getModel().getRowCount();
+    $('#totalReq span').text(`Employee Details (${totalRowCount})`);
+
+    // Clear pinned bottom row data since no totals are needed
+    gridOptions.api.setPinnedBottomRowData([]);
+
+	var totalRowCount = gridOptions.api.getDisplayedRowCount();
+	$('#total').find('span').html(totalRowCount);
+}
+
+function cancel(){
+	$("#demo").hide();
+	$("#myGrid").show();
+	$("#leaveGrid").hide();
+	$("#searchDiv").show();
+	$("#srch").show();
+	$("#total").show();
+	$("#btndiv").show();
+	$("#yearData").show();
+    $("#empList").show();
+    viewEmployee();
+
+}
+
+function parseDateString(dateString) {
+    // Split the date string into parts
+    const parts = dateString.split('-');
+    // Return a new Date object in YYYY-MM-DD format
+    return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+}
+
+function filterGridByYear() {
+    const selectedYear = document.getElementById("attndyear1").value;
+
+    // Clear any existing filters
+    gridOptions.api.setFilterModel(null);
+    
+
+    if (selectedYear === "All") {
+        // If "All" is selected, show all data
+        gridOptions.api.onFilterChanged(); // Refresh the grid to show all rows
+
+    	var totalRowCount = gridOptions.api.getDisplayedRowCount();
+    	$('#total').find('span').html(totalRowCount);
+        return;
+    }
+
+    // Get the date filter component for 'doj'
+    else{
+    	const dateFilterComponent = gridOptions.api.getFilterInstance('doj');
+        // Define the date range for filtering
+        const startDate = new Date(`${selectedYear}-01-01`).toISOString();
+        const endDate = new Date(`${selectedYear}-12-31`).toISOString();
+
+        // Set the filter model
+        const filterModel = {
+            type: 'inRange', // Use 'inRange' for filtering by date range
+            dateFrom: startDate,
+            dateTo: endDate,
+        };
+
+        // Set the model and notify the grid to refresh
+        dateFilterComponent.setModel(filterModel);
+        gridOptions.api.onFilterChanged();
+    	var totalRowCount = gridOptions.api.getDisplayedRowCount();
+    	$('#total').find('span').html(totalRowCount);
+    }
+}
+
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<div id="grid">
+
+						<div class="d-flex justify-content-between mt-4" id="srch">
+							<div class="btn-hs">
+								<div class="font-design" id="total">
+									LEAVE WAGES REPORT (<span></span>)
+								</div>
+							</div>
+							<div class="col-md-3  btn-hs" id="searchDiv">
+									<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalAsset').find('span').html(gridOptions.api.getModel().getRowCount());"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+
+							</div>
+							<div class="col-md-1 btn-hs">
+								<div class="form-group" id="yearData">
+									<!-- <label>Year</label> -->
+									<div class="select">
+										<select id="attndyear1" class="form-control"
+											onchange="filterGridByYear()">
+											<option value="All">All Year</option>
+											<option th:each="c,iter:${yearList1}" th:value="${c.name}"
+												th:text="${c.name}"></option>
+										</select>
+									</div>
+								 </div> 
+							</div>
+							
+							<div class="btn-hs" id="empList">
+								<div class="form-group">
+									<div class="select">
+										<select id="empSort" class="form-control"
+											onchange="getListForEmp()">
+											<option value="">All Employee</option>
+											<option th:each="c,iter:${EmployeeList}" th:value="${c.key}"
+												th:text="${c.name}"></option>
+										</select>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="btndiv">
+								<button class="btn4" onclick="downloadApproveCSV1()">Download</button>
+							</div>
+						</div>
+						<div id="myGrid" style="width: 100%; height: 400px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="innercontent" id="demo" style="display: none;">
+							<input type="hidden" id="eventId"> <input type="hidden"
+								id="createdBy">
+							<!-- <span id="eventId"></span> -->
+							<div class="innerstickybg">
+								<div class="row">
+									<div class="col-md-6">
+										NAME : <span id="empName"></span>
+									</div>
+
+									<div class="col-md-6" align="right">
+										<button class="cancel-btn" id="newBtn" onclick="cancel()">BACK</button>
+										<!-- <button class="approve-btn" id="mainSave"
+											onclick="downloadApproveCSV1();">Excel</button> -->
+									</div>
+								</div>
+
+							</div>
+							<div class="row innersticky_contentgap"></div>
+
+							<div id="leaveGrid" style="width: 100%; height: 500px;"
+								class="ag-theme-alpine"></div>
+
+						</div>
+
+
+
+					</div>
+				</div>
+
+
+			</div>
+		</div>
+	</div>
+</body>
+</html>

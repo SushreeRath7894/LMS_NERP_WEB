@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+
+<head>
+<meta charset="ISO-8859-1">
+<style type="text/css">
+</style>
+
+<script type="text/javascript" charset="utf-8">
+	$(document)
+			.ready(
+					function() {
+						$("#allocateBtn").attr("disabled", true);
+						var gridDiv = document.querySelector('#myGrid');
+						new agGrid.Grid(gridDiv, gridOptions); 
+
+
+						var rowData = [];
+						gridOptions.api.setRowData(rowData);
+
+						agGrid.simpleHttpRequest({
+							url : "awaiting-allocation-view"
+						}).then(function(data) {
+							var jsonData = JSON.parse(data.body);
+							var allData=jsonData.wrehouseAllocation;
+							var len = allData.length;
+							$('#totalItem').find('span').html(len); 
+							gridOptions.api.setRowData(allData);
+						});
+
+					});
+
+	var colmnDefs = [
+			{
+				headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+			{
+				headerName : "Verify ID",
+				field : "vreification_id",
+	
+			}, {
+				headerName : 'Date',
+				field : "date"
+			}, {
+				headerName : 'Category',
+				field : "category",
+				width : 200,
+			}, {
+				headerName : 'SKU',
+				field : "sku_id"
+			}, {
+				headerName : 'Item Name',
+				field : "item_name",
+				width : 330,
+			}, {
+				headerName : 'Unit',
+				field : "unit"
+			}, {
+				headerName : 'Quantity',
+				field : "quantity",
+			}, {
+				headerName : 'Status',
+				field : "status",
+				cellRenderer : function(params) {
+					if (params.data.status =="Allocated") { 
+						return '<div style="color:#0642f5">'+params.data.status+'</div>';
+					}else {
+						return '<div style="color:#a9a9a9">'+params.data.status+'</div>';
+					}
+				}
+			} ];
+
+	var gridOptions = {
+		columnDefs : colmnDefs,
+		rowSelection : 'single',
+		onSelectionChanged : onRowSelection,
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 130,
+			height : 10
+		},
+
+	};
+	
+	function onRowSelection(){
+		
+		var selectedNodes = gridOptions.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		 var id= selectedData.map(node => node.vreification_id);
+		
+		 var rowCount = 0;
+		 selectedNodes.forEach(function(selectedNodes, index) {
+				rowCount = rowCount + 1;
+			});
+		
+		 if (rowCount > 0) {
+				$('#allocateBtn').attr("disabled", false);
+				
+				 if (selectedData.map(node => node.status)!="Allocated"){
+					 $('#allocateBtn').attr("disabled", false);
+					 
+				 }else{
+					 $('#allocateBtn').attr("disabled", true);
+				 }
+					
+			} else {
+				$('#allocateBtn').attr("disabled", true);
+				
+			}
+		}
+
+
+	function onQuickFilterChanged() {
+		$(".ti-search srchicon").hide();
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	
+	function downloadDetails() {
+		var dataset = [];
+		gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+		gridOptions.api.exportDataAsCsv(dataset);
+	}
+	//Allocate Page Redirect
+	/*  function allocateBtnOnclick() {
+		 var obj = {};
+		 gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			 console.log(rowNode.data)
+				if (index > 0) {
+					obj.id = rowNode.data.vreification_id;
+					alert(obj.id)
+					obj.category = rowNode.data.category_id;
+					obj.item = rowNode.data.sku_id;
+					obj.qty= rowNode.data.quantity;
+					obj.unit= rowNode.data.unit_id;
+					
+				}
+			});
+			if (obj) {
+				console.log(JSON.stringify(obj))
+				sessionStorage.setItem('activity', 'ACT0232');
+				localStorage.setItem('ReqAllocationData', JSON.stringify(obj));
+				window.location.href = "/warehouse/warehouse-allocation"
+			} else {
+				$("#alert").modal('show');
+				document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+			}
+
+		} */   
+		
+		 function allocateBtnOnclick() {
+			var selectedNodes = gridOptions.api.getSelectedNodes();
+			 var selectedData = selectedNodes.map(node => node.data);
+			 
+			 var vreification_id= selectedData.map(node => node.vreification_id);
+			 var category_id= selectedData.map(node => node.category_id);
+			 var quantity= selectedData.map(node => node.quantity);
+			 var sku_id= selectedData.map(node => node.sku_id);
+			var unit_id = selectedData.map(node => node.unit_id);
+			var selectedRows = gridOptions.api.getSelectedRows();
+			id = "";
+			 var obj = {};
+			 
+			 var rowCount = 0;
+				for (var i = 0; i < selectedRows.length; i++) {
+					id = id + '"' + selectedRows[i].vreification_id+ '"';
+				     rowCount = rowCount + 1;
+				}
+			if (rowCount > 0) {
+				obj.id = vreification_id;
+			
+				obj.category = category_id;
+				obj.item = sku_id;
+				obj.qty= quantity;
+				obj.unit=unit_id;
+				
+			}
+			if (obj) {
+				console.log(JSON.stringify(obj))
+				sessionStorage.setItem('activity', 'ACT0232');
+				localStorage.setItem('ReqAllocationData', JSON.stringify(obj));
+				window.location.href = "/warehouse/warehouse-allocation"
+			} else {
+				$("#alert").modal('show');
+				document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+			}
+		}
+	
+</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="d-flex justify-content-between" id="reqTable"
+							style="display: none;">
+							
+								<div class="btn-hs" id="total">
+									<div class="font-design" id="totalItem">
+										Total Item(<span></span>)
+									</div>
+								</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							
+								<div class="col-md-5 buttonsec btn-hs">
+
+								<button class="download-btn" id=dwnld
+									onclick="downloadDetails()">Download</button>
+								<button onclick="allocateBtnOnclick()" class="new-btn"
+									id="allocateBtn">Allocate</button>
+
+							</div>
+							</div>
+							
+							<div id="myGrid" style="width: 100%; height: 400px;"
+								class="ag-theme-alpine"></div>
+						
+					
+
+</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+
+</html>

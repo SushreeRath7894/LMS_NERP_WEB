@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<script type="text/javascript">
+	$(document).ready(function() {
+		var gridDiv = document.querySelector('#eventGridId');
+		new agGrid.Grid(gridDiv, gridOptions1);
+		$('#applyEvent').attr('disabled', true);
+		var data = [];
+		gridOptions1.api.setRowData(data);
+ 
+		agGrid.simpleHttpRequest({
+			url : 'event-apply-view-all-event'
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+			gridOptions1.api.setRowData(data);
+
+		});
+
+	});
+	
+	
+	/* -------------------search bar for mygrid------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions1.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	/*
+	 Event Apply
+	 */
+	var colmnDefs = [ {
+		headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true
+
+	}, {
+		headerName : 'Event Id',
+		field : "eventId",
+		width : 120,
+	}, {
+		headerName : 'Event Name',
+		field : "eventName"
+	}, {
+		headerName : 'Event Start Date',
+		field : "fromDate",
+		width : 160,
+		cellStyle : {
+			textAlign : 'center'
+		},
+	}, {
+		headerName : 'Event End Date',
+		field : "toDate",
+		width : 160,
+		cellStyle : {
+			textAlign : 'center'
+		},
+	}, {
+		headerName : 'Registration Start Date',
+		field : "regdStartDate",
+		width : 210,
+		cellStyle : {
+			textAlign : 'center'
+		},
+	}, {
+		headerName : 'Registration End Date',
+		field : "regdEndDate",
+		width : 210,
+		cellStyle : {
+			textAlign : 'center'
+		},
+	} ,{
+		headerName : 'Status',
+		field : "applyStatus",
+		width : 120,
+		cellStyle : {
+			textAlign : 'center'
+		},
+		cellRenderer : function(params) {
+		 if (params.data.applyStatus == "Active") {
+				return '<div style="color:#63cf54">'+params.data.applyStatus+'</div>';
+			} else {
+				return '<div style="color:#ff8242">'+params.data.applyStatus+'</div>';
+			}	
+		}
+	},{
+		headerName : 'Organiser Name',
+		field : "eventOrganiser"
+	}, {
+		headerName : 'Event Type',
+		field : "eventType",
+		width : 130,
+	},];
+	var gridOptions1 = {
+		columnDefs : colmnDefs,
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 190,
+			height : 10
+		},
+
+		onSelectionChanged : rowSelectIdFun
+	/* getRowNodeId : function(data) {
+	 return data.slNo;
+	 } */
+	};
+
+	function rowSelectIdFun() {
+		 var selectedNodes = gridOptions1.api.getSelectedNodes();
+		var selectedData = selectedNodes.map(node => node.data);
+		var Status= selectedData.map(node => node.applyStatus);
+		var selectedRows = gridOptions1.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			if(Status=="Active")
+				{
+				$('#applyEvent').attr('disabled', false);
+				}
+			else{
+				$('#applyEvent').attr('disabled', true);
+			}
+			
+		} else {
+			$('#applyEvent').attr('disabled', true);
+		}
+
+	}
+
+	function applyEvent() {
+		$("#myModal").modal('show');
+		var selectedRows = gridOptions1.api.getSelectedRows();
+		$("#hiddenEventID").val(selectedRows[0].eventId);
+		//alert(eventId)
+	}
+	function saveModal(){
+		//alert("hi")
+		var eventId = $("#hiddenEventID").val();
+		$.ajax({
+			type : 'GET',
+			url : 'event-apply-request-event?eventId='+eventId,
+			contentType : 'application/json',
+			success : function(response) {
+				if (response.message == "Success") {
+					$("#messageParagraph").text(
+					"Approved Successfully");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			
+			agGrid.simpleHttpRequest({
+				url : 'event-apply-view-all-event'
+			}).then(function(data) {
+				gridOptions1.api.setRowData(data);
+			});
+			
+	$("#applyEvent").attr("disabled", "disabled");
+}else{
+	$("#messageParagraph").text("YOU’RE ALREADY APPLYED!");
+	$("#msgOkModal").removeClass("btn3");
+	$("#msgOkModal").addClass("btn1");
+	$("#msgModal").modal('show');
+	agGrid.simpleHttpRequest({
+		url : 'event-apply-view-all-event'
+	}).then(function(data) {
+		var len = data.length;
+		$('#totalReq').find('span').html(len);
+		gridOptions1.api.setRowData(data);
+
+	});
+	$("#applyEvent").attr("disabled", "disabled");
+}
+},
+error : function(response) {
+	console.log(response)
+}
+ 
+		});
+	}
+	
+	
+function downloadDetails() { 
+		  var dataset = [];
+		  gridOptions1.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		        dataset.push(rowNode.data);
+		    });
+		  gridOptions1.api.exportDataAsCsv(dataset);
+}
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+							<div class="d-flex justify-content-between">
+						<div class="btn-hs">
+							<div class="font-design" id="totalReq">
+								 Event List(<span></span>)
+							</div>
+						</div>
+						<div id="searchRowDiv">
+							<div class="input-style">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter" autocomplete="off">
+								<div class="searchicon">
+									<a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions1.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+						</div>
+						<div class="buttonsec btn-hs">
+							<button class="btn4" onclick="downloadDetails()">Download</button>
+								<button class="btn1" id="applyEvent" onclick="applyEvent()">Event Apply</button>
+						</div>
+					</div>
+						<div id="eventGridId" style="width: 100%; height: 300px;"
+								class="ag-theme-alpine"></div>
+								
+					<div id="myModal" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div>
+								</div>
+								<input type="hidden" id="hiddenEventID">
+								<div class="modal-body">
+									<p id="textId">Are you sure to apply ?</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: -30px;">
+									<button type="button" class="btn1" data-bs-dismiss="modal" onclick = "saveModal();">Apply</button>
+									<button type="button" class="btn3" data-bs-dismiss="modal" onclick="cancelModal()">Cancel</button>
+									<!-- <button type="button" class="btn3" onclick="deleteOnclick()">Delete</button> -->
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+
+.totalHour {
+	border: 1px solid #ddd;
+	border-radius: 2px;
+	background-color: #f5f5f5;
+	padding: 10px;
+	font-size: 12px;
+	color: #333;
+	transition: border-color 0.3s ease-in-out;
+	width: 65px;
+	height: 23px;
+}
+
+.defectDesc {
+	border: 1px solid #ddd;
+	border-radius: 2px;
+	background-color: #f5f5f5;
+	padding: 10px;
+	font-size: 12px;
+	color: #333;
+	transition: border-color 0.3s ease-in-out;
+	width: 671px;
+	height: 22px;
+}
+
+.sample-chk .form-control {
+	border-right: none;
+	border: 1px solid #d5d5d5 !important;
+	border-radius: 5px;
+	background: #fbfbfb;
+}
+
+.custom-color-column {
+	background-color: #f5f5f5;
+	color: #333;
+}
+
+.custom-color-column {
+	background-color: #f5f5f5;
+	color: #333;
+	border-color: #cdcdcd !important;
+}
+
+.static-cell-column {
+	color: black !important;
+	font-weight: 600
+}
+/* .my-custom-header-class {
+    justify-content: center !important;
+    display: flex;
+    align-items: center;
+} */
+.ag-header-group-cell-label {
+	justify-content: center !important;
+	/* border-color: black !important; */
+}
+</style>
+
+<script type="text/javascript">
+//
+	$(document).ready(function() {
+		
+		$('#pdf').attr('disabled', true);
+		
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		
+		var gridDiv1 = document.querySelector('#myGrid1');
+		new agGrid.Grid(gridDiv1, gridOptions1);
+		
+		
+		var gridDiv2 = document.querySelector('#activity');
+		new agGrid.Grid(gridDiv2, activityOptions);
+		
+		
+		
+		view();
+	
+		//activityOptions.api.setRowData();
+		$('#myModal10').modal('hide');
+		$('#reqDltBtn').attr('disabled', true);
+		$('#inspectBtn').attr('disabled', true);
+		$('#assignBtn').attr('disabled', true);
+		$('#deleteChild').attr('disabled', true);
+
+		
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#DateCalendar3").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#receiptDate').val($(this).val());
+		})
+
+		$('#receiptDate').blur(function() {
+			$("#DateCalendar3").val($(this).val());
+		})
+		
+		$("#DateCalendar4").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#samplingDate').val($(this).val());
+		})
+
+		$('#samplingDate').blur(function() {
+			$("#DateCalendar4").val($(this).val());
+		})
+		
+		$("#DateCalendar5").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#checkingDate').val($(this).val());
+		})
+
+		$('#checkingDate').blur(function() {
+			$("#DateCalendar5").val($(this).val());
+		})
+			
+
+	});   
+	
+	function view(){
+		gridOptions.api.setRowData();
+		$('.loader').show();
+		agGrid.simpleHttpRequest({
+			url : 'evaluation-of-display-cartons-view'
+		}).then(function(data) {
+			$('.loader').hide();
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.viewDispCartons;
+			var allData1=jsonData.viewQaRequested;
+			var len = allData.length;
+			$('#totalReq').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+			
+			if(allData1!="" && allData1!=null){
+				gridOptions1.api.setRowData(allData1);
+			}else{
+				gridOptions1.api.setRowData();
+			}
+		});
+	}
+	
+	
+	
+	/* -------------------search bar for mygrid------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	var columnDefs = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			
+
+		},
+		{
+			headerName : 'Evaluation Id',
+			field : "evalId",
+			 cellRenderer : function(params) {
+			return '<a  onclick=editData("'
+			+params.data.evalId + '","' + params.data.aprvSts
+			+ '") href="javascript:void(0)">'
+			+ params.data.evalId + '</a>';
+
+		} 
+		}, {
+			headerName : 'Invoice No',
+			field : "invNo",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		},{
+			headerName : 'sku',
+			field : "sku",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		}, {
+			headerName : 'Date Of Recceipt',
+			field : "receiptDt",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		}, {
+			headerName : 'Specification No',
+			field : "specNo",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		}, {
+			headerName : 'GRR No',
+			field : "grrNo",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		}, {
+			headerName : 'Date Of Sampling',
+			field : "samplingDt",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		}, {
+			headerName : 'Supplier',
+			field : "supplier",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		}, {headerName : 'Quantity Received',
+			field : "quantRcved",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		}, {
+			headerName : 'Date Of Checking',
+			field : "checkingDt",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		}, {
+			headerName : 'Quantity Checked',
+			field : "quntChecked",
+			cellStyle : {
+				textAlign : 'center'
+			}
+		},
+		{
+			headerName : 'Approve Status',
+			field : "aprvSts",
+			cellStyle : {
+				textAlign : 'center'
+			},
+		cellRenderer : function(params) {
+			if (params.data.aprvSts =="Pending") { 
+				return '<div style="color:#a9a9a9">Pending</div>';
+			} else {
+				return '<div style="color:#0642f5">Approved</div>';
+			} 	
+		}
+		}, {
+		headerName : "Report",
+		field : "list",
+		width : 200,
+		cellRenderer : function(params) {
+			if(params.data.evalId){
+				return '<a id="registerId" onclick=getDisplayCartonsPdf("'
+				+params.data.evalId
+				+ '") href="javascript:void(0)"><i class="bi bi-cloud-download">Download</i></a>';
+			}else{
+				return '<a>N/A</a>';
+			}
+		},
+	} ];
+
+// let the grid know which columns and what data to use
+var gridOptions = {
+	columnDefs : columnDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 200
+	},
+	onSelectionChanged : onSelectionChanged,
+	getRowNodeId : function(data) {
+		return data.evalId;
+	},
+};
+
+function getDisplayCartonsPdf(id){
+	window.open("/qa/evaluation-of-display-cartons-pdf-downloads?id="+window.btoa(id), '_blank');  
+}
+
+
+var activityDefs = [
+	/* {
+		headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly : false,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		pinned: 'left',
+
+	}, */
+	 { 
+    	headerName :"ParamId",
+    	field: 'parmId' ,
+    	editable:false,
+    	width : 50,
+    	hide: true
+    }, { 
+    	headerName :"Parameters",
+    	field: 'param' ,
+    	editable:false,
+    	width : 200,
+    	
+    },{ 
+    	headerName :"Specification",
+    	field: 'spec' ,
+    	width : 200,
+    	cellStyle: function(params) {
+    		const param1 = params.data.parmId;
+    		if(param1 === "6" || param1 === "8" || param1 === "9" || param1 === "11" || param1 === "12" || param1 === "13" || param1  === "14"){
+    			 return  {backgroundColor: '#fbfbfb'};  
+	         }else{
+	        	 return {backgroundColor: '#f5f5f5'};
+	         }
+	         
+    	},
+    	
+    	editable: function(params) {
+      	    const param = params.data.parmId;
+      	    if(param === "6" || param === "8" || param === "9" || param === "11" || param === "12" || param === "13" || param === "14"){
+      	    	return false; // true/false based on params (or some other criteria) value
+      	    }else{
+      	    	return true; // true/false based on params (or some other criteria) value
+      	    }
+      	    	   
+      	  },
+ 	  
+      	  
+    }, {
+		headerName : '1',
+		field : "col1",
+		cellClass: 'custom-color-column',
+	}, {
+		headerName : '2',
+		field : "col2",
+		cellClass: 'custom-color-column',
+	}, {
+		headerName : '3',
+		field : "col3",
+		cellClass: 'custom-color-column',
+	}, {
+		headerName : '4',
+		field : "col4",
+		cellClass: 'custom-color-column',
+	}, {
+		headerName : '5',
+		field : "col5",
+		cellClass: 'custom-color-column',
+		
+	}, {headerName : 'Average',
+		field : "avg",
+		editable:false,
+		//cellClass: 'custom-color-column',
+		valueGetter: (params) => {
+        	
+        		 var q1 = params.getValue('col1');
+	              var q2 = params.getValue('col2');
+	              var q3 = params.getValue('col3');
+	              var q4 = params.getValue('col4');
+	              var q5 = params.getValue('col5');
+	              if(q1 == ''){
+	            	  q1 = 0;
+	              } if(q2 == ''){
+	            	  q2 = 0;
+	              } if(q3 == ''){
+	            	  q3 = 0;
+	              } if(q4 == ''){
+	            	  q4 = 0;
+	              } if(q5 == ''){
+	            	  q5 = 0;
+	              }
+	              var result = (parseFloat(q1) + parseFloat(q2) + parseFloat(q3) + parseFloat(q4) + parseFloat(q5))/5;
+	              if (isNaN(result) || result === undefined){
+	            	  result=0;
+	            	  window.qaAvg[params.node.rowIndex]=result;
+	            	  return 0;  
+	              }else{
+	            	  window.qaAvg[params.node.rowIndex]=result;
+	            	  return result;
+	              }
+	              
+        	
+          
+        },
+	}];
+
+var activityOptions = {
+		columnDefs : activityDefs,
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			editable:true,
+			width : 150,
+			autoHeight: true,
+	
+			singleClickEdit: true,
+			stopEditingWhenCellsLoseFocus: true,
+			// This celEditor Function Is Defined OutSide.
+			cellEditorSelector: cellEditorSelector,
+			 initialWidth: 117,
+			    wrapHeaderText: true,
+			    autoHeaderHeight: true,
+			
+			
+		}
+	};
+	
+function cellEditorSelector(params) {
+	const paramt2 = params.data.parmId;
+	if(paramt2 === '9'){
+		return {
+            component: 'agSelectCellEditor',
+            params: { values: ['','Defects Observed', 'NIL'] }
+        };
+	}else if(paramt2 === '6' || paramt2 === '8' || paramt2 === '11' || paramt2 === '12' || paramt2 === '13' || paramt2 === '14' ){
+		return {
+            component: 'agSelectCellEditor',
+            params: { values: ['','Ok', 'Not Ok'] }
+        };
+	}else{
+		return {
+            component: 'agTextCellEditor',
+        };
+	}
+	}
+	
+function onCellValueChanged(event) {
+	  console.log('Data after change is', event.data);
+	}
+	
+
+//function for row select parents
+var id = "";
+var apstatus="";
+function onSelectionChanged() {
+	var selectedNodes = gridOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	 id= selectedData.map(node => node.evalId);
+	 apstatus=selectedData.map(node => node.aprvSts);
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+	if (rowCount > 0) {
+		if(apstatus=='Approved'){
+			$('#reqDltBtn').attr("disabled", true);
+			$('#assignBtn').attr("disabled", true);
+			$('#newBtn').attr('disabled', false);
+		}else{
+		$('#newBtn').attr('disabled', true);
+		$('#reqDltBtn').attr("disabled", false);
+		$('#assignBtn').attr("disabled", false);
+		$('#pdf').attr("disabled", false);
+		}
+	}else {
+		$('#inspectBtn').attr("disabled", true);
+		$('#reqDltBtn').attr("disabled", true);
+		$('#assignBtn').attr("disabled", true);
+		$('#newBtn').attr('disabled', false);
+		$('#pdf').attr('disabled', true);
+	}
+}
+
+var columnDefs1 = [
+	/* {
+		headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly : false,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		//pinned: 'left',
+
+	}, */
+	{
+		headerName : 'Qa Request Id',
+		field : "qareqId",
+		 cellRenderer : function(params) {
+		return '<a  onclick=newPlan("'
+		+params.data.qareqId 
+		+ '") href="javascript:void(0)">'
+		+ params.data.qareqId + '</a>';
+
+	}  
+	}, {
+		headerName : 'GRN No',
+		field : "grnNo",
+		
+	},{
+		headerName : 'GRN Date',
+		field : "grnDate",
+		cellStyle : {
+			textAlign : 'center'
+		}
+	}, {
+		headerName : 'Qa Requested Date',
+		field : "qaReqDate",
+		cellStyle : {
+			textAlign : 'center'
+		}
+	}, {
+		headerName : 'Vendor Id',
+		field : "vendorId",
+		hide: true,
+	}, {
+		headerName : 'Vendor Name',
+		field : "vendorName",
+		
+	}, {
+		headerName : 'Challan No',
+		field : "challanNo",
+		
+	},{
+		headerName : 'Item Id',
+		field : "sku",
+		
+	}, {
+		headerName : 'Item Name',
+		field : "itemName",
+		
+	}, {headerName : 'Quantity Received',
+		field : "quantity",
+		cellStyle : {
+			textAlign : 'right'
+		}
+	},
+	
+];
+
+//let the grid know which columns and what data to use
+var gridOptions1 = {
+columnDefs : columnDefs1,
+rowSelection : 'single',
+groupSelectsChildren : true,
+suppressRowClickSelection : true,
+suppressAggFuncInHeader : true,
+defaultColDef : {
+	sortable : true,
+	filter : true,
+	resizable : true,
+	width : 200
+},
+/* onSelectionChanged : onSelectionChanged,*/
+getRowNodeId : function(data) {
+	return data.qareqId;
+}, 
+};
+
+
+
+
+//parents new plan
+function newPlan(id) {
+	//inputnull();
+	window.qaAvg=[];
+	/* var allData = [{parmId:'1',param:'Length (mm)',spec:'',col1:'',col2:'',col3:'',col4:'',col5:'',avg:''},
+				   {parmId:'2',param:'Breadth (mm)',spec:'',col1:'',col2:'',col3:'',col4:'',col5:'',avg:''},
+				   {parmId:'3',param:'Height (mm)',spec:'',col1:'',col2:'',col3:'',col4:'',col5:'',avg:''},
+				   {parmId:'4',param:'Caliper',spec:'',col1:'',col2:'',col3:'',col4:'',col5:'',avg:''},
+				   {parmId:'5',param:'GSM',spec:'',col1:'',col2:'',col3:'',col4:'',col5:'',avg:''},
+				   {parmId:'6',param:'MFG Joints',spec:'Ok/Not Ok',col1:'',col2:'',col3:'',col4:'',col5:'',avg:''},
+				   {parmId:'7',param:'Moisture (%)',spec:'',col1:'',col2:'',col3:'',col4:'',col5:'',avg:''},
+				   {parmId:'8',param:'Printing Quality',spec:'Ok/Not Ok',col1:'',col2:'',col3:'',col4:'',col5:'',avg:''},
+				   {parmId:'9',param:'Visual Defect',spec:'Defects Observed/Nil',col1:'',col2:'',col3:'',col4:'',col5:'',avg:''},
+				   {parmId:'10',param:'Dye Value & Serration Test',spec:'',col1:'',col2:'',col3:'',col4:'',col5:'',avg:''},
+				   {parmId:'11',param:'Bar Code(To Be Checked Against Standard)',spec:'Ok/Not Ok',col1:'',col2:'',col3:'',col4:'',col5:'',avg:''},
+				   {parmId:'12',param:'Grain Direction',spec:'Ok/Not Ok',col1:'',col2:'',col3:'',col4:'',col5:'',avg:''},
+				   {parmId:'13',param:'COA Compliance',spec:'Ok/Not Ok',col1:'',col2:'',col3:'',col4:'',col5:'',avg:''},
+				   {parmId:'14',param:'Artwork',spec:'Ok/Not Ok',col1:'',col2:'',col3:'',col4:'',col5:'',avg:''}];
+				   
+	
+	activityOptions.api.setRowData(allData); */
+	
+	$(".loader").show();
+	   agGrid.simpleHttpRequest({
+			url : 'evaluation-of-display-cartons-aggrid-show'
+		}).then(function(data) {
+			$(".loader").hide();
+			
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.gridData;
+			console.log("allData>>>>",allData);
+			activityOptions.api.setRowData(allData);
+			
+		});
+	
+
+	   $("#myGrid").hide();
+		$("#myGrid1").hide();
+		$("#reqTable").hide();
+		$(".btn-hs").show();
+		$("#btndiv").hide();
+		$("#listdiv").hide();
+		$("#totalReq").hide();
+		$("#searchRowDiv").hide();
+		$("#ttbtn").hide();
+		$("#demo").show();
+		$("#deleteChild").attr('disabled', true);
+		$("#newchild").attr('disabled', false);
+		$("#save").attr('disabled', false);
+		$("#evalLaminatesId").text('');
+	   	if(id!="" && id!= null){
+	   		var rowNode = gridOptions1.api.getRowNode(id);
+	   		$("#qaRequestedId").val(id);
+	   	 	$("#challanNo").val(rowNode.data.challanNo);
+	   	 	$("#receiptDate").val(rowNode.data.grnDate);
+	 		$("#product").val(rowNode.data.sku);
+	 		$("#sku").val(rowNode.data.sku);
+	 		$("#grrNo").val(rowNode.data.grnNo);
+	 		$("#supplier").val(rowNode.data.vendorName);
+	 		$("#quantityRcvd").val(rowNode.data.quantity);
+	   	}else{
+	   		$("#qaRequestedId").val('');
+	   		$("#challanNo").val('');
+	   	 	$("#receiptDate").val('');
+	 		$("#product").val('');
+	 		$("#sku").val('');
+	 		$("#grrNo").val('');
+	 		$("#supplier").val('');
+	 		$("#quantityRcvd").val('');
+	   	}
+		
+		$("#specificationNo").val('');
+		$("#samplingDate").val('');
+		$("#checkingDate").val('');
+		$("#quantityChkd").val('');
+		$("#remark").val('');
+	clearImg();
+}
+//function for cancel
+function cancel() {
+
+	 $(".formValidation").remove();
+		$("#totalReq").show();
+		$("#searchRowDiv").show();
+		$(".btn-hs").show();
+		$("#myGrid").show();
+		$("#myGrid1").show();
+		$("#demo").hide();
+		$("#reqDltBtn").attr('disabled', true);
+		$("#assignBtn").attr('disabled', true);
+		$("#newBtn").attr('disabled', false);
+		 view();
+
+	}
+
+	
+	
+// master save
+
+function masterSaveData() {
+    $(".formValidation").remove();
+    activityOptions.api.stopEditing();
+
+    var valid= true;
+	var datas = [];
+	var item={};
+	
+	item.evalutionId = $("#evalDispCartonsId").text();
+	item.qaRequestedId = $("#qaRequestedId").val();
+    item.refNo = $("#refNo").val();
+    item.issueNo = $("#issueNo").val();
+    item.issuedDate = $("#issuedDate").val();
+    
+    item.challanNo = $("#challanNo").val();
+    item.receiptDate = $("#receiptDate").val();
+    item.sku = $("#sku").val();
+    item.specificationNo = $("#specificationNo").val();
+    
+    item.grrNo = $("#grrNo").val();
+    item.samplingDate = $("#samplingDate").val();
+    item.supplier = $("#supplier").val();
+    item.quantityRcvd = $("#quantityRcvd").val();
+    
+    item.checkingDate = $("#checkingDate").val();
+    item.quantityChkd = $("#quantityChkd").val();
+    
+    item.product = $("#product option:selected").text();
+    item.remark = $("#remark").val();
+    
+    
+	item.imgName = $("#imageWarrName_0").html(); 
+	
+	var uFile = $(".wardocument")[0].files[0];
+	var fileName = $(".wardocument").val();
+	var data = [];
+	var x = [];
+	if (fileName != '' && fileName != 'undefined' && fileName != null) {
+		var lastIndex = fileName.lastIndexOf("\\");
+		var reader = new FileReader();
+		reader.readAsDataURL(uFile);
+		var iURL = URL.createObjectURL(uFile);
+		reader.onload = function() {
+			data = reader.result.split(",");
+			item.imgUrl = data[1];
+		};
+
+	}
+    
+
+		var data = [];
+		activityOptions.api.forEachNode(function(rowNode, index) {
+				var obj1 = rowNode.data;
+				obj1.avg=window.qaAvg[index];
+				data.push(obj1);
+		});
+		item.itemDtls = data;
+	
+		valid= true;
+		 if(valid){
+	        	datas.push(item);
+	         }
+	
+	if (valid) {
+		
+		console.log("Datas--->",datas)
+		
+		savePlanDetails(item);
+		
+		}
+	 else {
+		$("#messageParagraph").text(
+		"Please Fill Up The Input Fields First!");
+		$("#msgOkModal").removeClass("btn3");
+		$("#msgOkModal").addClass("btn1");
+		$("#msgModal").modal('show');
+	}
+
+
+}
+
+
+
+
+function savePlanDetails(item) {
+	$(".loader").show();
+	setTimeout(function() {
+	$.ajax({
+		type : "POST",
+		url : "evaluation-of-display-cartons-add",
+		dataType : "json",
+		contentType : "application/json",
+		data : JSON.stringify(item),
+		success : function(response) {
+			$(".loader").hide();
+			 $("#totalReq").show();
+			 $("#searchRowDiv").show();
+			 $("#ttbtn").show();
+			 
+			 $("#messageParagraph").text(response.message);
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+			
+			 
+			 $("#demo").hide();
+			 $("#myGrid").show();
+			 $("#myGrid1").show();
+			 
+			 view();
+			 
+			 //inputnull();
+			
+		},
+		error : function(data) {
+			$('.loader').hide();
+		}
+	});
+	}, 1000)
+
+}
+
+
+function editData(id,sts) {
+	$(".loader").show();
+	window.qaAvg=[];
+	console.log(sts)
+			agGrid.simpleHttpRequest(
+					{
+						url : 'evaluation-of-display-cartons-edit?id='+ id
+					}).then(function(data) {
+						var jsonData = JSON.parse(data.body);
+						
+						var allData=jsonData.editDispCartons;
+						
+						if(data.code == "success"){
+							 $("#myGrid").hide();
+							 $("#myGrid1").hide();
+							 $("#totalReq").hide();
+							 $("#searchRowDiv").hide();
+							 $("#ttbtn").hide(); 
+							$("#demo").show();
+							
+							if(sts == 'Approved'){
+								$("#save").hide();
+							}else{
+								$("#save").show();
+							}
+							$("#qaRequestedId").val('');
+							$("#evalDispCartonsId").text(id);
+							$("#challanNo").val(allData[0].invNo);
+							$("#receiptDate").val(allData[0].receiptDt);
+							$("#product").val(allData[0].sku);
+							$("#sku").val(allData[0].sku);
+							$("#specificationNo").val(allData[0].specNo);
+							$("#grrNo").val(allData[0].grrNo);
+							$("#samplingDate").val(allData[0].samplingDt);
+							$("#supplier").val(allData[0].supplier);
+							$("#quantityRcvd").val(allData[0].quantRcved);
+							$("#checkingDate").val(allData[0].checkingDt);
+							$("#quantityChkd").val(allData[0].quntChecked);
+							$("#remark").val(allData[0].remark);
+							
+							 var iURL = allData[0].imgUrl;
+							 if(iURL!=null && iURL!=''){
+								 var fileName = allData[0].imgName;
+									var lastIndex = fileName.lastIndexOf("\\");
+									if (lastIndex >= 0) {
+										fileName = fileName
+												.substring(lastIndex + 1);
+									}
+									var extension = fileName.split(".");
+									
+									$("#uploadedWarrDiv_0").html("");
+
+									if (extension[1] == "jpg"
+											|| extension[1] == "png"
+											|| extension[1] == "jpeg") {
+										var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-picture-o' style='color: blue'></i></a></div>";
+									} else if (extension[1] == "pdf") {
+										var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-pdf-o' style='color: red'></i></a></div>";
+									} else {
+										var LightImg = "<div class='uploadicon position-l'> </div>";
+									}
+
+									$("#uploadedWarrDiv_0").html(LightImg);
+									$("#imageWarrName_0").html(fileName);
+									$("#dltImage_0")
+											.html(
+													"<button onclick='clearImg()' style='border: none; background: none;'><i class='fa fa-times' style='color: red; margin-left: 5px;'></i></button>");
+									var fileData = new FormData();
+									//fileData.append('file', uFile);
+									fileData.append('path', 'none');  
+							 }
+								
+							
+							
+							activityOptions.api.setRowData(allData); 
+							$(".loader").hide();
+						}else{
+							$(".loader").hide();
+							$("#messageParagraph").text("Something went to wrong!");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							
+						}
+						
+					}); 
+	
+}
+
+
+
+function deleteFun() {
+	$('#msgModal2').modal('show');
+}
+
+
+function deleteOnclick() {
+	
+	var selectedRows = gridOptions.api.getSelectedRows();	
+	
+	var id = selectedRows[0].evalId;
+	
+	
+	$.ajax({
+	type : "GET",
+	url : "evaluation-of-display-cartons-delete?id="+ id,
+	success : function(response) {
+		console.log(response);
+	  if (response.code == "success") {
+			$("#messageParagraph").text("Data Deleted sucessfully");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			$('#delete').modal('hide');
+			view();
+			 $('#msgModal2').modal('hide');
+			 $("#reqDltBtn").attr('disabled', true);
+			 $("#newBtn").attr('disabled',false);
+		} else {
+			$("#messageParagraph").text("Something went to wrong!");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+		} 
+	},
+	error : function(data) {
+		
+	}
+})
+
+}
+
+function downloadDetails() { 
+	var dataset = [];
+	gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		dataset.push(rowNode.data);
+	});
+    gridOptions.api.exportDataAsCsv(dataset);
+}
+
+function selectSku(){
+	var id = $("#product").val();
+	$("#sku").val(id);
+}
+
+function approveFun() {
+	$('#approveModal').modal('show');
+}
+
+
+function approveOnclick() {
+	
+	var selectedRows = gridOptions.api.getSelectedRows();	
+	
+	var id = selectedRows[0].evalId;
+	
+	
+	$.ajax({
+	type : "GET",
+	url : "evaluation-of-display-cartons-approve?id="+ id,
+	success : function(response) {
+		console.log(response);
+	  if (response.code == "success") {
+			$("#messageParagraph").text("Data Approved sucessfully");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			//$('#approveModal').modal('hide');
+			var rowNode = gridOptions.api.getRowNode(id);
+					 rowNode.setDataValue('aprvSts', 'Approved');
+					 gridOptions.api.refreshCells({ rowNodes: [rowNode], force: true });
+			 $('#approveModal').modal('hide');
+			 $("#reqDltBtn").attr('disabled', true);
+			 $("#assignBtn").attr('disabled', true);
+			 $("#newBtn").attr('disabled',false);
+		} else {
+			$("#messageParagraph").text("Something went to wrong!");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+		} 
+	},
+	error : function(data) {
+		
+	}
+})
+
+}
+function saveFile() {
+
+	var uFile = $(uploadWarDoc_0)[0].files[0];
+	var fileName = event.currentTarget.value;
+	var lastIndex = fileName.lastIndexOf("\\");
+	if (lastIndex >= 0) {
+		fileName = fileName.substring(lastIndex + 1);
+	}
+	var extension = fileName.split(".");
+	var iURL = URL.createObjectURL(uFile);
+	$("#uploadedWarrDiv_0").html("");
+
+	if (extension[1] == "jpg" || extension[1] == "png"
+			|| extension[1] == "jpeg") {
+		var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-picture-o' style='color: blue'></i></a></div>";
+	} else if (extension[1] == "pdf") {
+		var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-pdf-o' style='color: red'></i></a></div>";
+	} else {
+		var LightImg = "<div class='uploadicon position-l'> </div>";
+	}
+
+	$("#uploadedWarrDiv_0").html(LightImg);
+	$("#imageWarrName_0").html(fileName);
+	$("#dltImage_0")
+			.html(
+					"<button onclick='clearImg()' style='border: none; background: none;'><i class='fa fa-times' style='color: red; margin-left: 5px;'></i></button>");
+	var fileData = new FormData();
+	fileData.append('file', uFile);
+	fileData.append('path', 'none');
+
+}
+function clearImg() {
+	$("#uploadWarDoc_0").val("");
+	$("#uploadedWarrDiv_0").html("");
+	$("#imageWarrName_0").html("");
+	$("#dltImage_0").html("");
+}
+//
+function pdf(){
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var id=selectedRows[0].evalId;
+	//alert(id)
+	window.open("/qa/evaluation-of-display-cartons-pdf-downloads?id="+ window.btoa(id), '_blank'); 
+}
+
+</script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div id="myGrid1" style="width: 100%; height: 200px;"
+							class="ag-theme-alpine mb-2"></div>
+						<div class="d-flex flex-wrap justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalReq">
+									List(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+								<button class="download-btn" id="download"
+									onclick="downloadDetails()">Download</button>
+								<button class="delete-btn" id="reqDltBtn" onclick="deleteFun()">DELETE</button>
+								<!-- <button class="download-btn bg-info text-white" id="inspectBtn"
+									onclick="inspectFun()">INSPECT</button> -->
+								<button class="new-btn" id="assignBtn" onclick="approveFun()">APPROVE</button>
+								<button class="new-btn" id="newBtn" onclick="newPlan('')">NEW</button>
+								<!-- <button class="new-btn" id="pdf" onclick="pdf()">PDF</button> -->
+							</div>
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" />
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innercontent">
+								<div class="innerstickybg">
+									<div class="row">
+
+										<div class="col-md-6">
+											Evaluation Of Display Cartons: <span id="evalDispCartonsId"></span>
+										</div>
+
+										<input type="hidden" class="form-control" id="pcroId"
+											readonly="" fdprocessedid="f8yxwu">
+
+										<div class="col-md-6" align="right">
+											<button class="cancel-btn" id="cancelBtn" onclick="cancel()">Cancel</button>
+											<button class="approve-btn" id="save"
+												onclick="masterSaveData()">Save</button>
+										</div>
+									</div>
+
+								</div>
+								<div class="row mt-2">
+									<input type="hidden" id="evalutionId">
+									<input type="hidden" id="qaRequestedId">
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Ref. No. :</label> <input type="text"
+												class="form-control" id="refNo" readonly
+												value="OBPL/QA/004/F/14">
+										</div>
+									</div>
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Issue No. :</label> <input type="text"
+												class="form-control" id="issueNo" value="01" readonly>
+										</div>
+									</div>
+									<div class="col-lg-4">
+										<div class="form-group">
+											<label>Issued Date :</label> <input type="text"
+												class="form-control" id="issuedDate" readonly
+												value="01-07-2022">
+										</div>
+									</div>
+
+									<div class="col-lg-3">
+										<div class="form-group">
+											<label>Challan/Invoice No. :</label> <input type="text"
+												class="form-control" id="challanNo">
+										</div>
+									</div>
+
+									<div class="col-md-3">
+										<div>
+											<div class="form-group calendar_box">
+												<label>Date Of Receipt :</label> <input type="text"
+													id="receiptDate" class="form-control"
+													onblur="removeValid(event)"
+													th:attr="onkeyup=|formatDate('date','${session.DATEFORMAT_JS}')|"
+													readonly> <i class="ti-calendar picker_calendar"
+													id="DateCalendar3"></i>
+											</div>
+										</div>
+									</div>
+									<div class="col-md-3">
+										<div class="form-group">
+											<label> Product </label>
+											<div class="select">
+												<select id="product" onchange="selectSku()">
+													<option value="">Select</option>
+													<option th:each="c:${itemList}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select> <span class="focus"></span>
+											</div>
+										</div>
+									</div>
+
+									<div class="col-lg-3">
+										<div class="form-group">
+											<label>Material Code :</label> <input type="text"
+												class="form-control" id="sku" readonly>
+										</div>
+									</div>
+
+									<div class="col-lg-3">
+										<div class="form-group">
+											<label>Specification No. :</label> <input type="text"
+												class="form-control" id="specificationNo">
+										</div>
+									</div>
+
+									<div class="col-lg-3">
+										<div class="form-group">
+											<label>GRR No. :</label> <input type="text"
+												class="form-control" id="grrNo">
+										</div>
+									</div>
+
+
+									<div class="col-md-3">
+										<div>
+											<div class="form-group calendar_box">
+												<label>Date Of Sampling :</label> <input type="text"
+													id="samplingDate" class="form-control"
+													onblur="removeValid(event)"
+													th:attr="onkeyup=|formatDate('samplingDate','${session.DATEFORMAT_JS}')|"
+													readonly> <i class="ti-calendar picker_calendar"
+													id="DateCalendar4"></i>
+											</div>
+										</div>
+									</div>
+
+									<div class="col-lg-3">
+										<div class="form-group">
+											<label>Supplier :</label> <input type="text"
+												class="form-control" id="supplier">
+										</div>
+									</div>
+
+									<div class="col-lg-3">
+										<div class="form-group">
+											<label>Quantity Received :</label> <input type="text"
+												class="form-control" id="quantityRcvd">
+										</div>
+									</div>
+
+									<div class="col-md-3">
+										<div>
+											<div class="form-group calendar_box">
+												<label>Date Of Checking :</label> <input type="text"
+													id="checkingDate" class="form-control"
+													onblur="removeValid(event)"
+													th:attr="onkeyup=|formatDate('checkingDate','${session.DATEFORMAT_JS}')|"
+													readonly> <i class="ti-calendar picker_calendar"
+													id="DateCalendar5"></i>
+											</div>
+										</div>
+									</div>
+
+									<div class="col-lg-3">
+										<div class="form-group">
+											<label>Quantity Checked :</label> <input type="text"
+												class="form-control" id="quantityChkd">
+										</div>
+									</div>
+									<div class="col-md-3">
+										<label>Attachment</label>
+										<div class="control-group position-r">
+											<label class="custom-file-upload" for="uploadWarDoc_0"
+												style="margin-top: 12px;"> <i class="ti-plus"></i>
+											</label>
+											<div class="controls">
+												<input type="file" class="wardocument" id="uploadWarDoc_0"
+													accept=".jpeg, .jpg, .png, .pdf" name="userImage"
+													onchange="saveFile(event)">
+											</div>
+										</div>
+
+										<input type="hidden" id="uploadHidden_0" class="uploadHidCls">
+										<div id="uploadedWarrDiv_0" align="center"
+											class="uploadedWarrCls" style="margin-top: 15px;"></div>
+										<div id="imageWarrName_0" class="imageName"
+											style="max-width: 200px;"></div>
+										<div id='dltImage_0' class='dltImage'></div>
+									</div>
+									<div class="col-md-6">
+										<div class="form-group">
+											<label> Remark </label>
+											<textarea class="form-control" id="remark"
+												onblur="removeValid(event)"></textarea>
+										</div>
+									</div>
+								</div>
+
+								<div id="main" class="mt-4">
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingOne">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseOne"
+												aria-expanded="false" aria-controls="collapseOne">
+												Report</button>
+										</h2>
+
+										<div id="collapseOne" class="accordion-collapse collapse show"
+											aria-labelledby="headingOne"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+												<div class="row">
+													<div id="activity"
+														style="width: 100%; height: 600px; margin: 0px 0px 15px 0px;"
+														class="ag-theme-alpine"></div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+
+
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+
+			<!-- delete modal start -->
+			<div id="msgModal2" class="modal fade show" aria-modal="true">
+				<div class="modal-dialog modal-confirm">
+					<div class="modal-content">
+						<div class="modal-header flex-column"></div>
+						<div class="modal-body">
+							<p style="color: #000000; font-weight: 400;">Do you really
+								want to delete these records? This process cannot be undone.</p>
+						</div>
+						<div class="modal-footer justify-content-center"
+							style="margin-top: 0px;">
+
+							<button type="button" class="cancel-btn" data-bs-dismiss="modal">Cancel</button>
+							<button type="button" class="delete-btn"
+								onclick="deleteOnclick()">Delete</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div id="approveModal" class="modal fade show" aria-modal="true">
+				<div class="modal-dialog modal-confirm">
+					<div class="modal-content">
+						<div class="modal-header flex-column"></div>
+						<div class="modal-body">
+							<p style="color: #000000; font-weight: 400;">Do you want to
+								Approve this record.</p>
+						</div>
+						<div class="modal-footer justify-content-center"
+							style="margin-top: 0px;">
+
+							<button type="button" class="cancel-btn" data-bs-dismiss="modal">Cancel</button>
+							<button type="button" class="approve-btn"
+								onclick="approveOnclick()">Approve</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- delete product modal start -->
+		</div>
+	</div>
+</body>
+</html>

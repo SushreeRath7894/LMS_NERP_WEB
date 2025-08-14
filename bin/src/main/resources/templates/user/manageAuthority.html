@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style>
+/* .ag-theme-alpine {
+	text-indent: 10px !important;
+	background: #fff !important;
+} */
+#myRoleGrid .ag-root-wrapper {
+	border: solid 1px #f6f8f8 !important;
+}
+
+#myEmpGrid .ag-root-wrapper {
+	border: solid 1px #f6f8f8 !important;
+}
+
+#myRoleGrid .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff;
+	text-indent: 10px !important;
+}
+
+#myRoleGrid .ag-row-selected::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 3px;
+	right: 4px;
+}
+/* .ag-theme-alpine */
+#myEmpGrid .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff !important;
+	text-indent: 10px !important;
+}
+
+#myEmpGrid .ag-row-selected .ag-cell-value {
+	background: #0076ba !important;
+	color: #fff !important;
+	text-indent: 10px !important;
+}
+
+#myEmpGrid .ag-row-selected .ag-cell-value::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 0px;
+	right: 4px;
+}
+
+#myEmpGrid .ag-header {
+	display: none;
+}
+
+#myRoleGrid .ag-header {
+	display: none;
+}
+
+#myEmpGrid .ag-center-cols-viewport {
+	background: #ffff !important;
+}
+
+#myRoleGrid .ag-center-cols-viewport {
+	background: #ffff !important;
+}
+/* #myEmpGrid .ag-row {
+	background: #ffff !important;
+}
+
+#myRoleGrid .ag-row {
+	background: #ffff !important;
+} */
+</style>
+<script>
+	$(document)
+			.ready(
+					function() {
+
+						$('.collapse').on(
+								'show.bs.collapse',
+								function() {
+									$(this).siblings('.panel-heading')
+											.addClass('active');
+								});
+
+						$('.collapse').on(
+								'hide.bs.collapse',
+								function() {
+									$(this).siblings('.panel-heading')
+											.removeClass('active');
+								});
+
+						$("#selectEmployees").click(
+								function() {
+									$(".roletxtsec").empty();
+									var empId = "";
+									var selectedRows = empOptions.api
+											.getSelectedRows();
+									selectedRows.forEach(function(selectedRow,
+											index) {
+
+										var div = '<div class="rolestxt">'
+												+ selectedRow.name + '</div>';
+										$(".roletxtsec").append(div);
+										empId = empId + selectedRow.key + ",";
+									});
+									empId = empId.slice(0, -1);
+									$("#empId").val(empId);
+									closeModal();
+								})
+
+						$("#browseBtn")
+								.click(
+										function() {
+											var role = $("#role").val();
+											browseOption = true;
+											if (role == null || role == "") {
+												browseOption = false;
+												$("#messageParagraph").text(
+														"Please Select Role");
+												$("#msgOkModal").removeClass(
+														"btn1");
+												$("#msgOkModal").addClass(
+														"btn3");
+												$("#msgModal").modal('show');
+											}
+											if (browseOption) {
+												var empId = $("#empId").val();
+												if (empId == null
+														|| empId == "") {
+													var roleId = $("#role")
+															.val();
+													agGrid
+															.simpleHttpRequest(
+																	{
+																		url : 'manage-authority-get-emp-listing-by-role?id='
+																				+ roleId,
+																	})
+															.then(
+																	function(
+																			data) {
+																		empOptions.api
+																				.setRowData(data);
+																	});
+												} else {
+													var data = empId.split(",");
+													empOptions.api
+															.forEachNode(function(
+																	rowNode,
+																	index) {
+																for (var i = 0; i < data.length; i++) {
+																	if (rowNode.data.key === data[i]) {
+																		empOptions.api
+																				.selectNode(
+																						rowNode,
+																						true);
+																	}
+																}
+															});
+												}
+
+												$("#browseModal").modal("show");
+											}
+
+										})
+
+						$("#setAuthority")
+								.click(
+										function() {
+											$("#demo").show();
+											$("#mySidenav").hide();
+											$("#myGrid").hide();
+											$("#processButtonList").hide();
+											$("#processSearchDiv").hide();
+											$("#btndiv").hide();
+											$("#countDiv").hide();
+
+											$("#processSpanID").text("");
+											$("#processSpanName").val("");
+											$("#processEditId").val("");
+
+											var processId = "";
+											var processName = "";
+
+											var selectedRows = gridOptions.api
+													.getSelectedRows();
+											console.log(selectedRows)
+											selectedRows
+													.forEach(function(
+															selectedRow, index) {
+														processId = selectedRow.tProcess;
+														processName = selectedRow.tProcessName;
+													});
+
+											$("#processSpanID").text(processId);
+											$("#processEditId").val(processId);
+											$("#processSpanName").val(
+													processName);
+
+											agGrid
+													.simpleHttpRequest(
+															{
+																url : 'manage-authority-get-authority-list?id='
+																		+ processId
+															})
+													.then(
+															function(data) {
+																authOptions.api
+																		.setRowData(data);
+															});
+										})
+
+						$("#cancelAuthority").click(function() {
+							$("#demo").hide();
+							$("#mySidenav").show();
+							$("#myGrid").show();
+							$("#processButtonList").show();
+							$("#processSearchDiv").show();
+							$("#btndiv").show();
+							$("#countDiv").show();
+
+						})
+
+						$("#saveAuthorityData").click(
+								function() {
+
+									data = {};
+
+									data.isEdit = $("#isEdit").val();
+									data.process = $("#processEditId").val();
+									data.user = $("#empId").val();
+									data.userRole = $("#role").val();
+									data.department = $("#department").val();
+
+									var status = $(
+											'#authStatus:checkbox:checked')
+											.val();
+
+									if (status != null && status != "") {
+										data.status = true;
+									} else {
+										data.status = false;
+									}
+
+									$(".formValidation").remove();
+									allPValid = true;
+									if (data.userRole == null
+											|| data.userRole == "") {
+										allPValid = false;
+										validationAll("Role Required", "role");
+									}
+									if (data.department == null || data.department == "") {
+										allPValid = false;
+										validationAll("Department Required", "department");
+									}
+
+									if (data.userRole != null
+											&& data.userRole != "") {
+/* 
+										if (data.user == null
+												|| data.user == "") {
+											allPValid = false;
+											$("#messageParagraph").text(
+													"Please Select Employee");
+											$("#msgOkModal")
+													.removeClass("btn3");
+											$("#msgOkModal").addClass("btn1");
+											$("#msgModal").modal('show');
+										} */
+									}
+
+									if (allPValid) {
+										$('.loader').show();
+										$("body").addClass("overlay");
+										submitAuthorityData(data);
+									}
+
+								});
+
+						$("#saveProcessData")
+								.click(
+										function() {
+
+											data = {};
+
+											data.tProcess = $("#processId")
+													.val();
+											data.tProcessName = $(
+													"#processName").val();
+											data.tProcessDescription = $(
+													"#processDesc").val();
+											var status = $(
+													'#processStatus:checkbox:checked')
+													.val();
+
+											if (status != null && status != "") {
+												data.tProcessStatus = true;
+											} else {
+												data.tProcessStatus = false;
+											}
+
+											$(".formValidation").remove();
+											allPValid = true;
+											if (data.tProcessName == null
+													|| data.tProcessName == "") {
+												allPValid = false;
+												validationAll(
+														"Process Name Required",
+														"processName");
+											}
+											if (data.tProcessDescription == null
+													|| data.tProcessDescription == "") {
+												allPValid = false;
+												validationAll(
+														"Description Required",
+														"processDesc");
+											}
+
+											if (allPValid) {
+												$('.loader').show();
+												$("body").addClass("overlay");
+												submitProcessData(data);
+											}
+										})
+
+						$("#deleteModalBtn")
+								.click(
+										function() {
+											$("#deleteModalBtn").attr(
+													"disabled", "disabled");
+											var value = $("#deleteModalBtn")
+													.attr("value");
+
+											if (value == 1) {
+
+												var id = "";
+												var selectedRows = gridOptions.api
+														.getSelectedRows();
+												selectedRows.forEach(function(
+														selectedRow, index) {
+													id = selectedRow.tProcess;
+												});
+
+												if (id) {
+													$
+															.ajax({
+																type : "POST",
+																url : "manage-users-delete",
+																dataType : 'json',
+																contentType : 'application/json',
+																data : id,
+																success : function(
+																		response) {
+																	if (response.message == "success") {
+																		$(
+																				"#deleteModalBtn")
+																				.removeAttr(
+																						"disabled");
+																		$(
+																				"#deleteModalBtn")
+																				.removeAttr(
+																						"value");
+																		cancelModalBtn();
+
+																		agGrid
+																				.simpleHttpRequest(
+																						{
+																							url : 'manage-users-get-listing'
+																						})
+																				.then(
+																						function(
+																								data) {
+																							var len = data.length;
+																							$(
+																									'#totalReq')
+																									.find(
+																											'span')
+																									.html(
+																											len);
+																							gridOptions.api
+																									.setRowData(data);
+																						});
+																	}
+																},
+																error : function(
+																		data) {
+																	console
+																			.log(data)
+																	$(
+																			"#deleteModalBtn")
+																			.removeAttr(
+																					"disabled");
+																	$(
+																			"#deleteModalBtn")
+																			.removeAttr(
+																					"value");
+																}
+															});
+												} else {
+													$("#deleteModalBtn")
+															.removeAttr(
+																	"disabled");
+													$("#deleteModalBtn")
+															.removeAttr("value");
+												}
+											}
+										})
+
+					})
+
+	var empOptions = {
+		columnDefs : [ {
+			headerName : '',
+			field : 'name',
+		}, ],
+		defaultColDef : {
+			flex : 1,
+			minWidth : 100,
+		},
+		rowSelection : 'multiple',
+		rowMultiSelectWithClick : true
+	};
+
+	$(document).ready(function() {
+		var roleId = $("#role").val();
+		agGrid.simpleHttpRequest({
+			url : 'manage-authority-get-emp-listing-by-role?id=' + roleId,
+		}).then(function(data) {
+			empOptions.api.setRowData(data);
+		});
+	});
+
+	function closeModal() {
+		$("#browseModal").modal("hide");
+	}
+
+	function submitProcessData(dataset) {
+		console.log(dataset)
+		$.ajax({
+			type : "POST",
+			url : "manage-authority-save-data",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(dataset),
+			success : function(response) {
+				if (response.message == "Success") {
+					closeNav();
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+
+					var id = dataset.tProcess;
+
+					if (id) {
+						$("#messageParagraph")
+								.text("Data Updated Successfully");
+					} else {
+						$("#messageParagraph").text("Data Saved Successfully");
+					}
+
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					agGrid.simpleHttpRequest({
+						url : 'manage-authority-get-process-listing'
+					}).then(function(data) {
+						var len = data.length;
+						$('#totalReq').find('span').html(len);
+						gridOptions.api.setRowData(data);
+					});
+				}
+			},
+			error : function(data) {
+				console.log(data)
+				$('.loader').hide();
+				$("body").removeClass("overlay");
+			}
+		});
+	}
+
+	function submitAuthorityData(dataset) {
+		console.log(dataset)
+		$.ajax({
+			type : "POST",
+			url : "manage-authority-save-authority-data",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(dataset),
+			success : function(response) {
+				if (response.message == "Success") {
+					closeAuthNav();
+
+					var id = dataset.process;
+					$("#messageParagraph").text("Data Saved Successfully");
+
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					agGrid.simpleHttpRequest({
+						url : 'manage-authority-get-authority-list?id=' + id
+					}).then(function(data) {
+						authOptions.api.setRowData(data);
+					});
+
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+				}
+			},
+			error : function(data) {
+				console.log(data)
+				$('.loader').hide();
+				$("body").removeClass("overlay");
+			}
+		});
+	}
+
+	function cancelModalBtn() {
+		$("#delete").modal("hide");
+		$("#deleteModalBtn").removeAttr("disabled");
+	}
+
+	var columnDefs = [
+			{
+				headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+			{
+				headerName : "Process ID",
+				field : "tProcess",
+				cellRenderer : function(params) {
+					return '<a onclick=openDetails("' + params.data.tProcess
+							+ '") href="javascript:void(0)">'
+							+ params.data.tProcess + '</a>';
+				}
+			}, {
+				headerName : "Process Name",
+				field : "tProcessName"
+			}, {
+				headerName : "Description",
+				field : "tProcessDescription"
+			}, {
+				headerName : "Status",
+				field : "status",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : "Created By",
+				field : "tProcessCreatedBy",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : "Created Date",
+				field : "createdOn",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			} ];
+	var columnADefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+			{
+				headerName : "Process ID",
+				field : "process",
+			},
+			{
+				headerName : "Order",
+				field : "orderId",
+			},
+			{
+				headerName : "Role",
+				field : "userRole",
+				cellRenderer : function(params) {
+					return '<a onclick=openAuthDetails("'
+							+ params.data.userRole
+							+ '") href="javascript:void(0)">'
+							+ params.data.userRoleName + '</a>';
+				}
+			}, {
+				headerName : "Department",
+				field : "departmentName"
+			}, {
+				headerName : "Employee",
+				field : "userName"
+			}, {
+				headerName : "Status",
+				field : "authStatus",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : "Created By",
+				field : "createdBy",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : "Created Date",
+				field : "createdOn",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			} ];
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowSelection : 'single',
+		suppressRowClickSelection : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 218,
+			height : 10
+		},
+		getRowNodeId : function(data) {
+			return data.tProcess;
+		},
+		onSelectionChanged : onSelectionChanged
+	};
+	var authOptions = {
+		columnDefs : columnADefs,
+		rowSelection : 'mutiple',
+		suppressRowClickSelection : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 152,
+			height : 10
+		},
+		getRowNodeId : function(data) {
+			return data.userRole;
+		},
+		onSelectionChanged : onSelectionChangedAuthority
+	};
+	function onSelectionChanged() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+		var totalCount = $('#totalReq').find('span').html();
+		if (rowCount > 0) {
+			if (totalCount == rowCount) {
+				if (rowCount == "1") {
+					$('#setAuthority').attr('disabled', false);
+					$('#deleteBtn').attr('disabled', false);
+				} else {
+					$('#setAuthority').attr('disabled', true);
+					$('#deleteBtn').attr('disabled', true);
+				}
+			} else {
+				$('#setAuthority').attr('disabled', false);
+				$('#deleteBtn').attr('disabled', false);
+			}
+		} else {
+			$('#setAuthority').attr('disabled', true);
+			$('#deleteBtn').attr('disabled', true);
+		}
+	}
+	function onSelectionChangedAuthority() {
+		var selectedRows = authOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#newAuth').attr('disabled', true);
+			$('#deleteAuth').attr('disabled', false);
+		} else {
+			$('#newAuth').attr('disabled', false);
+			$('#deleteAuth').attr('disabled', true);
+		}
+	}
+	$(document).ready(function() {
+		agGrid.simpleHttpRequest({
+			url : 'manage-authority-get-process-listing'
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+			gridOptions.api.setRowData(data);
+		});
+	})
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function totalUserCSV() {
+		var dataset = [];
+		gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+		gridOptions.api.exportDataAsCsv(dataset);
+	}
+
+	function processSelect() {
+		openNav();
+	}
+
+	function openDetails(id) {
+		openNav();
+		$("#roleNameTxt").empty();
+		$("#roleNameTxt").text("Process ID: " + id);
+
+		var selectedNodes = gridOptions.api.getRowNode(id);
+
+		$("#processId").val(id);
+		$("#processName").val(selectedNodes.data.tProcessName);
+		$("#processDesc").val(selectedNodes.data.tProcessDescription);
+		if (selectedNodes.data.status == "Active") {
+			$("#processStatus").prop("checked", true);
+		} else {
+			$("#processStatus").prop("checked", false);
+		}
+
+	}
+	function openAuthDetails(id) {
+		openAuthNav();
+		$("#roleId").val(id);
+		$("#isEdit").val("IS_EDIT");
+		var selectedNodes = authOptions.api.getRowNode(id);
+		$("#role").val(id);
+		var empId = selectedNodes.data.user;
+		$("#empId").val(selectedNodes.data.user);
+		$("#department").val(selectedNodes.data.department);
+		console.log(selectedNodes.data)
+		if (selectedNodes.data.authStatus == "Active") {
+			$("#authStatus").prop("checked", true);
+		} else {
+			$("#authStatus").prop("checked", false);
+		}
+		$('#role').find('option').each(function() {
+			$(this).removeAttr("disabled");
+		})
+
+		agGrid.simpleHttpRequest({
+			url : 'manage-authority-get-emp-listing-by-role?id=' + id,
+		}).then(
+				function(data) {
+					empOptions.api.setRowData(data);
+					$(".roletxtsec").empty();
+					var data = empId.split(",");
+					empOptions.api.forEachNode(function(rowNode, index) {
+						for (var i = 0; i < data.length; i++) {
+							if (rowNode.data.key === data[i]) {
+								var div = '<div class="rolestxt">'
+										+ rowNode.data.name + '</div>';
+								$(".roletxtsec").append(div);
+							}
+						}
+					});
+				});
+
+	}
+
+	function submitRole(dataset) {
+		console.log(dataset)
+		$.ajax({
+			type : "POST",
+			url : "manage-roles-save-data",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(dataset),
+			success : function(response) {
+				if (response.message == "Success") {
+					closeNav();
+					agGrid.simpleHttpRequest({
+						url : 'manage-roles-get-listing'
+					}).then(function(data) {
+						var len = data.length;
+						$('#totalReq').find('span').html(len);
+						gridOptions.api.setRowData(data);
+					});
+				}
+			},
+			error : function(data) {
+				console.log(data)
+			}
+		});
+	}
+
+	function openNav() {
+		$("#btndiv").hide();
+		$("#processSearchDiv").hide();
+		$("#roleNameTxt").empty();
+		$("#roleNameTxt").text("Process ID: ");
+		$("#processId").val("");
+		$("#processName").val("");
+		$("#processDesc").val("");
+		$("#processStatus").prop("checked", true);
+		document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:28px;";
+		document.getElementById("myGrid").style.width = "75%";
+	}
+
+	function closeNav() {
+		$("#btndiv").show();
+		$("#processSearchDiv").show();
+		$("#roleNameTxt").empty();
+		$("#roleNameTxt").text("Process ID: ");
+		$("#processId").val("");
+		$("#processName").val("");
+		$("#processDesc").val("");
+		$("#processStatus").prop("checked", true);
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("myGrid").style.width = "100%";
+	}
+
+	function openAuthNav() {
+		$('#role').val("");
+		$("#empId").val("");
+		$("#authStatus").prop("checked", true);
+		$(".roletxtsec").empty();
+		authOptions.api.forEachNode(function(rowNode, Index) {
+			$('#role')
+					.children('option[value="' + rowNode.data.userRole + '"]')
+					.attr('disabled', 'disabled');
+		})
+		$("#isEdit").val("");
+		document.getElementById("myAuthSidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:215px;";
+		document.getElementById("main_content").style.width = "75%";
+	}
+
+	function closeAuthNav() {
+		$('#role').val("");
+		$('#department').val("");
+		$("#authStatus").prop("checked", true);
+		$(".roletxtsec").empty();
+		$("#isEdit").val("");
+		document.getElementById("myAuthSidenav").style.width = "0";
+		document.getElementById("main_content").style.width = "100%";
+	}
+
+	document.addEventListener('DOMContentLoaded', function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+	});
+	document.addEventListener('DOMContentLoaded', function() {
+		$('#deleteAuth').attr('disabled', true);
+		var gridDiv = document.querySelector('#myAuthGrid');
+		new agGrid.Grid(gridDiv, authOptions);
+	});
+	document.addEventListener('DOMContentLoaded', function() {
+		var gridDiv = document.querySelector('#myEmpGrid');
+		new agGrid.Grid(gridDiv, empOptions);
+
+	});
+
+	function deleteProcess() {
+		$("#delete").modal("show");
+	}
+	function deleteAuthNav() {
+		$("#deleteAuthModal").modal("show");
+	}
+	function cancelModalBtn(){
+		$("#delete").modal("hide");
+		$("#deleteAuthModal").modal("hide");
+	}
+	$(document).ready(function() {
+	$("#deleteModalBtn").click(function(){
+		
+		var selectedRows = gridOptions.api.getSelectedRows();
+		 var id=selectedRows[0].tProcess;
+		
+		if(id) {
+			$.ajax({
+				type : "GET",
+				url : "manage-authority-delete-process?process=" + id,
+				async : false,
+				success : function(response) {
+
+					if (response.message == "Success") {
+						
+						$("#messageParagraph").text(
+						"Data Deleted Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						closeNav()
+						location.reload();
+						cancelModalBtn();
+						
+						
+					}
+
+				},
+				error : function(data) {
+				}
+			});
+ 
+		}
+	})
+	$("#deleteAuthModalBtn").click(function(){
+ 
+		var selectedRows = authOptions.api.getSelectedRows();
+		 var id1=selectedRows[0].process;
+		 var id2=selectedRows[0].userRole;
+		
+		if(id1) {
+			$.ajax({
+				type : "GET",
+				url : "manage-authority-delete-authority?process="+id1+"&role="+id2,
+				async : false,
+				success : function(response) {
+
+					if (response.message == "Success") {
+						
+						$("#messageParagraph").text(
+						"Data Deleted Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						closeNav()
+						location.reload();
+						cancelModalBtn();
+						
+						
+					}
+
+				},
+				error : function(data) {
+				}
+			});
+/* 			$.ajax({
+				type : "POST",
+				url : "manage-authority-delete-authority",
+				dataType : 'json',
+				contentType : 'application/json',
+				data : JSON.stringify(dataset),
+				success : function(response) {
+					if (response.message == "success") {
+						$("#deleteModalBtn").removeAttr("disabled");
+						cancelModalBtn();
+						closeNav()
+					}
+				}, error : function(data) {
+					console.log(data)
+					$("#deleteModalBtn").removeAttr("disabled");
+				}
+			}); */
+		}
+	})
+	});
+</script>
+</head>
+<body>
+	<div layout:fragment="content">
+		<div class="content-wrap">
+			<div class="container-fluid">
+				<div class="maincontent">
+					<div class="row">
+
+						<div class="maincontentsec">
+							<div class="content_padding">
+								<div id="newId">
+									<div class="d-flex justify-content-between mt-4">
+										<div class="btn-hs" id="countDiv">
+											<div class="font-design" id="totalReq">
+												Process List(<span></span>)
+											</div>
+										</div>
+										<div id="processSearchDiv">
+											<div class="input-style">
+												<input type="text" placeholder="Search.." name="search"
+													class="searchboxinput" onkeyup="cancelBar()"
+													oninput="onQuickFilterChanged()" id="quickFilter"
+													autocomplete="off">
+												<div class="searchicon">
+													<a href="javascript:void(0)"><span
+														style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+														id="closeKey"
+														onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+														class="close_i"><i class="ti-close srchicon"></i></span></a><a
+														href="javascript:void(0)"><i
+														class="ti-search srchicon"></i></a>
+												</div>
+											</div>
+										</div>
+										<div class="buttonsec btn-hs" id="btndiv">
+											<button class="btn4" onclick="totalProcessCSV();">Download</button>
+											<div class="buttongap"></div>
+											<button class="btn2" id="setAuthority" disabled="disabled">SET
+												AUTHORITY</button>
+											<button class="btn3" id="deleteBtn" disabled="disabled"
+												onclick="deleteProcess();">DELETE</button>
+											<button class="btn1" id="newBtn" onclick="processSelect()">NEW</button>
+										</div>
+									</div>
+
+									<div id="myGrid" style="width: 100%; height: 500px;"
+										class="ag-theme-alpine"></div>
+									<div id="mySidenav" class="sidenav"
+										style="top: 138px !important;">
+										<div class="slidebox">
+											<div class="row">
+												<div class="col-md-9">
+													<div class="edit" id="roleNameTxt">Process ID:</div>
+												</div>
+												<div class="col-md-3">
+													<div class="arrow">
+														<a href="javascript:void(0)" class="closebtn"
+															onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+													</div>
+												</div>
+											</div>
+											<div class="chartbtnsec">
+												<div align="right">
+													<button class="btn4" onclick="closeNav()">CANCEL</button>
+													<button class="btn1" id="saveProcessData">SAVE</button>
+												</div>
+											</div>
+											<div class="clearfix"></div>
+											<div class="row">
+												<div class="col-md-12">
+													<div class="form-group">
+														<input type="hidden" id="processId"> <label>Name</label>
+														<input type="text" value="" placeholder=""
+															class="form-control" id="processName"
+															onblur="removeValid(event);">
+													</div>
+												</div>
+												<div class="col-md-12">
+													<div class="form-group">
+														<label>Description</label>
+														<textarea placeholder="" class="form-control"
+															id="processDesc" onblur="removeValid(event);"></textarea>
+													</div>
+												</div>
+												<div class="col-md-12">
+													<div class="form-group">
+														<input type="checkbox" name="isActive"
+															style="margin-top: 32px;" id="processStatus" value="1"
+															checked="checked"> <label
+															style="margin-top: 32px;">Active</label>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+									<div class="collapse" id="demo">
+										<div class="innerstickybg">
+											<div class="row">
+												<div class="col-md-3">
+													Process ID: <span id="processSpanID"></span>
+												</div>
+												<div class="col-md-6">
+													<div id="statusDiv">
+														<!-- <div class="hr4"></div> -->
+														<div class="main-div">
+															<div class="section2">
+																<div id="createdDiv" class="green-box">
+																	<div class="green-box-heading">CREATED</div>
+																	<div class="date" id="createdDate">17-02-21</div>
+																</div>
+															</div>
+															<!-- <div class="section3">
+																<div id="activeDiv" class="grey-box">
+																	<div class="green-box-heading">SUBMITTED</div>
+																	<div class="date" id="submitDate"></div>
+																</div>
+															</div>
+															<div class="section4">
+																<div id="completeDiv" class="grey-box">
+																	<div class="green-box-heading">COMPLETE</div>
+																	<div class="date" id="completeDate"></div>
+																</div>
+															</div>
+															<div class="section5">
+																<div id="onHoldDiv" class="grey-box">
+																	<div class="green-box-heading">ONHOLD</div>
+																	<div class="date" id="onHoldDate"></div>
+																</div>
+															</div> -->
+
+														</div>
+													</div>
+												</div>
+												<div class="col-md-3" align="right">
+													<button class="btn4" id="cancelAuthority">Cancel</button>
+													<!-- <button class="btn1" id="saveAuthorityDtls">Save</button> -->
+												</div>
+											</div>
+
+										</div>
+										<div class="row innersticky_contentgap"
+											style="margin-top: 10px !important;">
+											<div class="col-md-6">
+												<div class="form-group">
+													<label>Process Name</label> <input type="text"
+														id="processSpanName" disabled class="form-control"
+														style="border: none !important;"> <input
+														type="hidden" id="processEditId" />
+												</div>
+											</div>
+											<div class="col-md-3">
+												<div class="form-group">
+													<label>Department Name</label>
+													<div class="select">
+														<select id="department" onblur="removeValid(event)">
+															<option value="">Select</option>
+															<option th:each="c,iter:${departmentList}"
+																th:text="${c.name}" th:value="${c.key}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+										</div>
+										<div id="main_content" class="mt-4">
+
+											<div class="accordion-item">
+												<h2 class="accordion-header" id="headingOne">
+													<button class="accordion-button" type="button"
+														data-bs-toggle="collapse" data-bs-target="#collapseOne"
+														aria-expanded="false" aria-controls="collapseOne">
+														SET AUTHORITY</button>
+												</h2>
+
+												<div id="collapseOne"
+													class="accordion-collapse collapse show"
+													aria-labelledby="headingOne"
+													data-bs-parent="#accordionExample">
+													<div class="accordion-body">
+														<div>
+															<div class="col-md-5 btn-hs1">
+																<div class="font-design"></div>
+															</div>
+															<div class="clearfix"></div>
+
+															<div class="btn-hs1" align="right">
+																<button class="btn3" id="deleteAuth" onclick="deleteAuthNav();">Delete</button>
+																<button class="btn1" id="newAuth" onclick="openAuthNav();">New</button>
+															</div>
+															<div class="clearfix"></div>
+
+															<div id="myAuthGrid" style="width: 100%; height: 300px;"
+																class="ag-theme-alpine"></div>
+														</div>
+													</div>
+													<div id="myAuthSidenav" class="sidenav"
+														style="top: 138px !important;">
+														<div class="slidebox">
+															<div class="row">
+																<div class="col-md-9">
+																	<div class="edit" id="roleNameTxt">Authority</div>
+																</div>
+																<div class="col-md-3">
+																	<div class="arrow">
+																		<a href="javascript:void(0)" class="closebtn"
+																			onclick="closeAuthNav()"><i
+																			class="ti-arrow-right"></i></a>
+																	</div>
+																</div>
+															</div>
+															<div class="chartbtnsec">
+																<div align="right">
+																	<button class="btn4" onclick="closeAuthNav()">CANCEL</button>
+																	<button class="btn1" id="saveAuthorityData">SAVE</button>
+																</div>
+															</div>
+															<div class="clearfix"></div>
+															<div class="row">
+																<!-- <div class="col-md-12">
+																		<div class="form-group">
+																			<label>Order</label>
+																			<input type="text" id="orderId" class="form-control">
+																		</div>
+																	</div> -->
+																<div class="col-md-12">
+																	<div class="form-group">
+																		<input type="hidden" id="isEdit"> <input
+																			type="hidden" id="roleId"> <label>Roles</label>
+																		<div class="select">
+																			<select id="role" onblur="removeValid(event)">
+																				<option value="">Select</option>
+																				<option th:each="c,iter:${roleList}"
+																					th:text="${c.name}" th:value="${c.key}"></option>
+																			</select>
+																		</div>
+																	</div>
+																</div>
+																<div class="col-md-12">
+																	<div class="form-group">
+																		<input type="checkbox" name="isActive"
+																			style="margin-top: 10px;" id="authStatus" value="1"
+																			checked="checked"> <label
+																			style="margin-top: 10px;">Active</label>
+																	</div>
+																</div>
+<!-- 																<div class="col-lg-9">
+																	<div class="form-group">
+																		<label>Employees</label>
+																		<div class="roletxtsec">
+																			<div class="rolestxt">Pinaki Datta</div>
+																		</div>
+																	</div>
+																</div>
+																<div class="col-lg-3 mrt_24">
+																	<div class="form-group">
+																		<button id="browseBtn" class="btn2">Select</button>
+																	</div>
+																</div> -->
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+
+
+
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id="delete" class="modal fade show" aria-modal="true">
+			<div class="modal-dialog modal-confirm">
+				<div class="modal-content">
+					<div class="modal-body">
+						<p>Do you really want to delete these records? This process
+							cannot be undone.</p>
+					</div>
+					<div class="modal-footer justify-content-center">
+						<button class="btn1" data-dismiss="modal"
+							onclick="cancelModalBtn();">Cancel</button>
+						<button class="btn3" id="deleteModalBtn">Delete</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id="deleteAuthModal" class="modal fade show" aria-modal="true">
+			<div class="modal-dialog modal-confirm">
+				<div class="modal-content">
+					<div class="modal-body">
+						<p>Do you really want to delete these records? This process
+							cannot be undone.</p>
+					</div> 
+					<div class="modal-footer justify-content-center">
+						<button class="btn1" data-dismiss="modal"
+							onclick="cancelModalBtn();">Cancel</button>
+						<button class="btn3" id="deleteAuthModalBtn">Delete</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id="browseModal" class="modal fade show" aria-modal="true">
+			<div class="modal-dialog modal-md" style="margin-top: 130px;">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h4 class="modal-title md-color">Select Employees</h4>
+						<button type="button" class="close cp" onclick="closeModal();"
+							data-dismiss="modal">&times;</button>
+					</div>
+					<div class="modal-body" style="height: 300px;">
+						<input type="hidden" id="empId">
+						<div id="myEmpGrid" class="ag-theme-alpine" style="height: 90%;"></div>
+					</div>
+					<div class="modal-footer">
+						<button class="btn4" data-dismiss="modal" onclick="closeModal();">Cancel</button>
+						<button class="btn1" id="selectEmployees">Select</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	 
+</body>
+</html>

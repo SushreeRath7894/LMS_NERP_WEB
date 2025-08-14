@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<meta charset="ISO-8859-1">
+<script type="text/javascript">
+	$(function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		var data = []
+		gridOptions.api.setRowData(data);
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalender").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#fromDate').val($(this).val());
+		})
+
+		$('#fromDate').blur(function() {
+			$("#fromDateCalender").val($(this).val());
+		})
+
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#toDate').val($(this).val());
+		})
+
+		$('#toDate').blur(function() {
+			$("#toDateCalendar").val($(this).val());
+		})
+
+		var todaysDate = getCurrentDate();
+		$("#fromDate").val(todaysDate);
+		$("#toDate").val(todaysDate);
+
+		viewWorkOrders()
+	});
+
+	function convertDateFormat(dateString) {
+		if (/^\d{2}-\d{2}-\d{4}$/.test(dateString)) {
+			var parts = dateString.split('-');
+			return parts[2] + '-' + parts[1] + '-' + parts[0];
+		} else if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+			return dateString;
+		}
+		return null;
+	}
+
+	var activity = sessionStorage.getItem('modName');
+	var pageno = 0;
+
+	
+	/* 	
+	 * function to get all work orders
+	 */
+	function viewWorkOrders() {
+		var fromdt = $("#fromDate").val();
+		var todt = $("#toDate").val();
+
+		fromdt = convertDateFormat(fromdt);
+		todt = convertDateFormat(todt);
+
+		agGrid.simpleHttpRequest(
+				{
+					url : "work-order-get-all?pageno=" + pageno + "&activity="
+							+ activity + "&fromDate=" + fromdt + "&toDate="
+							+ todt,
+				}).then(function(data) {
+			var jsonData = JSON.parse(data.body[0]);
+			var allData = jsonData.viewTicket;
+
+			if (allData != "" && allData != null && allData != 'null') {
+				var len = allData.length;
+				$('#totalReq').find('span').html(len);
+				$(".loader").hide();
+				gridOptions.api.setRowData(allData);
+			} else {
+				let data = [];
+				gridOptions.api.setRowData(data);
+			}
+		});
+	}
+
+
+
+	function getCurrentDate() {
+		var currentDate = new Date();
+
+		var day = currentDate.getDate(); // Get the day (1-31)
+		var month = currentDate.getMonth() + 1; // Get the month (0-11) and adjust it by adding 1
+		var year = currentDate.getFullYear(); // Get the full year (e.g., 2022)
+
+		// Format day, month, and year with leading zeros if necessary
+		var formattedDay = day < 10 ? "0" + day : day;
+		var formattedMonth = month < 10 ? "0" + month : month;
+
+		// Construct the date string in dd-mm-yyyy format
+		var formattedDate = formattedDay + "-" + formattedMonth + "-" + year;
+
+		return formattedDate;
+	}
+
+	//column Defs
+	const columnDefs = [
+
+	{
+		headerName : 'Ticket No',
+		field : "tcktNo",
+		pinned : 'left',
+		width : 110,
+	}, {
+		headerName : "Priority",
+		field : "ticketPriority",
+		width : 100,
+		cellStyle : {
+			textAlign : 'center'
+		},
+
+	}, {
+		headerName : "Ticket Status",
+		field : "isClosed",
+		cellStyle: {textAlign: 'center'},
+		cellRenderer : function(params) {
+			if(params.data.isClosed=="OPEN"){
+				return '<div style="color:#0642f5">OPEN</div>';
+			}else if(params.data.isClosed=="CLOSE"){
+				return '<div style="color:#D2042D">CLOSED</div>';
+			}else{
+				return '<div style="color:#a9a9a9">NOT ASSIGNED</div>';
+			}
+	}
+	}, {
+		headerName : "Raised On",
+		field : "riseDate",
+		cellStyle : {
+			textAlign : 'center'
+		}
+
+	}, {
+		headerName : "Ticket Location",
+		field : "raisedAddress",
+		cellStyle: {textAlign: 'center'}
+
+	}, {
+		headerName : "Assign Type",
+		field : "currAssignTypeName",
+		cellStyle : {
+			textAlign : 'center'
+		}
+
+	}, {
+		headerName : "Assign Status",
+		field : "currAssignTypeStatus",
+		cellStyle : {
+			textAlign : 'center'
+		}
+
+	}, {
+		headerName : 'Status',
+		field : "statusType",
+		pinned : 'left',
+		width : 110,
+		cellStyle : {
+			textAlign : 'center'
+		},
+		cellRenderer : function(params) {
+			if (params.data.statusType == "Accepted") {
+				return '<div style="color:#0642f5">Accepted</div>';
+			} else if (params.data.statusType == "Revoked") {
+				return '<div style="color:#D2042D">Revoked</div>';
+			} else {
+				return '<div style="color:#a9a9a9">Pending</div>';
+			}
+
+		}
+
+	}, {
+		headerName : 'Ticket Holder',
+		field : "assignedto",
+		pinned : 'left',
+		width : 180,
+		cellStyle : {
+			textAlign : 'center'
+		},
+		cellRenderer : function(params) {
+			if (params.data.assignedto) {
+				return params.data.assignedto;
+			} else {
+				return 'N/A';
+			}
+
+		}
+	}, {
+		headerName : "Complaint Type",
+		field : "tckttype",
+
+	}, {
+		headerName : "Complaint Category",
+		field : "tcktCat",
+
+	}, {
+		headerName : "Complaint Sub-Category",
+		field : "tcktSubCat",
+
+	}, {
+		headerName : "Description",
+		field : "desc",
+	}, {
+		headerName : 'Asset ID',
+		field : "assetid",
+		cellStyle : {
+			textAlign : 'center'
+		},
+
+	},{
+		headerName : 'Asset Name',
+		field : "assetName",
+		
+	}, {
+		headerName : "Department",
+		field : "department",
+	}, {
+		headerName : "Raised By",
+		field : "raisedby",
+	} ];
+
+	const gridOptions = {
+		columnDefs : columnDefs,
+		pagination: true,
+		paginationPageSize: 20,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 157,
+		
+			height : 10
+		},
+		rowSelection : 'single',
+		suppressRowClickSelection : true,
+	};
+
+	function downloadDetailsWorkoRDER() {
+		var dataset = [];
+		gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+
+		if (dataset.length > 0) {
+			var fdate = $("#fromDate").val();
+			var tdate = $("#toDate").val();
+
+			if ((fdate !== null && fdate !== '')
+					&& (toDate !== null && toDate !== '')) {
+				var name = "Work Order" + fdate + " to " + tdate;
+			} else {
+				var name = "Work Order";
+			}
+
+			const params = {
+				skipHeader : false,
+				columnGroups : false,
+				skipFooters : false,
+				skipGroups : false,
+				skipPinnedTop : false,
+				skipPinnedBottom : false,
+				allColumns : true,
+				onlySelected : false,
+				suppressQuotes : false,
+				fileName : name + '.csv',
+				sheetName : 'Sheet1',
+				customHeader : null,
+				customFooter : null,
+			};
+			gridOptions.api.exportDataAsCsv(params);
+		} else {
+			$("#messageParagraph").text(
+					"No work order available within the specified date range.");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+		}
+
+	}
+
+	function dateChange() {
+		var fromdate = $('#fromDate').val();
+		var fd = fromdate.split("-");
+		var todate = $('#toDate').val();
+		var td = todate.split("-");
+
+		if (fromdate != '' && todate != '') {
+			var fromDateObj = new Date(fd[2], fd[1] - 1, fd[0]); // Year, month (zero-based), day
+			var toDateObj = new Date(td[2], td[1] - 1, td[0]); // Year, month (zero-based), day
+
+			if (fromDateObj > toDateObj) {
+				$("#messageParagraph")
+						.text(
+								"Please choose a 'To' date greater than or equal to 'From' date.");
+				$("#msgOkModal").removeClass("btn3").addClass("btn1");
+				$("#msgModal").modal('show');
+
+				// Reset the 'from' and 'to' dates to today's date
+				var today = new Date();
+				var newToDate = formatDate(today);
+				var newFromDate = formatDate(new Date(today.getFullYear(),
+						today.getMonth(), 1)); // Set 'from' date to the first day of the current month
+
+				$("#fromDate").val(newFromDate);
+				$("#toDate").val(newToDate);
+			}
+		}
+
+		viewWorkOrders();
+	}
+
+	function formatDate(date) {
+		var day = String(date.getDate()).padStart(2, '0');
+		var month = String(date.getMonth() + 1).padStart(2, '0'); // Month is zero-based
+		var year = date.getFullYear();
+
+		return day + '-' + month + '-' + year;
+	}
+
+	function redirectToAsset(assetid) {
+		localStorage.setItem('assetIdData', assetid);
+		sessionStorage.setItem('module', 'MOD004');
+		sessionStorage.setItem('function', 'FUN0014');
+		sessionStorage.setItem('activity', 'ACT0076');
+		window.location.href = "/asset/asset-code";
+	}
+	
+	//For Employee Table Search Bar
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<div class="d-flex justify-content-between" id="startPagebtn">
+						<div class="font-design" id="totalReq">
+							Total Work Order(<span></span>)
+						</div>
+						<div id="searchRowDiv">
+							<div class="input-style">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" oninput="onQuickFilterChanged()"
+									id="quickFilter" autocomplete="off">
+								<div class="searchicon">
+									<a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey" onclick="cancelBar();" class="close_i"><i
+											class="ti-close srchicon"></i></span></a><a href="javascript:void(0)"><i
+										class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+						</div>
+						<div id='fdateDiv'>
+							<label>From Date</label>
+						</div>
+						<div>
+							<div class="form-group calendar_box">
+								<input type="text" id="fromDate" value=""
+									onchange="dateChange()" class="form-control"
+									placeholder="from date.."
+									th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+									readonly> <i class="ti-calendar picker_calendar"
+									id="fromDateCalender" onchange="dateChange()"
+									style="top: 14px; right: 0px;"></i>
+							</div>
+						</div>
+						<div id="tdateDiv">
+							<label>To Date</label>
+						</div>
+						<div>
+							<div class="form-group calendar_box">
+								<input type="text" id="toDate" value="" onchange="dateChange()"
+									class="form-control" placeholder="to date.."
+									th:attr="onkeyup=|formatDate('toDate','${session.DATEFORMAT_JS}')|"
+									readonly> <i class="ti-calendar picker_calendar"
+									id="toDateCalendar" onchange="dateChange()"
+									style="top: 14px; right: 0px;"></i>
+							</div>
+						</div>
+						<div class="buttonsec btn-hs">
+							<button class="approve-btn" id="gotoBtn"
+								onclick="downloadDetailsWorkoRDER()">Download</button>
+						</div>
+					</div>
+					<div id="myGrid" style="width: 100%; height: 500px;"
+						class="ag-theme-alpine mt-3"></div>
+				</div>
+			</div>
+		</div>
+
+
+	</div>
+</body>
+</html>

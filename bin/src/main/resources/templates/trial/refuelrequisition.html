@@ -1,0 +1,490 @@
+
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<style>
+#myReq .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff;
+	text-indent: 10px !important;
+}
+
+#myReq .ag-row-selected::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 3px;
+	right: 4px;
+}
+</style>
+<script>
+	
+		var columnDefs = [
+				{
+					headerCheckboxSelection : true,
+					headerCheckboxSelectionFilteredOnly : true,
+					checkboxSelection : true,
+					width : 10,
+					sortable : false,
+					filter : false,
+					resizable : true
+				},
+				{
+					headerName : "Refuel Req. Id",
+					field : "refuelReqId",
+					width:80,
+					cellRenderer : function(params) {
+						return '<a refuelReqId="refuelReqId" onclick=editId("'
+								+ params.data.refuelReqId
+								+ '") href="javascript:void(0)">'
+								+ params.data.refuelReqId + '</a>';
+					},cellStyle : {
+						textAlign : 'center'
+					}
+					},
+			 {
+					headerName : "Vehicle reg. No",
+					field : "vehicleRegno"
+				},{
+					headerName : "Fuel Type",
+					field : "fuelType"
+				}, 
+				{
+					headerName : "Current Odometer",
+					field : "currentOdometer",
+					cellStyle : {
+						textAlign : 'center'
+					}
+				}, {
+					headerName : "Quantity",
+					field : "quantity"
+				}, {
+					headerName : "Fuel Station",
+					field : "fuelStationId"
+				}, {
+					headerName : "Status",
+					field : "status",
+					width:110,cellRenderer : function(params) {
+						if (params.data.status == "1") {
+							return '<div style="color:green">' + 'Release'
+									+ '</div>';
+						} else {
+							return '<div>' + 'Pending' + '</div>';
+						}
+					}
+				},{
+					headerName : "Active",
+					field : "active",
+					width:100
+				}
+				];
+		$("#refuelReqId").click(function() {
+			$("#a").css("display", "block");
+			$("#b").css("display", "block");
+		});
+
+		
+		var gridOptions = {
+			columnDefs : columnDefs,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 200,
+				height : 10
+			},
+			rowSelection : 'multiple',
+			onSelectionChanged : onSelectionChanged
+	
+		};
+		
+	
+	
+	
+		function onQuickFilterChanged() {
+			gridOptions.api
+					.setQuickFilter(document.getElementById('quickFilter').value);
+		}
+	
+		function addCandidate() {
+			
+	
+			$('#hideTbl').hide();
+			$('#buttonDetails').hide();
+			$('#myGrid').hide();
+			$('#demo').show();
+			$("#btn1").show();
+			$('#candidateId').val("");
+	
+			$("#collapseOne").collapse({
+				toggle : true
+			}).collapse('show');
+		
+		}
+
+		$(document).ready(function(){
+			$('#reqDltBtn').attr('disabled', true);
+			
+			var gridDiv = document.querySelector('#myGrid');
+			new agGrid.Grid(gridDiv, gridOptions);
+			
+			gridOptions.api.setRowData();
+
+			agGrid.simpleHttpRequest({
+				url : "refuelrequition-view"
+			}).then(function(data) {
+				gridOptions.api.setRowData(data);
+				console.log(JSON.stringify(data));
+			});
+		});
+		
+		
+		function cancelbtn()
+		{
+			$('#reqDltBtn').attr('disabled', true);
+			$("#myGrid").show();
+			$("#btn1").hide();
+			$("#demo").hide();
+			$("#hideTbl").show();
+			$("#buttonDetails").show();
+		}
+		function candidateSave()
+		{
+		
+			var obj = {};
+			obj.refuelReqId=$('#refuelReqId').val();
+			obj.vehicleRegno=$('#vehicleRegno').val();
+			obj.fuelType = $('#fuelType').val();
+			obj.quantity = $('#quantity').val();
+			obj.currentOdometer = $('#currentOdometer').val();
+			obj.fuelStationId = $('#fuelStationId').val();
+			obj.status=$('#status').val();
+			obj.lastOdometer = $('#lastOdometer').val();
+			
+			
+			alert(JSON.stringify(obj));
+			$.ajax({
+				type : "POST",
+				url : "refuelrequition-add",
+				dataType : 'json',
+				contentType : 'application/json',
+				data : JSON.stringify(obj),
+
+				success : function(response) {
+					if (response.message == "Success") {
+
+						agGrid.simpleHttpRequest({
+							url : "refuelrequition-view"
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+						cancelbtn();
+					}
+				},
+				error : function(data) {
+					console.log(data)
+				}
+			});
+		}
+		
+		function onSelectionChanged() {
+			var selectedRows = gridOptions.api.getSelectedRows();
+			var rowCount = 0;
+			selectedRows.forEach(function(selectedRow, index) {
+				rowCount = rowCount + 1;
+			});
+
+			if (rowCount > 0) {
+				$('#reqDltBtn').attr('disabled', false);
+			} else {
+				$('#reqDltBtn').attr('disabled', true);
+			}
+
+		}
+
+		function onSelectionChanged() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			$('#reqDltBtn').attr('disabled', false);
+		} else {
+			$('#reqDltBtn').attr('disabled', true);
+		}
+
+	}
+
+		function editId(refuelReqId) {
+			alert(refuelReqId);
+
+			addCandidate();
+
+			$.ajax({
+				type : "GET",
+				url : "refuelrequition-edit?refuelReqId=" + refuelReqId,
+				dataType : 'json',
+				contentType : 'application/json',
+				data : refuelReqId 	,
+				success : function(response) {
+					if (response.message == "Success") {
+						addCandidate();
+						console.log("edit", response.body)
+						$('#refuelReqId').val(response.body.refuelReqId);
+						$('#vehicleRegno').val(response.body.vehicleRegno);
+						$('#fuelType').val(response.body.fuelType);
+						$('#quantity').val(response.body.quantity);
+						$('#fuelStationId').val(response.body.fuelStationId);
+						$('#lastOdometer').val(response.body.lastOdometer);
+						$('#status').val(response.body.status);
+					}
+				},
+				error : function(data) {
+					console.log(data)
+					$('#refuelReqId').val("");
+					$('#vehicleRegno').val("");
+					$('#fuelType').val("");
+					$('#quantity').val("");
+					$('#fuelStationId').val("");
+					$('#lastOdometer').val();
+					$('#status').val("");
+
+				}
+			});
+		}
+		function deleteFun() {
+			var selectedRows = gridOptions.api.getSelectedRows();
+			var refuelReqId = selectedRows[0].refuelReqId;
+			alert(refuelReqId);
+			$.ajax({
+				type : "GET",
+				url : "refuelrequition-delete?refuelReqId=" + refuelReqId,
+				success : function(response) {
+					alert("hi")
+					if (response.message == "Success") {
+						agGrid.simpleHttpRequest({
+							url : "refuelrequition-view"
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+						});
+						alert("successfully delete");
+						cancelBtn();
+					}
+				},
+				error : function(data) {
+					console.log(data);
+				}
+			})
+		}
+		
+		
+	</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="row margin_topbot" id="hideTbl">
+
+							<div class="input-style row">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter">
+								<div class="searchicon">
+									<a href="javascript: void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript: void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+
+						</div>
+						<div class="col-md-12 padding-7" id="buttonDetails">
+							<div class="row mt-20">
+
+								<div class="col-md-4  btn-hs">
+									<div class="font-design" id="totalReq">Refuel Requition
+										List(2)</div>
+								</div>
+								<div class="col-md-6 btn-hs">
+									<div class=""></div>
+								</div>
+								<div class="col-md-2 btn-hs">
+
+
+									<button class="btn3" id="reqDltBtn" onclick="deleteFun()">DELETE</button>
+									<button class="btn1" onclick="addCandidate()" id="add100">NEW</button>
+
+
+								</div>
+
+							</div>
+						</div>
+
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+
+
+						<div class="collapse" id="demo">
+							<div class="innerstickybg">
+
+								<div class="row">
+
+									<div class="col-md-4"></div>
+									<div class="col-md-4"></div>
+									<div class="col-md-4" align="right" id="btn1">
+										<button class="btn4" id="cancelBtn" onclick="cancelbtn()">Cancel
+										</button>
+										<button class="btn1" id="saveVendor" onclick="candidateSave()">Save</button>
+									</div>
+								</div>
+
+							</div>
+							<div class="innercontent">
+								<div class="row">
+
+									<div class="col-md-9" id="candidateDetailsBar">
+
+
+										<div class="name" id="nameDtls"></div>
+
+										<div class="mt-0">
+											<div class="details" id="locationDtls"></div>
+										</div>
+
+										<div class="mt-20">
+											<div class="details" id="mobileNoDtls"></div>
+
+											<div class="details" id="emailDtls"></div>
+										</div>
+
+
+
+
+
+									</div>
+								</div>
+							</div>
+							<div id="main">
+
+								<div class="wrapper center-block">
+
+									<div class="accordion" id="accordionExample">
+										<div class="accordion-item">
+											<h2 class="accordion-header" id="headingOne">Add
+												Refueiling Requition</h2>
+											<div id="collapseOne" class="accordion-collapse collapse"
+												aria-labelledby="headingOne"
+												data-bs-parent="#accordionExample">
+												<div class="accordion-body">
+													<div class="row">
+
+
+
+														<div class="col-lg-6">
+															<div class="form-group">
+															<input type="hidden" class="form-control" id="refuelReqId"
+															autocomplete="off">
+																<label>Vehicle Reg. No*</label>
+																<div class='select'>
+																	<select class="form-control" id="vehicleRegno">
+																		<option value="">Please Select One</option>
+																		<option th:each="c,iter:${vendorRegNo}"
+																			th:value="${c.name}" th:text="${c.name}"></option>
+
+																	</select>
+																</div>
+
+															</div>
+														</div>
+
+														<div class="col-lg-6">
+															<div class="form-group">
+																<label>Fuel Type *</label>
+																<div class='select'>
+																	<select class="form-control" id="fuelType">
+																		<option value="">Please Select One</option>
+																		<option th:each="c,iter:${fuelTypeList}"
+																			th:value="${c.name}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+														</div>
+														<div class="col-lg-6">
+															<div class="form-group calendar_box">
+																<label>Quantity *</label> <input type="number"
+																	id="quantity" class="form-control">
+															</div>
+														</div>
+														<div class="col-lg-6">
+															<div class="form-group">
+																<label>Current Odometer *</label><input type="number"
+																	id="currentOdometer" class="form-control"
+																	placeholder="Current Odometer">
+															</div>
+														</div>
+														<div class="col-lg-6">
+															<div class="form-group">
+																<label>Fuel Station</label>
+																<div class='select'>
+																	<select class="select" id="fuelStationId">
+																		<option value="">Please Select One</option>
+																		<option th:each="c,iter:${fuelStationList}"
+																			th:value="${c.name}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+														</div>
+														<div class="col-lg-6">
+															<div class="form-group">
+																<label>Last Odometer</label>
+																<div>
+																	<input type="text" id="lastOdometer"
+																		class="form-control" placeholder="Last Odometer">
+																</div>
+															</div>
+														</div>
+														<div class="col-lg-6">
+															<div class="form-group">
+															<label>Status</label>
+																<div class='select'>
+																	<select class="select" id="status">
+																		<option value="">Please Select One</option>
+																		<option value="0">Pending</option>
+																		<option value="1">Release</option>
+																	</select>
+																</div>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+
+</body>
+
+</html>

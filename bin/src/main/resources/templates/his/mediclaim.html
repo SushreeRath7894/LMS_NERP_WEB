@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+
+<head>
+<style>
+.ps-List {
+	background-color: #dedede !important;
+	font-weight: 500 !important;
+	margin-left: 11px !important;
+	color: #848484 !important;
+	padding: 4px;
+	border-radius: 7px;
+	border-left: solid;
+	border-top: solid;
+}
+
+.clickable-cell {
+	cursor: pointer;
+	display: block;
+	text-align: center;
+}
+</style>
+
+<script>
+
+	$(document).ready(function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		
+		gridOptions.api.setRowData(rowData);
+		$('#pdf').attr('disabled', true);
+		
+	});
+	//function for download
+	function downloadDetails() {
+		var params = {
+			fileName: 'Discharge_List.csv', // Specify your custom filename here
+		};
+		gridOptions.api.exportDataAsCsv(params);
+	}
+	
+		
+		/* -------------------search bar for mygrid----------------------- */
+
+		function onQuickFilterChanged() {
+			gridOptions.api.setQuickFilter(document.getElementById('quickFilter').value);
+			var totalRowCount = gridOptions.api.getModel().getRowCount();
+			$('#totalMetaDetector').find('span').html(gridOptions.api.getModel().getRowCount());
+		}
+
+		function cancelBar() {
+			var id = document.getElementById("closeKey");
+			id.style.display = "block";
+
+			if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+				id.style.display = "none";
+			}
+		}
+		 // Static row data
+        var rowData = [
+            {
+            	patientId: "IPD/2023-24/00001",
+            	patientName: "Gyana Nayak",
+            	deptName: "Medicine",
+            	word: "General Ward",
+                bed: "Standard-010",
+                insurance : "Aditya Birla Insurance",
+                status : "Claimed"
+            },
+            {
+                patientId: "IPD/2023-24/00002",
+                patientName: "Raj Kumar",
+                deptName: "Medicine",
+                word: "General Ward",
+                bed: "Standard-001",
+                insurance : "Sun Life Insurance",
+                status : "Pending"
+            }
+        ];
+		var columnDefs = [
+			{
+				headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : false,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true,
+				pinned : 'left',
+
+			},
+			{
+				headerName : 'Patient Id',
+				field : "patientId",
+				pinned : 'left',
+				width : 250,
+				flex:1
+
+			}, {
+				headerName : 'Patient Name',
+				field : "patientName",
+				width : 250,
+				flex:1
+				
+			},{
+				headerName : 'Department',
+				field : "deptName",
+				width : 250,
+				flex:1
+				
+			}, {
+				headerName : 'Ward',
+				field : "word",
+				width : 180,
+				flex:1
+				
+			}, {
+				headerName : 'Bed',
+				field : "bed",
+				width : 180,
+				flex:1
+				
+			}
+			, {
+				headerName : 'Insurance Company',
+				field : "insurance",
+				width : 250,
+				flex:1
+				
+			},{
+			    headerName: 'Status',
+			    field: 'status',
+			    width: 250,
+			    cellStyle: function(params) {
+			        if (params.value === 'Claimed') {
+			            return { 'background-color': '#d4edda', 'color': '#155724', 'text-align': 'center' };  // Green for Claimed
+			        } else if (params.value === 'Pending') {
+			            return { 'background-color': '#f8d7da', 'color': '#721c24', 'text-align': 'center' };  // Red for Not Claimed
+			        } else {
+			            return { 'text-align': 'center' };
+			        }
+			    },
+			    cellRenderer: function(params) {
+	                return `<span>${params.value || ''}</span>`;
+	            },
+	            flex: 1,
+	        
+	        // Other column definitions...
+	    
+	    /* onCellClicked: function(event) {
+	        if (event.colDef.field === 'status') {  // Check if the clicked cell is in the 'status' column
+	            openClaimModal(event.rowIndex);  // Open the modal with the row index
+	        }
+	    }, */
+			
+				
+			},{
+			    headerName: 'Claim',
+			    field: 'status',
+			    width: 100,
+			    cellRenderer : function(params) {
+					return '<a onclick=openClaimModal("' + params.data.status
+					+ '") style="color: var(--primary); cursor: pointer">Claim</a>';
+				}
+			}];
+		
+		
+		function openModal() {
+			$("#myModal").show();
+		}
+
+	// let the grid know which columns and what data to use
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowData: rowData, 
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 150
+		},
+		onSelectionChanged : onSelectionChanged,
+	};
+
+	//function for row select parents
+	
+	function onSelectionChanged() {
+		var selectedNodes = gridOptions.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+			$('#pdf').attr('disabled', false);
+			
+		
+		}else {
+			$('#pdf').attr('disabled', true);
+		}
+	}
+
+	
+		
+	let selectedRowIndex = null;
+
+	function openClaimModal(rowIndex) {
+		
+		 const rowNode = gridOptions.api.getDisplayedRowAtIndex(rowIndex);
+		    
+		    // Clear the current status value in the cell
+		    // rowNode.setDataValue('status', ''); // Clear the existing value before showing the modal
+
+		    selectedRowIndex = rowIndex; // Store the selected row index
+		    
+		    if(rowIndex == 'Pending') {
+		    	$('#myModal').modal('show');
+		    }
+		     // Show the modal
+	}
+   
+	function updateStatus(newStatus) {
+	    const rowNode = gridOptions.api.getDisplayedRowAtIndex(selectedRowIndex);
+	    
+	    // Directly update the status value, replacing any previous data
+	    rowNode.setDataValue('status', newStatus); // This replaces any previous value
+	    
+	    // Hide the modal after the selection
+	    $('#myModal').modal('hide');
+	}
+	
+	function sumTotal() {
+		let a = $("#a").val();
+		let b = $("#b").val();
+		let c = $("#c").val();
+		let d = $("#d").val();
+		
+		if(a != '' && a != null) {
+			a = parseFloat(a).toFixed(2);
+			$('#a').val(a);
+		} else {
+			a = 0;
+		}
+		if(b != '' && b != null) {
+			b = parseFloat(b).toFixed(2);
+			$('#b').val(b);
+		} else {
+			b = 0;
+		}
+		if(c != '' && c != null) {
+			c = parseFloat(c).toFixed(2);
+			$('#c').val(c);
+		} else {
+			c = 0;
+		}
+		if(d != '' && d != null) {
+			d = parseFloat(d).toFixed(2);
+			$('#d').val(d);
+		} else {
+			d = 0;
+		}
+		
+		let e = 0;
+		e = parseFloat(a) + parseFloat(b) + parseFloat(c) + parseFloat(d);
+		
+		$("#e").val(e.toFixed(2));
+	}
+	
+	function cancelBtn() {
+		$("#a").val('');
+		$("#b").val('');
+		$("#c").val('');
+		$("#d").val('');
+		$("#e").val('');
+		$("#myModal").modal('hide');
+	}
+	
+	function approve() {
+		var rowData = [
+            {
+            	patientId: "IPD/2023-24/00001",
+            	patientName: "Gyana Nayak",
+            	deptName: "Medicine",
+            	word: "General Ward",
+                bed: "Standard-010",
+                insurance : "Aditya Birla Insurance",
+                status : "Claimed"
+            },
+            {
+                patientId: "IPD/2023-24/00002",
+                patientName: "Raj Kumar",
+                deptName: "Medicine",
+                word: "General Ward",
+                bed: "Standard-001",
+                insurance : "Sun Life Insurance",
+                status : "Claimed"
+            }
+        ];
+		gridOptions.api.setRowData(rowData);
+		$("#myModal").modal('hide');
+	}
+	</script>
+
+</head>
+
+<body>
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="d-flex justify-content-between align-items-center"
+							id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalMetaDetector">Mediclaim
+									List</div>
+							</div>
+							<!-- <div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalAsset').find('span').html(gridOptions.api.getModel().getRowCount());"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div> -->
+							<div class="button-right"></div>
+
+						</div>
+
+
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+					</div>
+				</div>
+
+
+
+
+
+			</div>
+		</div>
+		<div class="modal fade" id="myModal" tabindex="-1" role="dialog"
+			aria-labelledby="dietPlanModalLabel" aria-hidden="true">
+			<div class="modal-dialog modal-lg" role="document">
+				<div class="modal-content">
+					<div class="modal-body">
+						<div class="row">
+							<div class="col-md-12" id="patientTypeBox">
+								<h4>Patient Information</h4>
+								<div class="row">
+									<div class="col-lg-6">
+										<div class="form-group">
+											<label>Patient Name</label>
+											<input type="text" class="form-control" value="Raj Kumar">
+										</div>
+									</div>
+									<div class="col-lg-6">
+										<div class="form-group">
+											<label>Policy Number</label>
+											<input type="text" class="form-control" value="">
+										</div>
+									</div>
+									<div class="col-lg-3">
+										<div class="form-group">
+											<label>Date Of Birth</label>
+											<input type="text" class="form-control" value="10-01-1996">
+										</div>
+									</div>
+									<div class="col-lg-3">
+										<div class="form-group">
+											<label>Gender</label>
+											<input type="text" class="form-control" value="Male">
+										</div>
+									</div>
+									<div class="col-lg-3">
+										<div class="form-group">
+											<label>Email</label>
+											<input type="text" class="form-control" value="">
+										</div>
+									</div>
+									<div class="col-lg-3">
+										<div class="form-group">
+											<label>Mobile Number</label>
+											<input type="text" class="form-control" value="">
+										</div>
+									</div>
+									
+
+								</div>
+								<h4>Treatment Details</h4>
+								<div class="row">
+									<div class="col-lg-12">
+										<div class="form-group">
+											<label>Date Of Service</label>
+											<input type="text" class="form-control" value="23-10-2024">
+										</div>
+									</div>
+								</div>
+								<h4>Cost Breakdown</h4>
+								<div class="row">
+									<div class="col-lg-12">
+										<div class="form-group">
+											<label>Consultation Fee</label>
+											<input type="text" class="form-control" value="" id="a" onchange="sumTotal()">
+										</div>
+									</div>
+									<div class="col-lg-12">
+										<div class="form-group">
+											<label>Procedure/Service</label>
+											<input type="text" class="form-control" value="" id="b" onchange="sumTotal()">
+										</div>
+									</div>
+									<div class="col-lg-12">
+										<div class="form-group">
+											<label>Medication</label>
+											<input type="text" class="form-control" value="" id="c" onchange="sumTotal()">
+										</div>
+									</div>
+									<div class="col-lg-12">
+										<div class="form-group">
+											<label>Other Charges</label>
+											<input type="text" class="form-control" value="" id="d" onchange="sumTotal()">
+										</div>
+									</div>
+									<div class="col-lg-12">
+										<div class="form-group">
+											<label>Total</label>
+											<input type="text" class="form-control" value="" id="e">
+										</div>
+									</div>
+								</div>
+								<div class="row" style="margin-top:10px">
+									<div class="col-lg-12">
+										<button class="btn3" onclick="cancelBtn()">Cancel</button>
+										<button class="btn1" onclick="approve()">Approve</button>
+									</div>
+								</div>
+								<!-- <div class="form-group" style="margin-bottom: 20px;">
+									<hr class="col-lg-12">
+									<label for="Insurance"> <input type="radio"
+										id="insurance" value="Claimed" name="patient"
+										onclick="updateStatus('Claimed')" /> Claimed
+									</label> <label for="Cash"> <input type="radio" id="cash"
+										value="Not Claimed" name="patient"
+										onclick="updateStatus('Not Claimed')" /> Not Claimed
+									</label>
+								</div> -->
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+
+</html>

@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+	<!-- layout:decorate="~{layout/master}"> -->
+<head>
+<meta charset="ISO-8859-1">
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+</style>
+
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(function(){
+				$("#myGrid").show();
+				var gridDiv = document.querySelector('#myGrid');
+				new agGrid.Grid(gridDiv, gridOptions);
+ 
+				
+				var userid = $("#sessionId").val();
+				var userrole = $("#sessionRole").val();
+				var roleid = "";
+				for(var i = 6; i <= userrole.length; i=i+6){  
+				    roleid = roleid + '"' +userrole.slice(i-6, i)+ '",';
+				}
+				roleid = roleid.substring(0, roleid.length - 1);
+				gridOptions.api.setRowData();
+				
+				agGrid.simpleHttpRequest({
+					url : "accountant-section-view?userid=" + userid,
+				}).then(function(data) {
+					var len = data.length;
+					$('#totalReq').find('span').html(len);
+					gridOptions.api.setRowData(data);
+				})
+              $('#payment').attr("disabled", true);
+   
+		      $("#transactionDate").val(currentDate);
+				HideBank();
+				$("#form").hide();
+				$("#cancel").hide();
+				$("#save").hide();
+				
+			  });
+	
+	/* -------------------search bar for mygrid1------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	//Advance Management
+	const columnDefs = [
+			{
+				headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+			{
+				headerName : 'Requisition Id',
+				field : "reqId",
+			}, {
+				headerName : 'Requisition Name',
+				field : "reqName",
+				width : 160,
+			}, {
+				headerName : 'Employee Id',
+				field : "empID",
+			}, {
+				headerName : 'Employee Name',
+				field : "empName",
+			}, {
+				headerName : 'Amount',
+				field : "amount",
+				cellStyle : {
+					textAlign : 'right'
+				}
+			},
+			{
+				headerName : 'Payment Status',
+				field : "paymentStatus",
+				cellStyle : {
+					textAlign : 'center'
+				},
+					cellRenderer : function(params) {
+						if (params.data.paymentStatus == "Paid") {
+							return '<div style="color:#0642f5">Paid</div>';
+						} else {
+							return '<div style="color:#a9a9a9">Pending</div>';
+						}
+					}
+				
+			},{
+				headerName : 'Paid Amount',
+				field : "paidAmount",
+				cellStyle : {
+					textAlign : 'right'
+				}
+			}, {
+				headerName : 'Payment Option',
+				field : "paymentOption",
+			},  {
+				headerName : 'Payment By',
+				field : "paymentBy",
+			}, {
+				headerName : 'Payment Date',
+				field : "paymentDate",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}]; 
+	
+	
+	//Advance management
+	const gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 150,
+			height : 10
+		},
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		onSelectionChanged : rowSelectId,
+	};
+		function addPay() {
+			HideBank();
+			 var selectedNodes = gridOptions.api.getSelectedNodes();
+			 var selectedData = selectedNodes.map(node => node.data);
+			 $("#reqhid").val(selectedData.map(node => node.reqId))
+			 $("#reqNamehid").val(selectedData.map(node => node.reqName))
+			 $("#empIdhid").val(selectedData.map(node => node.empID))
+			 $("#amounthid").val(selectedData.map(node => node.amount))
+			//alert($("#amounthid").val(selectedData.map(node => node.amount)))
+		var selectedRows = gridOptions.api.getSelectedRows();
+		
+		payGridOptions.api.setRowData(selectedRows);
+		$("#myModal").modal('show');
+		
+		var date = (new Date()).toISOString().split('T')[0];
+		var newDate = changeDateFormat(date);
+		$("#transactionDate").val(newDate);
+		$("#amount").val(selectedData.map(node => node.amount))
+		
+	    var Reqname= $("#reqNamehid").val();
+		
+			  if (Reqname=='Advanvc'){
+	           document.getElementById('amount').readOnly
+	                   = true;
+/* 	             
+	           document.getElementById("changeField").innerHTML
+	                   = "Read-Only attribute enabled"; */
+			  }
+	}
+	
+		function rowSelectId() {
+			var selectedNodes = gridOptions.api.getSelectedNodes();
+			 var selectedData = selectedNodes.map(node => node.data);
+			       status= selectedData.map(node => node.paymentStatus);
+			
+			var selectedRows = gridOptions.api.getSelectedRows();
+			id = "";
+			for (var i = 0; i < selectedRows.length; i++) {
+
+				id = id + '"' + selectedRows[i].status + '",';
+				console.log(selectedRows[i].status);
+			}
+			id = id.substring(0, id.length - 1);
+
+			var rowCount = 0;
+			selectedRows.forEach(function(i) {
+				rowCount = rowCount + 1;
+			});
+			if (rowCount > 0) {
+				if(status=='Paid'){
+					$('#payment').attr("disabled", true);
+				} else {
+					$('#payment').attr("disabled", false);
+			   }
+			}else{
+				$('#payment').attr("disabled", true);
+				
+			}
+			
+
+}
+	
+		
+		
+	 document.addEventListener('DOMContentLoaded', function() {
+
+		var gridDiv = document.querySelector('#payGrid');
+		new agGrid.Grid(gridDiv, payGridOptions);
+
+	});
+
+	// let the grid know which columns and what data to use product table
+
+	var payGridDefs = [ {
+		headerName : "Requisition Id",
+		field : "reqId",
+
+	}, {
+		headerName : "Requisition Name",
+		field : "reqName",
+
+	}, {
+		headerName : "Employee Name",
+		field : "empName",
+
+	}, {
+		headerName : "Amount",
+		field : "amount",
+	} ];
+ 
+	var payGridOptions = {
+			columnDefs : payGridDefs,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 190
+			},
+			rowSelection : 'multiple',
+			groupSelectsChildren : true,
+			suppressRowClickSelection : true,
+			suppressAggFuncInHeader : true,
+		};
+	//Add details for Reimbrusement Payment
+
+	function addDetailsPayment() {
+		var obj = {};
+		obj.paymentId = $("#paymentId").val();
+		obj.total = $("#total").val();
+		obj.amtPaid = $("#amtPaid").val();
+		obj.advRequired = $("#advRequired").val();
+		obj.paymentMode = $("#paymentMode").val();
+		obj.bankName = $("#bankName").val();
+		obj.branchName = $("#branchName").val();
+		obj.accNo = $("#accNo").val();
+		obj.transactionDate = $("#transactionDate").val();
+		obj.chequeNo = $("#chequeNo").val();
+		obj.transactionNo = $("#transactionNo").val();
+		
+		obj.reqId = $("#reqhid").val();
+		obj.reqName = $("#reqNamehid").val();
+		obj.empId = $("#empIdhid").val();
+		obj.amount = $("#amount").val();
+	 
+		var validation = true;
+		if (!validationUpdated("Select Payment Mode", "paymentMode")) {
+			validation = false;
+		}
+		if (!validationUpdated("Please Enter Paid Amount", "amount")) {
+			validation = false;
+		}
+		if (obj.paymentMode == "PMOD002") {
+			HideBank();
+		} else if (obj.paymentMode == "PMOD004") {
+			if (!validationUpdated("Select Bank Name", "bankName")) {
+				validation = false;
+			}
+			if (!validationUpdated("Please Enter Branch Name", "branchName")) {
+				validation = false;
+			}
+			if (!validationUpdated("Please Enter Account Number", "accNo")) {
+				validation = false;
+			}
+			if (!validationUpdated("Please Enter Transaction Number", "transactionNo")) {
+				validation = false;
+			}
+
+		} else if (obj.paymentMode == "PMOD003") {
+			if (!validationUpdated("Select Bank Name", "bankName")) {
+				validation = false;
+			}
+			if (!validationUpdated("Please Enter Branch Name", "branchName")) {
+				validation = false;
+			}
+			if (!validationUpdated("Please Enter Cheque Number", "chequeNo")) {
+				validation = false;
+			}
+		} else {
+		}
+		if (validation) {
+			console.log(obj)
+			$.ajax({
+				type : "POST",
+				url : "accountant-section-add-paymentDetails", 
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "Success") {
+				 	$("#messageParagraph").text(
+						"Data Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+
+						$("#myGrid").show();
+						$("#myModal").modal('hide');
+						var uid = $("#sessionId").val();
+						agGrid.simpleHttpRequest({
+							url : "accountant-section-view?userid=" + uid,
+						}).then(function(data) {
+							var len = data.length;
+							$('#totalReq').find('span').html(len);
+							gridOptions.api.setRowData(data);
+						})
+					}
+				},
+				error : function(data) {
+				}
+			})
+		}
+	}
+
+	
+	function checkBankDetails() {
+		 $('.formValidation').remove();
+		var paymentMode = $("#paymentMode").val();
+		if (paymentMode == "PMOD002") {
+			HideBank();
+		} else if (paymentMode == "PMOD004") {
+			ShowTrNo();
+		} else if (paymentMode == "PMOD003") {
+			ShowCqNo();
+		} else {
+			HideBank();
+		}
+	}
+
+	// for  hide and show bank div 
+	function HideBank() {
+		$('#bankNamediv').hide();
+		$('#branchNamediv').hide();
+		$('#accNodiv').hide();
+		$('#chequeNoDiv').hide();
+		$('#paidFromDiv').hide();
+		$('#availBalDiv').hide();
+		$('#transNoDiv').hide();
+		$('#bankName').val('');
+		$('#branchName').val('');
+		$('#accNo').val('');
+		$('#chequeNo').val('');
+		$('#paidFrom').val('');
+		$('#transNo').val('');
+	}
+
+	function ShowCqNo() {
+		$('#bankNamediv').show();
+		$('#branchNamediv').show();
+		$('#accNodiv').hide();
+		$('#paidFromDiv').show();
+		$('#availBalDiv').show();
+		$('#transNoDiv').hide();
+		$('#chequeNoDiv').show();
+	}
+
+	function ShowTrNo() {
+		$('#bankNamediv').show();
+		$('#branchNamediv').show();
+		$('#accNodiv').show();
+		$('#transNoDiv').show();
+		$('#paidFromDiv').show();
+		$('#availBalDiv').show();
+		$('#chequeNoDiv').hide();
+	}
+	
+	function changeDateFormat(inputDate){  // expects Y-m-d
+	    var splitDate = inputDate.split('-');
+	    if(splitDate.count == 0){
+	        return null;
+	    }
+
+	    var year = splitDate[0];
+	    var month = splitDate[1];
+	    var day = splitDate[2]; 
+
+	    return day + '-' + month + '-' + year;
+	}
+	
+	
+	function downloadDetails() { 
+		  var dataset = [];
+		  gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		        dataset.push(rowNode.data);
+		    });
+		  gridOptions.api.exportDataAsCsv(dataset);
+		}
+	
+	 /* function checkAlphabet(fieldId) {
+		    var tempVal = $("#" + fieldId).val().replace(/[^a-zA-Z. ]/g,'');
+		    $("#" + fieldId).val(tempVal);
+		} */
+		function checkAlphabet(fieldId) {
+			
+		    var tempVal = $("#" + fieldId).val().replace(/[^a-zA-Z. ]/g,'');
+		    tempVal=tempVal.replace(/^\w/, c => c.toUpperCase());
+		    
+		    const input = document.getElementById(fieldId);
+		    const position = input.selectionStart;	
+		    if(position == 1 && tempVal.charAt(0) == ' '){
+		    	$("#" + fieldId).empty();
+		    	tempVal = '';
+		   } 
+		   $("#" + fieldId).val(tempVal);
+		} 
+	 
+
+		
+	 function checkNumeric(fieldId) {
+		 
+		 var tempVal = $("#" + fieldId).val().replace(/[^0-9 ]/g, '');
+		    const input = document.getElementById(fieldId);
+		    const position = input.selectionStart;	
+		    if(tempVal.slice(-1) == ' '){
+		     	$("#" + fieldId).empty();
+		     	tempVal = '';
+		     } 
+		   $("#" + fieldId).val(tempVal);
+		} 
+	
+	 
+	 function cancelModalDeleteBtn(){
+		 location.reload();
+	 }
+	 
+	 
+	 function checkNum(fieldId, message) {
+			//var alphaNumericRegExp = new RegExp(/^([0-9]|[a-z])+([a-z]+)$/i);
+			 var tempVal = $("#" + fieldId).val().replace(/[^a-zA-Z0-9]/g, '');
+			 $("#" + fieldId).val(tempVal);
+
+		}
+	 //Amount validation
+	 function checkAmount(fieldId) {   
+		var myField = document.getElementById("amount")
+		 var reg = /^\d{0,8}(\.\d{0,2})?$/;   
+		 if (reg.test(myField.value))
+		 {       
+			 $("#" + fieldId).val();
+			 reg = '';  
+		 }else{        
+			 $("#" + fieldId).val(null);     } 
+		 }  
+	
+</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+						<div id="main">
+
+							<div class="d-flex justify-content-between">
+								<div class="btn-hs">
+									<div class="font-design" id="totalReq">
+										Accountant Section LIST (<span></span>)
+									</div>
+								</div>
+															<div id="searchRowDiv">
+							<div class="input-style">
+								<input type="text" placeholder="Search.." name="search"
+									class="searchboxinput" onkeyup="cancelBar()"
+									oninput="onQuickFilterChanged()" id="quickFilter" autocomplete="off">
+								<div class="searchicon">
+									<a href="javascript:void(0)"><span
+										style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+										id="closeKey"
+										onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+										class="close_i"><i class="ti-close srchicon"></i></span></a><a
+										href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+								</div>
+							</div>
+						</div>
+	 
+
+								<div class="buttonsec btn-hs">
+									<button class="download-btn" onclick="downloadDetails()">Download</button>
+									<button class="save-btn" id="payment" onclick="addPay()">PAY</button>
+								</div>
+							</div>
+
+							<div id="main">
+							<input type="hidden" id="reqhid">
+							<input type="hidden" id="reqNamehid">
+							<input type="hidden" id="empIdhid">
+							<input type="hidden" id="amounthid">
+								<input type="hidden" id="sessionId" th:value="${userId}" />
+						<!-- 		<input type="hidden" id="sessionName" th:value="${userName}" />  -->
+								 <input	type="hidden" id="hrRole" th:value="${hrRole}" /> 
+								 <input	type="hidden" id="sessionRole" th:value="${userRole}" />
+								
+								 <div id="myGrid" style="width: 100%; height: 500px;"
+									class="ag-theme-alpine"></div>
+
+								 
+							</div>
+						</div>
+					
+					<!-- alert modal start -->
+					<div id="alert" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-bs-dismiss="modal"
+										aria-hidden="true" onclick="cancelModalBtn()">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p id="textId"></p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: -30px;">
+
+									<button type="button" class="close-btn" data-bs-dismiss="modal"
+										onclick="cancelModalBtn();">Close</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+				</div>
+				<!-- ------------------------------------------------Modal-------------------------------------------------------------------------- -->
+			
+				<!-- Payment Modal Start-->
+				<div class="modal fade" id="myModal">
+					<div class="modal-dialog modal-lg"
+						style="margin-top: 130px; height: 900px;">
+						<div class="modal-content">
+
+							<!-- Modal Header -->
+							<div class="modal-header">
+								<h4 class="modal-title md-color">View Accountant Section</h4>
+							<!-- 	<button type="button" class="close cp" data-bs-dismiss="modal">&times;</button> -->
+								<button type="button" class="close" data-bs-dismiss="modal"
+												aria-hidden="true" onclick="cancelModalDeleteBtn()">
+												<i class="ti-close modal-close"></i>
+											</button>
+							</div>
+							<!-- Modal body -->
+							<div class="modal-body">
+
+								<div id="payGrid" style="width: 100%; height: 100px;"
+									class="ag-theme-alpine"></div>
+
+								<div class="col-md-12" id="paymentDetails">
+									<div class="card-title">
+										<h4>Payment Details</h4>
+									</div>
+									<div class="row">
+										<input type="hidden" id="paymentId">
+										<div class="col-lg-6">
+											<div class="form-group">
+												<label>Payment Mode</label> 
+												<div class="select">
+												<select class="form-control" id="paymentMode" onchange="checkBankDetails();">
+													<option value="">--Select--</option>
+													<option th:each="c:${PayModeLists}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select>
+												</div>
+											</div>
+											<div class="form-group" id="bankNamediv">
+												<label>Bank Name</label> 
+												<div class="select">
+												<select class="form-control" id="bankName">
+													<option value="null">--Select--</option>
+													<option th:each="c:${bankNameLists}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select>
+												</div>
+											</div>
+											<div class="form-group" id="branchNamediv">
+												<label>Branch Name</label> <input type="text" autocomplete="off" 
+													class="form-control" id="branchName" maxLength="28" onkeyup="checkAlphabet('branchName');" />
+											</div>
+												<div class="form-group">
+												<label>Paid Amount</label> <input type="text"
+													class="form-control" id="amount" autocomplete="off"	
+													 onkeyup="checkAmount('amount');"> 
+												<!--  <span id="error10" class="formValidation1"></span> -->
+													
+											</div>
+										</div>
+										<div class="col-lg-6">
+											<div class="form-group">
+												<label>Transaction Date</label> <input type="text"
+													class="form-control"  autocomplete="off" id="transactionDate" readonly >
+											</div>
+											<div class="form-group" id="accNodiv">
+												<label>Account Number</label> <input type="text"
+													class="form-control" id="accNo" autocomplete="off"
+													onkeyup="checkNumeric('accNo');" maxLength="18" />
+											</div>
+											
+											<div class="form-group" id="chequeNoDiv">
+												<label>Cheque Number</label> <input type="text"
+													class="form-control" id="chequeNo" maxLength="6" autocomplete="off"
+													onkeyup="checkNumeric('chequeNo');" />
+												
+											</div>
+										<div class="form-group" id="transNoDiv">
+												<label>Transaction Number</label> <input type="text"
+													class="form-control" id="transactionNo" autocomplete="off" maxLength="22"
+													onkeyup="checkNum('transactionNo');" />
+											</div>
+											</div>
+									</div>
+									
+									<div class="row mt-4">
+										<div class="form-group">
+											<button type="button" id="submitPayment" class="btn1"
+												onclick="addDetailsPayment();">Submit</button>
+										</div>
+									</div>
+								
+								</div>
+							</div>
+
+							<!-- Modal footer -->
+							<div class="modal-footer">
+								<div class="chartbtnsec">
+
+									<!-- <button class="btn4" data-bs-dismiss="modal">CANCEL</button> -->
+								</div>
+							</div>
+
+						</div>
+					</div>
+				</div>
+				<!-- Modal End-->
+				
+			</div>
+		</div>
+	</div>
+</body>
+</html>

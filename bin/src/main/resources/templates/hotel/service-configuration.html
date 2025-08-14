@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.add-btn {
+	cursor: pointer;
+	color: green;
+	font-size: 15px;
+}
+
+.propertyName {
+	font-size: 15px;
+	font-weight: 600;
+	color: #ae8600;
+}
+/* table {
+	border-collapse: collapse;
+	width: auto;
+	margin-top: 20px;
+} */
+.add-btn {
+	cursor: pointer;
+	color: green;
+	font-size: 18px;
+	font-weight: bold;
+}
+
+.remove-btn {
+	color: black;
+	background: none;
+	border: none;
+	font-size: 16px;
+	cursor: pointer;
+}
+
+#serviceTable {
+	width: 97%;
+	margin-left: 11px;
+}
+</style>
+
+<script type="text/javascript">
+$(document).ready(function() {
+	
+	$("#editBTN").hide();
+	
+    var GridDiv = document.querySelector('#myGridBuild');
+    new agGrid.Grid(GridDiv, gridOptionsBuild);
+    viewBuilding();
+
+    var secGridDiv = document.querySelector('#mysecGridBuild');
+    new agGrid.Grid(secGridDiv, secgridOptionsBuild);
+    
+   $("#parentCategory,#availability,#roomTypeService,#subcategory").select2({
+		placeholder: "Select "
+	}); 
+
+});
+
+
+
+function addServiceDetails() {
+    document.getElementById("mysecGridBuild").style.display = "none";
+    const detailsSection = document.getElementById("hiddenDetails");
+    detailsSection.style.display = "block";
+    const inputs = detailsSection.querySelectorAll("input, textarea, select");
+    inputs.forEach(input => {
+        if (input.type === "checkbox" || input.type === "radio") {
+            input.checked = false;
+        } else {
+            input.value = "";
+        }
+    });
+    
+    $("#addServiceDetails").addClass("d-none");
+    $("#cancelCandidate").removeClass("d-none");
+    $("#editServicesBtn").addClass("d-none");
+    $("#saveCandidate").removeClass("d-none");
+}
+
+function cancelService(){
+	$("#addServiceDetails").removeClass("d-none");
+    $("#cancelCandidate").addClass("d-none");
+    $("#saveCandidate").addClass("d-none");
+    $("#hiddenDetails").hide();
+    $("#mysecGridBuild").show();
+    $("#editServicesBtn").removeClass("d-none");
+}
+
+
+
+var columnDefs = [{
+        headerCheckboxSelection: false,
+        headerCheckboxSelectionFilteredOnly: true,
+        checkboxSelection: true,
+        width: 10,
+        sortable: false,
+        filter: false,
+		pinned: 'left',
+        resizable: true
+    },
+    {
+        headerName: "Property Id",
+        field: "locationId",
+        pinned: 'left',
+		
+    },
+    {
+        headerName: "Property Name",
+        field: "locationName",
+		pinned: 'left',
+    },
+    {
+        headerName: "Code",
+        field: "locationCode",
+        hide: true,
+        cellRenderer: function(params) {
+            return 'Location';
+        }
+    },  {
+        headerName: "Property Type",
+        field: "locationType"
+    }, {
+        headerName: "Address",
+        field: "locStreet"
+    }, {
+        headerName: "City",
+        field: "locCity"
+    }, {
+        headerName: "Ownership",
+        field: "locOwnership"
+    }, {
+        headerName: "State",
+        field: "locState"
+    }, {
+        headerName: "Country",
+        field: "locCountry"
+    }, {
+        headerName: "Height",
+        field: "locHeight"
+    }, {
+        headerName: "Width",
+        field: "locWidth"
+    }, {
+        headerName: "Length",
+        field: "locLength"
+    }, {
+        headerName: "Status",
+        field: "locStatus",
+        cellStyle: {
+            textAlign: 'center'
+        }
+    }, {
+        headerName: "Create Date",
+        field: "createdDate",
+        cellStyle: {
+            textAlign: 'center'
+        }
+    }
+];
+var gridOptionsBuild = {
+    columnDefs: columnDefs,
+    rowSelection: 'single',
+    suppressRowClickSelection: true,
+    defaultColDef: {
+        sortable: true,
+        filter: true,
+        resizable: true,
+        width: 149,
+        height: 10
+    },
+    pagination: true,
+	  paginationPageSize: 15,
+    onSelectionChanged: onSelectionChanged,
+	paginationAutoPageSize: true,
+	pagination: true,
+    getRowNodeId: function(data) {
+        return data.locationId;
+    }
+};
+var locSel='';
+function onSelectionChanged() {
+	var selectedNodes = gridOptionsBuild.api.getSelectedNodes();
+	if (selectedNodes.length > 0) {
+	    const locationId = selectedNodes[0].data.locationId;
+	    getAllServiceDetails(locationId);
+	    var propertyName = selectedNodes[0].data.locationName;
+	    var propertyType = selectedNodes[0].data.locationType;
+	    $('.propertyName').html(propertyName + " (" + propertyType + ")");
+	    getAllServiceDetails(locationId);
+	} else {
+		 $('.propertyName').html("");
+    }
+}
+
+
+var seccolumnDefs = [{
+        headerCheckboxSelection: false,
+        headerCheckboxSelectionFilteredOnly: true,
+        checkboxSelection: true,
+        width: 10,
+        sortable: false,
+        filter: false,
+		pinned: 'left',
+        resizable: true
+    },
+    { headerName: "Service Id", field: "serviceId"},
+    { headerName: "HiddenRoom Type", field: "hiddenRoomType", hide: true },
+    { headerName: "Service Category", field: "serviceCategory", sortable: true },
+    { headerName: "Service SubCategory", field: "serviceSubCategory", sortable: true },
+    { headerName: "Service Name", field: "serviceName", sortable: true },
+    { headerName: "Room Type", field: "roomType", sortable: true },
+    { headerName: "Availability", field: "availability", sortable: true },
+    { headerName: "Start Time", field: "startTime" },
+    { headerName: "End Time", field: "endTime" }
+
+
+];
+var secgridOptionsBuild = {
+    columnDefs: seccolumnDefs,
+    rowSelection: 'single',
+    suppressRowClickSelection: true,
+    defaultColDef: {
+        sortable: true,
+        filter: true,
+        resizable: true,
+        width: 149,
+        height: 10
+    },
+    pagination: true,
+	paginationPageSize: 15,
+	onSelectionChanged: onSelectionChangedServices,
+	onRowSelected: function(event) {
+	        if (event.node.selected) {
+	        	$("#editBTN").show();
+	        	var selectedData = event.data
+	        	serviceDataEdit(selectedData);
+	        }
+	        else
+	        {
+	        	$("#editBTN").hide();
+	        }
+	        
+	    }
+};
+
+function onSelectionChangedServices() {
+	var selectedNodes = secgridOptionsBuild.api.getSelectedNodes();
+	if (selectedNodes.length > 0) {
+		$("#editBTN").show();
+	} else {
+		$("#editBTN").hide();
+    }
+}
+
+function serviceDataEdit(selectedData){
+	$("#locationId").val(selectedData.locationId);
+	$("#serviceId").val(selectedData.serviceId);
+	$("#serviceName").val(selectedData.serviceName);
+    $("#roomTypeService").val(selectedData.hiddenRoomType).trigger("change");;
+	$("#availability").val(selectedData.availability).trigger("change");;
+	$("#startTime").val(selectedData.startTime);
+	$("#endTime").val(selectedData.endTime);
+	setTimeout(() => {
+	    $("#parentCategory").val(selectedData.hiddenserviceCategory).trigger("change");;
+	}, 1000)
+	setTimeout(() => {
+	    $("#subcategory").val(selectedData.hiddenserviceSubCategory).trigger("change");;
+	}, 3000)
+}
+
+function editServices()
+{
+	 document.getElementById("mysecGridBuild").style.display = "none";
+	const detailsSection = document.getElementById("hiddenDetails");
+    detailsSection.style.display = "block";
+    
+	$("#addServiceDetails").addClass("d-none");
+    $("#cancelCandidate").removeClass("d-none");
+    $("#editServicesBtn").addClass("d-none");
+    $("#saveCandidate").removeClass("d-none");
+}
+
+// view Data Functions
+function viewBuilding(id=null,tab=null){
+	agGrid.simpleHttpRequest({
+		url : 'hotel-management-view'
+	}).then(function(data) {
+		var jsonData = JSON.parse(data.body);
+		var allData=jsonData.Property;
+	 	if(allData!=null){
+		 	var len = allData.length;
+			$('#totalReq').find('span').html(len);
+			gridOptionsBuild.api.setRowData(allData);
+			if (id != null) {
+				locSel = id;
+			    gridOptionsBuild.api.forEachNode(function(node) {
+				 if (String(node.data.locationId) === String(id)) {					
+			           node.setSelected(true);
+			        }
+			    });
+			} else {	
+				console.log("else")
+				locSel = '';		
+				var firstRowNode = gridOptionsBuild.api.getDisplayedRowAtIndex(0);
+				if (firstRowNode) {
+					firstRowNode.setSelected(true);
+				}
+			}
+		}else{
+			gridOptionsBuild.api.setRowData("");
+		}
+	});
+
+}
+
+//edit function call and row select 
+
+function onCheckboxClick() {
+  
+  var selectedNodes = gridOptionsBuild.api.getSelectedNodes();
+	var selectedData = selectedNodes.map(node => node.data);
+	const locationId = selectedData.map(node => node.locationId);
+	var selectedRows = gridOptionsBuild.api.getSelectedRows();
+	var rowCount = 0;
+	for (var i = 0; i < selectedRows.length; i++) {
+		var id = id + '"' + selectedRows[i].locationId + '"';
+		rowCount = rowCount + 1;
+	}
+	if (rowCount > 0) {
+		editCandidate()
+	} else {
+	}
+	
+}
+
+
+ 
+
+//edit
+
+
+
+function saveServices() {
+	var selectedNodes = gridOptionsBuild.api.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+        toastr.error("Please select a building from the list.");
+        return;
+    }
+ 
+    var selectedData = selectedNodes[0].data;
+    var locationId = selectedData.locationId;
+    let serviceData = {};
+
+    serviceData['serviceId'] = $("#serviceId").val();
+    serviceData['locationId']= locationId;
+    serviceData['serviceName']= $("#serviceName").val();
+    serviceData['roomTypeService'] = $("#roomTypeService").val();
+    serviceData['availability']= $("#availability").val();
+    serviceData['startTime']= $("#startTime").val();
+    serviceData['endTime']= $("#endTime").val();
+    serviceData['parentCategory']= $("#parentCategory").val();
+    serviceData['subcategory']= $("#subcategory").val();
+
+    saveServicesData(serviceData);
+    document.getElementById("mysecGridBuild").style.display = "block";
+    document.getElementById("hiddenDetails").style.display = "none";
+
+}
+    
+function saveServicesData(serviceData) {
+
+		$.ajax({
+			type: "POST",
+			url: "save-hotel-details",
+			contentType: "application/json",
+			data: JSON.stringify(serviceData),
+			success: function(response) {
+			if (response.code === "Success") {
+				$('.loader').hide();
+				getAllServiceDetails(serviceData.locationId);
+					toastr.success(response.message);
+					cancelService();
+			} else {
+				toastr.error(response.message);
+				
+				$('.loader').hide();
+			  }
+			},
+			error: function(datas) {
+ 			$('.loader').hide();
+			toastr.error("Something went wrong. Please try again.");
+ 			}
+ 		});
+	}
+	
+function getAllServiceDetails(locationId) {
+
+	agGrid.simpleHttpRequest({
+	    url: "servicetype-view?id="+ locationId
+	}).then(function(response) {
+	    var jsonData = JSON.parse(response.body);
+	    var allData = jsonData.serviceDetails || [];
+	    secgridOptionsBuild.api.setRowData(allData);
+	});
+}
+
+
+
+//getSubCategory
+function getsubcategoryList(id,id2){
+	$.ajax({
+		type : "GET",
+		url : "view-products-get-subcategory?id="+id,
+		success : function(response) {
+			if (response.message == "success") {
+				$("#subcategory").empty();
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				$("#subcategory").append(option);
+				for (var i = 0; i < response.body.length; i++) {
+					var option = $("<option></option>");
+					$(option).val(response.body[i].key);
+					$(option).html(response.body[i].name);
+					$("#subcategory").append(option);
+				}
+				if(id2){
+					$("#subcategory").val(id2).trigger('change');
+					getVariationList(id2);
+				}
+			}
+		},
+		error : function(e) {
+		}
+	});	
+}
+</script>
+</head>
+
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<!--Tabbination 1 Start-->
+					<div id="tab1" class="tab-pane" role="tabpanel">
+						<div class="d-flex flex-column flex-lg-row">
+							<!--Left Sec Start-->
+							<div class="box-sec" id="collapseWidthR1">
+								<div class="out-box">
+
+
+									<div class="d-flex justify-content-between p-2 bdr-line">
+
+										<div class="col-md-8 col-12">
+											<div class="d-flex search-sec position-relative gap-2">
+												<input class="form-control" type="text" placeholder="Search"
+													id="quickFilter" autocomplete="off">
+												<button class="btn go-btn" type="button"
+													onclick="onQuickFilterChanged()">Go</button>
+												<button class="btn go-btn" type="button" onclick="reset()">Reset</button>
+											</div>
+										</div>
+
+
+										<div class="col-md-2 d-flex justify-content-end">
+											<button class="btn btn-primary max-btn" id="collapseButtonR1"
+												onclick="triggerExpansionR(1)" data-bs-toggle="tooltip"
+												data-bs-placement="top" title=""
+												data-bs-original-title="Expand">
+												<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+													class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+											</button>
+										</div>
+
+									</div>
+									<!-- <div class="leftSideParentContainer p-2 mb-2">
+										<div class="d-flex justify-content-start" id="buttonClass">
+											<div class="btn-group m-1" style="width: 40px;">
+												<button type="button"
+													class="btn btn-primary child navBtn w-100 active" id="High"
+													value="2" onclick="filter('2')">All</button>
+											</div>
+											<div class="btn-group m-1" style="width: 50px;">
+												<button type="button"
+													class="btn btn-primary child navBtn w-100" id="Medium"
+													value="3" onclick="filter('1')">NCS</button>
+											</div>
+											<div class="btn-group m-1 me-5" style="width: 100px;">
+												<button type="button"
+													class="btn btn-primary child navBtn w-100" id="Critical"
+													value="1" onclick="filter('0')">Nirmalya Labs</button>
+											</div>
+										</div>
+									</div> -->
+
+									<div class="card p-2 m-2">
+										<div id="myGridBuild" style="height: 100vh;"
+											class="ag-theme-alpine w-100"></div>
+									</div>
+								</div>
+							</div>
+							<div class="box-sec" id="collapseWidthL1">
+								<div class="out-box">
+									<div
+										class="d-flex justify-content-between flex-row-reverse align-items-center p-2 bdr-line">
+										<button class="btn btn-primary max-btn" id="collapseButtonL1"
+											type="button" onclick="triggerExpansionL(1)"
+											data-bs-toggle="tooltip" data-bs-placement="top"
+											title="Expand">
+											<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+												class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+										</button>
+
+
+
+										<!-- <div class="d-flex">
+											<ul class="nav nav-pills newtab" role="tablist">
+
+												<li class="nav-item me-1" role="presentation"
+													id="candidateDetails"><a class="navv-link active"
+													data-bs-toggle="pill" href="#applicationDetailsTab"
+													aria-selected="true" role="tab"
+													onclick="goToConfirmOrder()" id="serviceType">Property
+														Service Configuration</a></li>
+
+
+											</ul>
+										</div> -->
+
+									</div>
+
+
+									<!-- Tab panes -->
+									<div class="tab-content flex-fill">
+
+
+
+
+
+
+
+										<div id="applicationDetailsTab"
+											class="tab-pane active show p-2 h-100" role="tabpanel">
+
+											<div class="requisition-tbl d-flex flex-column h-100 ">
+												<div
+													class="d-flex justify-content-start p-2 border align-items-center mb-2">
+													<div class="voucher-info">
+														<span class="propertyName"></span>
+													</div>
+												</div>
+												<div class="mb-2">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<td width="80%"><strong id="programNameDisplay"></strong></td>
+																<td>
+																	<div class="d-flex justify-content-end">
+
+																		<div class="mr-2" id="addServiceDetails">
+																			<button class="btn btn-primary edit-btn"
+																				type="button" onclick="addServiceDetails()">
+																				<i class="fas fa-plus-circle"></i> ADD
+																			</button>
+																		</div>
+																		<!-- <div class="mr-2" id="deleteServiceDetails">
+																			<button class="btn btn-primary edit-btn d-flex align-it"
+																				type="button" onclick="deleteServiceDetails()">
+																				<i class="fa fa-trash" aria-hidden="true"></i> DELETE
+																			</button>
+																		</div>
+ -->
+																		<div class="mr-2" id="editServicesBtn">
+																			<button class="btn btn-primary edit-btn"
+																				type="button" onclick="editServices()" id="editBTN">
+																				<i class="fas fa-edit"></i> EDIT
+																			</button>
+																		</div>
+																		<div class="mr-2 d-none" id="saveCandidate">
+																			<button class="btn btn-primary edit-btn"
+																				type="button" onclick="saveServices()">
+																				<i class="fas fa-save"></i> SAVE
+																			</button>
+																		</div>
+																		
+																		<div class="mr-2 d-none" id="cancelCandidate">
+																			<button class="btn btn-primary edit-btn"
+																				type="button" onclick="cancelService()">
+																				<i class="fas fa-times-circle"></i> CANCEL
+																			</button>
+																		</div>
+
+
+																	</div>
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+
+
+
+												<div class="card p-2">
+													<div id="hiddenDetails" style="display: none;">
+														<!-- <div class="row"> -->
+														<!-- Hidden service/property id -->
+														<input type="hidden" id="serviceId"> <input
+															type="hidden" id="locationId">
+
+
+
+														<div class="row">
+
+															<div class="col">
+																<div class="form-group mb-2">
+																	<label>Category</label><span class="mandatory">*</span>
+																	<div class="select">
+																		<select class="searchable-select" id="parentCategory"
+																			onchange="getsubcategoryList(this.value,'')">
+																			<option value="">Select</option>
+																			<option th:each="a : ${productCategoryList}"
+																				th:value="${a.key}" th:text="${a.name}"></option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+
+															<div class="col">
+																<div class="form-group mb-2">
+																	<label>Sub-category</label><span class="mandatory">*</span>
+																	<div class="select">
+																		<select class="searchable-select" id="subcategory"
+																			onchange="getVariationList('')">
+																			<option value="">Select</option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+
+														</div>
+
+
+														<div class="row">
+															<div class="col">
+																<div class="form-group mb-2">
+																	<label for="chkReservType"
+																		class="form-label required-field">Service Name
+																		<span class="mandatory">*</span>
+																	</label> <input type="text" id="serviceName"
+																		class="form-control" name="serviceName"
+																		placeholder="Enter Service Name">
+																</div>
+															</div>
+
+															<div class="col">
+																<div class="form-group mb-2">
+																	<label class="form-label required-field">Room
+																		Type <span class="mandatory">*</span>
+																	</label> <select id="roomTypeService" class="form-select">
+																		<option value="">Select</option>
+																		<option th:each="c,iter:${roomTypeList}"
+																			th:value="${c.key}" th:text="${c.name}"></option>
+																	</select>
+																</div>
+															</div>
+
+															<div class="col">
+																<div class="form-group mb-2">
+																	<label for="chkReservType"
+																		class="form-label required-field">Service
+																		Availability <span class="mandatory">*</span>
+																	</label> <select id="availability">
+																		<option value="" selected disabled>Select</option>
+																		<option value="Yes">Yes</option>
+																		<option value="No">No</option>
+																	</select>
+																</div>
+															</div>
+														</div>
+
+
+														<div class="row">
+															<div class="col">
+																<div class="form-group mb-2">
+																	<label for="chkReservType"
+																		class="form-label required-field">Start Time <span
+																		class="mandatory">*</span>
+																	</label> <input type="time" id="startTime" class="form-control"
+																		name="startTime">
+																</div>
+															</div>
+
+															<div class="col">
+																<div class="form-group mb-2">
+																	<label for="chkReservType"
+																		class="form-label required-field">End Time <span
+																		class="mandatory">*</span>
+																	</label> <input type="time" id="endTime" class="form-control"
+																		name="endTime">
+																</div>
+															</div>
+														</div>
+
+
+													</div>
+
+
+													<!-- </div> -->
+												</div>
+												<div id="mysecGridBuild" style="height: 100vh;"
+													class="ag-theme-alpine w-100"></div>
+											</div>
+
+										</div>
+									</div>
+
+
+
+
+								</div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+
+		</div>
+	</div>
+	</div>
+</body>
+</html>

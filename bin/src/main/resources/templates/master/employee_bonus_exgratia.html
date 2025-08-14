@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.autocomplete {
+	position: relative;
+	display: inline-block;
+	width: 100%;
+}
+
+.sugg-cls ul {
+	height: 150px;
+	overflow-x: scroll;
+	position: relative;
+}
+
+ul#autocomplete-list1 {
+	position: relative;
+	z-index: 999;
+}
+
+ul#autocomplete-list1 li {
+	position: relative;
+	color: #fff;
+	padding-left: 6px;
+	background-color: #1f57a8;
+	border-bottom: solid 1px #6189c2;
+	padding-top: 5px;
+	padding-bottom: 5px;
+}
+
+.formValidation1 {
+	font-size: 10px;
+	font-weight: 100;
+	color: #ff9e99;
+	background-color: transparent;
+	position: relative;
+	top: -1px;
+	padding: 3px 0;
+}
+
+.form-control {
+	line-height: 24px;
+}
+</style>
+<script type="text/javascript">
+	$(document).ready(function() {
+		$("#divrow").hide();
+		
+		var date = (new Date()).toISOString().split('T')[0];
+		var newToDate = changeDateFormat(date);
+		var newFromDate = changeFromDateFormat(date);
+		$("#fromDate").val(newFromDate);
+		$("#toDate").val(newToDate);
+		//$('.loader').show();
+		
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalender").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#fromDate').val($(this).val());
+			viewBonusDetails();
+		})
+
+		$('#fromDate').blur(function() {
+			$("#fromDateCalender").val($(this).val());
+		})
+
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#toDate').val($(this).val());
+			viewBonusDetails();
+		})
+
+		$('#toDate').blur(function() {
+			$("#toDateCalendar").val($(this).val());
+		})
+
+		$("#bonusDateCalender").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#bonusDate').val($(this).val());
+		//	viewBonusDetails();
+		})
+
+		$('#bonusDate').blur(function() {
+			$("#bonusDateCalender").val($(this).val());
+		})
+		
+	})
+	function viewBonusDetails() {
+		var fdate = $("#fromDate").val();
+		var tdate = $("#toDate").val();
+		agGrid.simpleHttpRequest(
+				{
+					url : "employee-bonus-exgratia-view?fromDate=" + fdate
+							+ "&toDate=" + tdate
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.viewData;
+					if(allData){
+						gridOptions.api.setRowData(allData);
+						var totalRowCount = gridOptions.api.getModel().getRowCount();
+						$('#totalReq').find('span').html(totalRowCount);
+					}else{
+						gridOptions.api.setRowData();
+						//$('#totalReq').find('span').html('0');
+						$('#totalReq').find('span').html('0');
+						
+					}
+
+		});
+	}
+
+	function changeDateFormat(inputDate) { // expects Y-m-d
+		var splitDate = inputDate.split('-');
+		if (splitDate.count == 0) {
+			return null;
+		}
+
+		var year = splitDate[0];
+		var month = splitDate[1];
+		var day = splitDate[2];
+
+		return day + '-' + month + '-' + year;
+	}
+	function changeFromDateFormat(inputDate) { // expects Y-m-d
+		var splitDate = inputDate.split('-');
+		if (splitDate.count == 0) {
+			return null;
+		}
+
+		var year = splitDate[0];
+		var month = splitDate[1];
+		var day = splitDate[2];
+
+		return day + '-' + month + '-' + year;
+	}
+	/* -------------------search bar for mygrid------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	    var totalRowCount = gridOptions.api.getModel().getRowCount();
+	    $('#totalCount').html(totalRowCount);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	//show position
+	function showPosition(position) {
+		$("#latitude").val("");
+		$("#longitude").val("");
+		var latitude = position.coords.latitude;
+		var longitude = position.coords.longitude;
+
+		$("#latitude").val(latitude);
+		$("#longitude").val(longitude);
+
+		var locAPI = "https://maps.googleapis.com/maps/api/geocode/json?latlng="
+				+ latitude
+				+ ","
+				+ longitude
+				+ "&key=AIzaSyD-o-8txzrqCvKZaf35i-zILm2ooG851uE";
+
+		$("#latitude").val(latitude);
+		var lat1 = $("#latitude").val();
+		$("#longitude").val(longitude);
+		var lon1 = $("#longitude").val();
+		var lat2 = $("#latitude2").val();
+		var lon2 = $("#longitude2").val();
+
+		if (lon2 == "" || lat2 == "") {
+			$.get({
+				url : locAPI,
+				success : function(data) {
+					console.log("data===1==" + data);
+					console.log(data);
+					var loc = $("#location1").val();
+					var city = loc.split(',');
+					var plc = data.results[0].formatted_address;
+					$("#punchInLocation").val(plc);
+					$("#punchOutLocation").val(
+							data.results[0].formatted_address);
+				}
+
+			});
+		} else {
+			$.get({
+				url : locAPI,
+				success : function(data) {
+					console.log(data);
+					var place = data.results[0].formatted_address;
+					$("#punchInLocation").val(place);
+					$("#punchOutLocation").val(place);
+				}
+
+			});
+		}
+	}
+
+	$(document).ready(function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		//var dateFormat = localStorage.getItem("dateFormat");
+
+		$("#fromDateCalendar").datetimepicker({
+			format : 'H:i',
+			closeOnDateSelect : false,
+			timepicker : true,
+			datepicker : false,
+			step : 15
+		}).on("change", function() {
+			$('#punchinTime').val($(this).val());
+		})
+
+		/* $('#punchinTime').blur(function() {
+		$("#fromDateCalendar").val($(this).val());
+		}) */
+
+		//punch out time
+		$("#fromDateCalendar1").datetimepicker({
+			format : 'H:i',
+			closeOnDateSelect : false,
+			timepicker : true,
+			datepicker : false,
+			step : 15
+		}).on("change", function() {
+			$('#punchoutTime').val($(this).val());
+		})
+
+		$('#punchoutTime').blur(function() {
+			$("#fromDateCalendar1").val($(this).val());
+		})
+
+		$("#cancel").hide();
+		$("#add").hide();
+		$('#delete').attr("disabled", true);
+		$("#add1").hide();
+
+		viewBonusDetails();
+	});
+
+	const columnDefs = [
+
+	{
+		headerName : "Employee Id",
+		field : "employeeId",
+		width : 130,
+	}, {
+		headerName : "Employee Name",
+		field : "employeeName",
+		width : 280,
+	}, {
+		headerName : " Attendance",
+		field : "attendance",
+		width : 150,
+		cellStyle : {
+			textAlign : 'center'
+		}
+	}, {
+		headerName : "Basic Salary",
+		field : "basicSal",
+		width : 150,
+		cellStyle : {
+			textAlign : 'center'
+		}
+	}, {
+		headerName : "Bonus",
+		field : "bonus",
+		width : 150,
+		cellStyle : {
+			textAlign : 'center'
+		}
+
+	}, {
+		headerName : "Exgratia",
+		field : "exgratia",
+		width : 150,
+		cellStyle : {
+			textAlign : 'center'
+		}
+
+	},  {
+		headerName : "Total Bonus & Exgratia",
+		field : "total",
+		width: 230,
+		cellStyle : {
+			textAlign : 'center'
+		}
+
+	}, {
+		headerName : "Bank Account Details",
+		field : "details",
+		width : 280,
+		cellStyle : {
+			textAlign : 'center'
+		}
+
+	},  ];
+	const gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 266,
+			height : 10
+		}
+	};
+	/* Function for attendanceModal show */
+	function addBonus() {
+		$("#empid").val("");
+		$("#empName").val("");
+		$('#attendanceModal').modal('toggle');
+	}
+	function closeModal() {
+		$('#attendanceModal').modal('hide');
+	}
+	function checkBonus() {
+		var validation = true;
+		var empids = $("#empid").val();
+		if (empids == null || empids == "") {
+			$("#error1").show();
+			$("#error1").html("Employee Name Required");
+			validation = false;
+		}
+		if (validation) {
+			$("#totalReq").hide();
+			$("#searchRowDiv").hide();
+			$("#download").hide();
+			$("#upload").hide();
+			$("#fdate").hide();
+			$("#tdate").hide();
+			$("#fdateDiv").hide();
+			$("#tdateDiv").hide();
+			$.ajax({
+				type : 'GET',
+				url : 'employee-bonus-exgratia-getPunch?empids=' + empids,
+				contentType : false,
+				success : function(response) {
+					if (response.message == "success") {
+						$("#employeeId").val(empids);
+						$("#employeeName").val($("#empName").val());
+						if (response.body.code == 0) {
+							$("#isOut").val(response.body.name);
+							add();
+						} else {
+							$("#isOut").val(2);
+							add();
+						}
+					}
+				},
+				error : function(datas) {
+				}
+			})
+		}
+	}
+	function add() {
+		closeModal();
+		var puchVal = $("#isOut").val();
+		if (puchVal == 0) {
+			$("#demo").show();
+			$("#pit").show();
+			$("#pin").show();
+			$("#pot").hide();
+			$("#pon").hide();
+
+			$("#addattendance").hide();
+			$("#add1").hide();
+			$("#add").show();
+			$("#myGrid").hide();
+			$("#cancel").show();
+			$("#delete").hide();
+
+			$("#isOut").val("");
+			$("#punchinTime").val("");
+			$("#punchinNote").val("");
+
+			var currentdate = new Date();
+			var datetime = currentdate.getDate() + "-"
+					+ (currentdate.getMonth() + 1) + "-"
+					+ currentdate.getFullYear() + " " + currentdate.getHours()
+					+ ":" + currentdate.getMinutes() + ":"
+					+ currentdate.getSeconds();
+
+			$("#punchinTime").val(datetime);
+
+		} else if (puchVal == 1) {
+			$("#demo").show();
+			$("#pit").hide();
+			$("#pin").hide();
+			$("#pot").show();
+			$("#pon").show();
+			$("#addattendance").hide();
+			$("#add").hide();
+			$("#add1").show();
+			$("#myGrid").hide();
+			$("#cancel").show();
+			$("#delete").hide();
+
+			$("#isOut").val("");
+			$("#punchoutTime").val("");
+			$("#punchoutNote").val("");
+
+			var currentdate1 = new Date();
+			var datetime1 = currentdate1.getDate() + "-"
+					+ (currentdate1.getMonth() + 1) + "-"
+					+ currentdate1.getFullYear() + " "
+					+ currentdate1.getHours() + ":" + currentdate1.getMinutes()
+					+ ":" + currentdate1.getSeconds();
+			$("#punchoutTime").val(datetime1);
+		} else {
+			$("#totalReq").show();
+			$("#searchRowDiv").show();
+			$("#download").show();
+			$("#upload").show();
+			$("#fdate").show();
+			$("#tdate").show();
+			$("#fdateDiv").show();
+			$("#tdateDiv").show();
+			var ename = $("#empName").val();
+			$("#messageParagraph").text(ename.concat(" attendance up-to-date"));
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+		}
+
+	}
+	function cancel() {
+		location.reload();
+		$("#demo").hide();
+		$("#demo1").hide();
+		$("#add1").hide();
+		$("#add").hide();
+		$("#myGrid").show();
+		$("#cancel").hide();
+		$('#addattendance').attr("disabled", true);
+		$('#delete').attr("disabled", true);
+		$("#totalReq").hide();
+		$("#searchRowDiv").hide();
+		$("#download").hide();
+        onFilterDropdownChange();
+	}
+
+	/* function addDetails() {
+		var obj = {};
+		obj.isOut = $("#isOut").val();
+		obj.punchinTime = $("#punchinTime").val();
+		obj.employeeId = $("#employeeId").val();
+		obj.punchinLocation = $("#punchInLocation").val();
+		obj.latitude = $("#latitude").val();
+		obj.longitude = $("#longitude").val();
+		obj.punchinNote = $("#punchinNote").val();
+		console.log(obj)
+		var validation = true;
+		if (validation) {
+			$.ajax({
+				type : "POST",
+				url : "employee-bonus-exgratia-add",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					console.log(response);
+					if (response.message == "Success") {
+						cancel();
+						viewBonusDetails();
+					}
+				},
+				error : function(data) {
+					console.log(data);
+				}
+			})
+		}
+	} */
+
+	function downloadDetails() {
+		var dataset = [];
+		gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+		gridOptions.api.exportDataAsCsv(dataset);
+	}
+
+	function checkAlphabet(fieldId) {
+		var tempVal = $("#" + fieldId).val().replace(/[^a-zA-Z., ]/g, '');
+		$("#" + fieldId).val(tempVal);
+	}
+	//Function for upload 	 
+	function uploadDetails() {
+
+		$(".formValidation").remove();
+		$('#uploadModal').modal('toggle');
+		$("#uploadedBillDiv_0").html('');
+		$("#imageName_0").html('');
+		$("#uploadDoc_0").val('');
+		$("#bonusDate").val('');
+	}
+	/* function closeUploadModal() {
+		location.reload();
+		$("#imageName_0").empty();
+		$("#uploadedBillDiv_0").empty();
+	} */
+	function closeUploadModal() {
+		$('#uploadModal').modal('hide');
+		//location.reload();
+		$("#imageName_0").empty();
+		$("#uploadedBillDiv_0").empty();
+	}
+
+
+	/* save document file */
+	function saveMultiFile(event) {
+		$(".formValidation").remove();
+		var uFile = $(uploadDoc_0)[0].files[0];
+		var fileName = event.currentTarget.value;
+		var lastIndex = fileName.lastIndexOf("\\");
+		if (lastIndex >= 0) {
+			fileName = fileName.substring(lastIndex + 1);
+		}
+		var extension = fileName.split(".");
+		var iURL = URL.createObjectURL(uFile);
+		$("#uploadedBillDiv_0").html("");
+
+		if (extension[1] == "xls" || extension[1] == "xlsx") {
+			var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-excel-o'></i></a></div>";
+		} else {
+			var LightImg = "<div class='uploadicon position-l'> </div>";
+		}
+		$("#uploadedBillDiv_0").html(LightImg);
+		$("#imageName_0").html(fileName);
+		var fileData = new FormData();
+		fileData.append('file', uFile);
+		fileData.append('path', 'none');
+		$.ajax({
+			type : "POST",
+			url : "employee-bonus-exgratia-upload-file",
+			enctype : "multipart/form-data",
+			contentType : false,
+			data : fileData,
+			processData : false,
+			cache : false,
+			success : function(response) {
+
+			},
+			error : function(e) {
+
+			}
+		});
+	}
+	//Upload  Bonus
+	var dataset = [];
+	function saveUploadData() {
+		var data = {};
+		var validation = true;
+		data.date = $("#bonusDate").val();
+		dataset.push(data);
+		var udata = $("#imageName_0").html();
+		if (udata == null || udata == "") {
+			validation = validationUpdated("Please Upload Excel",
+					"validationDiv");
+		}if (data.date == null || data.date == "") {
+			validation = validationUpdated("Bonus Date Required",
+			"bonusDate");
+}
+		console.log("JSON.stringify(dataset)---",JSON.stringify(dataset))
+		if (validation) {
+			$.ajax({
+				type : "POST",
+				url : "employee-bonus-exgratia-save-excelData",
+				dataType : "json",
+				contentType : "application/json",
+				data : JSON.stringify(dataset),
+				success : function(response) {
+					console.log("response=",response)
+					if (response.message == "Success") {
+						$("#uploadedBillDiv_0").html("");
+						$("#imageName_0").html("");
+						$("#messageParagraph").text(
+								"Bonus Uploaded Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$('#uploadModal').modal('hide');
+						viewBonusDetails();
+					} /* else if(response.code == "1062"){
+						$("#messageParagraph").text("Data Already Entered For ");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$('#uploadModal').modal('hide');
+						$("#uploadedBillDiv_0").html("");
+						$("#imageName_0").html("");
+					} */ else {
+						$("#messageParagraph").text(
+								"Duplicate Bonus Entry");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$('#uploadModal').modal('hide');
+						$("#uploadedBillDiv_0").html("");
+						$("#imageName_0").html("");
+					}
+				},
+				error : function(response) {
+					console.log(response);
+				}
+			})
+		}
+
+	}
+	function setFromToDate() {
+		$("#messageParagraph").text(
+				"Please choose to date greater than or equal to from date ");
+		$("#msgOkModal").removeClass("btn3");
+		$("#msgOkModal").addClass("btn1");
+		$("#msgModal").modal('show');
+		$("#fromDate").val("");
+		$("#toDate").val("");
+		var date = (new Date()).toISOString().split('T')[0];
+		var newToDate = changeDateFormat(date);
+		var newFromDate = changeFromDateFormat(date);
+		$("#fromDate").val(newFromDate);
+		$("#toDate").val(newToDate);
+	}
+	function dateChange() {
+		var fromdate = $('#fromDate').val();
+		var todate = $('#toDate').val();
+		var fd = fromdate.split("-");
+		var td = todate.split("-");
+		if (fromdate != '' && todate != '') {
+			if (fd[2] == td[2]) {
+				if (fd[1] == td[1]) {
+					if (fd[0] <= td[0]) {
+						viewBonusDetails();
+					} else {
+						setFromToDate();
+					}
+				} else if (fd[1] < td[1]) {
+					viewBonusDetails();
+				} else {
+					setFromToDate();
+				}
+
+			} else if (fd[2] < td[2]) {
+				viewBonusDetails();
+			} else {
+
+				setFromToDate();
+			}
+		} else {
+
+		}
+	}
+	/* Employee AutoSearch */
+
+	function getEmployeeList() {
+		var search = $("#empName").val();
+		if (search) {
+			$
+					.ajax({
+						type : "POST",
+						url : "employee-bonus-exgratia-get-employee-list",
+						dataType : 'json',
+						contentType : 'application/json',
+						data : search,
+						success : function(response) {
+							if (response.message == "success") {
+								if (response.body.length != 0) {
+									$("#empid").val("");
+									$("#empName").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1" style="margin-left:-40px; font-weight:100; font-size:14px; color:#ccc;">';
+									for (var i = 0; i < response.body.length; i++) {
+										content += '<li class="autocompletedata cp" onClick="selectAutocompleteValueItem1(\''
+												+ response.body[i].key
+												+ '\',\''
+												+ window
+														.btoa(response.body[i].name)
+												+ '\')">'
+												+ response.body[i].key
+												+ " - "
+												+ response.body[i].name
+												+ '</li>';
+									}
+									content += '</ul>';
+									$("#suggesstion-box_").show();
+									$("#suggesstion-box_").html(content);
+
+								} else {
+									$("#empName").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1">';
+									content += '<font-weight:100; font-size:14px; color:#ccc;     background-color: #0909e4;"li onClick="selectAutocompleteValueItem()">'
+											+ "No Data Found" + '</li>';
+									content += '</ul>';
+									$("#suggesstion-box_").show();
+									$("#suggesstion-box_").html(content);
+								}
+							}
+						},
+						error : function(data) {
+							console.log(data);
+						}
+					})
+		} else {
+			$("#empid").val("");
+			$("#empName").val("");
+			$("#suggesstion-box_").hide();
+		}
+	}
+	function selectAutocompleteValueItem1(empid, empName) {
+		if (empid) {
+			$("#error1").hide();
+			$("#empName").val(window.atob(empName));
+			$("#empid").val(empid);
+			$("#empName").attr('data-procat', empid);
+			$("#suggesstion-box_").hide();
+		} else {
+			$("#empid").val("");
+			$("#empName").val("");
+			$("#empName").attr('data-procat', "");
+			$("#suggesstion-box_").hide();
+
+		}
+	}
+	function onFilterDropdownChange() {
+	    var selectedShift = document.getElementById('shiftFilter').value;
+
+	    // Set filter model to filter by 'employeeBy' column
+	    gridOptions.api.setFilterModel({
+	    	shift: {
+	            type: 'equals',
+	            filter: selectedShift
+	        }
+	    });
+	    // Apply the filter
+	    gridOptions.api.onFilterChanged();
+	    var totalRowCount = gridOptions.api.getModel().getRowCount();
+	    $('#totalCount').html(totalRowCount);
+	}
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="row"></div>
+						
+						<div class="d-flex justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalReq">
+									TOTAL LIST(<span id="totalCount"></span>) <input
+										type="hidden" id="sec">
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalReq').find('span').html(gridOptions.api.getModel().getRowCount());"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="button-right">
+								<!-- <div id="shiftDiv" class="align-items-center gap-2"
+									style="width: 110px; margin: -1px 18px 0px 0px;">
+									<div class="select select-box">
+										<select class="form-control bandclssls" id="shiftFilter"
+											onchange="onFilterDropdownChange()">
+											<option value="">All</option>
+											<option th:each="c:${shiftLists}" th:value='${c.key}'
+												th:text="${c.name}"></option>
+										</select>
+									</div>
+								</div> -->
+								<div id="dateDiv1" class="d-flex form-group">
+									<label style="margin: 5px 8px 0px 0px;">From Dt:</label>
+									<div class="form-group calendar_box" id='fdate'
+										style="margin-right: 15px;">
+										<input type="text" id="fromDate" value=""
+											class="form-control" placeholder="from date.."
+											th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+											readonly> <i class="ti-calendar picker_calendar"
+											id="fromDateCalender" onchange="dateChange()"
+											style="top: 14px; right: 0px;"></i>
+									</div>
+								</div>
+								<div id="dateDiv2" class="d-flex form-group">
+									<label style="margin: 5px 8px 0px 0px;">To Dt:</label>
+									<div class="form-group calendar_box" id="tdate"
+										style="margin-right: 15px;">
+										<input type="text" id="toDate" value=""
+											class="form-control" placeholder="to date.."
+											th:attr="onkeyup=|formatDate('toDate','${session.DATEFORMAT_JS}')|"
+											readonly> <i class="ti-calendar picker_calendar"
+											id="toDateCalendar" onchange="dateChange()"
+											style="top: 14px; right: 0px;"></i>
+									</div>
+								</div>
+
+								<div class="buttonsec btn-hs" id="ttbtn">
+									<button class="upload-btn" onclick="uploadDetails()"
+										id="upload">Upload</button>
+								</div>
+
+								<div class="buttonsec btn-hs" id="ttbtn">
+									<button class="download-btn" onclick="downloadDetails()"
+										id="download">Download</button>
+								</div>
+							</div>
+						</div>
+						<div id="myGrid" style="width: 100%; height: 470px;"
+							class="ag-theme-alpine"></div>
+						<input type="hidden" id="empRole" th:value="${empRole}" /> <input
+							type="hidden" id="mrRole" th:value="${mrRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" />
+						<!-- ------------------------------------------------------PUNCH IN------------------------------------------------------- -->
+						<input type="hidden" id="latitude" /> <input type="hidden"
+							id="longitude" /> <input type="hidden" id="latitude2" /> <input
+							type="hidden" id="longitude2" /> <input type="hidden"
+							id="location1" /> <input type="hidden" id="punchInLocation" />
+						<input type="hidden" id="punchOutLocation" />
+						<div class="collapse" id="demo">
+							<input type="hidden" id="isOut" th:value="${isOut}">
+							<div class="row">
+								<div class="col-md-3">
+									<div class="form-group">
+										<label>Employee Id</label> <input type="text"
+											class="form-control" id="employeeId" autocomplete="off"
+											onblur="removeValid(event)" readonly />
+									</div>
+								</div>
+								<div class="col-md-3">
+									<div class="form-group">
+										<label>Employee Name</label> <input type="text"
+											class="form-control" id="employeeName" autocomplete="off"
+											onblur="removeValid(event)" readonly />
+									</div>
+								</div>
+								<div class="col-md-3" id="pit">
+									<div class="form-group">
+										<label>Punch in Time</label> <input type="text"
+											id="punchinTime" autocomplete="off" class="form-control"
+											readonly>
+
+									</div>
+								</div>
+								<div class="col-md-3" id="pin">
+									<div class="form-group">
+										<label> Punch in Note:</label> <input type="text"
+											class="form-control" id="punchinNote"
+											onkeyup="checkAlphabet('punchinNote')"
+											onblur="removeValid(event)">
+									</div>
+								</div>
+								<div class="col-md-3" id="pot">
+									<div class="form-group">
+										<label>Punch Out Time:</label> <input type="text"
+											id="punchoutTime" class="form-control" readonly>
+									</div>
+								</div>
+								<div class="col-md-3" id="pon">
+									<div class="form-group">
+										<label> Punch Out Note:</label> <input type="textarea"
+											class="form-control" id="punchOutNote"
+											onkeyup="checkAlphabet('punchOutNote')"
+											onblur="removeValid(event)">
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- ----------------------------------PUNCH OUT------------------------------------------------------------------------------------ -->
+						<div class="collapse" id="demo1">
+							<div class="row"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div id="uploadModal" class="modal fade">
+				<div class="modal-dialog">
+					<!-- Modal content-->
+					<div class="modal-content">
+						<div class="modal-header">
+							<h4 class="modal-title">Bonus Upload Details</h4>
+							<button type="button" class="download-btn"
+								onclick="window.location.href='https://origroup.nerp.in/FileUpload/Bonus_Exgratia_Sheet_Template.xlsx'">Download
+								Template</button> 
+						</div>
+						<div class="modal-body">
+							<!-- text input -->
+							<div class="row">
+								<div class="col-md-12">
+								
+									<div id="doc">
+									<label style="margin-bottom: 10px;">Upload Bonus Excel</label>
+
+									<div class="control-group position-r">
+										<label class="custom-file-upload" for="uploadDoc_0"> <i
+											class="ti-plus"></i>
+										</label>
+										<div class="controls">
+											<input type="file" class="document" id="uploadDoc_0"
+												name="userImage" accept=".xls,.xlsx"
+												onchange="saveMultiFile(event)" />
+										</div>
+									</div>
+									<input type="hidden" id="uploadHidden_0" class="uploadHidCls">
+									<div id="uploadedBillDiv_0" align="center"
+										class="uploadedBillCls"></div>
+									<div id="imageName_0" class="imageName"></div>
+									</div>
+									<br>
+								<div id="validationDiv"></div>
+								</div>
+								
+								<div id="dateDiv1" class="col-md-12">
+									<label style="margin: 5px 8px 0px 0px;">Date:</label>
+									<div class="form-group calendar_box" id='bDate'
+										style="margin-right: 15px;">
+										<input type="text" id="bonusDate" value=""
+											class="form-control" placeholder="Bonus date.."
+											th:attr="onkeyup=|formatDate('bonusDate','${session.DATEFORMAT_JS}')|"
+											readonly> <i class="ti-calendar picker_calendar"
+											id="bonusDateCalender" 
+											style="top: 14px; right: 0px;"></i>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="modal-footer justify-content-left">
+							<button type="button" class="cancel-btn" data-dismiss="modal"
+								aria-hidden="true" onclick="closeUploadModal()">Cancel</button>
+							<button type="button" class="approve-btn" data-dismiss="modal"
+								aria-hidden="true" onclick="saveUploadData()">Save</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+		</div>
+	</div>
+
+</body>
+</html>

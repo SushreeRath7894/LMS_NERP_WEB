@@ -1,0 +1,1849 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+
+<link rel="stylesheet" href="../assets/css/extend/lightslider.css" />
+
+<!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.7/css/all.css"> -->
+
+<head>
+<head>
+<style type="text/css">
+.disabledCalender {
+	pointer-events: none; /* Prevents any mouse event */
+	opacity: 0.5; /* Makes it appear disabled */
+}
+</style>
+
+
+<script type="text/javascript">
+
+	$(document).ready(function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		var gridDiv = document.querySelector('#activity');
+		new agGrid.Grid(gridDiv, activityOptions);
+		view("","");
+		activityOptions.api.setRowData();
+		$('#reqDltBtn').attr('disabled', true);
+		$('#deleteChild').attr('disabled', true);
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+		$('.collapse').on('hide.bs.collapse', function() {
+			$(this).siblings('.panel-heading').removeClass('active');
+		});
+		$("#newBtn").click(function() {
+
+		})
+		getParameterList();
+		$("#qcIdHeader").hide();
+	});
+	
+	function view(qcId,t){
+		$(".loader").show();
+		agGrid.simpleHttpRequest({
+			url : 'qc-master-view'
+		}).then(function(data) {
+			$(".loader").hide();
+			var jsonData = JSON.parse(data.body[0]);
+			var allData=jsonData.Qc;
+			
+			
+			gridOptions.api.setRowData(allData);
+			
+			if (allData && allData.length > 0) {
+				
+				if(qcId!=''){
+	        		const rowNode = gridOptions.api.getRowNode(qcId);
+	        		if (rowNode) {
+	        				const rowIndex = rowNode.rowIndex; // Get the row index
+	        				const pageSize = gridOptions.api.paginationGetPageSize(); // Get the number of rows per page
+	        
+	      				  const pageNumber = Math.floor(rowIndex / pageSize); // Calculate page number
+	        
+	      						gridOptions.api.paginationGoToPage(pageNumber); // Switch to the calculated page
+	      						var firstRowNode = gridOptions.api.getDisplayedRowAtIndex(rowIndex);
+	      		        		firstRowNode.setSelected(true);
+	      		        		disableField();
+	  					  }
+	        		
+	               
+	        	}else{
+	        		if(t == 'save'){
+	        			const gridApi = gridOptions.api;
+	        		    const totalPages = gridApi.paginationGetTotalPages();
+	        		    gridApi.paginationGoToPage(totalPages - 1);
+
+	        		    // Select the last row once the page is rendered
+	        		    setTimeout(() => {
+	        		        const lastRowIndex = gridApi.getDisplayedRowCount() - 1;
+	        		        const lastRowNode = gridApi.getDisplayedRowAtIndex(lastRowIndex);
+	        		        if (lastRowNode) lastRowNode.setSelected(true);
+	        		    }, 0);
+	        		}else{
+	        			let rowId = allData[0].qcId;
+						gridOptions.api.getRowNode(rowId).setSelected(true);	
+	        		}
+	        		disableField();
+	        		
+	        	} 
+				/* let rowId = allData[0].qcId;
+				gridOptions.api.getRowNode(rowId).setSelected(true);
+				disableField(); */
+				
+			}else{
+				$("#mstrAddBtn").hide();
+				$("#mstrEditBtn").hide();
+				$("#cancelMainBtn").hide();
+				$("#mstrSaveBtn").show();
+				enableField();
+			}
+		});
+	}
+	
+	/* -------------------search bar for mygrid------------------------ */
+
+	function enterToSearch(event){
+		console.log(event.keyCode);
+		if(event.keyCode == 13){
+			let filterData = $("#quickFilter").val();
+			if(filterData){
+				onQuickFilterChanged();
+			}
+		}
+		
+	}
+	function onQuickFilterChanged() {
+	    gridOptions.api
+	        .setQuickFilter(document.getElementById('quickFilter').value);
+	    gridOptions.api.getDisplayedRowAtIndex(0).setSelected(true);
+	}
+
+	function reset(){
+		let data = $("#quickFilter").val();
+		if(data!=null && data!=""){
+			$("#quickFilter").val('');
+			onQuickFilterChanged();
+		}
+	}
+	var columnDefs = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true
+
+		},
+		{
+			headerName : 'Qc Id',
+			width : 120,
+			field : "qcId",
+				/* cellRenderer : function(params) {
+				return '<a id="qcId" onclick=editQc("'
+				+params.data.qcId
+				+ '") href="javascript:void(0)">'
+				+ params.data.qcId + ' <i class="fa fa-edit"></i></a>';
+
+			} */
+
+		}, {
+			headerName : 'Item Name',
+			width : 250,
+			field : "item_name",
+			/* cellStyle : {
+				textAlign : 'center'
+			} */
+		}, {
+			headerName : 'Item Id',
+			width : 130,
+			field : "item_id",
+			/* cellStyle : {
+				textAlign : 'center'
+			} */
+		}, {
+			headerName : 'status',
+			field : "qc_status",
+			width : 150,
+			hide: true,
+			cellStyle : {
+				textAlign : 'center'
+			}
+		}, {
+			headerName : 'description',
+			field : "qc_description",
+			width : 400,
+		}];
+
+// let the grid know which columns and what data to use
+var gridOptions = {
+	columnDefs : columnDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 120
+	},
+	onSelectionChanged : onSelectionChanged,
+	getRowNodeId : function(data) {
+		return data.qcId;
+	},
+	
+	pagination: true, 
+    paginationPageSize: 15,
+    paginationPageSizeSelector: [15, 30, 45],
+    onPaginationChanged: function () {
+        const currentPage = gridOptions.api.paginationGetCurrentPage() + 1;
+    }
+};
+//function for row select parents
+var id = "";
+function onSelectionChanged() {
+	var selectedNodes = gridOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	 id= selectedData.map(node => node.qcId);
+	 var itemNameHeaderId = selectedData.map(node => node.item_name);
+	 $("#itemNameHeaderId").text(itemNameHeaderId);
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+	
+	if (rowCount == 0) {
+		newPlan();
+		enableField();
+		$("#mstrAddBtn").hide();
+		$("#mstrEditBtn").hide();
+		$("#cancelMainBtn").show();
+		$("#mstrSaveBtn").show();
+	}else {
+		editQc(id);
+		$("#mstrAddBtn").show();
+		$("#mstrEditBtn").show();
+		$("#cancelMainBtn").hide();
+		$("#mstrSaveBtn").hide();
+	}
+	
+	/* if (rowCount > 0) {
+		$('#newBtn').attr('disabled', true);
+		$('#reqDltBtn').attr("disabled", false);
+	}else {
+		$('#reqDltBtn').attr("disabled", true);
+		$('#newBtn').attr('disabled', false);
+	} */
+}
+// for activity table
+var activityDefs = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : true,
+			checkboxSelection : true,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			width : 30
+		},
+		{
+			headerName : "SlNo.",
+			field : "slno",
+			width : 100,
+			hide: true,
+			cellRenderer: function(params) {
+			      return params.node.rowIndex + 1;
+			    },
+		},
+		{
+			headerName : "Parameter Id",
+			field : "parameterId",
+			//width : 200,
+			flex: 2,
+			/* cellRenderer : function(params) {
+				return '<a onclick=editRow("' + params.data.parameterId+'") href="javascript:void(0)">'
+						+ params.data.parameterId + '</a>';
+			} */
+		}, {
+			headerName : "Parameter Name",
+			field : "parameterName",
+			//width : 300,
+			flex: 4,
+			/* cellStyle : {
+				textAlign : 'center'
+			}, */
+		}, {
+			headerName : "Min Range",
+			field : "minRange",
+			//width : 200,
+			flex: 2,
+			cellStyle : {
+				textAlign : 'center'
+			},
+			},{
+				headerName : "Max Range",
+				field : "maxRange",
+				flex: 2,
+				//width : 200,
+				cellStyle : {
+					textAlign : 'center'
+				},
+		},{
+			headerName : "Formula",
+			field : "formula",
+			width : 350,
+			hide:true,
+			//hide:true,
+			/* cellStyle : {
+				textAlign : 'center'
+			}, */
+	},{
+		headerName : "Formula Js",
+		field : "formulaJs",
+		width : 350,
+		hide:true,
+		/* cellStyle : {
+			textAlign : 'center'
+		}, */
+	},	{
+		headerName : "ref Key",
+		field : "refKey",
+		width : 350,
+		hide:true,
+		/* cellStyle : {
+			textAlign : 'center'
+		}, */
+		}];
+
+
+// let the grid know which columns and what data to use product table
+var activityOptions = {
+	columnDefs : activityDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 200
+	},
+	onSelectionChanged : onSelectionChangeChild,
+	getRowNodeId : function(data) {
+		return data.parameterId;
+	}
+};
+//function for row select parents
+var childid = "";
+function onSelectionChangeChild() {
+	 var selectedNodes = activityOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	 childid= selectedData.map(node => node.slnoId);
+	var selectedRows = activityOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+	
+	if(rowCount == 0){
+		$("#gridAddBtn").attr("disabled", false);
+    	$("#gridEditBtn").attr("disabled", true);
+    	$("#gridDeleteBtn").attr("disabled", true);
+	}else{
+		 if(rowCount == 1){
+		    	$("#gridAddBtn").attr("disabled", true);
+		    	$("#gridEditBtn").attr("disabled", false);
+		    	$("#gridDeleteBtn").attr("disabled", false);
+		    }else{
+		    	$("#gridAddBtn").attr("disabled", true);
+		    	$("#gridEditBtn").attr("disabled", true);
+		    	$("#gridDeleteBtn").attr("disabled", false);
+		    }
+	}
+	/* if (rowCount > 0) {
+		$('#newchild').attr('disabled', true);
+		$('#deleteChild').attr('disabled', false);
+	}else{
+		$('#newchild').attr('disabled', false);
+		$('#deleteChild').attr('disabled', true);
+	} */
+}
+
+function getParameterList(){
+	$("#parameterName").html(" ");
+	agGrid.simpleHttpRequest({
+		url : 'qc-master-get-parameterList'
+	}).then(function(data) {
+		var jsonData = JSON.parse(data.body);
+		var allData=jsonData.parameterList;
+		console.log(allData)
+
+		 var optionsHtml = '<option value="">Select</option>';
+	  		allData.forEach(function (option) {
+              optionsHtml += '<option value="' + option.key + '">' + option.name + '</option>';
+          });
+	  		$('#parameterName').html(optionsHtml);
+		
+	});	
+}
+
+//parents new plan
+function newPlan() {
+	//$("#myGrid").hide();
+	$("#reqTable").hide();
+	$(".btn-hs").show();
+	$("#btndiv").hide();
+	$("#listdiv").hide();
+	$("#totalReq").hide();
+	$("#searchRowDiv").hide();
+	$("#ttbtn").hide();
+	$("#demo").show();
+	closeNav();
+	$("#itemname").val('');
+	$("#description").val('');
+	$("#rowEdit").val('');
+	$("#deleteChild").attr('disabled', true);
+	$("#newchild").attr('disabled', false);
+	$("#qcId").val('');
+	$("#itemid").val('');
+	$("#trReqId").text('');
+	
+	//getParameterList();
+	activityOptions.api.setRowData();
+}
+//function for cancel
+function cancel() {
+	 $(".formValidation").remove();
+		$("#totalReq").show();
+		$("#searchRowDiv").show();
+		$(".btn-hs").show();
+		$("#myGrid").show();
+		$("#demo").hide();
+		$("#reqDltBtn").attr('disabled', true);
+		$("#newBtn").attr('disabled', false);
+		//view();
+		$("#qcId").val('');
+		$("#itemname").val('');
+		$("#itemid").val('');
+		$("#description").val();
+		closeNav();
+	}
+// function for openNav child	
+function openNav() {
+	$("#childGridDiv").hide();
+	$("#itemDtlsDiv").removeClass("d-none");
+	$("#parameterName").val('');
+	$("#parameterId").val('');
+	$("#minRange").val('');
+	$("#maxRange").val('');
+	$("#rowEdit").val(null);
+	/* $("#frmDiv").show();
+	$("#addIcon").removeClass();
+	$("#addIcon").addClass("ti-plus");
+	$('#addIcon').attr('title', "Add Formula");
+	 */
+	
+}
+//function for closeNav child
+function closeNav() {
+	$("#childGridDiv").show();
+	$("#itemDtlsDiv").addClass("d-none");
+	$("#parameterName").val('');
+	$("#parameterId").val('');
+	$("#minRange").val('');
+	$("#maxRange").val('');
+	$("#rowEdit").val(null);
+	activityOptions.api.deselectAll();
+	$("#mstrSaveBtn").show();
+	$("#cancelMainBtn").show();
+	/* $("#formulsOnNav").val('');
+	$("#formulaValueNav").val('');
+	$("#fieldNameNav").val(''); */
+}
+function escapeString(str) {
+	return str
+		.replace(/\\/g, '\\\\')
+		.replace(/'/g, "\\'")
+		.replace(/"/g, '\\"')
+		.replace(/\n/g, '\\n')
+		.replace(/\r/g, '\\r');
+}
+//master save data
+function masterSaveData() {
+	$(".formValidation").remove();
+	var valid= true;
+	var datas = [];
+	console.log("qcId.qcId<<<>>>",$("#qcId").val());
+	if ($("#itemname").val() == null || $("#itemname").val() == "") {
+    	toastr.error("Item Name is Required.");
+		return valid = false;
+	 }
+	var rowCount = activityOptions.api.getDisplayedRowCount();
+	if (valid) {
+	if(rowCount > 0){
+	activityOptions.api.forEachNode(function(rowNode, index) {
+		var item = rowNode.data;
+		console.log("qcId.qcId>>>",$("#qcId").val());
+		//item.qcId = $("#qcId").val();
+		item.qcId = $("#trReqId").text();
+		console.log("item.qcId>>>",item.qcId);
+		item.slno = index+1;
+		item.itemid = $("#itemid").val();
+		item.itemname = $("#itemname").val();
+		item.description = escapeString($("#description").val());
+        
+        if(valid){
+        	datas.push(item);
+         }
+	});
+	if (valid) {
+		savePlanDetails(datas);
+		console.log(datas);
+		}
+	} else {
+		toastr.error("Please Add Atleast One Test Parameter.");
+	/* 	$("#messageParagraph").text(
+		"Please Add Atleast One Plan Details");
+		$("#msgOkModal").removeClass("btn3");
+		$("#msgOkModal").addClass("btn1");
+		$("#msgModal").modal('show'); */
+	}
+	}
+}
+
+function savePlanDetails(datas) {
+	console.log("datas>>>", datas[0].qcId);
+	$('.loader').show();
+	$.ajax({
+		type : "POST",
+		url : "qc-master-add",
+		dataType : "json",
+		contentType : "application/json",
+		data : JSON.stringify(datas),
+		success : function(response) {
+			$('.loader').hide();
+			var itemName = $("#itemname option:selected").text();
+			if (response.code == "success") {
+				cancel();
+				view(datas[0].qcId,"save");
+				toastr.success(response.message);
+				
+			} else {
+				$('.loader').hide();
+				toastr.error("Test Parameter For "+itemName+" Already Exist.");
+				
+				
+				$("#itemid").val('');
+				$("#itemname").val('');
+				$("#description").val('');
+				activityOptions.api.setRowData();
+			}
+		},
+		error : function(data) {
+			$('.loader').hide();
+		}
+	}) //ajax ends
+}
+// save data in aggrid table sidenav save
+
+function saveTableData() {
+  var datas = [];
+  var item = {};
+  var valid = true;
+  var rowEdit = $("#rowEdit").val();
+  var found = false;
+
+  activityOptions.api.forEachNode(function(rowNode, index) {
+    var iid = rowNode.data.parameterId;
+    if (rowEdit && iid == $("#parameterId").val() && iid != rowEdit) {
+    	toastr.error("Item Is Already Selected.");
+    /*   $("#messageParagraph").text("Item Is Already Selected");
+      $("#msgOkModal").removeClass("btn3");
+      $("#msgOkModal").addClass("btn1");
+      $("#msgModal").modal("show"); */
+      found = true;
+      return;
+    }
+    datas.push(rowNode.data);
+  });
+
+  if (!found) {
+    item.parameterName = $("#parameterName option:selected").text();
+    item.parameterId = $("#parameterId").val();
+    item.minRange = $("#minRange").val();
+    item.maxRange = $("#maxRange").val();
+    item.formula = $("#formulsOnNav").val();
+    item.formulaJs = $("#formulaValueNav").val();
+    //item.formulaJs = "";
+    item.refKey = $("#fieldNameNav").val();
+   
+    var iname = $("#parameterName").val();
+    if (iname == null || iname == "") {
+      //valid = validationUpdated("Parameter Name is Required", "parameterName");
+      toastr.error("Parameter Name is Required.");
+      return valid = false;
+    }
+    
+    let minRange = $("#minRange").val();
+	let maxRange = $("#maxRange").val();
+	
+	if(minRange == "" || minRange == null || maxRange == "" || maxRange == null){
+		
+	}else{
+		let minRangeFlaot = parseFloat(minRange);
+		let maxRangeFlaot = parseFloat(maxRange);
+		
+		if(minRangeFlaot > maxRangeFlaot){
+			toastr.error("Maximum Range Should Be Greater Than Minimum Range.");
+			$("#maxRange").val("");
+			return valid = false;
+		}
+	}
+
+    if (valid) {
+      if (rowEdit) {
+        activityOptions.api.forEachNode(function(rowNode, index) {
+          var iid = rowNode.data.parameterId;
+          if (iid == rowEdit) {
+            rowNode.setData(item);
+            return;
+          }
+        });
+        closeNav();
+      } else {
+        var rowCount = activityOptions.api.getDisplayedRowCount();
+        if (rowCount > 0) {
+          var foundId = false;
+          datas.forEach(function(data) {
+            if (data.parameterId == item.parameterId) {
+              foundId = true;
+              toastr.error("Item Is Already Selected.");
+              /* $("#messageParagraph").text("Item Is Already Selected");
+              $("#msgOkModal").removeClass("btn3");
+              $("#msgOkModal").addClass("btn1");
+              $("#msgModal").modal("show"); */
+            }
+          });
+          if (!foundId) {
+            datas.push(item);
+          }
+        } else {
+          datas = [item];
+        }
+        activityOptions.api.setRowData(datas);
+        closeNav();
+      }
+    } else {
+      $("#mySidenav").show();
+    }
+  }
+}
+
+	// for editing child table of shift 
+	function editRow() {
+		openNav();
+		let selectedData = activityOptions.api.getSelectedRows();
+		let parameterId = selectedData[0].parameterId;
+		var qid = $("#qcId").val();
+		$("#frmDiv").show();
+		
+		$("#mstrSaveBtn").hide();
+		$("#cancelMainBtn").hide();
+		/* if (qid == "" || qid == null || qid == "null"){
+			$("#frmDiv").hide();
+		}else{
+			$("#frmDiv").show();
+		} */
+		var rowNode = activityOptions.api.getRowNode(parameterId);
+		$("#rowEdit").val(parameterId);
+		$("#parameterId").val(rowNode.data.parameterId);
+		$("#parameterName").val(rowNode.data.parameterId);
+		$("#minRange").val(rowNode.data.minRange);
+		$("#maxRange").val(rowNode.data.maxRange);
+		/* $("#formulsOnNav").val(rowNode.data.formula);
+		$("#formulaValueNav").val(rowNode.data.formulaJs);
+		$("#fieldNameNav").val(rowNode.data.refKey);
+		if (rowNode.data.formula == "" || rowNode.data.formula == null || rowNode.data.formula == "null"){
+			$("#addIcon").removeClass();
+			$("#addIcon").addClass("ti-plus");
+			$('#addIcon').attr('title', "Add Formula");
+		}else{
+			$("#addIcon").addClass("bi bi-pencil-square");
+			$('#addIcon').attr('title', "Edit Formula");
+		} */
+	}
+	//editing the qc master parent table
+	function editQc(qcId) {
+		$("#qcIdHeader").hide();
+		agGrid.simpleHttpRequest(
+				{
+					url : 'qc-master-edit?id='+ qcId
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body[0]);
+					var allData=jsonData.Qc;
+					console.log(allData)
+						//$("#myGrid").hide();
+					$("#demo").show();
+		 			$("#qcId").val(qcId);
+					$("#trReqId").text(qcId);
+					$("#itemname").val(allData[0].item_id);
+					$("#itemid").val(allData[0].item_id);
+					$("#description").val(allData[0].qc_description);
+	  
+					activityOptions.api.setRowData(allData);
+					$("#tdiv").hide();
+					$("#searchRowDiv").hide();
+					$("#totalReq").hide();
+					$("#ttbtn").hide(); 
+				});
+	}
+
+// function for delete qc  
+function deleteOnclick() {
+		if (id) {
+				$.ajax({
+		type : "POST",
+		url : "qc-master-delete?id="+ id,
+		success : function(response) {
+		 if (response.message == "Success") {
+			 cancel();
+				$("#messageParagraph").text("Plan deleted sucessfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('#delete').modal('hide');
+			} else {
+				$("#messageParagraph").text("Something went to wrong!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+			}
+		},
+		error : function(data) {
+			console.log(data)
+		}
+	})
+		} else {
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+}
+
+	// delete selected record from child ag grid
+	function deleteDetailsOnclick() {
+		
+		var selectedRows = activityOptions.api.getSelectedRows();
+		activityOptions.api.applyTransaction({
+			remove : selectedRows
+		});
+		activityOptions.api.refreshCells({force: true});
+		
+	}
+	//for closeing modal box for dlt  product
+	function cancelModalProductBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+		$('#deleteDetails').modal('hide');
+	}
+
+	function deleteFun() {
+		$('#delete').modal('show');
+	}
+
+	function deleteDetails() {
+		$('#deleteDetails').modal('show');
+		closeNav();
+	}
+
+	function cancelModalBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+	}
+//function for download
+function downloadDetails() { 
+	var dataset = [];
+	gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		dataset.push(rowNode.data);
+	});
+    gridOptions.api.exportDataAsCsv(dataset);
+}
+
+
+function getParameterId(){
+	var parameterId= $("#parameterName").val();
+	$("#parameterId").val(parameterId);
+}
+
+function getItemid(){
+	var parameterId= $("#itemname").val();
+	$("#itemid").val(parameterId);
+}
+
+
+function addNewParameter(){
+	//alert("ok");
+	$("#newParameterName").val('');
+	$("#parameterDesc").val('');
+	$('#parameterModal').modal('show');
+}
+
+function cancelBtn2(){
+	$('#parameterModal').modal('hide');
+}
+
+function addParameterInfo(){
+	
+	var obj = {};
+	obj.newParameterName = $("#newParameterName").val();
+	obj.parameterDesc = $("#parameterDesc").val();
+	var validation = true;
+
+	if (obj.newParameterName == null || obj.newParameterName == "") {
+		validation = validationUpdated("Parameter Name Required", "newParameterName");
+	}
+	var data = [];
+	
+	console.log(obj);
+	 if (validation) {
+		 data.push(obj);
+		 console.log(data);
+		$(".formValidation").remove();
+		$('.loader').show();
+		$.ajax({
+			type : "POST",
+			url : "qc-master-add-parameter",
+			contentType : "application/json",
+			data : JSON.stringify(data),
+			success : function(response) {
+				
+				if (response.code == "Success") {
+					$('.loader').hide();
+					$(document).ready(function() {
+				        // Call only the second function
+						getParameterList();
+				      });
+					
+					$("#messageParagraph").text("Parameter Added Successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$('#parameterModal').modal('hide');
+					
+				}else{
+					if (response.code == '1062') {
+						$('.loader').hide();
+						$("#messageParagraph").text("This Parameter is Already Exists.");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$('#parameterModal').modal('hide');
+						
+					}else{
+						$('.loader').hide();
+						$("#messageParagraph").text("Something Went Wrong!!");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$('#parameterModal').modal('hide');
+					}
+				}
+				
+				
+			},
+			error : function(data) {
+				$('.loader').hide();
+			}
+		})
+	} 
+	
+}
+
+
+function addNewFormula(){
+	$('#formulaModal').modal('show');
+	$('#fieldDiv').hide();
+	$('#formulaDiv').show();
+	$('#valueField').val('');
+	getFieldList();
+	getParamFieldList();
+	$("#formulaDesc").html($("#formulsOnNav").val());
+    $("#formulaValue").html($("#formulaValueNav").val().slice(1, -1));
+    var fieldNameNav = $("#fieldNameNav").val();
+    if (fieldNameNav == "" || fieldNameNav == null){
+    	$("#fieldName").html(fieldNameNav);
+    }else{
+    	$("#fieldName").html(fieldNameNav + ',');
+    }
+    
+}
+
+function addNewField(){
+	$('#fieldDiv').show();
+	$('#formulaDiv').hide();
+	$("#newFieldName").val("");
+}
+function cancelFieldDiv(){
+	$('#fieldDiv').hide();
+	$('#formulaDiv').show();
+}
+function changeFieldName(){
+	 var inputValue = $('#newFieldName').val();
+	 var sanitized = inputValue.replace(/[().,@\-&%$#*]/g, '');
+	 var convertedValue = sanitized.replace(/ /g, "_");
+	 $('#newFieldName').val(convertedValue);
+}
+
+function getFieldList(){
+	$("#fieldList").html(" ");
+	$(".loader").show();
+	agGrid.simpleHttpRequest({
+		url : 'qc-master-get-fieldList'
+	}).then(function(data) {
+		var jsonData = JSON.parse(data.body);
+		var allData=jsonData.getFieldList;
+		console.log(allData);
+		var val="";
+		var optionsHtml = "<option value=''>Select</option>";
+	  		allData.forEach(function (option) {
+	  		 val="(parseFloat($(@/#"+(option.name).toLowerCase()+"@/).val()))";
+	  		
+              optionsHtml += `<option value=${val}>${option.name}</option>`;
+          });
+	  		$('#fieldList').html(optionsHtml); 
+	  		$(".loader").hide();
+	});	
+}
+
+function getParamFieldList(){
+	$("#paramFieldList").html(" ");
+	$(".loader").show();
+	agGrid.simpleHttpRequest({
+		url : 'qc-master-get-paramFieldList'
+	}).then(function(data) {
+		var jsonData = JSON.parse(data.body);
+		var allData=jsonData.getParamList;
+		console.log(allData);
+		var val="";
+		var optionsHtml = "<option value=''>Select</option>";
+	  		allData.forEach(function (option) {
+	  		 val="(parseFloat($(@/#"+(option.key)+"@/).val()))";
+	  		
+              optionsHtml += `<option value=${val} code=${option.code}>${option.name}</option>`;
+          });
+	  		$('#paramFieldList').html(optionsHtml); 
+	  		$(".loader").hide();
+	});	
+}
+
+function addFieldInfo(){
+	var validation = true;
+	var fvalue = $("#newFieldName").val();
+
+	if (fvalue == null || fvalue == "") {
+		validation = validationUpdated("Field Name Required", "newFieldName");
+	}
+	
+	if(validation){
+		agGrid.simpleHttpRequest({
+			url : 'qc-master-add-field?fvalue=' + fvalue
+		}).then(function(data) {
+			var respCode = data.code;
+			//console.log("jsonData",jsonData);
+			if (respCode == "Success") {
+				getFieldList();
+				getParamFieldList();
+				cancelFieldDiv();
+				$("#messageParagraph").text("Field Added Successfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('#parameterModal').modal('hide');
+				
+			}else{
+				if (respCode == '1062') {
+					$("#messageParagraph").text("This Field is Already Exists.");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$('#parameterModal').modal('hide');
+					
+				}else{
+					$("#messageParagraph").text("Something Went Wrong!!");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$('#parameterModal').modal('hide');
+				}
+			}
+		});	
+	}
+	
+}
+
+function addVal(event){
+	var inputField = document.getElementById('valueField');
+    var displayField = document.getElementById('formulaDesc');
+	if (event.keyCode === 13) {
+
+        displayField.append(inputField.value);
+        $("#formulaValue").append(inputField.value);
+        inputField.value = '';
+    }
+}
+
+function clearFormula(){
+	$("#formulaDesc").html("");
+	$("#formulaValue").html("");
+	$("#fieldName").html("");
+}
+function closeFormulaDiv(){
+	$('#formulaModal').modal('hide');
+	clearFormula();
+}
+function addFormula(event){
+	if(event == 'field'){
+		var fieldValue = $("#fieldList").val();
+		var fieldText;
+		if(fieldValue != "" || fieldValue != null){
+			fieldText = $("#fieldList option:selected").text();
+			$("#formulaDesc").append(fieldText);
+			$("#formulaValue").append(fieldValue);
+			$("#fieldName").append(fieldText+",");
+			$("#fieldList").val("");
+		}
+		
+	}else if(event == "param"){
+		var paramFieldValue = $("#paramFieldList").val();
+		var paramFieldText;
+		var paramFieldCode;
+		if(paramFieldValue != "" || paramFieldValue != null){
+			paramFieldText = $("#paramFieldList option:selected").text();
+			paramFieldCode = $("#paramFieldList option:selected").attr("code");
+			$("#formulaDesc").append(paramFieldText);
+			$("#formulaValue").append(paramFieldValue);
+			$("#fieldName").append(paramFieldCode+",");
+			$("#paramFieldList").val("");
+		}
+	}else{
+		var operatorValue = $("#operatorList").val();
+		if(operatorValue != "" || operatorValue != null){
+			//fieldText = $("#fieldList option:selected").text();
+			$("#formulaDesc").append(operatorValue);
+			$("#formulaValue").append(operatorValue);
+			$("#operatorList").val("");
+		}
+	}
+}
+
+
+/* function addFormulaInfo() {
+	var validation = true;
+	
+	var obj = {};
+	var qcId = $("#qcId").val();
+	obj.fldName = $("#fieldName").val().slice(0,-1);
+	obj.frmValue = "("+$("#formulaValue").val()+")";
+	obj.frmDesc = $("#formulaDesc").val();
+	obj.prmId = $("#parameterId").val();
+	obj.qcId = $("#qcId").val();
+	
+
+	if (obj.frmDesc == null || obj.frmDesc == "") {
+		validation = validationUpdated("No Formula Added", "formulaDesc");;
+	}
+	var data = [];
+	
+	
+	if (validation) {
+		 data.push(obj);
+		
+		$('.loader').show();
+		$.ajax({
+			type : "POST",
+			url : "qc-master-add-formula",
+			contentType : "application/json",
+			data : JSON.stringify(data),
+			success : function(response) {
+				
+				if (response.code == "Success") {
+					$('.loader').hide();
+					editQc(qcId);
+					closeFormulaDiv();
+					closeNav();
+					
+					$("#messageParagraph").text("Formula Added Successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+					$('#parameterModal').modal('hide');
+					
+				}else{
+						$('.loader').hide();
+						$("#messageParagraph").text("Something Went Wrong!!");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						$('#parameterModal').modal('hide');
+				}
+				
+				
+			},
+			error : function(data) {
+				$('.loader').hide();
+			}
+		})
+	} 
+} */
+function addFormulaInfo() {
+	var formulaValue1 = $("#formulaValue").val();
+	 $("#formulsOnNav").val($("#formulaDesc").val());
+	 if(formulaValue1 == "" || formulaValue1 == null){
+		 $("#formulaValueNav").val(formulaValue1); 
+		 $("#addIcon").removeClass();
+		 $("#addIcon").addClass("ti-plus");
+		 $('#addIcon').attr('title', "Add Formula");
+	 }else{
+		 $("#formulaValueNav").val("("+formulaValue1+")");
+		 $("#addIcon").addClass("bi bi-pencil-square");
+		 $('#addIcon').attr('title', "Edit Formula");
+	 }
+     $("#fieldNameNav").val($("#fieldName").val().slice(0,-1));
+     closeFormulaDiv();
+}
+
+function disableField() {
+	 $('#itemname').attr("disabled", true);
+		$('#description').attr("disabled", true);
+		/* $('#parameterName').attr("disabled", true);
+		$('#minRange').attr("disabled", true);
+		$('#maxRange').attr("disabled", true); */
+		
+	
+}
+
+function enableField() {
+		 $('#itemname').attr("disabled", false);
+		$('#description').attr("disabled", false);
+		/* $('#parameterName').attr("disabled", false);
+		$('#minRange').attr("disabled", false);
+		$('#maxRange').attr("disabled", false); */
+	
+}
+function addNew(){
+	gridOptions.api.deselectAll();
+}
+
+function cancelMain(){
+	let selectedRows = gridOptions.api.getSelectedRows();
+	
+	let rowCount = 0;
+    selectedRows.forEach(function(selectedRow, index) {
+        rowCount = rowCount + 1;
+    });
+    
+    if(rowCount == 0){
+    	gridOptions.api.getDisplayedRowAtIndex(0).setSelected(true);
+    }else{
+    	
+    	var selectedNodes = gridOptions.api.getSelectedNodes();
+    	const selectedRowIndex = selectedNodes[0].rowIndex;
+    	gridOptions.api.getDisplayedRowAtIndex(selectedRowIndex).setSelected(true);
+    	onSelectionChanged();
+    }
+
+}
+
+function onEdit(){
+	 enableField();
+	 $("#mstrAddBtn").hide();
+	 $("#mstrEditBtn").hide();
+	 $("#cancelMainBtn").show();
+	 $("#mstrSaveBtn").show();
+}
+
+
+
+</script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<!--Tabination 1 Start-->
+					<div id="tab1" class="tab-pane" role="tabpanel">
+						<div class="d-flex flex-column flex-lg-row">
+							<!--Left Sec Start-->
+							<div class="box-sec" id="collapseWidthR1">
+								<div class="out-box">
+									<div class="d-flex justify-content-between p-2 bdr-line">
+										<div class="col-md-8 col-12">
+											<div class="d-flex search-sec position-relative">
+												<input class="form-control me-2" type="text"
+													onkeydown="enterToSearch(event)" placeholder="Search"
+													id="quickFilter" autocomplete="off">
+												<button class="btn btn-primary go-btn" type="button"
+													onclick="onQuickFilterChanged()">Go</button>
+												&nbsp;
+												<button class="btn go-btn w-auto" type="button"
+													onclick="reset()">Reset</button>
+											</div>
+										</div>
+										<div class="col-md-2 d-flex justify-content-end">
+											<button class="btn btn-primary max-btn" id="collapseButtonR1"
+												onclick="triggerExpansionR(1)" data-bs-toggle="tooltip"
+												data-bs-placement="top" title="Expand">
+												<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+													class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+											</button>
+										</div>
+									</div>
+									<div class="card m-2">
+										<input type="hidden" id="sessionOrganization1"
+											th:value="${session.ORGANIZATION_DIVISION}" /> <input
+											type="hidden" id="sessionId" th:value="${userId}" /> <input
+											type="hidden" id="sessionName" th:value="${userName}" /> <input
+											type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+											type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+											type="hidden" id="adRole" th:value="${adRole}" /> <input
+											type="hidden" id="totalPageno"> <input type="hidden"
+											id="currentPageno">
+										<div id="myGrid" style="height: 100vh; width: 100%;"
+											class="ag-theme-alpine"></div>
+									</div>
+								</div>
+							</div>
+							<div id="snackbar" class="snackbar"></div>
+
+							<!--Left Sec End-->
+
+							<!-- Right Section Start -->
+							<div class="box-sec" id="collapseWidthL1">
+								<div class="out-box">
+
+									<!-- Left aligned max-btn -->
+									<div
+										class="d-flex flex-row-reverse justify-content-between align-items-center p-2 bdr-line">
+										<button class="btn btn-primary max-btn" id="collapseButtonL1"
+											type="button" onclick="triggerExpansionL(1)"
+											data-bs-toggle="tooltip" data-bs-placement="top"
+											title="Expand">
+											<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+												class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+										</button>
+										<input type="hidden" id="itemNameTemp" /> <input
+											type="hidden" id="hsnCodeTemp" /> <input type="hidden"
+											id="itemNameTemp" /> <input type="hidden" id="itemIdTemp" />
+										<input type="hidden" id="brandNameTemp" /> <input
+											type="hidden" id="brandIdTemp" /> <input type="hidden"
+											id="skuTemp" /> <input type="hidden" id="hsnCodeTemp" /> <input
+											type="hidden" id="unitTemp" /> <input type="hidden"
+											id="gstRateTemp" /> <input type="hidden" id="prodCatIdTemp" />
+										<input type="hidden" id="prodCatNameTemp" />
+
+										<!-- Right aligned buttons -->
+										<div class="d-flex gap-2">
+											<ul class="nav nav-pills newtab" role="tablist" id="tabMenu">
+												<li class="nav-item" role="presentation" id="basicInfLiId"><a
+													class="nav-link active" data-bs-toggle="pill"
+													href="#basicinformation" aria-selected="true" role="tab">QC
+														Master Details</a></li>
+											</ul>
+										</div>
+									</div>
+									<!-- Tab Start -->
+									<!-- Start of Tab Content -->
+									<div class="tab-content flex-fill h-25" id="tabContent">
+										<div id="basicinformation"
+											class="tab-pane active show p-2 h-100" role="tabpanel">
+
+											<div class="requisition-tbl d-flex flex-column h-100">
+
+												<div class="mb-2">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<td width="50%" id="qcIdHeader">QC Id: <strong id="trReqId"></strong></td>
+																<td width="50%" id="itemNameHeader">Item Name: <strong id="itemNameHeaderId"></strong></td>
+																<td>
+																	<div class="d-flex justify-content-end flxwrap">
+																		<div class="mr-2">
+																			<button class="btn btn-primary  edit-btn"
+																				id="mstrAddBtn" type="button" onclick="addNew()">Add</button>
+																		</div>
+																		<div class="mr-2">
+																			<button class="btn btn-primary edit-btn"
+																				id="mstrEditBtn" type="button" onclick="onEdit()">Edit</button>
+																		</div>
+																		<div class="mr-2">
+																			<button class="btn btn-primary edit-btn"
+																				id="cancelMainBtn" type="button"
+																				onclick="cancelMain()">Cancel</button>
+																		</div>
+																		<div class="mr-2">
+																			<button class="btn btn-primary edit-btn"
+																				id="mstrSaveBtn" type="button"
+																				onclick="masterSaveData()">Save</button>
+																		</div>
+																	</div>
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+												<!--Start-->
+												<div class="card p-2">
+													<div
+														style="text-align: left; color: red; font-weight: bold; font-size: 12px;">
+														Note: All fields marked with <span>*</span> are mandatory.
+													</div>
+													<div class="row">
+														<input type="hidden" id="qcId">
+
+														<div class="col-md-4">
+															<div class="form-group">
+																<label> Item Name<span class="mandatory">*</span>
+																</label>
+																<div class="select" onchange="getItemid()">
+																	<select id="itemname">
+																		<option value="">Select</option>
+																		<option th:each="c:${itemnameList}"
+																			th:value='${c.key}' th:text="${c.name}"></option>
+																	</select> <span class="focus"></span>
+																</div>
+															</div>
+														</div>
+														<div class="col-md-4">
+															<div class="form-group">
+																<label> Item Id </label> <input type="text"
+																	class="form-control" id="itemid" readonly>
+															</div>
+														</div>
+
+														<div class="col-md-4">
+															<div class="form-group">
+																<label> Description </label>
+																<textarea class="form-control" id="description" rows="1"
+																	onblur="removeValid(event)"></textarea>
+															</div>
+														</div>
+													</div>
+													<div class="mt-2">
+
+														<div id="childGridDiv">
+															<div class="d-flex justify-content-between mt-2">
+																<div class="row">
+																	<div class="col-md-12">
+																		<h5 class="sub-header-new">Add QC Master Details</h5>
+																	</div>
+																</div>
+																<div class="row">
+																	<div class="col-md-12 cnt-sp-end" id="gridAllBtnDiv">
+																		<div class="d-flex gap-1 task-btn-sec">
+																			<button id="gridAddBtn"
+																				class="border-0 btn-transition btn btn-outline-primary br-m-btn-poc"
+																				title="Add" onclick="openNav()">
+																				<i class="fa fa-plus-square" aria-hidden="true"></i>
+																			</button>
+																			<button id="gridEditBtn"
+																				class="border-0 btn-transition btn btn-outline-primary br-dis-poc br-m-btn-poc"
+																				title="Edit" onclick="editRow()" disabled>
+																				<i class="fa fa-pencil-square" aria-hidden="true"></i>
+																			</button>
+																			<button id="gridDeleteBtn"
+																				class="border-0 btn-transition btn btn-outline-primary br-dis-poc br-m-btn-poc"
+																				title="Delete" disabled
+																				onclick="deleteDetailsOnclick()">
+																				<i class="fa fa-trash"></i>
+																			</button>
+																		</div>
+																	</div>
+																</div>
+															</div>
+															<div class="col-md-12">
+																<div id="activity" style="width: 100%; height: 250px;"
+																	class="ag-theme-alpine"></div>
+
+															</div>
+														</div>
+														<div id="itemDtlsDiv" class="d-none">
+															<div class="d-flex justify-content-between mt-2">
+																<div>
+																	<h5 class="sub-header-new">Add QC Master Details</h5>
+																</div>
+																<div>
+
+																	<div class="d-flex justify-content-end">
+																		
+																		<div class="mr-2">
+																			<button class="btn edit-btn" type="button"
+																				onclick="closeNav()">Cancel</button>
+																		</div>
+																		<div class="mr-2">
+																			<button class="btn edit-btn" type="button"
+																				id="saveTableData" onclick="saveTableData()">Save</button>
+																		</div>
+																	</div>
+																</div>
+															</div>
+															<div class="row">
+																<input type="hidden" class="form-control" id="rowEdit">
+
+																<div class="col-lg-6">
+																	<div class="form-group">
+																		<label>Parameter Name<span class="mandatory">*</span>
+																			<!-- <i class="ti-plus" onclick="addNewParameter()"
+																			style="margin-left: 2px; cursor: pointer; font-size: 12px; font-weight: 800;"
+																			onMouseOver="this.style.color='#0000FF'"
+																			onMouseOut="this.style.color='#000000'"
+																			title="Add Parameter"></i> -->
+																		</label>
+																		<div class="select" onchange="getParameterId()">
+																			<select id="parameterName">
+
+																				<option th:each="c:${parameterList}"
+																					th:value='${c.key}' th:text="${c.name}"></option>
+																			</select> <span class="focus"></span>
+																		</div>
+																	</div>
+																</div>
+																<div class="col-lg-6">
+																	<div class="form-group">
+																		<label>Parameter Id</label> <input type="text"
+																			class="form-control" id="parameterId" readonly>
+																	</div>
+																</div>
+																<div class="col-lg-6">
+																	<div class="form-group">
+																		<label>Min Range</label> <input type="text"
+																			class="form-control transparenttxtbox" id="minRange" 
+																			onblur="removeValid(event)">
+																	</div>
+																</div>
+																<div class="col-lg-6">
+																	<div class="form-group">
+																		<label>Max Range</label> <input type="text"
+																			class="form-control transparenttxtbox" id="maxRange" 
+																			onblur="removeValid(event)">
+																	</div>
+																</div>
+
+															</div>
+														</div>
+
+
+													</div>
+													<!-- <div class="row mt-2">
+														<div id="activity" style="width: 100%; height: 150px;"
+															class="ag-theme-alpine"></div>
+													</div> -->
+
+													<!-- <div class="d-flex justify-content-between mt-2">
+														<div>
+															<h5 class="sub-header-new">Add QC Master Details</h5>
+														</div>
+														<div>
+
+															<div class="d-flex justify-content-end">
+																<div class="mr-2">
+																<button class="btn edit-btn" type="button" id="delete1"
+																	onclick="deleteProductOnclick()">Delete</button>
+															</div>
+
+																<div class="mr-2">
+																	<button class="btn edit-btn" type="button" id="save1"
+																		onclick="saveTableData()">Save</button>
+																</div>
+																<div class="mr-2">
+																	<button class="btn edit-btn" type="button"
+																		onclick="closeNav()">Reset</button>
+																</div>
+															</div>
+														</div>
+													</div> -->
+													<!-- <div class="row mt-2 w-100"
+														style="overflow-y: auto; max-height: 7.2rem;">
+														<input type="hidden" class="form-control" id="rowEdit">
+
+														<div class="col-lg-6">
+															<div class="form-group">
+																<label>Parameter Name<span class="mandatory">*</span>
+																	<i class="ti-plus"
+																onclick="addNewParameter()"
+																style="margin-left: 2px; cursor: pointer; font-size: 12px; font-weight: 800;"
+																onMouseOver="this.style.color='#0000FF'"
+																onMouseOut="this.style.color='#000000'"
+																title="Add Parameter"></i>
+																</label>
+																<div class="select" onchange="getParameterId()">
+																	<select id="parameterName">
+
+																		<option th:each="c:${parameterList}"
+																			th:value='${c.key}' th:text="${c.name}"></option>
+																	</select> <span class="focus"></span>
+																</div>
+															</div>
+														</div>
+														<div class="col-lg-6">
+															<div class="form-group">
+																<label>Parameter Id</label> <input type="text"
+																	class="form-control" id="parameterId" readonly>
+															</div>
+														</div>
+														<div class="col-lg-6">
+															<div class="form-group">
+																<label>Min Range</label> <input type="text"
+																	class="form-control transparenttxtbox" id="minRange"
+																	onblur="removeValid(event)">
+															</div>
+														</div>
+														<div class="col-lg-6">
+															<div class="form-group">
+																<label>Max Range</label> <input type="text"
+																	class="form-control transparenttxtbox" id="maxRange"
+																	onblur="removeValid(event)">
+															</div>
+														</div>
+													</div> -->
+												</div>
+
+											</div>
+										</div>
+									</div>
+									<!-- end of Tab Content -->
+								</div>
+								<!-- Tab End -->
+							</div>
+							<!-- Right Section End -->
+						</div>
+					</div>
+					<!--Tabbination 1 End-->
+				</div>
+
+				<div class="modal fade" id="parameterModal">
+					<div class="modal-dialog modal-lg"
+						style="margin-top: 130px; height: 900px; max-width: 600px">
+						<div class="modal-content">
+
+							<!-- 	Modal Header -->
+							<div class="modal-header"></div>
+							<!-- Modal body -->
+							<div class="modal-body">
+
+								<div class="col-md-12" id="shippingInfo">
+									<div class="card-title">
+										<h4>Add Parameter Details</h4>
+									</div>
+									<div class="row">
+
+										<div class="col-md-6">
+											<div class="form-group">
+												<label>Name</label> <input type="text"
+													class="form-control transparenttxtbox" placeholder=""
+													id="newParameterName" onblur="removeValid(event);">
+											</div>
+										</div>
+										<div class="col-md-6">
+											<div class="form-group">
+												<label>Description</label>
+												<textarea class="form-control" id="parameterDesc"
+													onblur="removeValid(event);"></textarea>
+											</div>
+										</div>
+
+									</div>
+
+									<div class="row mt-4">
+										<div class="form-group">
+
+											<button class="delete-btn" id="cancel" onclick="cancelBtn2()">CANCEL</button>
+											<button class="btn1" id="save" onclick="addParameterInfo()">SAVE</button>
+
+										</div>
+									</div>
+								</div>
+
+
+
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal fade" id="formulaModal">
+					<div class="modal-dialog modal-lg"
+						style="margin-top: 130px; height: 900px; max-width: 800px">
+						<div id="formulaDiv">
+							<div class="modal-content">
+
+								<!-- 	Modal Header -->
+								<div class="modal-header">
+
+									<h5 class="modal-title" id="entry">
+										<b>Add Formula Details <span></span></b>
+									</h5>
+									<div class="col-md-6" align="right">
+										<button class="btn btn-primary" onclick="addNewField()">
+											<i class="bi bi-plus-lg"></i> Add New Field
+										</button>
+									</div>
+
+									<!-- <button id="close" type="button" class="btn btn-danger"
+									data-bs-dismiss="modal">X</button> -->
+
+								</div>
+								<!-- Modal body -->
+								<div class="modal-body">
+
+									<div class="col-md-12" id="shippingInfo">
+
+										<div class="row">
+
+											<div class="col-md-3">
+												<div class="form-group">
+													<label>Operators</label>
+													<div class="select">
+														<select id="operatorList" class="form-control"
+															onblur="removeValid(event)" onchange="addFormula('opr')">
+															<option value="">Select</option>
+															<option value="(">(</option>
+															<option value="+">+</option>
+															<option value="-">-</option>
+															<option value="*">*</option>
+															<option value="/">/</option>
+															<option value=")">)</option>
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-3">
+												<div class="form-group">
+													<label>Parameters</label>
+													<div class="select">
+														<select id="paramFieldList" class="form-control"
+															onblur="removeValid(event)"
+															onchange="addFormula('param')">
+
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-3">
+												<div class="form-group">
+													<label>Fields</label>
+													<div class="select">
+														<select id="fieldList" class="form-control"
+															onblur="removeValid(event)"
+															onchange="addFormula('field')">
+
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-3">
+												<div class="form-group">
+													<label>Value</label> <input type="number"
+														class="form-control transparenttxtbox" placeholder=""
+														id="valueField" onblur="removeValid(event);"
+														onkeyup="addVal(event)">
+												</div>
+												<span style="font-size: 12px;">*Press Enter After
+													Giving Value</span>
+											</div>
+
+										</div>
+										<div class="row">
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Formula</label><i class="bi bi-x-lg"
+														onclick="clearFormula()"
+														style="margin-left: 5px; cursor: pointer; font-size: 12px; font-weight: 1000;"
+														onMouseOver="this.style.color='#FF0000'"
+														onMouseOut="this.style.color='#000000'"
+														title="Clear Formula"></i>
+													<textarea class="form-control" id="formulaDesc"
+														onblur="removeValid(event);" readonly></textarea>
+												</div>
+											</div>
+											<div class="col-md-12" style="display: none;">
+												<div class="form-group">
+													<textarea class="form-control" id="formulaValue"
+														onblur="removeValid(event);" readonly></textarea>
+												</div>
+												<div class="form-group">
+													<textarea class="form-control" id="fieldName"
+														onblur="removeValid(event);" readonly></textarea>
+												</div>
+											</div>
+										</div>
+
+										<div class="row mt-4">
+											<div class="form-group">
+
+												<button class="delete-btn" id="cancel"
+													onclick="closeFormulaDiv()">CANCEL</button>
+												<button class="btn1" id="save" onclick="addFormulaInfo()">SAVE</button>
+
+											</div>
+										</div>
+									</div>
+
+
+
+								</div>
+							</div>
+						</div>
+						<div id="fieldDiv">
+							<div class="modal-content">
+
+								<!-- 	Modal Header -->
+								<div class="modal-header">
+
+									<h5 class="modal-title" id="entry">
+										<b>Add Field Details <span></span></b>
+									</h5>
+									<!-- <div class="col-md-6" align="right">
+										<button class="btn btn-primary" id="dloadBtn"
+											onclick="addNewField()">
+											<i class="bi bi-plus"></i> Add New Field
+										</button>
+									</div> -->
+
+									<!-- <button id="close" type="button" class="btn btn-danger"
+									data-bs-dismiss="modal">X</button> -->
+
+								</div>
+								<!-- Modal body -->
+								<div class="modal-body">
+
+									<div class="col-md-12" id="shippingInfo">
+
+										<div class="row">
+
+											<div class="col-md-6">
+												<div class="form-group">
+													<label>Field Name</label> <input type="text"
+														class="form-control transparenttxtbox" placeholder=""
+														id="newFieldName" onblur="removeValid(event);"
+														oninput="changeFieldName()">
+												</div>
+											</div>
+											<div class="col-md-6">
+												<!-- <div class="form-group">
+													<label>Description</label>
+													<textarea class="form-control" id="parameterDesc"
+														onblur="removeValid(event);"></textarea>
+												</div> -->
+												<div>
+													<label>Disclaimer</label>
+													<div>
+														<span style="font-size: 12px">* Space Will be
+															Replaced with Underscore ("_").</span><br> <span
+															style="font-size: 12px">* Add One Field At A Time.</span>
+													</div>
+												</div>
+											</div>
+
+										</div>
+
+										<div class="row mt-4">
+											<div class="form-group">
+
+												<button class="delete-btn" id="cancel"
+													onclick="cancelFieldDiv()">Back</button>
+												<button class="btn1" id="save" onclick="addFieldInfo()">SAVE</button>
+
+											</div>
+										</div>
+									</div>
+
+
+
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+
+				<!-- delete modal start -->
+				<div id="delete" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column"></div>
+							<div class="modal-body">
+								<p>Do you really want to delete these records? This process
+									cannot be undone.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: 0px;">
+
+								<button type="button" class="cancel-btn" data-bs-dismiss="modal"
+									onclick="cancelModalBtn();">Cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="deleteOnclick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- delete product modal start -->
+				<div id="deleteDetails" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column"></div>
+							<div class="modal-body">
+								<p>Do you really want to delete these records? This process
+									cannot be undone.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: -30px;">
+
+								<button type="button" class="cancel-btn" data-bs-dismiss="modal"
+									onclick="cancelModalBtn();">Cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="deleteDetailsOnclick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<!-- alert modal start -->
+				<div id="alert" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column">
+								<button type="button" class="close" data-bs-dismiss="modal"
+									aria-hidden="true" onclick="cancelModalBtn()">
+									<i class="ti-close modal-close"></i>
+								</button>
+							</div>
+							<div class="modal-body">
+								<p id="textId"></p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: 0px;">
+
+								<button type="button" class="btn1" data-bs-dismiss="modal">SELECT</button>
+								<button type="button" class="btn3" onclick="deleteOnclick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>

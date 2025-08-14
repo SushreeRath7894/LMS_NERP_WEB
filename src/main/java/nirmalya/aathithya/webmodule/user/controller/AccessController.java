@@ -1750,12 +1750,12 @@ public class AccessController {
 		return "lms/lms-aboutus";
 	}
 
-	@GetMapping("/training-certifications")
-	public String trainingCertifications(Model model, HttpSession session) {
-		logger.info("Method : training-certifications starts");
+	@GetMapping("/shop")
+	public String shop(Model model, HttpSession session) {
+		logger.info("Method : shop starts");
  
-		logger.info("Method : training-certifications ends");
-		return "lms/training-certifications";
+		logger.info("Method : shop ends");
+		return "lms/shop";
 	}
 
    @GetMapping("/consultancy")
@@ -1773,6 +1773,65 @@ public class AccessController {
 		logger.info("Method : atva ends");
 		return "lms/atva";
 	}
+
+	@GetMapping("/itil-maturity-model")
+	public String ITVA(Model model, HttpSession session) {
+		logger.info("Method : itil-maturity-model starts");
+ 
+		logger.info("Method : itil-maturity-model ends");
+		return "lms/itil-maturity-model";
+	}
+
+	@GetMapping("/iso-consulting")
+	public String ISO(Model model, HttpSession session) {
+		logger.info("Method : iso-consulting starts");
+ 
+		logger.info("Method : iso-consulting ends");
+		return "lms/iso-consulting";
+	}
+
+	@GetMapping("/generative-ai")
+	public String Generative(Model model, HttpSession session) {
+		logger.info("Method : generative-ai starts");
+ 
+		logger.info("Method : generative-ai ends");
+		return "lms/generative-ai";
+	}
+
+	@GetMapping("/blog")
+	public String blog(Model model, HttpSession session) {
+		logger.info("Method : blog starts");
+ 
+		logger.info("Method : blog ends");
+		return "lms/lms-blog";
+	}
+
+		@GetMapping("/resources")
+		public String resources(Model model, HttpSession session) {
+		logger.info("Method : resources starts");
+		 
+		logger.info("Method : resources ends");
+		return "lms/resources";
+		}
+		 
+		@GetMapping("/enterprise")
+		public String enterprise(Model model, HttpSession session) {
+		logger.info("Method : enterprise starts");
+		 
+		logger.info("Method : enterprise ends");
+		return "lms/enterprise";
+		}
+		 
+		@GetMapping("/upgrading")
+		public String upgrading(Model model, HttpSession session) {
+		logger.info("Method : upgrading starts");
+		 
+		logger.info("Method : upgrading ends");
+		return "lms/upgrading";
+		}
+
+	
+
 
 	
 	@GetMapping("/contactus")

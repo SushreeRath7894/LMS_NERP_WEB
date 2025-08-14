@@ -1,0 +1,524 @@
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.formValidation1 {
+	font-size: 10px;
+	font-weight: 100;
+	color: #ff9e99;
+	background-color: transparent;
+	position: relative;
+	top: -1px;
+	padding: 3px 0;
+}
+</style>
+
+<script>
+	$(document).ready(function() {
+		$("#isActive").prop("checked", true);
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		viewData();
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#DateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#policyDate').val($(this).val());
+		})
+
+		var gridDiv1 = document.querySelector('#myGrid1');
+		new agGrid.Grid(gridDiv1, gridOptions1);
+		var data = [];
+		gridOptions1.api.setRowData(data);
+
+		$("#myGrid1").hide();
+		var currDate = getCurrentDate();
+		$("#policyDate").val(currDate);
+	})
+
+	/* -------------------search bar for mygrid------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+		var totalRowCount = gridOptions.api.getModel().getRowCount();
+		$('#totalReq').find('span').html(totalRowCount);
+	}
+
+	var columnDefs = [ {
+		headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		pinned : 'left',
+	}, {
+		headerName : 'Employee Id',
+		field : "empId",
+		width : 120,
+		pinned : 'left'
+	}, {
+		headerName : 'Employee Name',
+		field : "empName",
+		width : 120,
+	}, {
+		headerName : 'Policy No',
+		field : "policyNo",
+		width : 120,
+	}, {
+		headerName : "Policy Type",
+		field : "policyType",
+		width : 150,
+	}, {
+		headerName : "CreatedOn",
+		field : "residentDesignation",
+		width : 200,
+		cellStyle : {
+			textAlign : 'left'
+		},
+	}, {
+		headerName : "Status",
+		field : "ckInSts",
+
+	} ];
+
+	const gridOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 150,
+			height : 10
+		},
+		rowSelection : 'single',
+		suppressRowClickSelection : true,
+	};
+
+	/* -------------ag grid for Policy Rules table(child table)---------- */
+
+	const columnDefs1 = [
+			{
+				headerName : 'Sl No.',
+				width : 90,
+				field : "rowId",
+				cellRenderer : function(params) {
+					return '<a onclick=editPolicyRules("' + params.data.rowId
+							+ '") href="javascript:void(0)">'
+							+ params.data.rowId + '</a>';
+				}
+			}, {
+				headerName : 'Policy Parameter',
+				width : 300,
+				field : "policyParameter"
+
+			}, {
+				headerName : 'From Days',
+				width : 250,
+				field : "policyFromDays",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : 'To Days',
+				width : 250,
+				field : "policyToDays",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : 'Grace Period',
+				width : 300,
+				field : "policyGracePeriod",
+				cellStyle : {
+					textAlign : 'right'
+				}
+			} ];
+
+	const gridOptions1 = {
+		columnDefs : columnDefs1,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 175,
+			height : 10
+		},
+		rowSelection : 'multiple',
+		//onSelectionChanged : rowSelectLeaveDetails,
+		suppressRowClickSelection : true,
+		getRowNodeId : function(data) {
+			return data.rowId;
+		}
+	};
+
+	function viewData() {
+		var allData = [];
+		gridOptions.api.setRowData(allData);
+	}
+	function newPolicy() {
+		$(".formValidation").remove();
+		$("#policyRemarks").val('');
+		$("#dept").val('');
+		gridOptions1.api.setRowData([]);
+		$("#policyMaster").show();
+		$("#headerDiv").hide();
+		$("#myGrid1").show();
+	}
+/* 	function closeNav() {
+
+		$("#policyMaster").hide();
+		$("#headerDiv").show();
+		$("#myGrid1").hide();
+		
+	} */
+
+	function openNav() {
+		document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto;top:257px;";
+		document.getElementById("myGrid1").style.width = "75%";
+
+		$("#myGrid1").show();
+		$("#cancel1").show();
+		$("#save").hide();
+
+	}
+
+	function closeNav() {
+		$("#policyParameter").val('');
+		$("#policyFromDays").val('');
+		$("#policyToDays").val('');
+		$("#policyGracePeriod").val('');
+		$("#cancel").show();
+		$("#new").hide();
+		$("#mainsave").show();
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("myGrid1").style.width = "100%";
+		$("#new1").show();
+		$("#save").show();
+	}
+
+	/* ------------function for add Policy Rules in side nav-------------- */
+
+	var policyRules = [];
+	var count = 0;
+	function saveSideNav() {
+	
+		count = count + 1;
+		var obj = {};
+		var validation = true;
+		obj.policyParameter = $("#policyParameter").val();
+		obj.policyFromDays = $("#policyFromDays").val();
+		obj.policyToDays = $("#policyToDays").val();
+		obj.policyGracePeriod = $("#policyGracePeriod").val();
+
+		if (obj.policyParameter == null || obj.policyParameter == "") {
+			validation = validationUpdated("Parameter Required",
+					"policyParameter");
+		}
+		if (obj.policyFromDays == null || obj.policyFromDays == "") {
+			validation = validationUpdated("From Days Required",
+					"policyFromDays");
+		}
+		if (obj.policyToDays == null || obj.policyToDays == "") {
+			validation = validationUpdated("To Days Required", "policyToDays");
+		}
+
+		if (obj.policyGracePeriod == null || obj.policyGracePeriod == "") {
+			validation = validationUpdated("Grace Period Required",
+					"policyGracePeriod");
+		}
+
+		if (validation) {
+			obj.rowId = count;
+			policyRules.push(obj);
+			gridOptions1.api.setRowData(policyRules);
+
+			$("#policyParameter").val("");
+			$("#policyFromDays").val("");
+			$("#policyToDays").val("");
+			$("#policyGracePeriod").val("");
+			$("#save").show();
+			closeNav();
+		}
+	}
+
+	function editPolicyRules(id) {
+		var x = parseInt(id);
+		var rowNode = gridOptions1.api.getRowNode(x);
+		var dataNode = rowNode.data;
+		openNav();
+	}
+
+	function closeDiv() {
+		$("#policyMaster").hide();
+		$("#headerDiv").show();
+
+	}
+
+	function getCurrentDate() {
+		let today = new Date();
+		let year = today.getFullYear();
+		let month = String(today.getMonth() + 1).padStart(2, '0'); // January is 0!
+		let day = String(today.getDate()).padStart(2, '0');
+
+		return day + '-' + month + '-' + year;
+	}
+	function saveDtls() {
+		var data = [];
+		var obj={};
+		var validation = true;
+		obj.policyNo = $("#policyNo").val();
+		obj.policyDate = $("#policyDate").val();
+		obj.policyRemarks = $("#policyRemarks").val();
+		obj.isActive = $('#isActive').is(':checked') ? 1 : 0;
+		obj.dept = $("#dept").val();
+		obj.rules = policyRules;
+		//data.push(obj);
+		//data.push(policyRules);
+ 
+		if (obj.dept == null || obj.dept == "") {
+			validation = validationUpdated("Department Required",
+					"dept");
+		} 
+		console.log('@@@',obj)
+		
+		if(obj.rules == null || obj.rules == ""){
+			$("#messageParagraph").text("Please Add Atleast One Rule");
+			$("#msgModal").modal('show');
+			validation=false;
+		}
+		if (validation) {
+			
+			savePolicyMaster(obj)
+		}
+
+		function savePolicyMaster(datas) {
+			console.log('datas',datas)
+			$(".loader").show();
+			setTimeout(function() {
+				$.ajax({
+					type : "POST",
+					url : "manage-policy-master-save",
+					contentType : "application/json",
+					data : JSON.stringify(datas),
+					success : function(response) {
+						if (response.code == "success") {
+							$(".loader").hide();
+							$("#messageParagraph").text(response.message);
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							$("#myGrid").show();
+							$("#policyMaster").hide();
+							$("#headerDiv").show();
+							$("#new").show();
+							$("#policyRemarks").val('');
+							$("#dept").val('');
+							gridOptions1.api.setRowData([]);
+
+							cancelBtn();
+						} else {
+							$("#messageParagraph").text(response.message);
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+						}
+					},
+					error : function(datas) {
+					}
+				})
+			}, 3000);
+
+		}
+	}
+</script>
+</head>
+
+<body>
+	<div layout:fragment="content">
+		<div class="content-wrap">
+			<div class="container-fluid">
+				<div class="maincontent">
+					<div class="row">
+
+						<div class="maincontentsec">
+							<div class="content_padding">
+								<div id="headerDiv">
+									<div class="d-flex justify-content-between mb-2">
+										<div class="btn-hs">
+											<div class="font-design" id="totalReq">
+												Employee List(<span></span>)
+											</div>
+										</div>
+
+										<div id="searchRowDiv">
+											<div class="input-style">
+												<input type="text" placeholder="Search.." name="search"
+													class="searchboxinput" onkeyup="cancelBar()"
+													oninput="onQuickFilterChanged()" id="quickFilter"
+													autocomplete="off">
+												<div class="searchicon">
+													<a href="javascript:void(0)"><span
+														style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+														id="closeKey"
+														onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalReq').find('span').html(gridOptions.api.getModel().getRowCount());"
+														class="close_i"><i class="ti-close srchicon"></i></span></a><a
+														href="javascript:void(0)"><i
+														class="ti-search srchicon"></i></a>
+												</div>
+											</div>
+										</div>
+										<div class="buttonsec btn-hs" id="btndiv">
+
+											<button class="approve-btn" id="newBtn" onclick="newPolicy()">New</button>
+										</div>
+									</div>
+
+
+									<div class="row">
+										<div id="myGrid" style="width: 100%; height: 450px;"
+											class="ag-theme-alpine"></div>
+
+									</div>
+								</div>
+								<div class="collapse" id="policyMaster">
+									<div class="innerstickybg">
+										<div class="row">
+
+											<!-- <div class="col-md-6">
+												Policy No: <span id="policyId"></span>
+											</div> -->
+											<div class="btn-hs" align="right">
+												<button class="cancel-btn" onclick="closeDiv()">CANCEL</button>
+												<button id="save" class="save-btn" onclick="saveDtls()">SAVE</button>
+											</div>
+										</div>
+									</div>
+									<div class="row innersticky_contentgap">
+										<div class="row">
+											<div class="col-lg-2">
+												<div class="form-group calendar_box">
+												<input type="hidden" id="policyNo">
+													<label>Issued Date</label> <input type="text"
+														id="policyDate" placeholder="Input Issue Date"
+														class="form-control" onblur="removeValid(event)"
+														th:attr="onkeyup=|formatDate('date','${session.DATEFORMAT_JS}')|"
+														readonly> <i class="ti-calendar picker_calendar"
+														id="DateCalendar"></i>
+												</div>
+											</div>
+											<div class="col-md-2">
+												<div class="form-group">
+													<label>Issued Department</label>
+													<div class="select">
+														<select id="dept">
+															<option value="">Select Department</option>
+															<option th:each="c,iter:${departmentList}"
+																th:value="${c.key}" th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+
+											<div class="col-md-6">
+												<div class="form-group">
+													<label>Remarks</label>
+													<textarea id="policyRemarks"> </textarea>
+												</div>
+											</div>
+											<div class="col-md-2">
+												<div class="form-group">
+													<label>Is Active</label> <input type="checkbox"
+														id="isActive">
+												</div>
+											</div>
+
+										</div>
+
+
+										<!----------------------- Side nav for Policy Rules---------------------- -->
+
+
+										<div class="row" id="totalReq1">
+											<div class="col-md-6">Policy Rules</div>
+											<div class="col-md-6 btn-hs">
+												<button class="new-btn" id="new1" onclick="openNav()">NEW</button>
+											</div>
+
+
+											<div id="myGrid1" style="width: 100%; height: 250px;"
+												class="ag-theme-alpine"></div>
+										</div>
+
+
+										<div id="mySidenav" class="sidenav">
+
+											<div class="slidebox">
+												<div class="row">
+													<div class="col-md-12 buttonsec btn-hs">
+														<button class="approve-btn" id="save"
+															onclick="saveSideNav()">Save</button>
+														<button class="cancel-btn" id="cancel1"
+															onclick="closeNav()">Cancel</button>
+													</div>
+												</div>
+												<div class="row">
+													<div class="col-md-12">
+														<div class="form-group">
+															<label>Parameter</label> <input type="text"
+																placeholder="e.g:ABSENT" id="policyParameter"
+																class="form-control">
+														</div>
+													</div>
+												</div>
+
+												<div class="row">
+													<div class="col-md-12">
+														<div class="form-group">
+															<label>From Days</label> <input type="number"
+																placeholder="Input In Days" id="policyFromDays"
+																class="form-control">
+														</div>
+													</div>
+												</div>
+												<div class="row">
+													<div class="col-md-12">
+														<div class="form-group">
+															<label>To Days</label> <input type="number"
+																placeholder="Input In Days" id="policyToDays"
+																class="form-control">
+														</div>
+													</div>
+												</div>
+												<div class="row">
+													<div class="col-md-12">
+														<div class="form-group">
+															<label>Grace Period</label> <input type="number"
+																placeholder="Input In Days" id="policyGracePeriod"
+																class="form-control">
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+
+
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</html>

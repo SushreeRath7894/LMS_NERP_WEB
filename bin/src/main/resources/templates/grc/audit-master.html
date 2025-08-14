@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<style>
+.formValidation1 {
+	font-size: 10px;
+	font-weight: 100;
+	color: #ff9e99;
+	background-color: transparent;
+	position: relative;
+	top: -1px;
+	padding: 3px 0;
+}
+.innerstickybg {
+	background: none;
+}
+
+#myReq .ag-row-selected {
+	background: #0076ba !important;
+	color: #fff;
+	text-indent: 10px !important;
+}
+
+.blank_row {
+	height: 10px !important; /* overwrites any other rules */
+	background-color: #007bff;
+}
+
+#myReq .ag-row-selected::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	margin-right: 7px;
+	position: relative;
+	top: 3px;
+	right: 4px;
+}
+.modal-cat {
+	height: 400px;
+}
+
+.modal-category {
+	height: 200px;
+}
+
+</style>
+
+<script>
+	//Multiple Document Upload Ends
+	$(document).ready(function() {	
+		
+		var dateFormat = localStorage.getItem("dateFormat");
+		
+		$("#startDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#startDate').val($(this).val());
+		})
+
+		$('#startDate').blur(function() {
+			$("#startDateCalendar").val($(this).val());
+		}) 
+		
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		var gridDiv = document.querySelector('#myGrid1');
+		new agGrid.Grid(gridDiv, gridOptions1);
+		var gridDiv = document.querySelector('#myGrid2');
+		new agGrid.Grid(gridDiv, gridOptions2);
+		
+		$('#add').attr('disabled', false);
+		$('#add1').attr('disabled', false);
+		$('#delete1').attr('disabled', true);
+		$('#delete2').attr('disabled', true);
+		$('#delete3').attr('disabled', true);
+		
+		viewData();  
+	}); 
+	function viewData(){
+		agGrid.simpleHttpRequest({
+			url : "audit-master/internal-auditor-view"
+		}).then(function(data) {
+			console.log("chk data",data.body); 
+			$('#totalRecInternal').find('span').html(data.total);
+			gridOptions.api.setRowData(data.body);
+		});
+		
+		agGrid.simpleHttpRequest({
+			url : "audit-master/external-auditor-view"
+		}).then(function(data) {
+			console.log("chk external data",data.body);
+			$('#totalRecExternal').find('span').html(data.total);
+			gridOptions1.api.setRowData(data.body);
+		});
+		
+		agGrid.simpleHttpRequest({
+			url : "audit-master/audit-category-view"
+		}).then(function(data) {
+			console.log("chk audit-category data",data.body);
+			$('#totalRecAuditCategory').find('span').html(data.total);
+			gridOptions2.api.setRowData(data.body); 
+		});
+		
+		$("#hid_auditorId").val('');
+		$("#auditTypeId").val(''); 
+		$("#agencyId").val('');
+		$("#agency_auditorName").val('');
+		$("#auditorName").val('');
+		//$("#specialization").val('');
+		$("#startDate").val('');
+		$("#experience").val('');
+		$("#mobileno").val('');
+		$("#email").val('');
+		$("#address").val(''); 
+		$("#uploadedBillDiv_0").html(''); 
+		$("#imageName_0").html(''); 
+				
+		$("#hidaudit_category_id").val('');
+		$("#auditor_type").val('');
+		$("#audit_category_name").val('');
+		$("#objective").val('');
+		$("#audit_category_status").val('');
+	}
+	var columnDefs = [{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+			}, {
+				headerName : "Auditor Id",
+				field : "auditorId",
+				width : 200,
+			cellRenderer : function(params) {
+				return '<a onclick=editAuditorId("' + params.data.auditorId
+						+ '") href="javascript:void(0)"><i class="bi bi-pencil-square"></i> '
+						+ params.data.auditorId + '</a>';
+			}
+			
+			},{
+				headerName : "Auditor Name",
+				field : "auditorName",
+				width : 200,
+			}, {
+				headerName : "Start Date",
+				field : "startDate",
+				width : 200,
+			}, {
+				headerName : "Experience",
+				field : "experience",
+				width :  200,
+			}, {
+				headerName : "Mobile No",
+				field : "mobileno",
+				width : 200,
+			}, {
+				headerName : 'Email',
+				field : "email",
+				width : 200,
+			}, ];
+	var rowdata=[];
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowData : rowdata,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 200,
+			height : 20
+		},
+		rowSelection : 'single',
+		onSelectionChanged : onSelectionChangedIn
+	};
+	
+	var columnDefs1 = [{
+		headerCheckboxSelection : true,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true
+	},
+	{
+		headerName : "Auditor Id",
+		field : "auditorId",
+		width : 200,
+	
+	  cellRenderer : function(params) {
+		return '<a onclick=editAuditorId("' + params.data.auditorId
+				+ '") href="javascript:void(0)"><i class="bi bi-pencil-square"></i> '
+				+ params.data.auditorId + '</a>';
+	}
+	
+	
+	},
+	{
+		headerName : "Agency/Firm",
+		field : "agencyId",
+		width : 200,
+	}, {
+		headerName : "Auditor Name",
+		field : "auditorName",
+		width : 200,
+	}, {
+		headerName : "Start Date",
+		field : "startDate",
+		width : 200,
+	}, {
+		headerName : "Duration",
+		field : "experience",
+		width : 200,
+	}, {
+		headerName : 'Address',
+		field : "address",
+		width : 200,
+	}, {
+		headerName : "Mobile No",
+		field : "mobileno",
+		width : 200,
+	}, {
+		headerName : 'Email',
+		field : "email",
+		width : 200,
+	},  {
+		headerName : 'Attachment',
+		field : "uploadedBillDiv",
+		width : 200,
+		cellRenderer : function(params) {
+			var div = "";
+			if (params.data.uploadedBillDiv) {
+				var ext = params.data.uploadedBillDiv.split(".");
+				if (ext[1] == "pdf") {
+					div = div
+					+ " "
+					+ '<div class ="fa fa-file-pdf-o" style="cursor: pointer; color: red;" onclick=openImage("'+ params.data.uploadedBillDiv + '")> </div>';
+				}else{
+					div = div
+					+ " "
+					+ '<div class ="fa fa-picture-o" style="cursor: pointer; color: blue;" onclick=openImage("'+ params.data.uploadedBillDiv + '")> </div>';
+				}
+			}
+			return div;
+		},
+	}, ];
+	
+	function openImage(id) {
+		//window.open("/sales/view-deliverychallan-pdf-downloads?dcId="+ window.btoa(id), '_blank');
+		window.open("nERP/imageUpload/audit/"+id,'_blank');  
+	}
+	
+	var rowdata1=[];
+	var gridOptions1 = {
+			columnDefs : columnDefs1,
+			rowData : rowdata1,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 200,
+				height : 20
+			},
+			rowSelection : 'single',
+			onSelectionChanged : onSelectionChangedEx
+		};
+	var columnDefs2 = [{
+		headerCheckboxSelection : true,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true
+	},{
+		headerName : "Category Code",
+		field : "audit_category_id",
+		cellRenderer : function(params) {
+		return '<a onclick=editMasterCategoryId("' + params.data.audit_category_id
+				+ '") href="javascript:void(0)"><i class="bi bi-pencil-square"></i> '
+				+ params.data.audit_category_id + '</a>';
+	}
+	}, {
+		headerName : "Type",
+		field : "auditor_type",
+	}, {
+		headerName : "Category Name",
+		field : "audit_category_name",
+	}, {
+		headerName : "Objective",
+		field : "audit_category_objective",
+	},  {
+		headerName : "Status",
+		field : "audit_category_status",
+	}, ];
+	var gridOptions2 = {
+			columnDefs : columnDefs2,
+			rowData : rowdata1,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 250,
+				height : 20
+			},
+			rowSelection : 'single',
+			onSelectionChanged : onSelectionChangedCat
+		};
+	var pId="";
+	var selectedId=[];
+	function onSelectionChangedIn() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+		if(rowCount>0){
+				$('#add').attr('disabled', true);
+				$('#delete1').attr('disabled', false);
+		}else{
+			$('#add').attr('disabled', false);
+			$('#delete1').attr('disabled', true);
+		}
+	}
+	function onSelectionChangedEx() {
+		var selectedRows = gridOptions1.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+		if(rowCount>0){
+			$('#delete2').attr('disabled', false);
+		}else{
+			$('#delete2').attr('disabled', true);
+		}
+	}
+	function onSelectionChangedCat() {
+		var selectedRows = gridOptions2.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+		if(rowCount>0){
+				$('#add1').attr('disabled', true);
+				$('#delete3').attr('disabled', false);
+		}else{
+			$('#add1').attr('disabled', false);
+			$('#delete3').attr('disabled', true);
+		}
+	}
+	function openNav() {
+		$("#startDate").val("");
+		$("#experience").val("");
+		$("#mobileno").val("");
+		$("#email").val("");
+		$("#address").val("");
+		$("#agencyId").val("");
+		$("#agency_auditorName").val("");
+		$("#auditorName").val("");
+		$("#hid_auditorId").val("");
+		$("#auditTypeId").val("");
+		$("#auditorName").val("");
+		
+		$("#myModalSelected").modal("show");
+	}
+	function hideModal(){
+		$("#myModalSelected").modal("hide");	
+		viewData();
+	}
+	
+	function openAuditCategoryNav() { 
+		$("#hidaudit_category_id").val();
+		$("#auditor_type").val();
+		$("#audit_category_name").val();
+		$("#objective").val(); 
+		$("#audit_category_status").val();
+		
+		$("#myAuditCategoryModalSelected").modal("show");
+	}
+	
+	function hideAuditCategoryModal() {
+		$("#myAuditCategoryModalSelected").modal("hide");
+		viewData();
+	}
+	
+	function saveTableData() {
+		$(".formValidation").remove();
+		var data1 = {};
+		var validation = true;
+		
+		data1.auditorId = $("#hid_auditorId").val();
+		data1.auditTypeId = $("#auditTypeId").val(); 
+		
+		if($("#auditTypeId").val()=='1')//External Editor
+		{
+			data1.agencyId = $("#agencyId").val();
+			data1.auditorName = $("#agency_auditorName").val(); 
+			if (data1.agencyId == null || data1.agencyId== "") {
+				validation = validationUpdated("Agency Required", "agencyId");
+			}
+			if (data1.auditorName == null || data1.auditorName== "") { console.log("chk Auditor Name is blank");
+				validation = validationUpdated("Auditor Name Required", "agency_auditorName");
+			}  
+		} 
+		else if($("#auditTypeId").val()=='2')//Internal Editor
+		{
+			data1.agencyId = $("#auditorName").val();
+			data1.auditorName = $("#auditorName option:selected").text(); 
+			if (data1.agencyId == null || data1.agencyId== "") {
+				validation = validationUpdated("Auditor Name Required", "auditorName");
+			}  
+		} 
+		//data1.specialization = $("#specialization").val();
+		data1.startDate = $("#startDate").val();
+		data1.experience = $("#experience").val(); 
+		data1.mobileno = $("#mobileno").val();
+		data1.email = $("#email").val();
+		data1.address = $("#address").val();
+		data1.uploadedBillDiv = $("#imageName_0").html();
+
+		 if (data1.auditTypeId == null || data1.auditTypeId== "") {
+				validation = validationUpdated("Audit Type Required", "auditTypeId");
+			}  
+		 if (data1.experience == null || data1.experience== "") {
+				validation = validationUpdated("Experience Required", "experience");
+			}
+		 if (data1.startDate == null || data1.startDate== "") {
+				validation = validationUpdated("Start Date Required", "startDate");
+			} 
+		console.log('JSON.stringify(data1)',JSON.stringify(data1));
+		mailVal(); 
+		mobVal1();
+		if (validation  && mailValid  && mobValid1) {
+		$(".formValidation").remove();
+		$.ajax({
+				type : "POST",
+				url : "audit-master-savedata",
+				dataType : "json",
+				contentType : "application/json",
+				data : JSON.stringify(data1),
+				success : function(response) {
+					if (response.message == "Success") {
+						hideModal();
+						console.log(response);  
+						$("#messageParagraph").text(
+						"Data saved successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						
+						viewData();
+					}
+				},
+				error : function(response) {
+					console.log(response);
+				}
+			})
+		}
+	}
+	function showhideAgency(divId,divAuditorTextField,divAuditorDropDown, val) {//divagency
+		console.log("value",val);
+		if(val=='0'){//Default Select value Selected
+			document.getElementById(divId).style.display = 'none'; 
+			document.getElementById(divAuditorTextField).style.display = 'none'; 
+			document.getElementById(divAuditorDropDown).style.display = 'none'; 
+		}
+		else if(val=='1'){//External Selected
+			document.getElementById(divId).style.display = 'block'; 
+			document.getElementById(divAuditorTextField).style.display = 'block'; 
+			document.getElementById(divAuditorDropDown).style.display = 'none'; 
+		}
+		else if(val=='2'){//Internal Selected
+			document.getElementById(divId).style.display = 'none'; 
+			document.getElementById(divAuditorTextField).style.display = 'none'; 
+			document.getElementById(divAuditorDropDown).style.display = 'block'; 
+		}
+	} 
+	//Email validation
+	var mailValid;
+
+	function mailVal() {
+	    var mail = $('#email').val();
+	    var mid =  /^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$/;
+	    if (mail != '') { 
+             if (mid.test(mail)) {
+	             $("#error3").hide();
+	             mailValid = true;
+	             return true;
+	         } else {
+	             $("#error3").show();
+	             $("#error3").html("Please enter a valid email id.");
+	             mailValid = false;
+	             return false;
+	         }
+	    } else {
+	        $("#error3").html("Email Required");
+	        mailValid = false;
+	        return false;
+	    }
+	}
+	 //Mobile Number validation
+	var mobValid1;
+
+	function mobVal1() {
+	    var mob = $('#mobileno').val();
+	    var phoneno = /^\d{10}$/;
+	    if (mob != '') {
+	        if (phoneno.test(mob)) {
+	        	
+	            $("#error9").hide();
+	           
+	            mobValid1 = true;
+	            return true;
+	        } else {
+	        	
+	            $("#error9").html(
+	                "please enter  10 digit mobile number  ex:7089451278");
+	        	 $("#error9").show();
+	            mobValid1 = false;
+	            return false;
+	        }
+	    } else {
+	        $("#error9").html(" Mobile No. Required");
+	        mobValid1 = false;
+	        return false;
+	    }
+	}
+	function checkNumeric(fieldId) {
+	 var tempVal = $("#" + fieldId).val().replace(/[^0-9 ]/g, '');
+	    const input = document.getElementById(fieldId);
+	    const position = input.selectionStart;	
+	    if(tempVal.slice(-1) == ' '){
+	     	$("#" + fieldId).empty();
+	     	tempVal = '';
+	     } 
+	   $("#" + fieldId).val(tempVal);
+	}
+	function saveAuditCategoryTableData() {
+		var data2 = {};
+		var validation = true; 
+		
+		data2.audit_category_id = $("#hidaudit_category_id").val();
+		data2.auditor_type = $("#auditor_type").val();
+		data2.audit_category_name = $("#audit_category_name").val();
+		data2.audit_category_objective = $("#objective").val(); 
+		data2.audit_category_status = $("#audit_category_status").val();
+
+		 if (data2.auditor_type == null || data2.auditor_type== "") {
+				validation = validationUpdated("Audit Type Required", "auditor_type");
+			} 
+		 if (data2.audit_category_name == null || data2.audit_category_name== "") {
+				validation = validationUpdated("Audit Category Required", "audit_category_name");
+			} 
+		 if (data2.audit_category_objective == null || data2.audit_category_objective== "") {
+				validation = validationUpdated("Objective Required", "objective");
+			} 
+		 if (data2.audit_category_status == null || data2.audit_category_status== "") {
+				validation = validationUpdated("Status Required", "audit_category_status");
+			} 
+		console.log('JSON.stringify(data2)',JSON.stringify(data2)); ;
+		if (validation) {
+		$.ajax({
+				type : "POST",
+				url : "audit-master/audit-category-savedata",
+				dataType : "json",
+				contentType : "application/json",
+				data : JSON.stringify(data2),
+				success : function(response) {
+					if (response.message == "Success") {
+						hideAuditCategoryModal();
+						console.log(response);  
+						$("#messageParagraph").text(
+						"Data saved successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						
+						viewData();
+					}
+				},
+				error : function(response) {
+					console.log(response);
+				}
+			})
+		} 
+	} 
+	
+	function deleteAuditCategoryModalOpen(deleteforselected){
+		console.log("deleteforselected",deleteforselected);
+		$("#deleteAuditCategoryModal").modal('show');
+		if(deleteforselected=='1')
+		{  
+			$("#deleteAuditMasterBtn").show();
+			$("#deleteAuditMasterExternalBtn").hide();
+			$("#deleteAuditCategoryBtn").hide();
+		}
+		else if(deleteforselected=='2') { 
+			$("#deleteAuditMasterBtn").hide();
+			$("#deleteAuditMasterExternalBtn").show();
+			$("#deleteAuditCategoryBtn").hide();
+		}
+		else if(deleteforselected=='3') {  
+			$("#deleteAuditMasterBtn").hide();
+			$("#deleteAuditMasterExternalBtn").hide();
+			$("#deleteAuditCategoryBtn").show();
+		}
+	}
+	function closeAuditCategoryModal(){
+		$("#deleteAuditCategoryModal").modal('hide');
+		viewData();
+	}
+	//Delete deleteAuditCategoryRecord
+	function deleteAuditCategoryRecord() {
+		var selectedRows = gridOptions2.api.getSelectedRows();
+		var id = selectedRows[0].audit_category_id;
+		console.log("audit_category_id",id);
+		$.ajax({
+			type : "GET",
+			url : "audit-master/audit-category-master-delete?id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+
+					agGrid.simpleHttpRequest({
+						url : "audit-master/audit-category-view"
+					}).then(function(data) {
+						gridOptions2.api.setRowData(data);
+					});
+					//location.reload();
+
+					closeAuditCategoryModal();
+					//closeNav();
+					
+				}
+			},
+			error : function(data) {
+				console.log(data);
+			}
+		})
+	}
+	//Delete deleteAuditMasterRecord
+	function deleteAuditMasterRecord() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var id = selectedRows[0].auditorId;
+		//$('#delete').attr('disabled', true);
+		console.log("auditor_id",id);
+		$.ajax({
+			type : "GET",
+			url : "audit-master/audit-internal-master-delete?id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+
+					agGrid.simpleHttpRequest({
+						url : "audit-master/internal-auditor-view"
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+					});
+					//location.reload();
+
+					closeAuditCategoryModal();
+					//closeNav();
+					
+				}
+			},
+			error : function(data) {
+				console.log(data);
+			}
+		})
+	}
+	//deleteAuditMasterExtRecord
+	function deleteAuditMasterExtRecord() {
+		var selectedRows = gridOptions1.api.getSelectedRows();
+		var id = selectedRows[0].auditorId;
+		console.log("auditorId",id);
+		$.ajax({
+			type : "GET",
+			url : "audit-master/audit-external-master-delete?id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+
+					agGrid.simpleHttpRequest({
+						url : "audit-master/external-auditor-view"
+					}).then(function(data) {
+						gridOptions.api.setRowData(data);
+					});
+
+					closeAuditCategoryModal();
+					
+				}
+			},
+			error : function(data) {
+				console.log(data);
+			}
+		})
+	}
+	
+	//editMasterCategoryId
+	function editMasterCategoryId(id) { 	 
+		$.ajax({
+			type : "GET",
+			url : "audit-master/audit-master-categoryedit?Id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+					openAuditCategoryNav(); 
+					console.log("edit" + response.body.audit_category_status);
+					$("#hidaudit_category_id").val(response.body.audit_category_id);
+				    $("#auditor_type").val(response.body.auditor_type);
+					$("#audit_category_name").val(response.body.audit_category_name);
+					$("#objective").val(response.body.audit_category_objective);
+					$("#audit_category_status").val(response.body.audit_category_status);  
+				}
+			}, 
+			error : function(data) {
+				console.log(data) 
+				$("#hidaudit_category_id").val();
+				$("#auditor_type").val();
+				$("#audit_category_name").val();
+				$("#objective").val();
+				$("#audit_category_status").val();
+			}
+		}); 
+	}
+	
+	//editAuditorId
+	function editAuditorId(id) { 	 		
+		$.ajax({
+			type : "GET",
+			url : "audit-master/audit-master-edit?Id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+					openNav(); 
+					console.log("edit" + response.body);
+					$("#hid_auditorId").val(response.body.auditorId);
+					$("#auditTypeId").val(response.body.auditTypeId);
+					
+					if(response.body.auditTypeId=='1'){//for external auditor
+					    $("#divAuditorDropDown").hide();
+						$("#divagency").show();
+						$("#agencyId").val(response.body.agencyId);
+						$("#divAuditorTextField").show();
+						$("#agency_auditorName").val(response.body.auditorName);
+					}else if(response.body.auditTypeId=='2'){//for internal auditor 
+						$("#divAuditorDropDown").show();
+						$("#auditorName").val(response.body.agencyId);
+						$("#divagency").hide();
+						$("#divAuditorTextField").hide();
+					}
+				    //$("#specialization").val(response.body.specialization);
+					$("#startDate").val(response.body.startDate);
+					$("#experience").val(response.body.experience);
+					$("#mobileno").val(response.body.mobileno);
+					$("#email").val(response.body.email);
+					$("#address").val(response.body.address);
+					//$("#imageName_0").html(response.body.uploadedBillDiv);
+					
+					var fileName=response.body.uploadedBillDiv;
+					if (fileName != null) {
+						var ext = response.body.uploadedBillDiv.split(".");
+						$("#imageName_0").html(fileName);
+ 
+			           if (ext[1] == "jpg" || ext[1] == "png") {
+							var LightImg = '<div class ="uploadicon position-l"><a class="example-image-link" target="_balnk"><i class="fa fa-picture-o" style="color: blue" onclick=openImage("'
+								+ fileName + '")></i></a> </div>';
+						}else if (ext[1] == "pdf") {
+							var LightImg = '<div class ="uploadicon position-l"><a class="example-image-link" target="_balnk"><i class="fa fa-file-pdf-o" style="color: red" onclick=openImage("'
+								+ fileName + '")></i></a> </div>';
+						} else {
+							var LightImg = "<div class='uploadicon position-l'> </div>";
+						}  
+
+						$("#uploadedBillDiv_0").html(LightImg);
+					}
+				}
+			}, 
+			error : function(data) {
+				console.log(data) 
+				$("#agencyId").val();
+				$("#agency_auditorName").val();
+				$("#auditorName").val();
+				//$("#specialization").val();
+				$("#startDate").val();
+				$("#experience").val();
+				$("#mobileno").val();
+				$("#email").val();
+				$("#address").val();
+				$("#imageName_0").val();
+			}
+		}); 
+	}
+	
+	/* save document file */
+	function saveMultiFileDoc(event) {
+		console.log("select file");
+		//$(".formValidation").remove();
+		var uFile = $(uploadDoc_0)[0].files[0];
+		var fileName = event.currentTarget.value;
+		var lastIndex = fileName.lastIndexOf("\\");
+		if (lastIndex >= 0) {
+			fileName = fileName.substring(lastIndex + 1);
+		}
+		var extension = fileName.split(".");
+		var iURL = URL.createObjectURL(uFile);
+		//$("#uploadedBillDiv_0").html("");
+
+		/*if (extension[1] == "jpg" || extension[1] == "png"|| extension[1] == "jpeg") {
+			var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-picture-o' style='color: blue'></i></a></div>";
+		}else if (extension[1] == "pdf") {
+			var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-pdf-o' style='color: red'></i></a></div>";
+		} else {
+			var LightImg = "<div class='uploadicon position-l'> </div>";
+		}*/
+		//$("#uploadedBillDiv_0").html(LightImg);
+		$("#imageName_0").html(fileName);
+		var fileData = new FormData();
+		fileData.append('file', uFile);
+		fileData.append('path', 'none');
+		$.ajax({
+			type : "POST",
+			url : "audit-master/view-audit-master-upload-file",
+			enctype : "multipart/form-data",
+			contentType : false,
+			data : fileData,
+			processData : false,
+			cache : false,
+			success : function(response) {
+
+			},
+			error : function(e) {
+
+			}
+		});
+	}	
+</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="mt-2" id="upperline">						
+							<div class="" id="upperOne">
+								<div class="row">
+									<div class="d-flex justify-content-between">
+										<div class="col-md-4  btn-hs">
+											<div class="font-design" id="totalRecInternal">
+												Internal Auditors (<span></span>)
+											</div>
+										</div>
+
+										<div class="buttonsec btn-hs" id="ttbtn"> 
+											<button onclick="deleteAuditCategoryModalOpen('1')"  class="delete-btn" id="delete1">delete</button>
+											<button class="new-btn" id="add"  onclick="openNav()">New</button>
+										</div>
+									</div>
+								</div>
+								<div id="myGrid" style="width: 100%; height: 300px;" class="ag-theme-alpine"></div>
+								<div  style="width: 100%; height: 15px;" class="ag-theme-alpine"></div>
+							</div>
+						</div>
+						
+						<div class="" id="upperline">						
+							<div class="" id="upperOne">
+								<div class="row">
+									<div class="d-flex justify-content-between">
+										<div class="col-md-4  btn-hs">
+											<div class="font-design" id="totalRecExternal">
+												External Auditors (<span></span>)
+											</div>
+										</div> 
+									    <div class="buttonsec btn-hs" id="ttbtn"> 
+											<button onclick="deleteAuditCategoryModalOpen('2')"  class="delete-btn" id="delete2">delete</button>
+										</div>
+									</div>
+								</div>
+								<div id="myGrid1" style="width: 100%; height: 300px;" class="ag-theme-alpine"></div>
+								<div  style="width: 100%; height: 15px;" class="ag-theme-alpine"></div>
+							</div>
+						</div>
+						
+						<div class="" id="upperline">						
+							<div class="" id="upperOne">
+								<div class="row">
+									<div class="d-flex justify-content-between">
+										<div class="col-md-4  btn-hs">
+											<div class="font-design" id="totalRecAuditCategory">
+												Audit Category (<span></span>)
+											</div>
+										</div> 
+										<div class="buttonsec btn-hs" id="ttbtn">
+ 									        <button onclick="deleteAuditCategoryModalOpen('3')"  class="delete-btn" id="delete3">delete</button>
+											<button class="new-btn" id="add1"  onclick="openAuditCategoryNav()">New</button>
+										</div>
+									</div>
+								</div>
+								<div id="myGrid2" style="width: 100%; height: 300px;" class="ag-theme-alpine"></div>
+								<div  style="width: 100%; height: 15px;" class="ag-theme-alpine"></div>
+							</div>
+						</div>
+					</div>
+				<!-- SIDE BAR NAVIGATION STARTS --> 
+				</div>
+ 				<!-- SIDE BAR NAVIGATION ENDS --> 
+			</div> 
+			<!-- Open Modal on click to New Button-->
+			<div class="modal fade" id="myModalSelected">
+				<div class="modal-dialog modal-lg" style="margin-top: 130px;">
+					<div class="modal-content">
+						<!-- Modal body -->
+						<div class="modal-body modal-cat">							
+							<div class="row"> 
+								<input type="hidden" id="hid_auditorId">	
+								<div class="col-lg-6">
+									<div class="form-group ">
+										<label> Audit Type</label> 
+										<div class="select">
+											<select class="" id="auditTypeId" onclick="showhideAgency('divagency','divAuditorTextField','divAuditorDropDown', this.value);">
+											<option value="">Select</option>
+											<option th:each="c,iter:${auditType}" th:value="${c.key}"
+															th:text="${c.name}"></option>
+											</select>
+										</div>
+									</div>
+								</div> 
+								<div class="col-lg-6">
+									<div class="form-group " id="divagency" style="display: none;">
+										<label> Agency</label> 
+										<div class="select">
+											<select class="" id="agencyId">
+											<option value="">Select</option>
+											<option th:each="c,iter:${agencyList}" th:value="${c.key}"
+															th:text="${c.name}"></option>
+											</select>
+										</div>
+									</div>
+								</div>  
+								 <div class="col-lg-6"  id="divAuditorTextField"  style="display: none;">
+									<div class="form-group">
+										<label>Auditor</label>
+										<input type="text"
+										id="agency_auditorName" placeholder="Auditor Name" class="form-control"> 
+									</div>
+								</div>	     
+								<div class="col-lg-6"  id="divAuditorDropDown"  style="display: none;">
+									<div class="form-group">
+										<label>Auditor</label> 
+										<div class="select"> 
+											<select class="" id="auditorName">
+											<option value="">Select</option>
+											<option th:each="c,iter:${auditorList}" th:value="${c.key}"
+															th:text="${c.name}"></option>
+											</select>
+										</div>
+									</div>
+								</div>								
+								<!-- <div class="col-lg-6">
+									<div class="form-group">
+										<div class="autocomplete" style="width: 100%;">
+											<label>Specialization</label> 
+											<div class="select">
+												<select class="" id="specialization" onblur="removeValid(event);" >
+												<option value="">Select</option>
+												<option value="General">General</option>
+												<option value="Project">Project</option>
+												<option value="Engineering">Engineering</option>
+												<option th:each="c,iter:${auditorSpecialisationList}" th:value="${c.key}"
+															th:text="${c.name}"></option>
+												</select>
+											</div>
+										</div>
+										<div id="suggesstion-box1" class="sugg-cls"></div>
+									</div>
+								</div> -->
+ 								<div class="col-lg-6">
+									<div class="form-group calendar_box">
+										<label>Start Date</label>
+											<input type="text"
+										id="startDate" placeholder="Start Date" class="form-control"
+										onblur="removeValid(event)" 
+										th:attr="onkeyup=|formatDate('startDate','${session.DATEFORMAT_JS}')|" readonly>
+										<i class="ti-calendar picker_calendar" id="startDateCalendar"></i>
+									</div>
+								</div>								
+								<div class="col-lg-6">
+									<div class="form-group calendar_box">
+										<label> Experience(In No. of Years.)</label>  
+										<input type="text" id="experience" class="form-control"  maxLength="2" onkeyup="checkNumeric('experience');">
+									</div>
+								</div>								
+								<div class="col-lg-6">
+									<div class="form-group">
+										<label>Mobile No.</label>
+										<input type="text" id="mobileno" class="form-control"  maxLength="10" onkeyup="mobVal1();checkNumeric('mobileno');"
+											onblur="removeValid(event)" ><span id="error9" class="formValidation1"></span>
+									</div>
+								</div>								
+								<div class="col-lg-6">
+									<div class="form-group">
+										<label>Email</label>
+											<input type="text" id="email" class="form-control" onkeyup="mailVal();" ><span id="error3" class="formValidation1"></span>
+									</div>
+								</div>
+									<div class="col-lg-6">
+									<div class="form-group">
+										<label>Address</label>
+										<textarea class="adresscls" id="address" placeholder="Enter Address Details" onblur="removeValid(event)"></textarea>
+									</div>
+								</div>								
+								<div class="col-lg-6">
+									<div class="form-group">
+										<label>Attachment</label>  
+										<div class="controls">
+											<label class="custom-file-upload" for="uploadDoc_0"
+												id="attachment"><i class="ti-plus"></i> 
+											</label>
+											<input type="file" class="document" id="uploadDoc_0"
+												accept=".jpeg, .jpg, .png, .pdf" name="userImage"
+												onchange="saveMultiFileDoc(event)" />
+										</div>
+										<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls" style="margin-top: 10px;"></div>
+										<div id="imageName_0" class="imageName" style="margin-top: 10px;"></div>
+									</div>
+								</div> 
+							</div>
+						</div>
+						<!-- Modal footer --> 
+						<div class="modal-footer">
+							<div align="right">
+								<button class="cancel-btn" onclick="hideModal()">CANCEL</button>
+								<button class="btn1" id="saveId" onclick="saveTableData()">SAVE</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- End Open Modal on click to New Button-->
+			
+			<!-- Open AuditCategory Modal on click to New Button-->
+			<div class="modal fade" id="myAuditCategoryModalSelected">
+				<div class="modal-dialog modal-lg" style="margin-top: 130px;">
+					<div class="modal-content">
+						<!-- Modal body -->
+						<div class="modal-body modal-category">
+							<input type="hidden" id="hidaudit_category_id">
+							<div class="row"> 
+								<div class="col-lg-6">
+									<div class="form-group ">
+										<label> Audit Type</label> 
+										<div class="select">
+											<select class="" id="auditor_type">
+											<option value="">Select</option>
+											<option th:each="c,iter:${auditType}" th:value="${c.key}"
+															th:text="${c.name}"></option>
+											</select>
+										</div>
+									</div>
+								</div>  								
+								<div class="col-lg-6">
+									<div class="form-group">
+										<label>Audit Category Name</label>
+										<input type="text" id="audit_category_name" placeholder="Audit Category Name" class="form-control">
+									</div>
+								</div>
+								<div class="col-lg-6">
+									<div class="form-group">
+										<label>Objective</label>
+										<textarea class="adresscls" id="objective" placeholder="Enter Objective"></textarea>
+									</div>
+								</div>
+								<div class="col-lg-6">
+									<div class="form-group">
+										<label>Audit Status</label> 
+										<div class="select">
+											<select class="" id="audit_category_status">
+											<option value="">Select</option>
+											<option value="Active">Active</option>
+											<option value="Inactive">Inactive</option> 
+											</select>
+										</div>
+									</div>
+								</div>
+							</div>  
+						</div>
+						<!-- Modal footer --> 
+						<div class="modal-footer">
+							<div align="right">
+								<button class="cancel-btn" onclick="hideAuditCategoryModal()">CANCEL</button>
+								<button class="btn1" id="saveId" onclick="saveAuditCategoryTableData()">SAVE</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- End Open AuditCategory Modal on click to New Button-->
+			
+			<!-- delete modal start -->
+			<div class="modal fade"  id="deleteAuditCategoryModal">
+				<div class="modal-dialog modal-confirm" >
+					<div class="modal-content">
+						<div class="modal-header flex-column"> 
+						</div>
+						<div class="modal-body">
+							<p>Do you really want to delete these records? This process cannot be undone.</p>
+						</div>
+						<div class="modal-footer justify-content-center">
+							<button type="button" class="btn1" data-dismiss="modal" aria-hidden="true" onclick="closeAuditCategoryModal()">Cancel</button>
+							<button type="button" class="btn3" id="deleteAuditMasterBtn" onclick="deleteAuditMasterRecord()">Delete</button>
+							<button type="button" class="btn3" id="deleteAuditMasterExternalBtn" onclick="deleteAuditMasterExtRecord()">Delete</button>
+							<button type="button" class="btn3" id="deleteAuditCategoryBtn"	onclick="deleteAuditCategoryRecord()">Delete</button>
+						</div>
+					</div>
+				</div>
+			</div> 
+		    <!-- //for excel file upload -->
+		</div>		
+	</div>
+</body>
+</html>
