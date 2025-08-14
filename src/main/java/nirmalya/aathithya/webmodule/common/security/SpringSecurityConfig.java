@@ -217,6 +217,8 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 				.antMatchers("/academic/get-all-instructor-list").permitAll()
 				.antMatchers("/setRedirectAndLogin").permitAll()
 				.antMatchers("/signup").permitAll()
+				.antMatchers("/enterprise").permitAll()
+				.antMatchers("/upgrading").permitAll()
 				.antMatchers("/save-candidate-reg-details").permitAll()
 				.antMatchers("/academic/get-catlog-courses").permitAll()
 				.and().formLogin().loginPage("/login").permitAll().successHandler(customAuthenticationSuccessHandler)

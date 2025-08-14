@@ -36,7 +36,7 @@ public class SpringMvcConfig extends WebMvcConfigurerAdapter {
 				"/wishlist/**","/faqs/**","/terms-condition/**","/privacy-policy/**","/my-profile/**","/profile-course-view/**","/instructors/**",
 				"/wishlist/**","/faqs/**","/terms-condition/**","/privacy-policy/**","/my-profile/**","/profile-course-view/**",
 				"/refund-policy/**","/help-center/**","/carrer/**","/testimonials/**","/home/**","/course-catelog/**","/academic/get-all-course-list/**",
-				"/training-certifications","/consultancy","/atva",
+				"/training-certifications","/consultancy","/atva","/enterprise","/upgrading",
 
 
 

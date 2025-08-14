@@ -1750,6 +1750,31 @@ public class AccessController {
 		return "lms/lms-aboutus";
 	}
 
+
+	@GetMapping("/resources")
+	public String resources(Model model, HttpSession session) {
+		logger.info("Method : resources starts");
+ 
+		logger.info("Method : resources ends");
+		return "lms/resources";
+	}
+
+	@GetMapping("/enterprise")
+	public String enterprise(Model model, HttpSession session) {
+		logger.info("Method : enterprise starts");
+ 
+		logger.info("Method : enterprise ends");
+		return "lms/enterprise";
+	}
+
+	@GetMapping("/upgrading")
+	public String upgrading(Model model, HttpSession session) {
+		logger.info("Method : upgrading starts");
+ 
+		logger.info("Method : upgrading ends");
+		return "lms/upgrading";
+	}
+
 	@GetMapping("/training-certifications")
 	public String trainingCertifications(Model model, HttpSession session) {
 		logger.info("Method : training-certifications starts");
