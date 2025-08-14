@@ -746,7 +746,7 @@ function togglePriceFields() {
     }
 }
 
-function masterSaveCourse() {
+/* function masterSaveCourse() {
     var valid = true;
 
     CKEDITOR.instances.courseDesc.updateElement();
@@ -829,9 +829,103 @@ function masterSaveCourse() {
     }
 
     if (valid) {
-        saveCourse(formData);
+    	console.log(formData)
+     //   saveCourse(formData);
+    }
+} */
+
+
+function masterSaveCourse() {
+    var valid = true;
+
+    // Update CKEditor instance
+    CKEDITOR.instances.courseDesc.updateElement();
+    var courseDesc = CKEDITOR.instances.courseDesc.getData();
+    console.log("CKEditor data:", courseDesc);
+
+    // Duration validation
+    var hours = $("#durationHours").val();
+    var minutes = $("#durationMinutes").val();
+
+    if (!hours && !minutes) {
+        toastr.error("Duration (Hours or Minutes) Required");
+        return;
+    }
+
+    hours = parseInt(hours) || 0;
+    minutes = parseInt(minutes) || 0;
+
+    if (hours < 0 || minutes < 0 || minutes > 59) {
+        toastr.error("Invalid Duration: Hours must be non-negative, and Minutes must be between 0 and 59");
+        return;
+    }
+
+    var duration = "";
+    if (hours > 0) duration += hours + "h";
+    if (minutes > 0) duration += (hours > 0 ? " " : "") + minutes + "m";
+    if (!duration) duration = "0h";
+
+    // Build FormData
+    var formData = new FormData();
+    formData.append('courseId', $("#courseId").val());
+    formData.append('courseTittle', $("#courseTittle").val());
+    formData.append('parentCategory', $("#parentCategory").val());
+    formData.append('duration', duration);
+    formData.append('price', $("#price").val());
+    formData.append('startDate', $("#startDate").val());
+    formData.append('endDate', $("#endDate").val());
+    formData.append('patientStatus', $("#patientStatus").val());
+    formData.append('courseDesc', courseDesc); // ✅ use CKEditor data here
+    formData.append('rate', $("#rate").val());
+    formData.append('currencySymbol', $("#currencySymbol").val());
+    formData.append('level', $("#level").val());
+    formData.append('priceType', $("#priceType").val());
+    
+    // Append selected customers for B2B
+    if ($("#priceType").val() === 'B2B') {
+        const selectedCustomers = $("#customers").val() || [];
+        formData.append('customers', JSON.stringify(selectedCustomers));
+    }
+
+    // Append file if exists
+    var fileInput = $(".wardocument")[0];
+    if (fileInput.files.length > 0) {
+        formData.append('document', fileInput.files[0]);
+    }
+
+    // Required fields validation
+    if (!formData.get('courseTittle')?.trim()) {
+        toastr.error("Course Title Required");
+        return;
+    }
+    if (!formData.get('parentCategory')?.trim()) {
+        toastr.error("Category Required");
+        return;
+    }
+    if (!formData.get('startDate')?.trim()) {
+        toastr.error("Start Date Required");
+        return;
+    }
+    if (!formData.get('endDate')?.trim()) {
+        toastr.error("End Date Required");
+        return;
+    }
+    if (formData.get('priceType') === 'B2B' && (!formData.get('customers') || JSON.parse(formData.get('customers')).length === 0)) {
+        toastr.error("At least one customer must be selected for B2B pricing");
+        return;
+    }
+
+    if (valid) {
+        console.log("📌 FormData content:");
+        for (let [key, value] of formData.entries()) {
+            console.log(key, value);
+        }
+
+        // Uncomment to actually save
+         saveCourse(formData);
     }
 }
+
 
 function saveCourse(formData) {
     $.ajax({
