@@ -2113,6 +2113,10 @@ public class AccessController {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		
+		logger.info("fdfghj"+env.getMasterUrl() + "rest-save-user-details?orgName=" + orgName
+				+ "&orgDivision=" + orgDivision + "&userId=" + userId, data, JsonResponse.class);
+		
 		try {
 			resp = restTemplate.postForObject(env.getMasterUrl() + "rest-save-user-details?orgName=" + orgName
 					+ "&orgDivision=" + orgDivision + "&userId=" + userId, data, JsonResponse.class);

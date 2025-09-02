@@ -112,6 +112,30 @@ public class DocumentViewController {
 		    return new HttpEntity<byte[]>(bytearr, header);
 		}
 		
+		else if(docname.endsWith(".m4a")) {
+			logger.info("Method : getDocument controller function starts");
+			//return ResponseEntity.ok().body(bytearr);
+			HttpHeaders header = new HttpHeaders();
+		    //header.setContentType(MediaType.ALL);
+		    header.set(HttpHeaders.CONTENT_DISPOSITION,
+		                   "attachment; filename=" + docname.replace(" ", "_"));
+		    header.setContentLength(bytearr.length);
+
+		    return new HttpEntity<byte[]>(bytearr, header);
+		}
+		
+		
+		else if(docname.endsWith(".mp4")) {
+			logger.info("Method : getDocument controller function starts");
+			//return ResponseEntity.ok().body(bytearr);
+			HttpHeaders header = new HttpHeaders();
+		    //header.setContentType(MediaType.ALL);
+		    header.set(HttpHeaders.CONTENT_DISPOSITION,
+		                   "attachment; filename=" + docname.replace(" ", "_"));
+		    header.setContentLength(bytearr.length);
+
+		    return new HttpEntity<byte[]>(bytearr, header);
+		}
 		else {
 			logger.info("Method : getDocument controller function starts");
 			return ResponseEntity.ok().contentType(MediaType.ALL).body(bytearr);

@@ -370,43 +370,41 @@ public class AcademicCourseController {
 
 	        if (uploadList != null && !uploadList.isEmpty()) {
 	            ObjectMapper mapper1 = new ObjectMapper();
-	            List<Map<String, Object>> parsedUploadList = 
+	            List<Map<String, Object>> parsedUploadList =
 	                    mapper1.readValue(uploadList, new TypeReference<List<Map<String, Object>>>() {});
 
 	            for (Map<String, Object> item : parsedUploadList) {
-	                List<String> documentFiles = new ArrayList<>();
-
-	                // Check if this item has new uploads
-	                if (item.containsKey("documentFile") && item.get("documentFile") != null) {
+	                if (item.containsKey("documentFile")) {
 	                    Object documentFileObj = item.get("documentFile");
+	                    String base64Data = "";
 
+	                    // Handle both ArrayList and single String
 	                    if (documentFileObj instanceof ArrayList) {
 	                        @SuppressWarnings("unchecked")
-	                        ArrayList<String> fileList = (ArrayList<String>) documentFileObj;
-	                        documentFiles.addAll(fileList);
+	                        ArrayList<String> documentFileList = (ArrayList<String>) documentFileObj;
+	                        if (!documentFileList.isEmpty()) {
+	                            base64Data = documentFileList.get(0);
+	                        }
 	                    } else if (documentFileObj instanceof String) {
-	                        documentFiles.add((String) documentFileObj);
+	                        base64Data = (String) documentFileObj;
 	                    } else {
 	                        logger.warn("Unexpected documentFile type: " + documentFileObj.getClass().getName());
+	                        continue;
 	                    }
-	                }
 
-	                // Process new uploads
-	                for (String base64Data : documentFiles) {
-	                    if (base64Data == null || base64Data.isEmpty()) continue;
-
-	                    // Remove Base64 prefix (generic for all file types)
+	                    // Remove common data URL prefixes for any type
 	                    base64Data = base64Data.replaceFirst("^data:[^;]+;base64,", "");
+
+	                    // Decode Base64
 	                    byte[] bytes = Base64.getDecoder().decode(base64Data);
 
-	                    // Determine extension
+	                    // Determine file extension
 	                    String ext = (String) item.get("docType");
 	                    if (ext == null || ext.isEmpty()) {
-	                        ext = "bin";
+	                        ext = "bin"; // fallback for unknown types
 	                    }
-	                    
-	                    
 
+	                    // Save the file
 	                    String fileName = saveAllMultiImages(bytes, ext);
 	                    if (fileName != null) {
 	                        String fileURL = env.getBaseURL() + "document/image/" + fileName;
@@ -416,23 +414,12 @@ public class AcademicCourseController {
 	                        docItem.put("docUrl", fileURL);
 	                        docItem.put("docName", item.getOrDefault("docName", fileName));
 
-	                      //  uploadListData.add(docItem);
+	                        uploadListData.add(docItem);
 	                    }
-	                    
-	                    // Preserve existing uploaded files (already saved previously)
-		                if (documentFiles.isEmpty()) {
-		                	logger.info("hhhh"+documentFiles);
-		                    Map<String, Object> docItem = new HashMap<>();
-		                    docItem.put("fileName", item.get("dociURL"));
-		                    docItem.put("docUrl", item.get("dociURL"));
-		                    docItem.put("docName", item.get("docView"));
-		                    uploadListData.add(docItem);
-		                }
 	                }
-
-	               
 	            }
 	        }
+
 
 	        courseData.put("uploadList", uploadListData);
 
