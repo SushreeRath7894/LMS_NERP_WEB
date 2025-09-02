@@ -14,6 +14,8 @@ import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -42,25 +44,78 @@ public class DocumentViewController {
 	 * document controller to load images instantly
 	 *
 	 */
-	@RequestMapping(value = "document/image/{docname}")
+	/*
+	 * @RequestMapping(value = "document/image/{docname}")
+	 * 
+	 * @ResponseBody
+	 * 
+	 * public ResponseEntity<byte[]> getDocument(@PathVariable(value = "docname")
+	 * String docname) throws IOException {
+	 * logger.info("Method : getDocument controller function starts");
+	 * 
+	 * File dir = ResourceUtils.getFile(env.getFileUploadDocumenttUrl()); File file
+	 * = new File(dir.getAbsolutePath() + "/" + docname); byte[] bytearr =
+	 * Files.readAllBytes(file.toPath());
+	 * 
+	 * if (docname.endsWith(".png")) { return
+	 * ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(bytearr); } else if
+	 * (docname.endsWith(".jpeg") || docname.endsWith(".jpg")) { // Fix: added
+	 * ".jpg" return
+	 * ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG).body(bytearr); } else
+	 * if (docname.endsWith(".pdf")) { return
+	 * ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).body(bytearr); }
+	 * else { return ResponseEntity.ok().contentType(MediaType.ALL).body(bytearr); }
+	 * }
+	 */
+	
+	@RequestMapping(value="document/image/{docname}")
 	@ResponseBody
+	public HttpEntity<byte[]> getDocumentThumbData(@PathVariable(value="docname")String docname)throws IOException{
+		logger.info("Method : image controller function starts");
+		
+		File dir = ResourceUtils.getFile(env.getFileUploadDocumenttUrl());
+		File file = new File(dir.getAbsolutePath() + "/" + docname);
+		byte[] bytearr = Files.readAllBytes(file.toPath());
+		if(docname.endsWith(".png")) {
+			logger.info("Method : getDocument controller function starts");
+			return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(bytearr);
+		}
+		else if(docname.endsWith(".jpeg") || docname.endsWith(".jpg")) {
+			logger.info("Method : getDocument controller function starts");
+			return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG).body(bytearr);
+		}
+		else if(docname.endsWith(".pdf")) {
+			logger.info("Method : getDocument controller function starts");
+			return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).body(bytearr);
+		}
+		
+		else if(docname.endsWith(".docx")) {
+			logger.info("Method : getDocument controller function starts");
+			HttpHeaders header = new HttpHeaders();
+		    //header.setContentType(MediaType.ALL);
+		    header.set(HttpHeaders.CONTENT_DISPOSITION,
+		                   "attachment; filename=" + docname.replace(" ", "_"));
+		    header.setContentLength(bytearr.length);
 
-	public ResponseEntity<byte[]> getDocument(@PathVariable(value = "docname") String docname) throws IOException {
-	    logger.info("Method : getDocument controller function starts");
+		    return new HttpEntity<byte[]>(bytearr, header);
+			//return ResponseEntity.ok().contentType("application/vnd.openxmlformats-officedocument.wordprocessingml.document").body(bytearr);
+		}
+		else if(docname.endsWith(".xlsx")) {
+			logger.info("Method : getDocument controller function starts");
+			//return ResponseEntity.ok().body(bytearr);
+			HttpHeaders header = new HttpHeaders();
+		    //header.setContentType(MediaType.ALL);
+		    header.set(HttpHeaders.CONTENT_DISPOSITION,
+		                   "attachment; filename=" + docname.replace(" ", "_"));
+		    header.setContentLength(bytearr.length);
 
-	    File dir = ResourceUtils.getFile(env.getFileUploadDocumenttUrl());
-	    File file = new File(dir.getAbsolutePath() + "/" + docname);
-	    byte[] bytearr = Files.readAllBytes(file.toPath());
-
-	    if (docname.endsWith(".png")) {
-	        return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(bytearr);
-	    } else if (docname.endsWith(".jpeg") || docname.endsWith(".jpg")) {  // Fix: added ".jpg"
-	        return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG).body(bytearr);
-	    } else if (docname.endsWith(".pdf")) {
-	        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).body(bytearr);
-	    } else {
-	        return ResponseEntity.ok().contentType(MediaType.ALL).body(bytearr);
-	    }
+		    return new HttpEntity<byte[]>(bytearr, header);
+		}
+		
+		else {
+			logger.info("Method : getDocument controller function starts");
+			return ResponseEntity.ok().contentType(MediaType.ALL).body(bytearr);
+		}
 	}
 
 

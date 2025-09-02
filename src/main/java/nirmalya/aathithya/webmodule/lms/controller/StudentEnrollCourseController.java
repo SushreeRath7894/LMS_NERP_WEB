@@ -86,6 +86,8 @@ public class StudentEnrollCourseController {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		logger.info("url"+env.getMasterUrl() + "rest-save-enrollment-data?orgName=" + orgName
+				+ "&orgDivision=" + orgDivision + "&userId=" + userId, data, JsonResponse.class);
 		try {
 			resp = restTemplate.postForObject(env.getMasterUrl() + "rest-save-enrollment-data?orgName=" + orgName
 					+ "&orgDivision=" + orgDivision + "&userId=" + userId, data, JsonResponse.class);
