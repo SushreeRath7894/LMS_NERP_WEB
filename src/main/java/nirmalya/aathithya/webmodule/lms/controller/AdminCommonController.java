@@ -43,7 +43,36 @@ public class AdminCommonController {
 		logger.info("Mothod: view admin dashboard page ends...");
 		return "lms/admin-dashboard";
 	}
+	
+	@SuppressWarnings("unchecked")
+	@GetMapping("admin-dashboard-getadminAllHeadCount")
+	public @ResponseBody Object getadminAllHeadCount(HttpSession session) {
 
+		logger.info("Method :getAllHeadCount starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String userId = "";
+		String org = "";
+		String orgDiv = "";
+		try {
+			userId = (String) session.getAttribute("USER_ID");
+			org = (String) session.getAttribute("ORGANIZATION");
+			orgDiv = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		} catch (Exception e) {
+
+		}
+		try {
+			String url = env.getHisUrl()+ "rest-getadminAllHeadCount?orgName=" + org + "&orgDivision=" + orgDiv
+					+ "&userId=" + userId;
+			resp = restTemplate.getForObject(url, JsonResponse.class);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		logger.info("Method :getadminAllHeadCount ends" + resp);
+
+		return resp;
+	}
+	
 	@GetMapping("instructor-dashboard")
 	public String facultyDashboard(Model model, HttpSession session) {
 		logger.info("Mothod:view faculty dashboard page started...");

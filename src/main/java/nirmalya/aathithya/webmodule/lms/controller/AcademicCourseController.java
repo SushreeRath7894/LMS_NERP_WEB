@@ -288,6 +288,30 @@ public class AcademicCourseController {
 	    logger.info("Method : saveAllMultiImages ends");
 	    return imageName1;
 	}
+	
+	public String saveAllMultiImagesAll(byte[] imageBytes, String ext) {
+	    logger.info("Method : saveAllMultiImages starts");
+	    String imageName1 = null;
+	    try {
+	        if (imageBytes != null) {
+	            long nowTime = new Date().getTime();
+	            if (ext.contentEquals("jpeg")) {
+	                imageName1 = nowTime + ".jpg";
+	            } else {
+	                imageName1 = nowTime + "." + ext;
+	            }
+	        }
+	        Path path = Paths.get(env.getFileUploadDocumenttUrl() + imageName1);
+	        if (imageBytes != null) {
+	            Files.write(path, imageBytes);
+	        }
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	    }
+	    logger.info("Method : saveAllMultiImages ends");
+	    return imageName1;
+	}
+	
 	@SuppressWarnings("unchecked")
 	@PostMapping("academic-course-add")
 	public @ResponseBody JsonResponse<Object> saveCourse(HttpSession session,
@@ -303,7 +327,7 @@ public class AcademicCourseController {
 	        @RequestParam("rate") String rate,
 	        @RequestParam("currencySymbol") String currencySymbol,
 	        @RequestParam("level") String level,
-	        @RequestParam(value = "document", required = false) MultipartFile document,
+	        @RequestParam(value = "documents", required = false) MultipartFile documents,
 	        @RequestParam(value = "uploadList", required = false) String uploadList) {
 
 	    logger.info("Method : saveCourse starts");
@@ -354,10 +378,10 @@ public class AcademicCourseController {
 	        courseData.put("level", level);
 
 	        // --- Single document upload ---
-	        if (document != null && !document.isEmpty()) {
-	            String ext = FilenameUtils.getExtension(document.getOriginalFilename());
-	            byte[] bytes = document.getBytes();
-	            String fileName = saveAllMultiImages(bytes, ext);
+	        if (documents != null && !documents.isEmpty()) {
+	            String ext = FilenameUtils.getExtension(documents.getOriginalFilename());
+	            byte[] bytes = documents.getBytes();
+	            String fileName = saveAllMultiImagesAll(bytes, ext);
 	            if (fileName != null) {
 	                String fileURL = env.getBaseURL() + "document/image/" + fileName;
 	                courseData.put("documentURL", fileURL);

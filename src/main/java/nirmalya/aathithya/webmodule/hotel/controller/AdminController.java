@@ -47,6 +47,7 @@ public class AdminController {
 		return "hotel/admin-screens";
 	}
 	
+	
 	@GetMapping("/role-setting")
 	public String superAdminDashboard(Model model, HttpSession session) {
 		logger.info("Method: super-admin-dashboard starts here");
