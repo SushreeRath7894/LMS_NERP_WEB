@@ -328,7 +328,8 @@ public class AcademicCourseController {
 	        @RequestParam("currencySymbol") String currencySymbol,
 	        @RequestParam("level") String level,
 	        @RequestParam(value = "documents", required = false) MultipartFile documents,
-	        @RequestParam(value = "uploadList", required = false) String uploadList) {
+	        @RequestParam(value = "uploadList", required = false) String uploadList,
+	        @RequestParam("categoryData") String categoryData) {
 
 	    logger.info("Method : saveCourse starts");
 
@@ -376,6 +377,7 @@ public class AcademicCourseController {
 	        courseData.put("rate", rate);
 	        courseData.put("currencySymbol", currencySymbol);
 	        courseData.put("level", level);
+	        courseData.put("categoryData", categoryData);
 
 	        // --- Single document upload ---
 	        if (documents != null && !documents.isEmpty()) {
