@@ -362,26 +362,68 @@ $(document).ready(function () {
 	    }
 	  });
 
+	// Add this new function for validation
+	  function validateCategoryPrices() {
+	    const mainPrice = parseFloat($("#price").val()) || 0;
+	    let categorySum = 0;
+
+	    // Calculate current sum from savedData (excluding current edit if any)
+	    Object.entries(savedData).forEach(([key, val]) => {
+	      if (key !== currentCategory) {  // Exclude current if editing
+	        categorySum += parseFloat(val.price) || 0;
+	      }
+	    });
+
+	    // Add the new/edited price
+	    const currentPrice = parseFloat($("#priceField").val()) || 0;
+	    categorySum += currentPrice;
+
+	    if (categorySum > mainPrice) {
+	      toastr.error(`Total category prices (${categorySum.toFixed(2)}) cannot exceed main price (${mainPrice.toFixed(2)})`);
+	      return false;
+	    }
+
+	    return true;
+	  }
+
+	  // Modify saveBtn handler
 	  $("#saveBtn").on("click", function () {
 	    if (!currentCategory) return;
+	    
+	    if (!validateCategoryPrices()) {
+	      return;  // Prevent save if invalid
+	    }
+
 	    savedData[currentCategory] = {
 	      notes: $("#notesField").val(),
 	      price: $("#priceField").val()
 	    };
 	    refreshDisplay();
 	    resetUI();
+	    calculateTotalPrice();  // If you have this from previous
 	  });
 
+	  // Modify editBtn handler
 	  $("#editBtn").on("click", function () {
 	    if (!currentCategory) return;
+	    
+	    if (!validateCategoryPrices()) {
+	      return;  // Prevent update if invalid
+	    }
+
 	    savedData[currentCategory] = {
 	      notes: $("#notesField").val(),
 	      price: $("#priceField").val()
 	    };
 	    refreshDisplay();
 	    resetUI();
+	    calculateTotalPrice();  // If you have this from previous
 	  });
 
+	  // Optional: Watch for real-time changes in priceField
+	  $("#priceField").on("input", function() {
+	    validateCategoryPrices();  // Live feedback, but doesn't prevent yet
+	  });
 	  function refreshDisplay() {
 	    let html = "";
 	    Object.entries(savedData).forEach(([key, val], i) => {
@@ -401,7 +443,13 @@ $(document).ready(function () {
 	    currentCategory = "";
 	  }
 
-	
+	  function calculateTotalPrice() {
+		  let totalPrice = 0;
+		  Object.values(savedData).forEach(val => {
+		    totalPrice += parseFloat(val.price) || 0;
+		  });
+		  $("#price").val(totalPrice.toFixed(2));  // Use toFixed(2) for currency formatting; adjust as needed.
+		}
 	
     
 	CKEDITOR.replace('courseDesc', {
