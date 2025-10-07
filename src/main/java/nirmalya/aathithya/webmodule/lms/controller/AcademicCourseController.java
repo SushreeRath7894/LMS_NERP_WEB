@@ -583,6 +583,35 @@ public class AcademicCourseController {
 		logger.info("Method : saveAssign ends");
 		return resp;
 	}
+	
+	
+	@SuppressWarnings("unchecked")
+	@PostMapping("academic-course-training-save")
+	public @ResponseBody JsonResponse<Object> saveTraining(HttpSession session, @RequestBody Map<String, Object> payload) {
+		logger.info("Method : saveTraining starts"+payload);
+
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String userId = "";
+		String orgName = "";
+		String orgDivision = "";
+		try {
+			userId = (String) session.getAttribute("USER_ID");
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		} catch (Exception e) {
+
+		}
+		try {
+			resp = restClient.postForObject(env.getHisUrl() + "rest-academic-saveTraining?userId=" + userId
+					+ "&org=" + orgName + "&orgDiv=" + orgDivision, payload, JsonResponse.class);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		logger.info("Method : saveTraining ends");
+		return resp;
+	}
 
 	// view instructor
 	@SuppressWarnings("unchecked")
@@ -780,6 +809,41 @@ public class AcademicCourseController {
 			e.printStackTrace();
 		}
 		logger.info("Method :getCourseDetails ends" + resp);
+		return resp;
+	}
+	
+	
+	@SuppressWarnings("unchecked")
+	@GetMapping(value = { "academic-course-get-subcategory" })
+	public @ResponseBody JsonResponse<Object> subcategory(String id, HttpSession session) {
+		logger.info("Method : subcategory starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+
+		String userId = "";
+		String orgName = "";
+		String orgDivision = "";
+		try {
+			userId = (String) session.getAttribute("USER_ID");
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		logger.info("Method : orgName starts" + orgName);
+		logger.info("Method : orgDivision starts" + orgDivision);
+		try {
+
+			resp = restClient.getForObject(
+					env.getMasterUrl() + "subcategory?org=" + orgName + "&orgDiv=" + orgDivision + "&id=" + id,
+					JsonResponse.class);
+			// res = restTemplate.getForObject(env.getPurchaseUrl() +
+			// "getBrandList?orgName=" + orgName + "&orgDivision=" +
+			// orgDivision,JsonResponse.class);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		logger.info("Method : subcategory ends");
 		return resp;
 	}
 

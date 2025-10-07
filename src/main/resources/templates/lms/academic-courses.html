@@ -327,126 +327,184 @@ to {
 
 <script type="text/javascript"
 	src="https://cdn.ckeditor.com/4.16.0/standard/ckeditor.js"></script>
-	
+
 
 <script type="text/javascript">
 $(document).ready(function () {
 
+	
+	    let savedData = {};         
+	    let currentCategory = "";
 
+	    // ---------------- Category Checkbox Change ----------------
+	    $(".categoryCheck").on("change", function () {
+	        $(".categoryCheck").not(this).prop("checked", false); // only one active at a time
 
-	  // ✅ Global to this script block
-	  let savedData = {};         
-	  let currentCategory = "";
+	        if ($(this).is(":checked")) {
+	            currentCategory = $(this).val();
+	            $("#dynamicFields").show();
 
-	  $(".categoryCheck").on("change", function () {
-	    $(".categoryCheck").not(this).prop("checked", false);
+	            // Init CKEditor if not already
+	            if (!CKEDITOR.instances.notesField) {
+	                CKEDITOR.replace("notesField");
+	            }
 
-	    if ($(this).is(":checked")) {
-	      currentCategory = $(this).val();
-	      $("#dynamicFields").show();
+	            // Enable fields
+	            $("#priceField").prop("disabled", false);
+	            if (CKEDITOR.instances.notesField) {
+	                CKEDITOR.instances.notesField.setReadOnly(false);
+	            }
 
-	      if (savedData[currentCategory]) {
-	        $("#notesField").val(savedData[currentCategory].notes);
-	        $("#priceField").val(savedData[currentCategory].price);
-	        $("#saveBtn").hide();
-	        $("#editBtn").show();
-	      } else {
-	        $("#notesField").val("");
+	            // If saved data exists → load into fields
+	            if (savedData[currentCategory]) {
+	                CKEDITOR.instances.notesField.setData(savedData[currentCategory].content);
+	                $("#priceField").val(savedData[currentCategory].pricing);
+	                $("#saveBtn").addClass('d-none');
+	                $("#editBtn").removeClass('d-none');
+	            } else {
+	                CKEDITOR.instances.notesField.setData("");
+	                $("#priceField").val("");
+	                $("#saveBtn").removeClass('d-none');
+	                $("#editBtn").addClass('d-none');
+	            }
+	        } else {
+	            $("#dynamicFields").hide();
+	            currentCategory = "";
+	        }
+	    });
+
+	    // ---------------- Add Custom Training + Icon ----------------
+	    $("#addCustomTraining").on("click", function() {
+	        $("#customCategoryModal").modal('show');
+	    });
+
+	    // ---------------- Modal Save ----------------
+	    $("#saveCustomCategory").on("click", function() {
+	        let customCat = $("#customCategoryInput").val().trim();
+	        $("#customCategoryInput").val('');
+	        if (!customCat) return;
+
+	        if (savedData[customCat]) {
+	            alert("Category already exists. Check its checkbox to edit.");
+	            return;
+	        }
+
+	        // Dynamically add a checkbox for the custom category
+	        let safeId = customCat.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+	        let newCheckHtml = `
+	            <div class="col-md-4">
+	                <div class="form-check">
+	                    <input class="form-check-input categoryCheck" type="checkbox" id="custom_${safeId}" value="${customCat}">
+	                    <label class="form-check-label" for="custom_${safeId}">${customCat}</label>
+	                </div>
+	            </div>
+	        `;
+	        $(".row.g-3").append(newCheckHtml); // Append to the checkboxes container
+
+	        // Bind change event to the new checkbox
+	        $(`#custom_${safeId}`).on("change", function () {
+	            $(".categoryCheck").not(this).prop("checked", false); // Ensure single selection
+
+	            if ($(this).is(":checked")) {
+	                currentCategory = $(this).val();
+	                $("#dynamicFields").show();
+	                if (!CKEDITOR.instances.notesField) {
+	                    CKEDITOR.replace("notesField");
+	                }
+	                $("#priceField").prop("disabled", false);
+	                if (CKEDITOR.instances.notesField) {
+	                    CKEDITOR.instances.notesField.setReadOnly(false);
+	                }
+	                if (savedData[currentCategory]) {
+	                    CKEDITOR.instances.notesField.setData(savedData[currentCategory].content);
+	                    $("#priceField").val(savedData[currentCategory].pricing);
+	                    $("#saveBtn").addClass('d-none');
+	                    $("#editBtn").removeClass('d-none');
+	                } else {
+	                    CKEDITOR.instances.notesField.setData("");
+	                    $("#priceField").val("");
+	                    $("#saveBtn").removeClass('d-none');
+	                    $("#editBtn").addClass('d-none');
+	                }
+	            } else {
+	                $("#dynamicFields").hide();
+	                currentCategory = "";
+	            }
+	        }).prop("checked", true).trigger("change"); // Auto-check and open fields
+
+	        $("#customCategoryModal").modal('hide');
+	    });
+
+	    // ---------------- SAVE ----------------
+	    $("#saveBtn").on("click", function () {
+	        if (!currentCategory) return;
+
+	        let notes = CKEDITOR.instances.notesField.getData();
+	        let price = $("#priceField").val();
+
+	        savedData[currentCategory] = { content: notes, pricing: price };
+
+	        refreshDisplay();
+	        resetUI();
+	    });
+
+	    // ---------------- EDIT (Update) ----------------
+	    $("#editBtn").on("click", function () {
+	        if (!currentCategory) return;
+
+	        let notes = CKEDITOR.instances.notesField.getData();
+	        let price = $("#priceField").val();
+
+	        savedData[currentCategory] = { content: notes, pricing: price };
+
+	        refreshDisplay();
+	        resetUI();
+	    });
+
+	    // ---------------- CANCEL ----------------
+	    $("#cancelTraing").on("click", function () {
+	        resetUI();
+	    });
+
+	    // ---------------- Refresh Display ----------------
+	    function refreshDisplay() {
+	        let html = "";
+	        let jsonOutput = {};
+
+	        $.each(savedData, function (category, data) {
+	            html += "<b>" + category + "</b>: " +
+	                    "<br>Content: " + data.content +
+	                    "<br>Pricing: " + data.pricing + "<hr>";
+
+	            jsonOutput[category] = data;
+	        });
+
+	        $("#resultContainer").html(html);
+	        $("#jsonOutput").text(JSON.stringify(jsonOutput, null, 2));
+	    }
+
+	    // ---------------- Reset UI ----------------
+	    function resetUI() {
+	        $("#dynamicFields").hide();
+	        $(".categoryCheck").prop("checked", false);
+	        $("#priceField").prop("disabled", true);
+
+	        if (CKEDITOR.instances.notesField) {
+	            CKEDITOR.instances.notesField.setData("");
+	            CKEDITOR.instances.notesField.setReadOnly(true);
+	        }
+
 	        $("#priceField").val("");
-	        $("#saveBtn").show();
-	        $("#editBtn").hide();
-	      }
-	    } else {
-	      $("#dynamicFields").hide();
-	      currentCategory = "";
-	    }
-	  });
-
-	// Add this new function for validation
-	  function validateCategoryPrices() {
-	    const mainPrice = parseFloat($("#price").val()) || 0;
-	    let categorySum = 0;
-
-	    // Calculate current sum from savedData (excluding current edit if any)
-	    Object.entries(savedData).forEach(([key, val]) => {
-	      if (key !== currentCategory) {  // Exclude current if editing
-	        categorySum += parseFloat(val.price) || 0;
-	      }
-	    });
-
-	    // Add the new/edited price
-	    const currentPrice = parseFloat($("#priceField").val()) || 0;
-	    categorySum += currentPrice;
-
-	    if (categorySum > mainPrice) {
-	      toastr.error(`Total category prices (${categorySum.toFixed(2)}) cannot exceed main price (${mainPrice.toFixed(2)})`);
-	      return false;
+	        $("#saveBtn").addClass('d-none');
+	        $("#editBtn").addClass('d-none');
+	        currentCategory = "";
 	    }
 
-	    return true;
-	  }
-
-	  // Modify saveBtn handler
-	  $("#saveBtn").on("click", function () {
-	    if (!currentCategory) return;
-	    
-	    if (!validateCategoryPrices()) {
-	      return;  // Prevent save if invalid
-	    }
-
-	    savedData[currentCategory] = {
-	      notes: $("#notesField").val(),
-	      price: $("#priceField").val()
-	    };
-	    refreshDisplay();
-	    resetUI();
-	    calculateTotalPrice();  // If you have this from previous
-	  });
-
-	  // Modify editBtn handler
-	  $("#editBtn").on("click", function () {
-	    if (!currentCategory) return;
-	    
-	    if (!validateCategoryPrices()) {
-	      return;  // Prevent update if invalid
-	    }
-
-	    savedData[currentCategory] = {
-	      notes: $("#notesField").val(),
-	      price: $("#priceField").val()
-	    };
-	    refreshDisplay();
-	    resetUI();
-	    calculateTotalPrice();  // If you have this from previous
-	  });
-
-	  // Optional: Watch for real-time changes in priceField
-	  $("#priceField").on("input", function() {
-	    validateCategoryPrices();  // Live feedback, but doesn't prevent yet
-	  });
-	  function refreshDisplay() {
-	    let html = "";
-	    Object.entries(savedData).forEach(([key, val], i) => {
-	      html += `<div class="border p-2 mb-2">
-	                 <strong>${i + 1}. ${key}</strong><br>
-	                 Notes: ${val.notes || "-"}<br>
-	                 Price: ${val.price || "-"}
-	               </div>`;
-	    });
-	    $("#resultContainer").html(html);
-	    $("#jsonOutput").text(JSON.stringify(savedData, null, 2));
-	  }
-
-	  function resetUI() {
-	    $(".categoryCheck").prop("checked", false);
-	    $("#dynamicFields").hide();
-	    currentCategory = "";
-	  }
 
 	  function calculateTotalPrice() {
 		  let totalPrice = 0;
 		  Object.values(savedData).forEach(val => {
-		    totalPrice += parseFloat(val.price) || 0;
+		    totalPrice += parseFloat(val.pricing) || 0;
 		  });
 		  $("#price").val(totalPrice.toFixed(2));  // Use toFixed(2) for currency formatting; adjust as needed.
 		}
@@ -499,6 +557,12 @@ $(document).ready(function () {
 
     $("#courseForm :input").prop("disabled", true);
     CKEDITOR.instances['courseDesc'].setReadOnly(true);
+    // Disable training checkboxes and fields on load
+    $(".categoryCheck").prop("disabled", true);
+    $("#priceField").prop("disabled", true);
+    if (CKEDITOR.instances.notesField) {
+        CKEDITOR.instances.notesField.setReadOnly(true);
+    }
     // Initialize price type handling
     togglePriceFields();
     $('#priceType').on('change', togglePriceFields);
@@ -1358,6 +1422,7 @@ console.log('uploadList',uploadList)
     let courseId = $("#courseId").val() || "";
     let courseTittle = $("#courseTittle").val().trim();
     let parentCategory = $("#parentCategory").val();
+    let subcategory = $("#subcategory").val();
     let patientStatus = $("#patientStatus").val();
     let startDate = $("#startDate").val();
     let endDate = $("#endDate").val();
@@ -1409,6 +1474,7 @@ console.log('uploadList',uploadList)
     formData.append("courseId", courseId);
     formData.append("courseTittle", courseTittle);
     formData.append("parentCategory", parentCategory);
+    formData.append("subcategory", subcategory);
     formData.append("duration", duration);
     formData.append("price", price);
     formData.append("startDate", startDate);
@@ -1419,7 +1485,7 @@ console.log('uploadList',uploadList)
     formData.append("currencySymbol", currencySymbol);
     formData.append("level", level);
     
- // ✅ Attach your category JSON here
+ // ✅ Attach your category JSON here (now with content and pricing as separate keys in the JSON structure)
  console.log($("#jsonOutput").text(),"sssssssss");
     formData.append("categoryData", categoryDataText);
 
@@ -1810,26 +1876,70 @@ function reset() {
     }
 }
 
-function next() {
-    $("#examination").removeClass('hidden');
-    $("#course-overview").addClass('hidden');
-    $(".nav-link").removeClass("active");
-    $(".nav-link[href='#examination']").addClass("active");
-    $("#tab-examination").addClass("active").attr("aria-selected", "true");
-    $("#tab-course-overview").removeClass("active").attr("aria-selected", "false");
-    $("#examination").addClass("show active");
-    $("#course-overview").removeClass("show active");
+function next(tab) {
+	if(tab == 1){
+		 $("#examination").addClass('hidden');
+		    $("#course-overview").addClass('hidden');
+		    $("#training").removeClass('hidden');
+		    $(".nav-link").removeClass("active");
+		    $(".nav-link[href='#training']").addClass("active");
+		    $("#tab-training").addClass("active").attr("aria-selected", "true");
+		    $("#tab-course-overview").removeClass("active").attr("aria-selected", "false");
+		    $("#tab-examination").removeClass("active").attr("aria-selected", "false");
+		    $("#examination").removeClass("show active");
+		    $("#course-overview").removeClass("show active");
+		    $("#training").addClass("show active");
+	}
+	
+	if(tab == 2){
+		 $("#examination").removeClass('hidden');
+		    $("#course-overview").addClass('hidden');
+		    $("#training").addClass('hidden');
+		    $(".nav-link").removeClass("active");
+		    $(".nav-link[href='#examination']").addClass("active");
+		    $("#tab-examination").addClass("active").attr("aria-selected", "true");
+		    $("#tab-course-overview").removeClass("active").attr("aria-selected", "false");
+		    $("#tab-training").removeClass("active").attr("aria-selected", "false");
+		    $("#examination").addClass("show active");
+		    $("#course-overview").removeClass("show active");
+		    $("#training").removeClass("show active");
+	}
+   
 }
 
-function prev() {
-    $("#course-overview").removeClass('hidden');
-    $("#examination").addClass('hidden');
-    $(".nav-link").removeClass("active");
-    $(".nav-link[href='#course-overview']").addClass("active");
-    $("#tab-course-overview").addClass("active").attr("aria-selected", "true");
-    $("#tab-examination").removeClass("active").attr("aria-selected", "false");
-    $("#course-overview").addClass("show active");
-    $("#examination").removeClass("show active");
+function prev(tab) {
+	if(tab == 1){
+		 $("#course-overview").removeClass('hidden');
+		    $("#examination").addClass('hidden');
+		    $("#training").addClass('hidden');
+		    $(".nav-link").removeClass("active");
+		    $(".nav-link[href='#course-overview']").addClass("active");
+		    $(".nav-link[href='#examination']").removeClass("active");
+		    $(".nav-link[href='#training']").removeClass("active");
+		    $("#tab-course-overview").addClass("active").attr("aria-selected", "true");
+		    $("#tab-examination").removeClass("active").attr("aria-selected", "false");
+		    $("#tab-training").removeClass("active").attr("aria-selected", "false");
+		    $("#course-overview").addClass("show active");
+		    $("#examination").removeClass("show active");
+		    $("#training").removeClass("show active");
+	}
+	
+	if(tab == 2){
+		 $("#course-overview").addClass('hidden');
+		    $("#examination").addClass('hidden');
+		    $("#training").removeClass('hidden');
+		    $(".nav-link").removeClass("active");
+		    $(".nav-link[href='#course-overview']").removeClass("active");
+		    $(".nav-link[href='#examination']").removeClass("active");
+		    $(".nav-link[href='#training']").addClass("active");
+		    $("#tab-course-overview").removeClass("active").attr("aria-selected", "true");
+		    $("#tab-examination").addClass("active").attr("aria-selected", "false");
+		    $("#tab-training").addClass("active").attr("aria-selected", "false");
+		    $("#course-overview").removeClass("show active");
+		    $("#examination").removeClass("show active");
+		    $("#training").addClass("show active");
+	}
+   
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -1934,6 +2044,161 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize
     renderCustomerOptions();
 });
+
+
+
+function getsubcategoryList(id,id2){
+	$.ajax({
+		type : "GET",
+		url : "academic-course-get-subcategory?id="+id,
+		success : function(response) {
+			if (response.message == "success") {
+				$("#subcategory").empty();
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				$("#subcategory").append(option);
+				for (var i = 0; i < response.body.length; i++) {
+					var option = $("<option></option>");
+					$(option).val(response.body[i].key);
+					$(option).html(response.body[i].name);
+					$("#subcategory").append(option);
+				}
+				if(id2){
+					$("#subcategory").val(id2).trigger('change');
+					//getVariationList(id2);
+				}
+			}
+		},
+		error : function(e) {
+		}
+	});	
+}
+
+// Training section functions
+function addtraining() {
+    $("#addtraining").addClass('d-none');
+    $("#editTraing").addClass('d-none');
+    $("#saveTraing").removeClass('d-none');
+    $("#cancelTraing").removeClass('d-none');
+    $(".categoryCheck").prop("disabled", false);
+    // Clear savedData for new
+    savedData = {};
+    refreshDisplay();
+    // Uncheck all
+    $(".categoryCheck").prop("checked", false);
+    $("#dynamicFields").hide();
+    currentCategory = "";
+}
+
+function editTraing() {
+    if (!currentCategory) {
+        alert("Please select a category first.");
+        return;
+    }
+    $("#addtraining").addClass('d-none');
+    $("#editTraing").addClass('d-none');
+    $("#saveTraing").removeClass('d-none');
+    $("#cancelTraing").removeClass('d-none');
+    // Enable fields
+    $("#priceField").prop("disabled", false);
+    if (CKEDITOR.instances.notesField) {
+        CKEDITOR.instances.notesField.setReadOnly(false);
+    }
+}
+function saveTraing() {
+    // Ensure latest data is saved to savedData
+    if ($("#editBtn").hasClass('d-none')) {
+        $("#saveBtn").click();
+    } else {
+        $("#editBtn").click();
+    }
+
+    // Get the courseId
+    let courseId = $("#courseId").val() || "";
+    if (!courseId) {
+        toastr.error("No course selected. Please select a course first.");
+        return;
+    }
+
+    // Get the JSON data text
+    let categoryDataText = $("#jsonOutput").text().trim();
+    if (!categoryDataText) {
+        toastr.error("No training data to save.");
+        return;
+    }
+
+    try {
+        let parsedData = JSON.parse(categoryDataText);
+        
+        // If parsedData is an object (as per current structure), convert to array with IDs
+        if (typeof parsedData === 'object' && !Array.isArray(parsedData)) {
+            let trainingArray = [];
+            let counter = 1;
+            for (let category in parsedData) {
+                trainingArray.push({
+                    id: courseId + '_tr' + String(counter).padStart(3, '0'), // e.g., C001_tr001
+                    category: category,
+                    content: parsedData[category].content,
+                    pricing: parsedData[category].pricing
+                });
+                counter++;
+            }
+            categoryDataText = JSON.stringify(trainingArray, null, 2);
+        } else if (Array.isArray(parsedData)) {
+            // If already array, ensure IDs are present and incremental
+            let counter = 1;
+            parsedData.forEach(item => {
+                if (!item.id) {
+                    item.id = courseId + '_tr' + String(counter).padStart(3, '0');
+                }
+                counter++;
+            });
+            categoryDataText = JSON.stringify(parsedData, null, 2);
+        }
+
+        // Validate that each item has an 'id'
+        let finalParsed = JSON.parse(categoryDataText);
+        if (!Array.isArray(finalParsed) || !finalParsed.every(item => item.id)) {
+            toastr.error("Invalid training data format. Each item must have an 'id'.");
+            return;
+        }
+    } catch (e) {
+    	
+    	
+        toastr.error("Invalid JSON data.");
+        return;
+    }
+
+    // Prepare JSON payload
+    let payload = {
+        courseId: courseId,
+        categoryData: categoryDataText
+    };
+
+    // Post to controller as JSON
+    $.ajax({
+        url: 'academic-course-training-save',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(payload),
+        success: function (response) {
+            toastr.success(response.message || "Training saved successfully!");
+            cancelTraing();
+        },
+        error: function (xhr) {
+            toastr.error("Error saving training: " + (xhr.responseText || "Unknown error"));
+        }
+    });
+}
+function cancelTraing() {
+    resetUI();
+    $(".categoryCheck").prop("disabled", true);
+    $("#saveTraing").addClass('d-none');
+    $("#cancelTraing").addClass('d-none');
+    $("#addtraining").removeClass('d-none');
+    $("#editTraing").removeClass('d-none');
+}
 </script>
 </head>
 
@@ -1987,6 +2252,14 @@ document.addEventListener('DOMContentLoaded', function() {
 													href="#course-overview" aria-selected="true" role="tab">Course
 														Overview</a>
 												</li>
+
+												<li class="nav-item wd-11" role="presentation"
+													id="courseForTraing"><a class="nav-link"
+													data-bs-toggle="pill" href="#training"
+													aria-selected="false" role="tab" tabindex="-1">Course
+														Training</a></li>
+
+
 												<li class="nav-item wd-11" role="presentation"
 													id="instructorDetails"><a class="nav-link"
 													data-bs-toggle="pill" href="#examination"
@@ -2024,7 +2297,7 @@ document.addEventListener('DOMContentLoaded', function() {
 																		</div>
 																		<div class="mr-0">
 																			<button id="next" class="btn m-0 edit-btn"
-																				onclick="next()" type="button">Next</button>
+																				onclick="next(1)" type="button">Next</button>
 																		</div>
 																	</div>
 																</td>
@@ -2054,7 +2327,8 @@ document.addEventListener('DOMContentLoaded', function() {
 																	<label>Category</label> <span class="mandatory">*</span>
 																	<div class="select">
 																		<select class="searchable-select mt-2"
-																			id="parentCategory">
+																			id="parentCategory"
+																			onchange="getsubcategoryList(this.value,'')">
 																			<option value="">Select Course Category</option>
 																			<option th:each="a : ${productCategoryList}"
 																				th:value="${a.key}" th:text="${a.name}"></option>
@@ -2062,16 +2336,14 @@ document.addEventListener('DOMContentLoaded', function() {
 																	</div>
 																</div>
 															</div>
-															
+
 															<div class="col-md-6">
 																<div class="form-group">
-																	<label>Sub Category</label> <span class="mandatory">*</span>
+																	<label>Sub-category</label><span class="mandatory">*</span>
 																	<div class="select">
 																		<select class="searchable-select mt-2"
-																			id="subCategory">
-																			<option value="">Select Sub Course Category</option>
-																			<option th:each="a : ${productCategoryList}"
-																				th:value="${a.key}" th:text="${a.name}"></option>
+																			id="subcategory">
+																			<option value="">Select</option>
 																		</select>
 																	</div>
 																</div>
@@ -2300,77 +2572,161 @@ document.addEventListener('DOMContentLoaded', function() {
 														</div>
 
 
-														
-<div class="row">
-  <div class="col-md-12">
-    <h5 class="mb-3">Course Category Type :</h5>
 
-    <div class="row g-3">
-      <div class="col-md-4">
-        <div class="form-check">
-          <input class="form-check-input categoryCheck" type="checkbox" id="bootcamp" value="Online Bootcamp">
-          <label class="form-check-label" for="bootcamp">Online Bootcamp</label>
-        </div>
-      </div>
-
-      <div class="col-md-4">
-        <div class="form-check">
-          <input class="form-check-input categoryCheck" type="checkbox" id="corporate" value="Corporate Training">
-          <label class="form-check-label" for="corporate">Corporate Training</label>
-        </div>
-      </div>
-
-      <div class="col-md-4">
-        <div class="form-check">
-          <input class="form-check-input categoryCheck" type="checkbox" id="mock" value="Mock Tests">
-          <label class="form-check-label" for="mock">Mock Tests</label>
-        </div>
-      </div>
-      
-       <div class="col-md-4">
-        <div class="form-check">
-          <input class="form-check-input categoryCheck" type="checkbox" id="bundle" value="eLearning + Exam Bundle">
-          <label class="form-check-label" for="bundle">eLearning + Exam Bundle</label>
-        </div>
-      </div>
-
-      <div class="col-md-4">
-        <div class="form-check">
-          <input class="form-check-input categoryCheck" type="checkbox" id="books" value="Books">
-          <label class="form-check-label" for="books">Books</label>
-        </div>
-      </div>
-      
-    </div>
-
-    <!-- Notes + Price -->
-    <div class="col-md-12 mt-3" id="dynamicFields" style="display:none;">
-      <div class="row g-2">
-        <div class="col-md-8">
-          <textarea id="notesField" class="form-control" placeholder="Enter details..."></textarea>
-        </div>
-        <div class="col-md-4">
-          <input type="number" id="priceField" class="form-control" placeholder="Price">
-        </div>
-      </div>
-      <button id="saveBtn" class="btn btn-primary btn-sm mt-2">Save</button>
-      <button id="editBtn" class="btn btn-success btn-sm mt-2" style="display:none;">Update</button>
-    </div>
-
-    <div class="col-md-12 mt-4">
-      <h6>Saved Selections:</h6>
-      <div id="resultContainer"></div>
-      <h6 class="mt-3">JSON Output:</h6>
-      <pre id="jsonOutput" class="bg-light p-2"></pre>
-    </div>
-  </div>
-</div>
 
 
 													</div>
 												</div>
 											</div>
 										</div>
+
+
+										<div id="training" class="tab-pane fade hidden p-2 h-100">
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+												<div class="">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<td width="80%"><strong id="programNameDisplay"></strong></td>
+																<td>
+																	<div class="d-flex justify-content-end gap-2">
+																		<div class="ml-3">
+																			<button id="addtraining"
+																				class="btn btn-primary edit-btn" type="button"
+																				onclick="addtraining()">Add</button>
+																		</div>
+																		<div class="ml-3">
+																			<button id="editTraing"
+																				class="btn btn-primary edit-btn" type="button"
+																				onclick="editTraing()">Edit</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="saveTraing" class="btn edit-btn d-none"
+																				onclick="saveTraing()" type="button">Save</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="cancelTraing"
+																				class="btn m-0 edit-btn d-none"
+																				onclick="cancelTraing()" type="button">Cancel</button>
+																		</div>
+
+
+																		<div class="mr-3">
+																			<button id="prev" class="btn m-0 edit-btn"
+																				onclick="prev(1)" type="button">Prev</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="next" class="btn edit-btn"
+																				onclick="next(2)" type="button">Next</button>
+																		</div>
+																	</div>
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+												<div class="card p-2">
+													<div class="row">
+														<div class="col-md-12">
+															<h5 class="mb-3">Course Category Type :</h5>
+
+															<div
+																class="d-flex justify-content-between align-items-center mb-3">
+																<div class="row g-3 flex-grow-1">
+																	<div class="col-md-4">
+																		<div class="form-check">
+																			<input class="form-check-input categoryCheck"
+																				type="checkbox" id="bootcamp"
+																				value="Online Bootcamp"> <label
+																				class="form-check-label" for="bootcamp">Online
+																				Bootcamp</label>
+																		</div>
+																	</div>
+
+																	<div class="col-md-4">
+																		<div class="form-check">
+																			<input class="form-check-input categoryCheck"
+																				type="checkbox" id="corporate"
+																				value="Corporate Training"> <label
+																				class="form-check-label" for="corporate">Corporate
+																				Training</label>
+																		</div>
+																	</div>
+
+																	<div class="col-md-4">
+																		<div class="form-check">
+																			<input class="form-check-input categoryCheck"
+																				type="checkbox" id="mock" value="Mock Tests">
+																			<label class="form-check-label" for="mock">Mock
+																				Tests</label>
+																		</div>
+																	</div>
+
+																	<div class="col-md-4">
+																		<div class="form-check">
+																			<input class="form-check-input categoryCheck"
+																				type="checkbox" id="bundle"
+																				value="eLearning + Exam Bundle"> <label
+																				class="form-check-label" for="bundle">eLearning
+																				+ Exam Bundle</label>
+																		</div>
+																	</div>
+
+																	<div class="col-md-4">
+																		<div class="form-check">
+																			<input class="form-check-input categoryCheck"
+																				type="checkbox" id="books" value="Books"> <label
+																				class="form-check-label" for="books">Books</label>
+																		</div>
+																	</div>
+																</div>
+																<div>
+																	<button id="addCustomTraining" class="btn btn-primary"
+																		data-bs-toggle="modal"
+																		data-bs-target="#customCategoryModal">
+																		<i class="fa fa-plus"></i> Add Custom
+																	</button>
+																</div>
+															</div>
+
+															<!-- Save and Edit Buttons in Header -->
+															<div class="d-flex justify-content-end mb-3">
+																<button id="saveBtn"
+																	class="btn btn-primary btn-sm me-2 d-none">Save</button>
+																<button id="editBtn"
+																	class="btn btn-success btn-sm d-none">Update</button>
+															</div>
+
+															<!-- Notes + Price -->
+															<div class="col-md-12 mt-3" id="dynamicFields"
+																style="display: none;">
+																<div class="row g-2">
+																	<div class="col-md-8">
+																		<textarea id="notesField" class="form-control"
+																			placeholder="Enter details..."></textarea>
+																	</div>
+																	<div class="col-md-4">
+																		<input type="number" id="priceField"
+																			class="form-control" placeholder="Price">
+																	</div>
+																</div>
+															</div>
+
+															<div class="col-md-12 mt-4">
+																<h6>Saved Selections:</h6>
+																<div id="resultContainer"></div>
+																<h6 class="mt-3">JSON Output (Content & Pricing as
+																	separate keys):</h6>
+																<pre id="jsonOutput" class="bg-light p-2"></pre>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+
+
+
 										<div id="examination" class="tab-pane fade hidden p-2 h-100">
 											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
 												<div class="">
@@ -2382,7 +2738,7 @@ document.addEventListener('DOMContentLoaded', function() {
 																	<div class="d-flex justify-content-end gap-2">
 																		<div class="mr-0">
 																			<button id="prev" class="btn m-0 edit-btn"
-																				onclick="prev()" type="button">Prev</button>
+																				onclick="prev(2)" type="button">Prev</button>
 																		</div>
 																		<div class="mr-0">
 																			<button id="assign" class="btn edit-btn"
@@ -2418,6 +2774,35 @@ document.addEventListener('DOMContentLoaded', function() {
 								</div>
 							</div>
 						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Custom Category Modal -->
+		<div class="modal fade" id="customCategoryModal" tabindex="-1"
+			aria-labelledby="customCategoryModalLabel" aria-hidden="true">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="customCategoryModalLabel">Add
+							Custom Training Category</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal"
+							aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<div class="mb-3">
+							<label for="customCategoryInput" class="form-label">Category
+								Name</label> <input type="text" class="form-control"
+								id="customCategoryInput"
+								placeholder="Enter custom category name">
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary"
+							data-bs-dismiss="modal">Close</button>
+						<button type="button" class="btn btn-primary"
+							id="saveCustomCategory">Save</button>
 					</div>
 				</div>
 			</div>
