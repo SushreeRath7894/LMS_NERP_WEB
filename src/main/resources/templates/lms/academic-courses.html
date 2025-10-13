@@ -332,9 +332,10 @@ to {
 <script type="text/javascript">
 $(document).ready(function () {
 
-	
+	cancelTraing();
 	    let savedData = {};         
 	    let currentCategory = "";
+	    const predefinedCategories = ["Online Bootcamp", "Corporate Training", "Mock Tests", "eLearning + Exam Bundle", "Books"];
 
 	    // ---------------- Category Checkbox Change ----------------
 	    $(".categoryCheck").on("change", function () {
@@ -344,34 +345,42 @@ $(document).ready(function () {
 	            currentCategory = $(this).val();
 	            $("#dynamicFields").show();
 
-	            // Init CKEditor if not already
+	            // Init CKEditor if not already (with callback for timing)
 	            if (!CKEDITOR.instances.notesField) {
-	                CKEDITOR.replace("notesField");
-	            }
-
-	            // Enable fields
-	            $("#priceField").prop("disabled", false);
-	            if (CKEDITOR.instances.notesField) {
-	                CKEDITOR.instances.notesField.setReadOnly(false);
-	            }
-
-	            // If saved data exists → load into fields
-	            if (savedData[currentCategory]) {
-	                CKEDITOR.instances.notesField.setData(savedData[currentCategory].content);
-	                $("#priceField").val(savedData[currentCategory].pricing);
-	                $("#saveBtn").addClass('d-none');
-	                $("#editBtn").removeClass('d-none');
+	                CKEDITOR.replace("notesField", {
+	                    // Your config here if needed
+	                }, function(editor) {
+	                    // instanceReady callback ensures setData happens after init
+	                    handleCategoryLoad(editor);
+	                });
 	            } else {
-	                CKEDITOR.instances.notesField.setData("");
-	                $("#priceField").val("");
-	                $("#saveBtn").removeClass('d-none');
-	                $("#editBtn").addClass('d-none');
+	                handleCategoryLoad(CKEDITOR.instances.notesField);
 	            }
 	        } else {
 	            $("#dynamicFields").hide();
 	            currentCategory = "";
 	        }
 	    });
+
+	    // Helper to load data and toggle buttons (fixes timing)
+	    function handleCategoryLoad(editor) {
+	        // Enable fields
+	        $("#priceField").prop("disabled", false);
+	        editor.setReadOnly(false);
+
+	        // If saved data exists → load into fields
+	        if (savedData[currentCategory]) {
+	            editor.setData(savedData[currentCategory].content);
+	            $("#priceField").val(savedData[currentCategory].pricing);
+	            $("#saveBtn").addClass('d-none');
+	            $("#editBtn").removeClass('d-none');
+	        } else {
+	            editor.setData("");
+	            $("#priceField").val("");
+	            $("#saveBtn").removeClass('d-none');
+	            $("#editBtn").addClass('d-none');
+	        }
+	    }
 
 	    // ---------------- Add Custom Training + Icon ----------------
 	    $("#addCustomTraining").on("click", function() {
@@ -409,22 +418,11 @@ $(document).ready(function () {
 	                currentCategory = $(this).val();
 	                $("#dynamicFields").show();
 	                if (!CKEDITOR.instances.notesField) {
-	                    CKEDITOR.replace("notesField");
-	                }
-	                $("#priceField").prop("disabled", false);
-	                if (CKEDITOR.instances.notesField) {
-	                    CKEDITOR.instances.notesField.setReadOnly(false);
-	                }
-	                if (savedData[currentCategory]) {
-	                    CKEDITOR.instances.notesField.setData(savedData[currentCategory].content);
-	                    $("#priceField").val(savedData[currentCategory].pricing);
-	                    $("#saveBtn").addClass('d-none');
-	                    $("#editBtn").removeClass('d-none');
+	                    CKEDITOR.replace("notesField", {}, function(editor) {
+	                        handleCategoryLoad(editor);
+	                    });
 	                } else {
-	                    CKEDITOR.instances.notesField.setData("");
-	                    $("#priceField").val("");
-	                    $("#saveBtn").removeClass('d-none');
-	                    $("#editBtn").addClass('d-none');
+	                    handleCategoryLoad(CKEDITOR.instances.notesField);
 	                }
 	            } else {
 	                $("#dynamicFields").hide();
@@ -481,6 +479,7 @@ $(document).ready(function () {
 
 	        $("#resultContainer").html(html);
 	        $("#jsonOutput").text(JSON.stringify(jsonOutput, null, 2));
+	        calculateTotalPrice(); // Call if needed
 	    }
 
 	    // ---------------- Reset UI ----------------
@@ -495,13 +494,12 @@ $(document).ready(function () {
 	        }
 
 	        $("#priceField").val("");
-	        $("#saveBtn").addClass('d-none');
+	        $("#saveBtn").addClass('d-none'); // Explicitly hide on reset
 	        $("#editBtn").addClass('d-none');
 	        currentCategory = "";
 	    }
 
-
-	  function calculateTotalPrice() {
+	    function calculateTotalPrice() {
 		  let totalPrice = 0;
 		  Object.values(savedData).forEach(val => {
 		    totalPrice += parseFloat(val.pricing) || 0;
@@ -965,6 +963,7 @@ function onSelectionChanged() {
         courseId = selectedRows[0].courseId;
         editCourseDetails(courseId);
         getAllEmployeeDetails(employeeList);
+        getTrainingDetails(courseId);
     } else {
         $("#courseId").val('');
         $("#courseTittle").val('');
@@ -1202,7 +1201,7 @@ function parseCourseDescription(text) {
         courseOverview: /Course Overview([\s\S]*?)(?=Target Group|Concepts Covered|Exam and Prerequisite|$)/i,
         targetGroup: /Target Group([\s\S]*?)(?=Concepts Covered|Exam and Prerequisite|$)/i,
         conceptsCovered: /Concepts Covered([\s\S]*?)(?=Exam and Prerequisite|$)/i,
-        examAndPrerequisite: /Exam and Prerequisite([\s\S]*)/i
+        examAndPrerequisite: /Exam and Prerequisite([\s\S]*?)/i
     };
 
     // Extract matches
@@ -2082,6 +2081,7 @@ function addtraining() {
     $("#saveTraing").removeClass('d-none');
     $("#cancelTraing").removeClass('d-none');
     $(".categoryCheck").prop("disabled", false);
+    $("#addCustomTraining").prop("disabled", false);
     // Clear savedData for new
     savedData = {};
     refreshDisplay();
@@ -2089,23 +2089,25 @@ function addtraining() {
     $(".categoryCheck").prop("checked", false);
     $("#dynamicFields").hide();
     currentCategory = "";
+    // Explicitly hide buttons
+    $("#saveBtn").addClass('d-none');
+    $("#editBtn").addClass('d-none');
 }
 
 function editTraing() {
-    if (!currentCategory) {
-        alert("Please select a category first.");
-        return;
-    }
+    // No need for category check—data is loaded, checkboxes enabled
     $("#addtraining").addClass('d-none');
     $("#editTraing").addClass('d-none');
     $("#saveTraing").removeClass('d-none');
     $("#cancelTraing").removeClass('d-none');
-    // Enable fields
-    $("#priceField").prop("disabled", false);
-    if (CKEDITOR.instances.notesField) {
+
+    // Fields already enabled via checkbox change; just ensure
+    if (currentCategory && CKEDITOR.instances.notesField) {
         CKEDITOR.instances.notesField.setReadOnly(false);
     }
+    $("#priceField").prop("disabled", false);
 }
+
 function saveTraing() {
     // Ensure latest data is saved to savedData
     if ($("#editBtn").hasClass('d-none')) {
@@ -2191,14 +2193,102 @@ function saveTraing() {
         }
     });
 }
+
 function cancelTraing() {
-    resetUI();
+   // resetUI();
     $(".categoryCheck").prop("disabled", true);
     $("#saveTraing").addClass('d-none');
     $("#cancelTraing").addClass('d-none');
     $("#addtraining").removeClass('d-none');
     $("#editTraing").removeClass('d-none');
+    $("#addCustomTraining").prop("disabled", true);
 }
+
+
+function getTrainingDetails(courseId) {
+    agGrid.simpleHttpRequest({
+     url : "academic-training-view?id="+courseId,
+    }).then(function (response) {
+        if (response.message === "Success") {
+            const responseBody = JSON.parse(response.body);
+            const courseData = responseBody.courseData;
+            console.log(courseData);
+
+            // ✅ FIX: Populate savedData from backend (for edit/view mode)
+            savedData = {};
+            if (courseData && Array.isArray(courseData)) {
+                courseData.forEach(item => {
+                    if (item.category) {
+                        savedData[item.category] = {
+                            content: item.content || "",
+                            pricing: item.pricing || ""
+                        };
+                    }
+                });
+            }
+
+            // ✅ NEW: Add checkboxes for custom categories that were previously saved (persist checkbox headers)
+            Object.keys(savedData).forEach(category => {
+                if (!predefinedCategories.includes(category)) {
+                    let safeId = category.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+                    if (!$(`#custom_${safeId}`).length) {  // If checkbox doesn't exist, add it
+                        let newCheckHtml = `
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input categoryCheck" type="checkbox" id="custom_${safeId}" value="${category}">
+                                    <label class="form-check-label" for="custom_${safeId}">${category}</label>
+                                </div>
+                            </div>
+                        `;
+                        $(".row.g-3").append(newCheckHtml); // Append to the checkboxes container
+
+                        // Bind change event to the new checkbox (same as custom add)
+                        $(`#custom_${safeId}`).on("change", function () {
+                            $(".categoryCheck").not(this).prop("checked", false); // Ensure single selection
+
+                            if ($(this).is(":checked")) {
+                                currentCategory = $(this).val();
+                                $("#dynamicFields").show();
+                                if (!CKEDITOR.instances.notesField) {
+                                    CKEDITOR.replace("notesField", {}, function(editor) {
+                                        handleCategoryLoad(editor);
+                                    });
+                                } else {
+                                    handleCategoryLoad(CKEDITOR.instances.notesField);
+                                }
+                            } else {
+                                $("#dynamicFields").hide();
+                                currentCategory = "";
+                            }
+                        });
+                    }
+                }
+            });
+
+            // Refresh display to show loaded data
+            refreshDisplay();
+
+            // ✅ FIX: Enable checkboxes for edit/view (don't clear data)
+            $(".categoryCheck").prop("disabled", false);
+            $("#addCustomTraining").prop("disabled", false);
+
+            // Optional: Auto-check first category if data exists
+            if (Object.keys(savedData).length > 0) {
+                const firstCategory = Object.keys(savedData)[0];
+                $(`.categoryCheck[value="${firstCategory}"]`).prop("checked", true).trigger("change");
+            }
+        } else {
+            console.error("Failed to fetch data");
+            // On error, clear and disable
+            savedData = {};
+            refreshDisplay();
+            $(".categoryCheck").prop("disabled", true);
+            $("#addCustomTraining").prop("disabled", true);
+        }
+    });
+}
+
+
 </script>
 </head>
 
@@ -2681,7 +2771,7 @@ function cancelTraing() {
 																	</div>
 																</div>
 																<div>
-																	<button id="addCustomTraining" class="btn btn-primary"
+																	<button id="addCustomTraining" class="btn btn-primary" disabled
 																		data-bs-toggle="modal"
 																		data-bs-target="#customCategoryModal">
 																		<i class="fa fa-plus"></i> Add Custom

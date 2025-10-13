@@ -498,6 +498,36 @@ public class AcademicCourseController {
 		logger.info("Method :viewCourse ends");
 		return resp;
 	}
+	
+	@SuppressWarnings("unchecked")
+	@GetMapping("academic-training-view")
+	public @ResponseBody Object viewtraining(@RequestParam String id,HttpSession session) {
+		logger.info("Method :viewtraining starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String orgName = "";
+		String orgDivision = "";
+		try {
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+
+			resp = restClient.getForObject(
+					env.getHisUrl() + "rest-viewtraining?orgName=" + orgName + "&orgDivision=" + orgDivision + "&id=" + id,
+					JsonResponse.class);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		if (resp.getMessage() != "" && resp.getMessage() != null) {
+			resp.setCode(resp.getMessage());
+			resp.setMessage("Unsuccess");
+		} else {
+			resp.setMessage("Success");
+		}
+		logger.info("Method :viewtraining ends");
+		return resp;
+	}
+	
 
 	// edit
 	@SuppressWarnings("unchecked")
