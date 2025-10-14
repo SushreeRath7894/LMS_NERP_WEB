@@ -14,7 +14,6 @@
 
 .subject-card {
 	background-color: #bf05ff;
-	border-radius: 10px;
 	padding: 15px;
 	margin-bottom: 15px;
 	color: white;
@@ -257,73 +256,265 @@
 	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
- .multi-select-dropdown {
-            position: relative;
-        }
-        .selected-options {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            margin-bottom: 5px;
-        }
-        .selected-option {
-		    background-color: #0d6efd;
-		    padding: 3px 8px;
-		    border-radius: 12px;
-		    font-size: 12px;
-		    display: flex;
-		    align-items: center;
-		    color: #ffff;
-		}
-        .selected-option button {
-            background: none;
-            border: none;
-            margin-left: 5px;
-            cursor: pointer;
-            color: #ffff;
-        }
-        .dropdown-options {
-            position: absolute;
-            width: 100%;
-            max-height: 200px;
-            overflow-y: auto;
-            background-color: white;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            z-index: 10;
-            display: none;
-        }
-        .dropdown-options.show {
-            display: block;
-        }
-        .dropdown-option {
-            padding: 8px 10px;
-            cursor: pointer;
-        }
-        .dropdown-option:hover {
-            background-color: #f0f0f0;
-        }
-        .dropdown-option.selected {
-            background-color: #e0e0e0;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+.multi-select-dropdown {
+	position: relative;
+}
+
+.selected-options {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 5px;
+	margin-bottom: 5px;
+}
+
+.selected-option {
+	background-color: #0d6efd;
+	padding: 3px 8px;
+	border-radius: 12px;
+	font-size: 12px;
+	display: flex;
+	align-items: center;
+	color: #ffff;
+}
+
+.selected-option button {
+	background: none;
+	border: none;
+	margin-left: 5px;
+	cursor: pointer;
+	color: #ffff;
+}
+
+.dropdown-options {
+	position: absolute;
+	width: 100%;
+	max-height: 200px;
+	overflow-y: auto;
+	background-color: white;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	z-index: 10;
+	display: none;
+}
+
+.dropdown-options.show {
+	display: block;
+}
+
+.dropdown-option {
+	padding: 8px 10px;
+	cursor: pointer;
+}
+
+.dropdown-option:hover {
+	background-color: #f0f0f0;
+}
+
+.dropdown-option.selected {
+	background-color: #e0e0e0;
+}
+
+.keyframes fadeIn {from { opacity:0;
+	transform: translateY(-10px);
+}
+
+to {
+	opacity: 1;
+	transform: translateY(0);
+}
+}
 </style>
 
 <script type="text/javascript"
 	src="https://cdn.ckeditor.com/4.16.0/standard/ckeditor.js"></script>
 
+
 <script type="text/javascript">
 $(document).ready(function () {
-    CKEDITOR.replace('courseDesc', {
-        height: 150,
-        removePlugins: 'wsc',
-        scayt_autoStartup: true,
-        scayt_maxSuggestions: 3,
-        autoParagraph: false,
-    });
+
+	cancelTraing();
+	    let savedData = {};         
+	    let currentCategory = "";
+	    const predefinedCategories = ["Online Bootcamp", "Corporate Training", "Mock Tests", "eLearning + Exam Bundle", "Books"];
+
+	    // ---------------- Category Checkbox Change ----------------
+	    $(".categoryCheck").on("change", function () {
+	        $(".categoryCheck").not(this).prop("checked", false); // only one active at a time
+
+	        if ($(this).is(":checked")) {
+	            currentCategory = $(this).val();
+	            $("#dynamicFields").show();
+
+	            // Init CKEditor if not already (with callback for timing)
+	            if (!CKEDITOR.instances.notesField) {
+	                CKEDITOR.replace("notesField", {
+	                    // Your config here if needed
+	                }, function(editor) {
+	                    // instanceReady callback ensures setData happens after init
+	                    handleCategoryLoad(editor);
+	                });
+	            } else {
+	                handleCategoryLoad(CKEDITOR.instances.notesField);
+	            }
+	        } else {
+	            $("#dynamicFields").hide();
+	            currentCategory = "";
+	        }
+	    });
+
+	    // Helper to load data and toggle buttons (fixes timing)
+	    function handleCategoryLoad(editor) {
+	        // Enable fields
+	        $("#priceField").prop("disabled", false);
+	        editor.setReadOnly(false);
+
+	        // If saved data exists → load into fields
+	        if (savedData[currentCategory]) {
+	            editor.setData(savedData[currentCategory].content);
+	            $("#priceField").val(savedData[currentCategory].pricing);
+	            $("#saveBtn").addClass('d-none');
+	            $("#editBtn").removeClass('d-none');
+	        } else {
+	            editor.setData("");
+	            $("#priceField").val("");
+	            $("#saveBtn").removeClass('d-none');
+	            $("#editBtn").addClass('d-none');
+	        }
+	    }
+
+	    // ---------------- Add Custom Training + Icon ----------------
+	    $("#addCustomTraining").on("click", function() {
+	        $("#customCategoryModal").modal('show');
+	    });
+
+	    // ---------------- Modal Save ----------------
+	    $("#saveCustomCategory").on("click", function() {
+	        let customCat = $("#customCategoryInput").val().trim();
+	        $("#customCategoryInput").val('');
+	        if (!customCat) return;
+
+	        if (savedData[customCat]) {
+	            alert("Category already exists. Check its checkbox to edit.");
+	            return;
+	        }
+
+	        // Dynamically add a checkbox for the custom category
+	        let safeId = customCat.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+	        let newCheckHtml = `
+	            <div class="col-md-4">
+	                <div class="form-check">
+	                    <input class="form-check-input categoryCheck" type="checkbox" id="custom_${safeId}" value="${customCat}">
+	                    <label class="form-check-label" for="custom_${safeId}">${customCat}</label>
+	                </div>
+	            </div>
+	        `;
+	        $(".row.g-3").append(newCheckHtml); // Append to the checkboxes container
+
+	        // Bind change event to the new checkbox
+	        $(`#custom_${safeId}`).on("change", function () {
+	            $(".categoryCheck").not(this).prop("checked", false); // Ensure single selection
+
+	            if ($(this).is(":checked")) {
+	                currentCategory = $(this).val();
+	                $("#dynamicFields").show();
+	                if (!CKEDITOR.instances.notesField) {
+	                    CKEDITOR.replace("notesField", {}, function(editor) {
+	                        handleCategoryLoad(editor);
+	                    });
+	                } else {
+	                    handleCategoryLoad(CKEDITOR.instances.notesField);
+	                }
+	            } else {
+	                $("#dynamicFields").hide();
+	                currentCategory = "";
+	            }
+	        }).prop("checked", true).trigger("change"); // Auto-check and open fields
+
+	        $("#customCategoryModal").modal('hide');
+	    });
+
+	    // ---------------- SAVE ----------------
+	    $("#saveBtn").on("click", function () {
+	        if (!currentCategory) return;
+
+	        let notes = CKEDITOR.instances.notesField.getData();
+	        let price = $("#priceField").val();
+
+	        savedData[currentCategory] = { content: notes, pricing: price };
+
+	        refreshDisplay();
+	        resetUI();
+	    });
+
+	    // ---------------- EDIT (Update) ----------------
+	    $("#editBtn").on("click", function () {
+	        if (!currentCategory) return;
+
+	        let notes = CKEDITOR.instances.notesField.getData();
+	        let price = $("#priceField").val();
+
+	        savedData[currentCategory] = { content: notes, pricing: price };
+
+	        refreshDisplay();
+	        resetUI();
+	    });
+
+	    // ---------------- CANCEL ----------------
+	    $("#cancelTraing").on("click", function () {
+	        resetUI();
+	    });
+
+	    // ---------------- Refresh Display ----------------
+	    function refreshDisplay() {
+	        let html = "";
+	        let jsonOutput = {};
+
+	        $.each(savedData, function (category, data) {
+	            html += "<b>" + category + "</b>: " +
+	                    "<br>Content: " + data.content +
+	                    "<br>Pricing: " + data.pricing + "<hr>";
+
+	            jsonOutput[category] = data;
+	        });
+
+	        $("#resultContainer").html(html);
+	        $("#jsonOutput").text(JSON.stringify(jsonOutput, null, 2));
+	        calculateTotalPrice(); // Call if needed
+	    }
+
+	    // ---------------- Reset UI ----------------
+	    function resetUI() {
+	        $("#dynamicFields").hide();
+	        $(".categoryCheck").prop("checked", false);
+	        $("#priceField").prop("disabled", true);
+
+	        if (CKEDITOR.instances.notesField) {
+	            CKEDITOR.instances.notesField.setData("");
+	            CKEDITOR.instances.notesField.setReadOnly(true);
+	        }
+
+	        $("#priceField").val("");
+	        $("#saveBtn").addClass('d-none'); // Explicitly hide on reset
+	        $("#editBtn").addClass('d-none');
+	        currentCategory = "";
+	    }
+
+	    function calculateTotalPrice() {
+		  let totalPrice = 0;
+		  Object.values(savedData).forEach(val => {
+		    totalPrice += parseFloat(val.pricing) || 0;
+		  });
+		  $("#price").val(totalPrice.toFixed(2));  // Use toFixed(2) for currency formatting; adjust as needed.
+		}
+	
+    
+	CKEDITOR.replace('courseDesc', {
+     	height: 150,
+     	removePlugins: 'wsc',
+     	scayt_autoStartup: true,
+     	scayt_maxSuggestions: 3,
+     	autoParagraph : false,
+     	});
 
     var dateFormat = localStorage.getItem("dateFormat");
     $("#toDateCalendar").datetimepicker({
@@ -353,11 +544,23 @@ $(document).ready(function () {
     var gridDivm = document.querySelector('#orgGRid');
     new agGrid.Grid(gridDivm, gridOptionsCourse);
     gridOptionsCourse.api.setRowData([]);
+    
+    
+    var gridDivDoc = document.querySelector('#myDocumentGrid');
+	new agGrid.Grid(gridDivDoc, gridOptionsDoc); 
+	gridOptionsDoc.api.setRowData([]);
+	
 
     getCourseDetails();
 
     $("#courseForm :input").prop("disabled", true);
-
+    CKEDITOR.instances['courseDesc'].setReadOnly(true);
+    // Disable training checkboxes and fields on load
+    $(".categoryCheck").prop("disabled", true);
+    $("#priceField").prop("disabled", true);
+    if (CKEDITOR.instances.notesField) {
+        CKEDITOR.instances.notesField.setReadOnly(true);
+    }
     // Initialize price type handling
     togglePriceFields();
     $('#priceType').on('change', togglePriceFields);
@@ -578,21 +781,40 @@ var columnDefsCourse = [{
 }, {
     headerName: "Created On",
     field: "createdOn",
-}, {
+}, /* {
     headerName: 'Course Image',
     field: "documentURL",
     cellStyle: {
         textAlign: 'center'
     },
     cellRenderer: function (params) {
-        if (params.data.documentURL) {
+    	 console.log(params.data?.documentURL);
+         if (params.data?.documentURL) {
             return '<a onclick=openImage("' + window.btoa(params.data.documentURL) +
                 '") href="javascript:void(0)"><i class="bi bi-file-earmark-medical"> View</i></a>';
         } else {
             return "Not Available"
         }
     }
-}];
+},
+ */
+{
+    headerName: 'Course Image',
+    cellStyle: { textAlign: 'center' },
+    cellRenderer: function (params) {
+        let url = params.data?.documentURL;
+        if (url) {
+            return `<a href="javascript:void(0)" 
+                        onclick="openImage('${encodeURIComponent(url)}')">
+                        <i class="bi bi-file-earmark-medical"> View</i>
+                    </a>`;
+        }
+        return "Not Available";
+    }
+}
+
+
+];
 
 var gridOptionsCourse = {
     columnDefs: columnDefsCourse,
@@ -615,6 +837,113 @@ var gridOptionsCourse = {
     onSelectionChanged: onSelectionChanged,
 };
 
+
+
+// Document Upload Grid Defination.
+
+ const columnDefsDoc = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : true,
+			checkboxSelection : true,
+			cellEditorPopup: true,  
+			width : 10,
+			pinned: 'left',
+			sortable : false,
+			filter : false,
+			resizable : true
+		},
+		{
+			headerName : "Sl No",
+			field : "slno",
+			width : 70,
+			pinned: 'left',
+		},
+		{
+			headerName : "isEdit",
+			field : "isEditDoc",
+			width : 60,
+			pinned: 'left',
+			hide:true
+		},
+		{
+			headerName : 'Document Name',
+			field : "docName",
+			width : 230,
+			pinned: 'left',
+			editable: true,
+			cellStyle: { 
+	            color: '#333', 
+	            backgroundColor:  '#f5f5f5', 
+	            borderColor : '#cdcdcd !important'   
+	        },
+		},
+		{
+			headerName : 'Type',
+			field : "docType",
+			width : 80,
+			cellRenderer: function(params) {
+				if(params.value != null || params.value != ""){
+					
+				if (params.value == "jpg" || params.value == "png" || params.value == "jpeg"){
+					
+					return `<div style = "font-style: italic;"><i style="color: blue" class='bi bi-image'></i> ${params.value.toUpperCase()}</div>`;
+					
+				}else if(params.value == "pdf"){
+				
+					return `<div style = "font-style: italic;"><i style="color: red" class="bi bi-file-pdf"></i> ${params.value.toUpperCase()}</div>`;
+					
+				}else{
+					
+					return `<div><i style="color: blue" class='bi bi-image'> ${params.value.toUpperCase()}</i></div>`;
+					
+				}
+				
+				}else{
+					return "N/A"
+				}
+	            
+	        }
+		},
+		{
+			headerName : 'iURL',
+			field : "dociURL",
+			width : 100,
+			hide:true
+		},
+		{
+			headerName : 'docFile',
+			field : "documentFile",
+			width : 100,
+			hide:true
+		},
+		{
+			headerName : 'Document View',
+			field : "docView",
+			width : 300,
+			cellRenderer: function(params) {
+				const iURL = params.data.dociURL;
+	            return `<a style="text-decoration: none" href="${iURL}" target="_blank"><b>${params.value}</b></a>`;
+	        }
+		}
+	];
+	const gridOptionsDoc = {
+			columnDefs : columnDefsDoc,
+			rowSelection : 'multiple',
+			groupSelectsChildren : true,
+			suppressRowClickSelection : true,
+			suppressAggFuncInHeader : true,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 190,
+				singleClickEdit : true,
+			},
+			onSelectionChanged : rowSelectDetailsDoc,
+		};
+	
+
 var courseId = "";
 let selectedEmployeeIds = [];
 let employeeData = [];
@@ -634,6 +963,7 @@ function onSelectionChanged() {
         courseId = selectedRows[0].courseId;
         editCourseDetails(courseId);
         getAllEmployeeDetails(employeeList);
+        getTrainingDetails(courseId);
     } else {
         $("#courseId").val('');
         $("#courseTittle").val('');
@@ -651,6 +981,27 @@ function onSelectionChanged() {
     }
     courseId = '';
 }
+
+
+function rowSelectDetailsDoc() {
+	
+	var selectedRows = gridOptionsDoc.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(selectedRow, index) {
+		rowCount = rowCount + 1;
+	});
+
+
+	
+	if (rowCount > 0) {
+		$('#docAddBtn').attr("disabled", true);
+		$('#docDeleteBtn').attr("disabled", false);
+	} else {
+		$('#docAddBtn').attr("disabled", false);
+		$('#docDeleteBtn').attr("disabled", true);
+	}
+}
+
 
 function renderInstructorCards(employeeData, preSelectedIds = [], searchQuery = '') {
     const container = document.getElementById('instructorCards');
@@ -833,102 +1184,212 @@ function togglePriceFields() {
      //   saveCourse(formData);
     }
 } */
+function parseCourseDescription(text) {
+    // Normalize newlines
+    text = text.replace(/\r\n/g, "\n");
 
+    // Split sections dynamically
+    const sections = {
+        courseOverview: "",
+        targetGroup: "",
+        conceptsCovered: [],
+        examAndPrerequisite: []
+    };
 
-function masterSaveCourse() {
-    var valid = true;
+    // Regex patterns for headings
+    const patterns = {
+        courseOverview: /Course Overview([\s\S]*?)(?=Target Group|Concepts Covered|Exam and Prerequisite|$)/i,
+        targetGroup: /Target Group([\s\S]*?)(?=Concepts Covered|Exam and Prerequisite|$)/i,
+        conceptsCovered: /Concepts Covered([\s\S]*?)(?=Exam and Prerequisite|$)/i,
+        examAndPrerequisite: /Exam and Prerequisite([\s\S]*?)/i
+    };
 
-    // Update CKEditor instance
-    CKEDITOR.instances.courseDesc.updateElement();
-    var courseDesc = CKEDITOR.instances.courseDesc.getData();
-    console.log("CKEditor data:", courseDesc);
+    // Extract matches
+    for (let key in patterns) {
+        const match = text.match(patterns[key]);
+        if (match && match[1]) {
+            let content = match[1].trim();
 
-    // Duration validation
-    var hours = $("#durationHours").val();
-    var minutes = $("#durationMinutes").val();
-
-    if (!hours && !minutes) {
-        toastr.error("Duration (Hours or Minutes) Required");
-        return;
-    }
-
-    hours = parseInt(hours) || 0;
-    minutes = parseInt(minutes) || 0;
-
-    if (hours < 0 || minutes < 0 || minutes > 59) {
-        toastr.error("Invalid Duration: Hours must be non-negative, and Minutes must be between 0 and 59");
-        return;
-    }
-
-    var duration = "";
-    if (hours > 0) duration += hours + "h";
-    if (minutes > 0) duration += (hours > 0 ? " " : "") + minutes + "m";
-    if (!duration) duration = "0h";
-
-    // Build FormData
-    var formData = new FormData();
-    formData.append('courseId', $("#courseId").val());
-    formData.append('courseTittle', $("#courseTittle").val());
-    formData.append('parentCategory', $("#parentCategory").val());
-    formData.append('duration', duration);
-    formData.append('price', $("#price").val());
-    formData.append('startDate', $("#startDate").val());
-    formData.append('endDate', $("#endDate").val());
-    formData.append('patientStatus', $("#patientStatus").val());
-    formData.append('courseDesc', courseDesc); // ✅ use CKEditor data here
-    formData.append('rate', $("#rate").val());
-    formData.append('currencySymbol', $("#currencySymbol").val());
-    formData.append('level', $("#level").val());
-    formData.append('priceType', $("#priceType").val());
-    
-    // Append selected customers for B2B
-    if ($("#priceType").val() === 'B2B') {
-        const selectedCustomers = $("#customers").val() || [];
-        formData.append('customers', JSON.stringify(selectedCustomers));
-    }
-
-    // Append file if exists
-    var fileInput = $(".wardocument")[0];
-    if (fileInput.files.length > 0) {
-        formData.append('document', fileInput.files[0]);
-    }
-
-    // Required fields validation
-    if (!formData.get('courseTittle')?.trim()) {
-        toastr.error("Course Title Required");
-        return;
-    }
-    if (!formData.get('parentCategory')?.trim()) {
-        toastr.error("Category Required");
-        return;
-    }
-    if (!formData.get('startDate')?.trim()) {
-        toastr.error("Start Date Required");
-        return;
-    }
-    if (!formData.get('endDate')?.trim()) {
-        toastr.error("End Date Required");
-        return;
-    }
-    if (formData.get('priceType') === 'B2B' && (!formData.get('customers') || JSON.parse(formData.get('customers')).length === 0)) {
-        toastr.error("At least one customer must be selected for B2B pricing");
-        return;
-    }
-
-    if (valid) {
-        console.log("📌 FormData content:");
-        for (let [key, value] of formData.entries()) {
-            console.log(key, value);
+            if (key === "conceptsCovered" || key === "examAndPrerequisite") {
+                // Split bullet points into array
+                sections[key] = content
+                    .split(/\n+/)
+                    .map(line => line.replace(/^[-•\t ]+/, "").trim())
+                    .filter(line => line.length > 0);
+            } else {
+                sections[key] = content.replace(/\n+/g, " ").trim();
+            }
         }
-
-        // Uncomment to actually save
-         saveCourse(formData);
     }
+
+    return sections;
 }
 
+//Upload Grid Document.
 
-function saveCourse(formData) {
-    $.ajax({
+function uploadDocOnClick(){
+	$('#uploadDoc_0').click();
+}
+
+// Document Delete
+
+function deleteDocDetailsOnclick() {
+	var selectedRows = gridOptionsDoc.api.getSelectedRows();
+	gridOptionsDoc.api.applyTransaction({
+		remove : selectedRows
+	});
+	
+	// Reorder the serial numbers
+    const allRowNodes = [];
+    gridOptionsDoc.api.forEachNode((node) => {
+        allRowNodes.push(node);
+    });
+
+    allRowNodes.forEach((node, index) => {
+        node.data.slno = index + 1;
+    });
+
+    gridOptionsDoc.api.refreshCells({ force: true });
+	
+}
+
+function saveMultiFile(event) {
+	var AssignItemQty = event.currentTarget.value;
+	var currentFldId = event.currentTarget.getAttribute('id');
+	var l = currentFldId.split("_");
+	var counter = l[1];
+	var currentFldId = "#" + currentFldId;
+
+	var uFile = $(currentFldId)[0].files[0];
+	var fileName = event.currentTarget.value;
+	var lastIndex = fileName.lastIndexOf("\\");
+	if (lastIndex >= 0) {
+		fileName = fileName.substring(lastIndex + 1);
+	}
+	var extension = fileName.split(".");
+
+	var iURL = URL.createObjectURL(uFile);
+	$("#uploadedBillDiv_" + counter).html("");
+	if (extension[1] != null && extension[1] != "") {
+		$("#uploadHidden_" + counter).val('');
+	}
+	/* if (extension[1] == "jpg" || extension[1] == "png"
+		|| extension[1] == "jpeg") {
+		var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='bi bi-image' style='font-size: 12px'></i></a></span>";
+	} else if (extension[1] == "pdf") {
+		var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-pdf-o'></i> </a></span>";
+	} else if (extension[1] == "xls" || extension[1] == "xlsx") {
+		var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-excel-o'></i></a></span>";
+	} else if (extension[1] == "doc" || extension[1] == "dox"
+		|| extension[1] == "docx") {
+		var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-word-o'></i></a></span>";
+	} else {
+		var LightImg = "<span class='uploadicon position-l '> </div>";
+	} */
+	//var dltImg = "<i class='ti-close position-l rmv1' onclick='openDeleteConfirm()'></i>";
+	/* $("#uploadedBillDiv_" + counter).html(LightImg);
+	$("#imageName_" + counter).html(fileName);
+	$("#dltImage_" + counter).html(dltImg);
+	$("#dltImage_" + counter).addClass("custom-file-delete");
+
+	$("#clickImg_" + counter).removeClass("ti-plus");
+	$("#clickImg_" + counter).addClass("ti-pencil"); */
+	
+	var fileData = new FormData();
+	fileData.append('file', uFile);
+	fileData.append('path', 'none');
+	
+	var details = {};
+    var data = [];
+    var x = [];
+    var reader = new FileReader();
+	reader.readAsDataURL(uFile);
+	var iURL = URL.createObjectURL(uFile);
+	reader.onload = function() {
+		data = reader.result.split(",");
+		x.push(data[1]);
+		//details.fileName=fileName;
+	};
+	
+	const lastRowIndex = gridOptionsDoc.api.getDisplayedRowCount();
+	//console.log("lastRowIndex>>>",lastRowIndex);
+	
+	 let newRow = {
+			 slno : parseInt(lastRowIndex) + parseInt(1),
+				docName : null,
+				isEditDoc : 0,
+				docType : extension[1],
+				dociURL : iURL,
+				documentFile : x,
+				docView : fileName
+		};
+	
+	 gridOptionsDoc.api.applyTransaction({
+		add : [ newRow ] 
+	 });
+
+}
+
+/* function masterSaveCourse() {
+	gridOptionsDoc.api.stopEditing();
+	var uploadList = [];
+	if (gridOptionsDoc.api.getDisplayedRowCount() > 0) {
+		 gridOptionsDoc.api.forEachNode(function(rowNode, indrx) {
+				
+					var objDoc = rowNode.data;		
+					uploadList.push(objDoc);
+			});
+		}
+    // Duration
+    let hours = parseInt($("#durationHours").val()) || 0;
+    let minutes = parseInt($("#durationMinutes").val()) || 0;
+    if (hours < 0 || minutes < 0 || minutes > 59) {
+        toastr.error("Invalid Duration");
+        return;
+    }
+    let duration = (hours > 0 ? hours + "h" : "") + (minutes > 0 ? (hours > 0 ? " " : "") + minutes + "m" : "");
+    if (!duration) duration = "0h";
+
+    
+    // CKEditor content: Encode to Base64 without URL-encoding
+    let courseDescRaw = CKEDITOR.instances.courseDesc.getData();
+    // Clean newlines and tabs to avoid excessive escaping
+    courseDescRaw = courseDescRaw.replace(/\n/g, '').replace(/\t/g, '');
+    let courseDescEncoded = btoa(courseDescRaw);
+    
+    setTimeout(function () {
+    	
+    // Build FormData
+    let formData = new FormData();
+    formData.append("courseId", $("#courseId").val() || "");
+    formData.append("courseTittle", $("#courseTittle").val() || "");
+    formData.append("parentCategory", $("#parentCategory").val() || "");
+    formData.append("duration", duration);
+    formData.append("price", $("#price").val() || "0");
+    formData.append("startDate", $("#startDate").val() || "");
+    formData.append("endDate", $("#endDate").val() || "");
+    formData.append("patientStatus", 1);
+    formData.append("courseDesc", courseDescEncoded);
+    formData.append("rate", $("#rate").val() || "0");
+    formData.append("currencySymbol", $("#currencySymbol").val() || "");
+    formData.append("level", $("#level").val() || "");
+    formData.append("uploadList", uploadList);
+  
+    
+    // File
+    let fileInput = $(".wardocument")[0];
+    if (fileInput && fileInput.files.length > 0) {
+        formData.append("document", fileInput.files[0]);
+    }
+
+    // Debug: print all FormData
+    for (let pair of formData.entries()) {
+        console.log(pair[0] + ':', pair[1]);
+    }
+    });
+    
+    console.log('fff',formData)
+  /*   $.ajax({
         url: 'academic-course-add',
         type: 'POST',
         data: formData,
@@ -940,10 +1401,188 @@ function saveCourse(formData) {
             cancel();
         },
         error: function (xhr, status, error) {
-            toastr.error('Error saving course');
+            toastr.error("Error saving course: " + xhr.responseText);
+        }
+    }); 
+} */
+
+function masterSaveCourse() {
+    gridOptionsDoc.api.stopEditing();
+
+    // Collect documents from grid (Course Materials)
+    var uploadList = [];
+    if (gridOptionsDoc.api.getDisplayedRowCount() > 0) {
+        gridOptionsDoc.api.forEachNode(function (rowNode) {
+            uploadList.push(rowNode.data);
+        });
+    }
+console.log('uploadList',uploadList)
+    // ------------------- FORM FIELD VALUES -------------------
+    let courseId = $("#courseId").val() || "";
+    let courseTittle = $("#courseTittle").val().trim();
+    let parentCategory = $("#parentCategory").val();
+    let subcategory = $("#subcategory").val();
+    let patientStatus = $("#patientStatus").val();
+    let startDate = $("#startDate").val();
+    let endDate = $("#endDate").val();
+    let price = $("#price").val() || "0";
+    let rate = $("#rate").val() || "0";
+    let currencySymbol = $("#currencySymbol").val() || "";
+    let level = $("#level").val() || "";
+    let categoryDataText = $("#jsonOutput").text().trim();
+    try {
+        JSON.parse(categoryDataText); // validate
+    } catch (e) {
+        toastr.error("Category Data is not valid JSON");
+        return;
+    }
+    
+    // Duration
+    let hours = parseInt($("#durationHours").val()) || 0;
+    let minutes = parseInt($("#durationMinutes").val()) || 0;
+
+    // CKEditor content
+    let courseDescRaw = CKEDITOR.instances.courseDesc.getData().trim();
+
+    // ------------------- VALIDATION -------------------
+    if (!courseTittle) { toastr.error("Course Title is mandatory"); return; }
+    if (!parentCategory) { toastr.error("Course Category is mandatory"); return; }
+    if (!patientStatus) { toastr.error("Status is mandatory"); return; }
+    if (hours < 0 || minutes < 0 || minutes > 59) { toastr.error("Invalid Duration"); return; }
+    if (!startDate) { toastr.error("Start Date is mandatory"); return; }
+    if (!endDate) { toastr.error("End Date is mandatory"); return; }
+
+    // Convert to Date for validation
+    let sDate = new Date(startDate.split("-").reverse().join("-")); // assuming dd-mm-yyyy
+    let eDate = new Date(endDate.split("-").reverse().join("-"));
+    if (eDate < sDate) { toastr.error("End Date cannot be earlier than Start Date"); return; }
+
+    if (!courseDescRaw) { toastr.error("Course Description is mandatory"); return; }
+    if (uploadList.length === 0) { toastr.error("At least one Course Material document is mandatory"); return; }
+
+    // ------------------- DURATION -------------------
+    let duration = (hours > 0 ? hours + "h" : "") + (minutes > 0 ? (hours > 0 ? " " : "") + minutes + "m" : "");
+    if (!duration) duration = "0h";
+
+    // Encode Course Description to Base64
+    courseDescRaw = courseDescRaw.replace(/\n/g, '').replace(/\t/g, '');
+    let courseDescEncoded = btoa(courseDescRaw);
+
+    // ------------------- FORM DATA -------------------
+    let formData = new FormData();
+    formData.append("courseId", courseId);
+    formData.append("courseTittle", courseTittle);
+    formData.append("parentCategory", parentCategory);
+    formData.append("subcategory", subcategory);
+    formData.append("duration", duration);
+    formData.append("price", price);
+    formData.append("startDate", startDate);
+    formData.append("endDate", endDate);
+    formData.append("patientStatus", patientStatus);
+    formData.append("courseDesc", courseDescEncoded);
+    formData.append("rate", rate);
+    formData.append("currencySymbol", currencySymbol);
+    formData.append("level", level);
+    
+ // ✅ Attach your category JSON here (now with content and pricing as separate keys in the JSON structure)
+ console.log($("#jsonOutput").text(),"sssssssss");
+    formData.append("categoryData", categoryDataText);
+
+    // Attach documents (grid data as JSON)
+    formData.append("uploadList", JSON.stringify(uploadList));
+    // Attach multiple files (from .wardocument inputs)
+    $(".wardocument").each(function () {
+        if (this.files && this.files.length > 0) {
+            for (let i = 0; i < this.files.length; i++) {
+                formData.append("documents", this.files[i]);  // <-- multiple documents
+            }
         }
     });
+
+    // ------------------- DEBUG -------------------
+    for (let pair of formData.entries()) {
+        console.log(pair[0] + ':', pair[1]);
+    }
+
+    // ------------------- AJAX CALL -------------------
+    $.ajax({
+        url: 'academic-course-add',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function (response) {
+            toastr.success(response.message || "Course saved successfully!");
+            getCourseDetails();
+            cancel();
+        },
+        error: function (xhr) {
+            toastr.error("Error saving course: " + (xhr.responseText || "Unknown error"));
+        }
+    }); 
 }
+
+ 
+/*  function masterSaveCourse() {
+	    var formData = new FormData();
+
+	    // Collect values
+	    formData.append("courseId", $("#courseId").val());
+	    formData.append("courseTittle", $("#courseTittle").val());
+	    formData.append("parentCategory", $("#parentCategory").val());
+	    formData.append("duration", $("#duration").val());
+	    formData.append("price", $("#price").val());
+	    formData.append("rate", $("#rate").val());
+	    formData.append("currencySymbol", $("#currencySymbol").val());
+	    formData.append("level", $("#level").val());
+	    formData.append("startDate", $("#startDate").val());
+	    formData.append("endDate", $("#endDate").val());
+	    formData.append("patientStatus", $("#patientStatus").val());
+	    formData.append("priceType", $("#priceType").val());
+
+	    // ✅ Get CKEditor data (HTML allowed, no stripping)
+	    CKEDITOR.instances.courseDesc.updateElement();
+	    let courseDescHtml = CKEDITOR.instances.courseDesc.getData();
+
+	    // ✅ Build courseDesc JSON object with CKEditor content
+	    let courseDescObj = {
+    courseOverview: courseDescHtml,
+    targetGroup: CKEDITOR.instances.targetGroup ? CKEDITOR.instances.targetGroup.getData() : "",
+    conceptsCovered: CKEDITOR.instances.conceptsCovered ? CKEDITOR.instances.conceptsCovered.getData() : "",
+    examAndPrerequisite: CKEDITOR.instances.examAndPrerequisite ? CKEDITOR.instances.examAndPrerequisite.getData() : ""
+};
+
+
+	    // ✅ Stringify and append
+	    formData.append("courseDesc", JSON.stringify(courseDescObj));
+
+	    // ✅ File upload
+	    let fileInput = document.getElementById("document");
+	    if (fileInput && fileInput.files.length > 0) {
+	        formData.append("document", fileInput.files[0]);
+	    }
+console.log(formData);
+	    // AJAX
+	    $.ajax({
+	        url: "academic-course-add",
+	        type: "POST",
+	        data: formData,
+	        processData: false,
+	        contentType: false,
+	        success: function (response) {
+	            toastr.success(response.message);
+	            getCourseDetails();
+	            cancel();
+	        },
+	        error: function (xhr, status, error) {
+	            toastr.error("Error saving course: " + xhr.responseText);
+	        }
+	    });
+	}
+ */
+
+
+
 
 function getCourseDetails() {
     agGrid.simpleHttpRequest({
@@ -953,7 +1592,7 @@ function getCourseDetails() {
             const responseBody = JSON.parse(response.body);
             const courseData = responseBody.courseData;
             window.gridApi.setRowData(courseData);
-            
+            console.log('courseData',courseData)
             const courseId = $("#courseId").val();
             if (courseId) {
                 window.gridApi.forEachNode(function(node) {
@@ -987,6 +1626,7 @@ function editCourseDetails(courseId) {
         success: function (response) {
             if (response.code === "success") {
                 const courseDetails = JSON.parse(response.body).courseDetails;
+                console.log('mm0',courseDetails)
                 if (courseDetails == null) {
                     // Handle null case
                 } else {
@@ -1002,7 +1642,44 @@ function editCourseDetails(courseId) {
                     } else {
                         console.error("CKEditor instance for 'courseDesc' not found.");
                     }
-                    $("#documentURL").val(courseDetails[0].documentURL || "");
+                  //  $("#documentURL").val(courseDetails[0].documentURL || "");
+                 // $("#uploadWarDoc_0").attr("src", courseDetails[0].documentURL || "");
+                  
+                  if (courseDetails[0].documentURL == null || courseDetails[0].documentURL == '') {
+                      $("#uploadedWarrDiv_0").html("");
+                      $("#imageWarrName_0").html("");
+                      $("#imageRemoveBtn_0").empty();
+                  } else {
+                      $("#uploadedWarrDiv_0").html("");
+                      var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + courseDetails[0].documentURL + "' title='" + courseDetails[0].fileName + "' target='_balnk'><i class='fa fa-file-o' style='color: blue'></i></a></div>";
+                      $("#uploadedWarrDiv_0").html(LightImg);
+                      $("#imageWarrName_0").html(courseDetails[0].fileName);
+                     /*  $("#imageRemoveBtn_0").html('<i style="color: red; cursor: pointer;" class="bi bi-x-lg" onclick="clearFileUploadFields();"></i>'); */
+                  }
+                  
+                  const courseDetailsArray = JSON.parse(response.body).courseDetails;
+                  if (courseDetailsArray && courseDetailsArray.length > 0) {
+                      const courseDetails = courseDetailsArray[0];
+
+                      // Map documents
+                      if (courseDetails.courseDocuments && courseDetails.courseDocuments.length > 0) {
+                          const mappedDocs = courseDetails.courseDocuments.map((doc, index) => {
+                              return {
+                                  slno: index + 1,
+                                  isEditDoc: false,
+                                  docName: doc.docName || doc.docView,
+                                  docType: doc.docView ? doc.docView.split('.').pop().toLowerCase() : "N/A",
+                                  dociURL: doc.dociURL || "",
+                                  documentFile: null,
+                                  docView: doc.docView || doc.docName
+                              };
+                          });
+                          gridOptionsDoc.api.setRowData(mappedDocs);
+                      } else {
+                          gridOptionsDoc.api.setRowData([]);
+                      }
+                  }
+                  
                     $("#rate").val(courseDetails[0].rate || "");
                     $("#currencySymbol").val(courseDetails[0].currencySymbol || "");
                     $("#level").val(courseDetails[0].level || "");
@@ -1061,6 +1738,7 @@ function addApplication() {
     $("#next").addClass('d-none');
     $("#instructorDetails").addClass('d-none');
     $("#courseForm :input").prop("disabled", false);
+    CKEDITOR.instances['courseDesc'].setReadOnly(false);
 }
 
 function cancel() {
@@ -1072,6 +1750,7 @@ function cancel() {
     $("#instructorDetails").removeClass('d-none');
     getCourseDetails();
     $("#courseForm :input").prop("disabled", true);
+    CKEDITOR.instances['courseDesc'].setReadOnly(true);
 }
 
 function editCourse() {
@@ -1081,6 +1760,7 @@ function editCourse() {
     $("#edit").addClass('d-none');
     $("#next").addClass('d-none');
     $("#courseForm :input").prop("disabled", false);
+    CKEDITOR.instances['courseDesc'].setReadOnly(false);
 }
 
 function saveFile() {
@@ -1110,8 +1790,12 @@ function saveFile() {
     $("#imageWarrName_0").removeAttr("onclick").attr("onclick", "openImage('" + window.btoa(iURL) + "')");
 }
 
-function openImage(id) {
+/* function openImage(id) {
     window.open(window.atob(id), '_blank');
+} */
+
+function openImage(url) {
+    window.open(decodeURIComponent(url), '_blank');
 }
 
 function getAllEmployeeDetails(employeeList) {
@@ -1191,26 +1875,70 @@ function reset() {
     }
 }
 
-function next() {
-    $("#examination").removeClass('hidden');
-    $("#course-overview").addClass('hidden');
-    $(".nav-link").removeClass("active");
-    $(".nav-link[href='#examination']").addClass("active");
-    $("#tab-examination").addClass("active").attr("aria-selected", "true");
-    $("#tab-course-overview").removeClass("active").attr("aria-selected", "false");
-    $("#examination").addClass("show active");
-    $("#course-overview").removeClass("show active");
+function next(tab) {
+	if(tab == 1){
+		 $("#examination").addClass('hidden');
+		    $("#course-overview").addClass('hidden');
+		    $("#training").removeClass('hidden');
+		    $(".nav-link").removeClass("active");
+		    $(".nav-link[href='#training']").addClass("active");
+		    $("#tab-training").addClass("active").attr("aria-selected", "true");
+		    $("#tab-course-overview").removeClass("active").attr("aria-selected", "false");
+		    $("#tab-examination").removeClass("active").attr("aria-selected", "false");
+		    $("#examination").removeClass("show active");
+		    $("#course-overview").removeClass("show active");
+		    $("#training").addClass("show active");
+	}
+	
+	if(tab == 2){
+		 $("#examination").removeClass('hidden');
+		    $("#course-overview").addClass('hidden');
+		    $("#training").addClass('hidden');
+		    $(".nav-link").removeClass("active");
+		    $(".nav-link[href='#examination']").addClass("active");
+		    $("#tab-examination").addClass("active").attr("aria-selected", "true");
+		    $("#tab-course-overview").removeClass("active").attr("aria-selected", "false");
+		    $("#tab-training").removeClass("active").attr("aria-selected", "false");
+		    $("#examination").addClass("show active");
+		    $("#course-overview").removeClass("show active");
+		    $("#training").removeClass("show active");
+	}
+   
 }
 
-function prev() {
-    $("#course-overview").removeClass('hidden');
-    $("#examination").addClass('hidden');
-    $(".nav-link").removeClass("active");
-    $(".nav-link[href='#course-overview']").addClass("active");
-    $("#tab-course-overview").addClass("active").attr("aria-selected", "true");
-    $("#tab-examination").removeClass("active").attr("aria-selected", "false");
-    $("#course-overview").addClass("show active");
-    $("#examination").removeClass("show active");
+function prev(tab) {
+	if(tab == 1){
+		 $("#course-overview").removeClass('hidden');
+		    $("#examination").addClass('hidden');
+		    $("#training").addClass('hidden');
+		    $(".nav-link").removeClass("active");
+		    $(".nav-link[href='#course-overview']").addClass("active");
+		    $(".nav-link[href='#examination']").removeClass("active");
+		    $(".nav-link[href='#training']").removeClass("active");
+		    $("#tab-course-overview").addClass("active").attr("aria-selected", "true");
+		    $("#tab-examination").removeClass("active").attr("aria-selected", "false");
+		    $("#tab-training").removeClass("active").attr("aria-selected", "false");
+		    $("#course-overview").addClass("show active");
+		    $("#examination").removeClass("show active");
+		    $("#training").removeClass("show active");
+	}
+	
+	if(tab == 2){
+		 $("#course-overview").addClass('hidden');
+		    $("#examination").addClass('hidden');
+		    $("#training").removeClass('hidden');
+		    $(".nav-link").removeClass("active");
+		    $(".nav-link[href='#course-overview']").removeClass("active");
+		    $(".nav-link[href='#examination']").removeClass("active");
+		    $(".nav-link[href='#training']").addClass("active");
+		    $("#tab-course-overview").removeClass("active").attr("aria-selected", "true");
+		    $("#tab-examination").addClass("active").attr("aria-selected", "false");
+		    $("#tab-training").addClass("active").attr("aria-selected", "false");
+		    $("#course-overview").removeClass("show active");
+		    $("#examination").removeClass("show active");
+		    $("#training").addClass("show active");
+	}
+   
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -1315,6 +2043,252 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize
     renderCustomerOptions();
 });
+
+
+
+function getsubcategoryList(id,id2){
+	$.ajax({
+		type : "GET",
+		url : "academic-course-get-subcategory?id="+id,
+		success : function(response) {
+			if (response.message == "success") {
+				$("#subcategory").empty();
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				$("#subcategory").append(option);
+				for (var i = 0; i < response.body.length; i++) {
+					var option = $("<option></option>");
+					$(option).val(response.body[i].key);
+					$(option).html(response.body[i].name);
+					$("#subcategory").append(option);
+				}
+				if(id2){
+					$("#subcategory").val(id2).trigger('change');
+					//getVariationList(id2);
+				}
+			}
+		},
+		error : function(e) {
+		}
+	});	
+}
+
+// Training section functions
+function addtraining() {
+    $("#addtraining").addClass('d-none');
+    $("#editTraing").addClass('d-none');
+    $("#saveTraing").removeClass('d-none');
+    $("#cancelTraing").removeClass('d-none');
+    $(".categoryCheck").prop("disabled", false);
+    $("#addCustomTraining").prop("disabled", false);
+    // Clear savedData for new
+    savedData = {};
+    refreshDisplay();
+    // Uncheck all
+    $(".categoryCheck").prop("checked", false);
+    $("#dynamicFields").hide();
+    currentCategory = "";
+    // Explicitly hide buttons
+    $("#saveBtn").addClass('d-none');
+    $("#editBtn").addClass('d-none');
+}
+
+function editTraing() {
+    // No need for category check—data is loaded, checkboxes enabled
+    $("#addtraining").addClass('d-none');
+    $("#editTraing").addClass('d-none');
+    $("#saveTraing").removeClass('d-none');
+    $("#cancelTraing").removeClass('d-none');
+
+    // Fields already enabled via checkbox change; just ensure
+    if (currentCategory && CKEDITOR.instances.notesField) {
+        CKEDITOR.instances.notesField.setReadOnly(false);
+    }
+    $("#priceField").prop("disabled", false);
+}
+
+function saveTraing() {
+    // Ensure latest data is saved to savedData
+    if ($("#editBtn").hasClass('d-none')) {
+        $("#saveBtn").click();
+    } else {
+        $("#editBtn").click();
+    }
+
+    // Get the courseId
+    let courseId = $("#courseId").val() || "";
+    if (!courseId) {
+        toastr.error("No course selected. Please select a course first.");
+        return;
+    }
+
+    // Get the JSON data text
+    let categoryDataText = $("#jsonOutput").text().trim();
+    if (!categoryDataText) {
+        toastr.error("No training data to save.");
+        return;
+    }
+
+    try {
+        let parsedData = JSON.parse(categoryDataText);
+        
+        // If parsedData is an object (as per current structure), convert to array with IDs
+        if (typeof parsedData === 'object' && !Array.isArray(parsedData)) {
+            let trainingArray = [];
+            let counter = 1;
+            for (let category in parsedData) {
+                trainingArray.push({
+                    id: courseId + '_tr' + String(counter).padStart(3, '0'), // e.g., C001_tr001
+                    category: category,
+                    content: parsedData[category].content,
+                    pricing: parsedData[category].pricing
+                });
+                counter++;
+            }
+            categoryDataText = JSON.stringify(trainingArray, null, 2);
+        } else if (Array.isArray(parsedData)) {
+            // If already array, ensure IDs are present and incremental
+            let counter = 1;
+            parsedData.forEach(item => {
+                if (!item.id) {
+                    item.id = courseId + '_tr' + String(counter).padStart(3, '0');
+                }
+                counter++;
+            });
+            categoryDataText = JSON.stringify(parsedData, null, 2);
+        }
+
+        // Validate that each item has an 'id'
+        let finalParsed = JSON.parse(categoryDataText);
+        if (!Array.isArray(finalParsed) || !finalParsed.every(item => item.id)) {
+            toastr.error("Invalid training data format. Each item must have an 'id'.");
+            return;
+        }
+    } catch (e) {
+    	
+    	
+        toastr.error("Invalid JSON data.");
+        return;
+    }
+
+    // Prepare JSON payload
+    let payload = {
+        courseId: courseId,
+        categoryData: categoryDataText
+    };
+
+    // Post to controller as JSON
+    $.ajax({
+        url: 'academic-course-training-save',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(payload),
+        success: function (response) {
+            toastr.success(response.message || "Training saved successfully!");
+            cancelTraing();
+        },
+        error: function (xhr) {
+            toastr.error("Error saving training: " + (xhr.responseText || "Unknown error"));
+        }
+    });
+}
+
+function cancelTraing() {
+   // resetUI();
+    $(".categoryCheck").prop("disabled", true);
+    $("#saveTraing").addClass('d-none');
+    $("#cancelTraing").addClass('d-none');
+    $("#addtraining").removeClass('d-none');
+    $("#editTraing").removeClass('d-none');
+    $("#addCustomTraining").prop("disabled", true);
+}
+
+
+function getTrainingDetails(courseId) {
+    agGrid.simpleHttpRequest({
+     url : "academic-training-view?id="+courseId,
+    }).then(function (response) {
+        if (response.message === "Success") {
+            const responseBody = JSON.parse(response.body);
+            const courseData = responseBody.courseData;
+            console.log(courseData);
+
+            // ✅ FIX: Populate savedData from backend (for edit/view mode)
+            savedData = {};
+            if (courseData && Array.isArray(courseData)) {
+                courseData.forEach(item => {
+                    if (item.category) {
+                        savedData[item.category] = {
+                            content: item.content || "",
+                            pricing: item.pricing || ""
+                        };
+                    }
+                });
+            }
+
+            // ✅ NEW: Add checkboxes for custom categories that were previously saved (persist checkbox headers)
+            Object.keys(savedData).forEach(category => {
+                if (!predefinedCategories.includes(category)) {
+                    let safeId = category.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+                    if (!$(`#custom_${safeId}`).length) {  // If checkbox doesn't exist, add it
+                        let newCheckHtml = `
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input categoryCheck" type="checkbox" id="custom_${safeId}" value="${category}">
+                                    <label class="form-check-label" for="custom_${safeId}">${category}</label>
+                                </div>
+                            </div>
+                        `;
+                        $(".row.g-3").append(newCheckHtml); // Append to the checkboxes container
+
+                        // Bind change event to the new checkbox (same as custom add)
+                        $(`#custom_${safeId}`).on("change", function () {
+                            $(".categoryCheck").not(this).prop("checked", false); // Ensure single selection
+
+                            if ($(this).is(":checked")) {
+                                currentCategory = $(this).val();
+                                $("#dynamicFields").show();
+                                if (!CKEDITOR.instances.notesField) {
+                                    CKEDITOR.replace("notesField", {}, function(editor) {
+                                        handleCategoryLoad(editor);
+                                    });
+                                } else {
+                                    handleCategoryLoad(CKEDITOR.instances.notesField);
+                                }
+                            } else {
+                                $("#dynamicFields").hide();
+                                currentCategory = "";
+                            }
+                        });
+                    }
+                }
+            });
+
+            // Refresh display to show loaded data
+            refreshDisplay();
+
+            // ✅ FIX: Enable checkboxes for edit/view (don't clear data)
+            $(".categoryCheck").prop("disabled", false);
+            $("#addCustomTraining").prop("disabled", false);
+
+            // Optional: Auto-check first category if data exists
+            if (Object.keys(savedData).length > 0) {
+                const firstCategory = Object.keys(savedData)[0];
+                $(`.categoryCheck[value="${firstCategory}"]`).prop("checked", true).trigger("change");
+            }
+        } else {
+            console.error("Failed to fetch data");
+            // On error, clear and disable
+            savedData = {};
+            refreshDisplay();
+            $(".categoryCheck").prop("disabled", true);
+            $("#addCustomTraining").prop("disabled", true);
+        }
+    });
+}
+
+
 </script>
 </head>
 
@@ -1368,6 +2342,14 @@ document.addEventListener('DOMContentLoaded', function() {
 													href="#course-overview" aria-selected="true" role="tab">Course
 														Overview</a>
 												</li>
+
+												<li class="nav-item wd-11" role="presentation"
+													id="courseForTraing"><a class="nav-link"
+													data-bs-toggle="pill" href="#training"
+													aria-selected="false" role="tab" tabindex="-1">Course
+														Training</a></li>
+
+
 												<li class="nav-item wd-11" role="presentation"
 													id="instructorDetails"><a class="nav-link"
 													data-bs-toggle="pill" href="#examination"
@@ -1405,7 +2387,7 @@ document.addEventListener('DOMContentLoaded', function() {
 																		</div>
 																		<div class="mr-0">
 																			<button id="next" class="btn m-0 edit-btn"
-																				onclick="next()" type="button">Next</button>
+																				onclick="next(1)" type="button">Next</button>
 																		</div>
 																	</div>
 																</td>
@@ -1435,10 +2417,23 @@ document.addEventListener('DOMContentLoaded', function() {
 																	<label>Category</label> <span class="mandatory">*</span>
 																	<div class="select">
 																		<select class="searchable-select mt-2"
-																			id="parentCategory">
+																			id="parentCategory"
+																			onchange="getsubcategoryList(this.value,'')">
 																			<option value="">Select Course Category</option>
 																			<option th:each="a : ${productCategoryList}"
 																				th:value="${a.key}" th:text="${a.name}"></option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>Sub-category</label><span class="mandatory">*</span>
+																	<div class="select">
+																		<select class="searchable-select mt-2"
+																			id="subcategory">
+																			<option value="">Select</option>
 																		</select>
 																	</div>
 																</div>
@@ -1569,7 +2564,8 @@ document.addEventListener('DOMContentLoaded', function() {
 																</div>
 
 																<!-- Customers (B2B only) -->
-																<div class="form-group hidden md:col-span-2" id="customersContainer">
+																<div class="form-group hidden md:col-span-2"
+																	id="customersContainer">
 																	<label class="block text-sm font-medium mb-1">Customers
 																		<span class="text-red-500">*</span>
 																	</label>
@@ -1588,12 +2584,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 														</div>
 														<div class="row mb-3">
-															<h5
-																class="text-lg font-semibold text-gray-700 mb-2 flex items-center text-primary">
-																Course Materials</h5>
+
 															<div class="col-md-12  form-group">
 																<label for="courseDesc" class="mb-2">Course
-																	Description</label>
+																	Description</label><span class="mandatory">*</span>
 																<textarea id="courseDesc" class="form-control"></textarea>
 															</div>
 														</div>
@@ -1623,10 +2617,206 @@ document.addEventListener('DOMContentLoaded', function() {
 																</div>
 															</div>
 														</div>
+
+														<div class="row">
+															<div class="col-md-12">
+																<div class="d-flex justify-content-between">
+																	<div>
+																		<h5 class="sub-header-new m-0">Course Material :</h5>
+																	</div>
+																	<div class="row">
+																		<div class="col-md-12 cnt-sp-end">
+																			<div class="d-flex gap-2 task-btn-sec">
+																				<span class="mandatory">*</span>
+																				<button id="docAddBtn"
+																					class="border-0 btn-transition btn btn-outline-primary"
+																					title="Add Doc" onClick="uploadDocOnClick()"
+																					data-bs-toggle="tooltip">
+																					<i class="fa fa-plus-square" aria-hidden="true"></i>
+
+																				</button>
+																				<button id="docDeleteBtn"
+																					class="border-0 btn-transition btn btn-outline-primary"
+																					title="Remove Doc" disabled
+																					onclick="deleteDocDetailsOnclick()"
+																					data-bs-toggle="tooltip">
+																					<i class="fa fa-trash"></i>
+																				</button>
+
+																			</div>
+																		</div>
+																	</div>
+																</div>
+																<div class="controls" hidden>
+																	<input type="file" class="document" id="uploadDoc_0"
+																		accept=".jpeg, .jpg, .png, .pdf" name="userImage"
+																		onchange="saveMultiFile(event)" />
+																</div>
+
+																<div class="row mt-2">
+																	<div id="myDocumentGrid"
+																		style="width: 100%; height: 200px;"
+																		class="ag-theme-alpine"></div>
+																</div>
+															</div>
+														</div>
+
+
+
+
+
 													</div>
 												</div>
 											</div>
 										</div>
+
+
+										<div id="training" class="tab-pane fade hidden p-2 h-100">
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+												<div class="">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<td width="80%"><strong id="programNameDisplay"></strong></td>
+																<td>
+																	<div class="d-flex justify-content-end gap-2">
+																		<div class="ml-3">
+																			<button id="addtraining"
+																				class="btn btn-primary edit-btn" type="button"
+																				onclick="addtraining()">Add</button>
+																		</div>
+																		<div class="ml-3">
+																			<button id="editTraing"
+																				class="btn btn-primary edit-btn" type="button"
+																				onclick="editTraing()">Edit</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="saveTraing" class="btn edit-btn d-none"
+																				onclick="saveTraing()" type="button">Save</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="cancelTraing"
+																				class="btn m-0 edit-btn d-none"
+																				onclick="cancelTraing()" type="button">Cancel</button>
+																		</div>
+
+
+																		<div class="mr-3">
+																			<button id="prev" class="btn m-0 edit-btn"
+																				onclick="prev(1)" type="button">Prev</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="next" class="btn edit-btn"
+																				onclick="next(2)" type="button">Next</button>
+																		</div>
+																	</div>
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+												<div class="card p-2">
+													<div class="row">
+														<div class="col-md-12">
+															<h5 class="mb-3">Course Category Type :</h5>
+
+															<div
+																class="d-flex justify-content-between align-items-center mb-3">
+																<div class="row g-3 flex-grow-1">
+																	<div class="col-md-4">
+																		<div class="form-check">
+																			<input class="form-check-input categoryCheck"
+																				type="checkbox" id="bootcamp"
+																				value="Online Bootcamp"> <label
+																				class="form-check-label" for="bootcamp">Online
+																				Bootcamp</label>
+																		</div>
+																	</div>
+
+																	<div class="col-md-4">
+																		<div class="form-check">
+																			<input class="form-check-input categoryCheck"
+																				type="checkbox" id="corporate"
+																				value="Corporate Training"> <label
+																				class="form-check-label" for="corporate">Corporate
+																				Training</label>
+																		</div>
+																	</div>
+
+																	<div class="col-md-4">
+																		<div class="form-check">
+																			<input class="form-check-input categoryCheck"
+																				type="checkbox" id="mock" value="Mock Tests">
+																			<label class="form-check-label" for="mock">Mock
+																				Tests</label>
+																		</div>
+																	</div>
+
+																	<div class="col-md-4">
+																		<div class="form-check">
+																			<input class="form-check-input categoryCheck"
+																				type="checkbox" id="bundle"
+																				value="eLearning + Exam Bundle"> <label
+																				class="form-check-label" for="bundle">eLearning
+																				+ Exam Bundle</label>
+																		</div>
+																	</div>
+
+																	<div class="col-md-4">
+																		<div class="form-check">
+																			<input class="form-check-input categoryCheck"
+																				type="checkbox" id="books" value="Books"> <label
+																				class="form-check-label" for="books">Books</label>
+																		</div>
+																	</div>
+																</div>
+																<div>
+																	<button id="addCustomTraining" class="btn btn-primary" disabled
+																		data-bs-toggle="modal"
+																		data-bs-target="#customCategoryModal">
+																		<i class="fa fa-plus"></i> Add Custom
+																	</button>
+																</div>
+															</div>
+
+															<!-- Save and Edit Buttons in Header -->
+															<div class="d-flex justify-content-end mb-3">
+																<button id="saveBtn"
+																	class="btn btn-primary btn-sm me-2 d-none">Save</button>
+																<button id="editBtn"
+																	class="btn btn-success btn-sm d-none">Update</button>
+															</div>
+
+															<!-- Notes + Price -->
+															<div class="col-md-12 mt-3" id="dynamicFields"
+																style="display: none;">
+																<div class="row g-2">
+																	<div class="col-md-8">
+																		<textarea id="notesField" class="form-control"
+																			placeholder="Enter details..."></textarea>
+																	</div>
+																	<div class="col-md-4">
+																		<input type="number" id="priceField"
+																			class="form-control" placeholder="Price">
+																	</div>
+																</div>
+															</div>
+
+															<div class="col-md-12 mt-4">
+																<h6>Saved Selections:</h6>
+																<div id="resultContainer"></div>
+																<h6 class="mt-3">JSON Output (Content & Pricing as
+																	separate keys):</h6>
+																<pre id="jsonOutput" class="bg-light p-2"></pre>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+
+
+
 										<div id="examination" class="tab-pane fade hidden p-2 h-100">
 											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
 												<div class="">
@@ -1638,7 +2828,7 @@ document.addEventListener('DOMContentLoaded', function() {
 																	<div class="d-flex justify-content-end gap-2">
 																		<div class="mr-0">
 																			<button id="prev" class="btn m-0 edit-btn"
-																				onclick="prev()" type="button">Prev</button>
+																				onclick="prev(2)" type="button">Prev</button>
 																		</div>
 																		<div class="mr-0">
 																			<button id="assign" class="btn edit-btn"
@@ -1674,6 +2864,35 @@ document.addEventListener('DOMContentLoaded', function() {
 								</div>
 							</div>
 						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Custom Category Modal -->
+		<div class="modal fade" id="customCategoryModal" tabindex="-1"
+			aria-labelledby="customCategoryModalLabel" aria-hidden="true">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="customCategoryModalLabel">Add
+							Custom Training Category</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal"
+							aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<div class="mb-3">
+							<label for="customCategoryInput" class="form-label">Category
+								Name</label> <input type="text" class="form-control"
+								id="customCategoryInput"
+								placeholder="Enter custom category name">
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary"
+							data-bs-dismiss="modal">Close</button>
+						<button type="button" class="btn btn-primary"
+							id="saveCustomCategory">Save</button>
 					</div>
 				</div>
 			</div>
