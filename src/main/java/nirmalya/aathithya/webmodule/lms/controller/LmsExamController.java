@@ -121,4 +121,74 @@ public class LmsExamController {
 	    return resp;
 	}
 
+
+
+	    /**
+	     * View All Quiz Data
+	     */
+	    @SuppressWarnings("unchecked")
+	    @GetMapping("quiz-config-view")
+	    public @ResponseBody Object viewQuizConfig(HttpSession session) {
+	        logger.info("Method : viewQuizConfig starts");
+	        JsonResponse<Object> resp = new JsonResponse<Object>();
+
+	        try {
+	            String orgName = (String) session.getAttribute("ORGANIZATION");
+	            String orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+
+	            resp = restClient.getForObject(
+	                    env.getMasterUrl() + "rest-viewQuizConfig?orgName=" + orgName + "&orgDivision=" + orgDivision,
+	                    JsonResponse.class);
+
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	        }
+
+	        if (resp.getMessage() == "" && resp.getMessage() == null) {
+	            resp.setCode(resp.getMessage());
+	            resp.setMessage("Unsuccess");
+	        } else {
+	            resp.setMessage("Success");
+	        }
+	        logger.info("Method : viewQuizConfig ends"+resp);
+	        return resp;
+	    }
+
+	    /**
+	     * Edit Quiz Details
+	     */
+	    @SuppressWarnings("unchecked")
+	    @GetMapping("quiz-config-edit")
+	    public @ResponseBody Object editQuizConfig(@RequestParam String id,@RequestParam Integer id2, HttpSession session) {
+	        logger.info("Method : editQuizConfig starts with Id: " + id2);
+	        JsonResponse<Object> resp = new JsonResponse<Object>();
+
+	        try {
+	            String orgName = (String) session.getAttribute("ORGANIZATION");
+	            String orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+logger.info("url==="+
+        env.getMasterUrl() + "rest-editQuizConfig?id=" + id + "&id2=" +id2 + "&organization=" + orgName + "&orgDivision=" + orgDivision,
+        JsonResponse.class);
+
+	            resp = restClient.getForObject(
+	                    env.getMasterUrl() + "rest-editQuizConfig?id=" + id + "&id2=" +id2 + "&organization=" + orgName + "&orgDivision=" + orgDivision,
+	                    JsonResponse.class);
+
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	        }
+
+	        if (resp.getMessage() == "" && resp.getMessage() == null) {
+	            resp.setCode(resp.getCode());
+	            resp.setMessage(resp.getMessage());
+	        } else {
+	            resp.setMessage(resp.getMessage());
+	        }
+
+	        logger.info("Method : editQuizConfig ends");
+	        return resp;
+	    }
+	
+
+	
 }
