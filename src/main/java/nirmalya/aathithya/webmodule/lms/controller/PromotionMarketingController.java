@@ -83,62 +83,145 @@ import nirmalya.aathithya.webmodule.common.utils.JsonResponse;
 		}
 //
 		@SuppressWarnings("unchecked")
-		@PostMapping("promotion-marketing-save-data")
-		public @ResponseBody JsonResponse<Object> addCoupon(@RequestBody Map<String, Object> couponJsonData, HttpSession session) {
-		    logger.info("Method : addCoupon starts");
+		// @PostMapping("promotion-marketing-save-data")
+		// public @ResponseBody JsonResponse<Object> addCoupon(@RequestBody Map<String, Object> couponJsonData, HttpSession session) {
+		//     logger.info("Method : addCoupon starts");
  
-		    JsonResponse<Object> resp = new JsonResponse<Object>();
-		    String organization = "";
-		    String orgDivision = "";
-		    String createdById = "";
+		//     JsonResponse<Object> resp = new JsonResponse<Object>();
+		//     String organization = "";
+		//     String orgDivision = "";
+		//     String createdById = "";
 
-		    try {
-		        organization = (String) session.getAttribute("ORGANIZATION");
-		        orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
-		        createdById = (String) session.getAttribute("USER_ID");
-		    } catch (Exception e) {
-		        e.printStackTrace();
-		    }
+		//     try {
+		//         organization = (String) session.getAttribute("ORGANIZATION");
+		//         orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		//         createdById = (String) session.getAttribute("USER_ID");
+		//     } catch (Exception e) {
+		//         e.printStackTrace();
+		//     }
 
-		    try {
-		        String url = env.getMasterUrl() + "rest-addCoupon";
-		        System.out.println("Perforation URL==========>>>>>>>"+url);
+		//     try {
+		//         String url = env.getMasterUrl() + "rest-addCoupon";
+		//         System.out.println("Perforation URL==========>>>>>>>"+url);
 
-		        String couponId = (String) couponJsonData.get("couponId");
-		        String couponNo = (String) couponJsonData.get("couponNo");
-		        String discount = (String) couponJsonData.get("discount");
-		        String price = (String) couponJsonData.get("price");
-		        String validFrom = (String) couponJsonData.get("validFrom");
-		        String validTo = (String) couponJsonData.get("validTo");
-		        String status = (String) couponJsonData.get("status");
+		//         String couponId = (String) couponJsonData.get("couponId");
+		//         String couponNo = (String) couponJsonData.get("couponNo");
+		//         String discount = (String) couponJsonData.get("discount");
+		//         String price = (String) couponJsonData.get("price");
+		//         String validFrom = (String) couponJsonData.get("validFrom");
+		//         String validTo = (String) couponJsonData.get("validTo");
+		//         String status = (String) couponJsonData.get("status");
 
-		        List<Map<String, Object>> rows = (List<Map<String, Object>>) couponJsonData.get("rows");
+		//         List<Map<String, Object>> rows = (List<Map<String, Object>>) couponJsonData.get("rows");
 
-		        Map<String, Object> requestPayload = new HashMap<>();
-		        requestPayload.put("couponId", couponId);   
-		        requestPayload.put("orgName", organization);      
-		        requestPayload.put("orgDiv", orgDivision);       
-		        requestPayload.put("createdById", createdById);   
-		        requestPayload.put("couponNo", couponNo);                
-		        requestPayload.put("discount",discount);                
-		        requestPayload.put("price",price);                
-		        requestPayload.put("validFrom", validFrom);               
-		        requestPayload.put("validTo", validTo);               
-		        requestPayload.put("status", status); 
-		        requestPayload.put("rows", rows);     
+		//         Map<String, Object> requestPayload = new HashMap<>();
+		//         requestPayload.put("couponId", couponId);   
+		//         requestPayload.put("orgName", organization);      
+		//         requestPayload.put("orgDiv", orgDivision);       
+		//         requestPayload.put("createdById", createdById);   
+		//         requestPayload.put("couponNo", couponNo);                
+		//         requestPayload.put("discount",discount);                
+		//         requestPayload.put("price",price);                
+		//         requestPayload.put("validFrom", validFrom);               
+		//         requestPayload.put("validTo", validTo);               
+		//         requestPayload.put("status", status); 
+		//         requestPayload.put("rows", rows);     
 
-		        logger.info("Sending filter clining record data to the service: " + requestPayload);
+		//         logger.info("Sending filter clining record data to the service: " + requestPayload);
 
-		        resp = restTemplate.postForObject(url, requestPayload, JsonResponse.class);
-		    } catch (Exception e) {
-		        logger.error("Error in addFCdata: ", e);
-		        e.printStackTrace();
-		    }
+		//         resp = restTemplate.postForObject(url, requestPayload, JsonResponse.class);
+		//     } catch (Exception e) {
+		//         logger.error("Error in addFCdata: ", e);
+		//         e.printStackTrace();
+		//     }
 
-		    logger.info("Method : addCoupon ends");
-		    return resp;
-		}
+		//     logger.info("Method : addCoupon ends");
+		//     return resp;
+		// }
+
 //
+
+@PostMapping("promotion-marketing-save-data")
+    public @ResponseBody JsonResponse<Object> savePromotionMarketing(@RequestBody Map<String, Object> requestJsonData, HttpSession session) {
+        logger.info("Method : savePromotionMarketing starts");
+
+        JsonResponse<Object> resp = new JsonResponse<>();
+        String organization = "";
+        String orgDivision = "";
+        String createdById = "";
+
+        try {
+            organization = (String) session.getAttribute("ORGANIZATION");
+            orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+            createdById = (String) session.getAttribute("USER_ID");
+        } catch (Exception e) {
+            logger.error("Error retrieving session attributes: ", e);
+            e.printStackTrace();
+        }
+
+        try {
+            String url = env.getMasterUrl() + "rest-addCoupon"; 
+            logger.info("REST URL: {}", url);
+
+            String type = (String) requestJsonData.get("type");
+            Map<String, Object> requestPayload = new HashMap<>();
+            requestPayload.put("orgName", organization);
+            requestPayload.put("orgDiv", orgDivision);
+            requestPayload.put("createdById", createdById);
+            requestPayload.put("type", type);
+
+            if ("coupon".equals(type)) {
+                // Handle Coupon Data
+                String couponId = (String) requestJsonData.get("couponId");
+                String couponNo = (String) requestJsonData.get("couponNo");
+                String discount = (String) requestJsonData.get("discount");
+                String price = (String) requestJsonData.get("price");
+                String validFrom = (String) requestJsonData.get("validFrom");
+                String validTo = (String) requestJsonData.get("validTo");
+                String status = (String) requestJsonData.get("status");
+                List<Map<String, Object>> rows = (List<Map<String, Object>>) requestJsonData.get("rows");
+
+                requestPayload.put("couponId", couponId);
+                requestPayload.put("couponNo", couponNo);
+                requestPayload.put("discount", discount);
+                requestPayload.put("price", price);
+                requestPayload.put("validFrom", validFrom);
+                requestPayload.put("validTo", validTo);
+                requestPayload.put("status", status);
+                requestPayload.put("rows", rows);
+            } else if ("marketing".equals(type)) {
+                // Handle Marketing Data
+                String marketingId = (String) requestJsonData.get("marketingId");
+                String marketName = (String) requestJsonData.get("marketName");
+                String startDate = (String) requestJsonData.get("startDate");
+                String endDate = (String) requestJsonData.get("endDate");
+                String status = (String) requestJsonData.get("status");
+
+                requestPayload.put("marketingId", marketingId);
+                requestPayload.put("marketName", marketName);
+                requestPayload.put("startDate", startDate);
+                requestPayload.put("endDate", endDate);
+                requestPayload.put("status", status);
+            } else {
+                logger.error("Invalid type provided: {}", type);
+                resp.setCode("error");
+                resp.setMessage("Invalid type. Must be 'coupon' or 'marketing'.");
+                return resp;
+            }
+
+            logger.info("Sending promotion/marketing data to the service: {}", requestPayload);
+
+            resp = restTemplate.postForObject(url, requestPayload, JsonResponse.class);
+        } catch (Exception e) {
+            logger.error("Error in savePromotionMarketing: ", e);
+            resp.setCode("error");
+            resp.setMessage("Failed to save data: " + e.getMessage());
+        }
+
+        logger.info("Method : savePromotionMarketing ends");
+        return resp;
+    }
+
 		@SuppressWarnings("unchecked")
 		@GetMapping("promotion-marketing-edit")
 		public @ResponseBody Object editCoupon(@RequestParam String couponId,HttpSession session) {
