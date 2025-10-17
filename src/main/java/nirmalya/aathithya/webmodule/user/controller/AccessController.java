@@ -134,7 +134,7 @@ public class AccessController {
 
 		logger.info("Method : / ends");
 
-		return "lms_index";
+		return "nerp_hrms_login";
 	}
 	
 	
