@@ -219,6 +219,22 @@ input[type=radio] {
             $('a[href="#' + tabId + '"]').tab('show');
         }
 
+        function parseDate(dateStr) {
+            if (!dateStr) return null;
+            let parts = dateStr.split(' ');
+            let datePart = parts[0];
+            let timePart = parts.length > 1 ? parts[1].split(':').map(Number) : [0, 0, 0];
+            let dateParts = datePart.split('-');
+            if (dateParts.length === 3) {
+                if (dateParts[0].length === 4) { // YYYY-MM-DD
+                    return new Date(dateParts[0], dateParts[1] - 1, dateParts[2], ...timePart);
+                } else { // DD-MM-YYYY
+                    return new Date(dateParts[2], dateParts[1] - 1, dateParts[0], ...timePart);
+                }
+            }
+            return null;
+        }
+
         // Grid and other functions remain the same
         var columnDefs = [{
             headerCheckboxSelection: false,
@@ -267,7 +283,24 @@ input[type=radio] {
             headerName: 'Valid To Date',
             field: "validTo",
             width: 160,
-        }];
+        },{
+            headerName: 'Document',
+            field: "document",
+            width: 150,
+            cellRenderer: function(params) {
+                if (params.value) {
+                    const url = `/document/image/${params.value}`;
+                    let ext = params.value.split('.').pop().toLowerCase();
+                    if (ext === 'pdf') {
+                        return `<button class="btn btn-sm btn-outline-primary" onclick="window.open('${url}', '_blank')">View PDF</button>`;
+                    } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+                        return `<img src="${url}" alt="Document" style="max-width: 50px; max-height: 50px; border-radius: 3px; cursor: pointer;" onclick="window.open('${url}', '_blank')" />`;
+                    } else {
+                        return `<button class="btn btn-sm btn-outline-secondary" onclick="window.open('${url}', '_blank')">View File</button>`;
+                    }
+                }
+                return '<span class="text-muted">No Document</span>';
+            }}];
 
         var gridOptions = {
             columnDefs: columnDefs,
@@ -372,35 +405,100 @@ input[type=radio] {
                 $("#addBtn").show();
 
                 var rowData = selectedRows[0];
-                let couponleft = rowData.daysValid + " Days";
-                $("#daysleft").text(couponleft);
+                var isMarketing = (!rowData.discount || rowData.discount === null || rowData.discount === '');
+                
+                // Set title
+                $('.lead').text(isMarketing ? rowData.couponNo : 'Coupon Detail goes here');
+                
+                // Set short info dynamically
+                const shortInfoElement = document.querySelector('.text-muted.mb-0');
+                if (isMarketing) {
+                    shortInfoElement.textContent = 'Marketing promotion details';
+                } else {
+                    shortInfoElement.textContent = 'Short info about voucher';
+                }
+                
+                // Set status
                 $("#ststusBadge").text(rowData.status);
-                // Update QR code and other details
-                var qrData = JSON.stringify({
-                    CouponNo: rowData.couponNo,
-                    Minimum_Price: rowData.price,
-                    Discount: rowData.discount,
-                    ValidFrom: rowData.validFrom,
-                    ValidTo: rowData.validTo
-                });
-
-                var tempContainer = document.createElement("div");
-                new QRCode(tempContainer, {
-                    text: qrData,
-                    width: 150,
-                    height: 150,
-                    colorDark: "#000000",
-                    colorLight: "#ffffff",
-                    correctLevel: QRCode.CorrectLevel.H
-                });
-
-                setTimeout(function () {
-                    var generatedImg = tempContainer.querySelector('img');
-                    if (generatedImg) {
-                        document.getElementById("qrImage").src = generatedImg.src;
+                
+                // Calculate days left/valid
+                let daysText;
+                if (rowData.daysValid) {
+                    daysText = rowData.daysValid + " Days";
+                } else {
+                    const from = parseDate(rowData.validFrom);
+                    const to = parseDate(rowData.validTo);
+                    if (from && to) {
+                        const diff = Math.ceil((to - from) / (1000 * 60 * 60 * 24));
+                        daysText = diff + " days";
+                    } else {
+                        daysText = "0 days";
                     }
-                    /* $("#daysleft").text(); */
-                }, 100);
+                }
+                $("#daysleft").text(daysText);
+
+                // Handle QR or Document in icon-container
+                const qrImg = document.getElementById("qrImage");
+                if (!isMarketing) {
+                    // Generate QR for coupon
+                    var qrData = JSON.stringify({
+                        CouponNo: rowData.couponNo,
+                        Minimum_Price: rowData.price,
+                        Discount: rowData.discount,
+                        ValidFrom: rowData.validFrom,
+                        ValidTo: rowData.validTo
+                    });
+
+                    var tempContainer = document.createElement("div");
+                    new QRCode(tempContainer, {
+                        text: qrData,
+                        width: 150,
+                        height: 150,
+                        colorDark: "#000000",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+
+                    setTimeout(function () {
+                        var generatedImg = tempContainer.querySelector('img');
+                        if (generatedImg) {
+                            qrImg.src = generatedImg.src;
+                        }
+                    }, 100);
+                    qrImg.alt = "QR Code";
+                } else if (rowData.document) {
+                    // Show document preview for marketing
+                    const docUrl = `/document/image/${rowData.document}`;
+                    let ext = rowData.document.split('.').pop().toLowerCase();
+                    if (ext === 'pdf') {
+                        qrImg.src = '/images/pdf-icon.png'; // Assume you have a pdf icon
+                        qrImg.alt = "PDF Document";
+                    } else {
+                        qrImg.src = docUrl;
+                        qrImg.alt = "Document";
+                    }
+                } else {
+                    qrImg.src = '/images/default.png';
+                    qrImg.alt = "No Document";
+                }
+
+                // Document preview below - always ensure it's visible and updated
+                const docPreview = document.getElementById('documentPreview');
+                docPreview.innerHTML = '';
+                docPreview.style.display = 'block'; // Ensure visibility
+                if (rowData.document) {
+                    const url = `/document/image/${rowData.document}`;
+                    let ext = rowData.document.split('.').pop().toLowerCase();
+                    let html;
+                    if (ext === 'pdf') {
+                        html = `<a href="${url}" target="_blank" class="btn btn-primary btn-sm">View PDF</a>`;
+                    } else {
+                        html = `<img src="${url}" alt="Document" style="max-width: 200px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;" onclick="window.open('${url}', '_blank')" />`;
+                    }
+                    docPreview.innerHTML = html;
+                } else {
+                    docPreview.innerHTML = '<span class="text-muted">No Document Available</span>';
+                }
             } else {
                 $('#dltBtn').hide();
                 add();
@@ -423,6 +521,14 @@ input[type=radio] {
             $("#validFrom").val('');
             $("#validTo").val('');
             $("#status").val('');
+            $("#marketingId").val('');
+            $("#marketName").val('');
+            $("#starmarketNametDate").val('');
+            $("#endDate").val('');
+            $("#marketingStatus").val('');
+            // Clear document preview
+            clearFileUploadFields();
+            document.getElementById('documentPreview').innerHTML = '';
         }
 
         function cancelCoupon() {
@@ -463,30 +569,7 @@ input[type=radio] {
             gridOptions.api.deselectAll();
         }
 
-        function add() {
-            $('.formValidation').remove();
-
-            enableFields();
-            $("#couponDiv").hide();
-            $("#couponForm").show();
-            $("#saveBtn").show();
-            $("#cancelBtn").show();
-            $("#courseAllocation").show();
-            $("#nextTabBtn").show();
-            $("#prevTabBtn").show();
-            $("#addBtn").hide();
-            $("#dltBtn").hide();
-            $("#couponId").val('');
-            $("#couponNo").val('');
-            $("#discount").val('');
-            $("#price").val('');
-            $("#validFrom").val('');
-            $("#validTo").val('');
-            $("#status").val('');
-            //
-
-        }
-
+      
         function saveFile(event) {
             const fileInput = $("#uploadWarDoc_0")[0];
             const uFile = fileInput.files[0];
@@ -537,17 +620,17 @@ input[type=radio] {
             $("#imageRemoveBtn_0").html("");
         }
 
-        function editCoupon() {
+        function editPromotion() {
 
             var selectedRows = gridOptions.api.getSelectedRows();
             var selectedNodes = gridOptions.api.getSelectedNodes();
 
             var selectedData = selectedNodes.map(node => node.data);
-            var couponId = selectedData[0].couponId;
+            var itemId = selectedData[0].couponId;
 
 
             $.ajax({
-                url: 'promotion-marketing-edit?couponId=' + couponId,
+                url: 'promotion-marketing-edit?couponId=' + itemId,
                 method: 'GET',
                 success: function (response) {
                     if (response.code === "success") {
@@ -562,16 +645,55 @@ input[type=radio] {
 
                         $("#nextTabBtn").show();
                         $("#prevTabBtn").show();
-                        var parsedBody = JSON.parse(response.body);
-                        var courseData = parsedBody[0].courseData;
+                        var parsedBody = JSON.parse(response.body)[0];
+                        var isMarketing = (!parsedBody.discount || parsedBody.discount === null || parsedBody.discount === '');
 
-                        $("#couponId").val(parsedBody[0].couponId);
-                        $("#couponNo").val(parsedBody[0].couponNo);
-                        $("#discount").val(parsedBody[0].discount);
-                        $("#price").val(parsedBody[0].price);
-                        $("#validFrom").val(parsedBody[0].validFrom);
-                        $("#validTo").val(parsedBody[0].validTo);
-                        $("#status").val(parsedBody[0].status);
+                        if (isMarketing) {
+                            // Handle Marketing Edit
+                            document.getElementById("marketingCheck").checked = true;
+                            document.getElementById("couponCheck").checked = false;
+                            $("#couponCard").hide();
+                            $("#marketingCard").show();
+
+                            $("#marketingId").val(parsedBody.couponId);
+                            $("#marketName").val(parsedBody.couponNo);
+                            $("#starmarketNametDate").val(parsedBody.validFrom.split(' ')[0]); // Assuming date only for input type=date
+                            $("#endDate").val(parsedBody.validTo.split(' ')[0]);
+                            $("#marketingStatus").val(parsedBody.status);
+
+                            // Handle existing document
+                            if (parsedBody.document) {
+                                const url = `/document/image/${parsedBody.document}`;
+                                let ext = parsedBody.document.split('.').pop().toLowerCase();
+                                let docIcon = ext === 'pdf' ? '<i class="bi bi-file-earmark-pdf" style="font-size:30px; color:#d32f2f;"></i>' : '<i class="bi bi-image" style="font-size:30px; color:#28a745;"></i>';
+                                $("#uploadedWarrDiv_0").html(`<a href="${url}" target="_blank">${docIcon}</a>`);
+                                $("#imageWarrName_0").text(parsedBody.document);
+                                // Optionally add a replace note or keep remove as clear
+                            }
+                        } else {
+                            // Handle Coupon Edit
+                            document.getElementById("couponCheck").checked = true;
+                            document.getElementById("marketingCheck").checked = false;
+                            $("#marketingCard").hide();
+                            $("#couponCard").show();
+
+                            $("#couponId").val(parsedBody.couponId);
+                            $("#couponNo").val(parsedBody.couponNo);
+                            $("#discount").val(parsedBody.discount);
+                            $("#price").val(parsedBody.price);
+                            $("#validFrom").val(parsedBody.validFrom);
+                            $("#validTo").val(parsedBody.validTo);
+                            $("#status").val(parsedBody.status);
+
+                            // Clear marketing fields if shown
+                            $("#marketingId").val('');
+                            $("#marketName").val('');
+                            $("#starmarketNametDate").val('');
+                            $("#endDate").val('');
+                            $("#marketingStatus").val('');
+                            clearFileUploadFields();
+                        }
+
                         /* activityOptions.api.setRowData(courseData); */
 
                     }
@@ -1037,7 +1159,7 @@ input[type=radio] {
 																			</span>
 																		</div>
 																		<button class="btn btn-primary edit-btn" type="button"
-																			onclick="editCoupon()"
+																			onclick="editPromotion()"
 																			style="background: linear-gradient(45deg, #09063b 0%, #4a00e0 100%); color: white; border: none; transition: 0.3s;">
 																			View</button>
 																	</div>
@@ -1046,6 +1168,7 @@ input[type=radio] {
 														</div>
 													</div>
 												</div>
+                                               <!--  <div id="documentPreview" class="text-center mt-3"></div> -->
 											</div>
 
 											<div class="card p-2" id="couponForm">
