@@ -1,10 +1,13 @@
 package nirmalya.aathithya.webmodule.lms.controller;
 
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import javax.servlet.http.HttpSession;
 
 import org.slf4j.Logger;
@@ -20,6 +23,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import nirmalya.aathithya.webmodule.common.utils.EmailAttachmentSender;
 import nirmalya.aathithya.webmodule.common.utils.EnvironmentVaribles;
@@ -141,86 +147,142 @@ import nirmalya.aathithya.webmodule.common.utils.JsonResponse;
 
 //
 
-@PostMapping("promotion-marketing-save-data")
-    public @ResponseBody JsonResponse<Object> savePromotionMarketing(@RequestBody Map<String, Object> requestJsonData, HttpSession session) {
-        logger.info("Method : savePromotionMarketing starts");
+		@PostMapping("promotion-marketing-save-data")
+		public @ResponseBody JsonResponse<Object> savePromotionMarketing(
+		        @RequestParam String data,
+		        @RequestParam(required = false) MultipartFile file,
+		        HttpSession session) {
+		    logger.info("Method : savePromotionMarketing starts");
 
-        JsonResponse<Object> resp = new JsonResponse<>();
-        String organization = "";
-        String orgDivision = "";
-        String createdById = "";
+		    JsonResponse<Object> resp = new JsonResponse<>();
+		    String organization = "";
+		    String orgDivision = "";
+		    String createdById = "";
 
-        try {
-            organization = (String) session.getAttribute("ORGANIZATION");
-            orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
-            createdById = (String) session.getAttribute("USER_ID");
-        } catch (Exception e) {
-            logger.error("Error retrieving session attributes: ", e);
-            e.printStackTrace();
-        }
+		    try {
+		        organization = (String) session.getAttribute("ORGANIZATION");
+		        orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		        createdById = (String) session.getAttribute("USER_ID");
+		    } catch (Exception e) {
+		        logger.error("Error retrieving session attributes: ", e);
+		        e.printStackTrace();
+		    }
 
-        try {
-            String url = env.getMasterUrl() + "rest-addCoupon"; 
-            logger.info("REST URL: {}", url);
+		    try {
+		        // Parse the JSON string to Map
+		        ObjectMapper mapper = new ObjectMapper();
+		        Map<String, Object> requestJsonData = mapper.readValue(data, Map.class);
 
-            String type = (String) requestJsonData.get("type");
-            Map<String, Object> requestPayload = new HashMap<>();
-            requestPayload.put("orgName", organization);
-            requestPayload.put("orgDiv", orgDivision);
-            requestPayload.put("createdById", createdById);
-            requestPayload.put("type", type);
+		        String url = env.getMasterUrl() + "rest-addCoupon"; 
+		        logger.info("REST URL: {}", url);
 
-            if ("coupon".equals(type)) {
-                // Handle Coupon Data
-                String couponId = (String) requestJsonData.get("couponId");
-                String couponNo = (String) requestJsonData.get("couponNo");
-                String discount = (String) requestJsonData.get("discount");
-                String price = (String) requestJsonData.get("price");
-                String validFrom = (String) requestJsonData.get("validFrom");
-                String validTo = (String) requestJsonData.get("validTo");
-                String status = (String) requestJsonData.get("status");
-                List<Map<String, Object>> rows = (List<Map<String, Object>>) requestJsonData.get("rows");
+		        String type = (String) requestJsonData.get("type");
+		        Map<String, Object> requestPayload = new HashMap<>();
+		        requestPayload.put("orgName", organization);
+		        requestPayload.put("orgDiv", orgDivision);
+		        requestPayload.put("createdById", createdById);
+		        requestPayload.put("type", type);
 
-                requestPayload.put("couponId", couponId);
-                requestPayload.put("couponNo", couponNo);
-                requestPayload.put("discount", discount);
-                requestPayload.put("price", price);
-                requestPayload.put("validFrom", validFrom);
-                requestPayload.put("validTo", validTo);
-                requestPayload.put("status", status);
-                requestPayload.put("rows", rows);
-            } else if ("marketing".equals(type)) {
-                // Handle Marketing Data
-                String marketingId = (String) requestJsonData.get("marketingId");
-                String marketName = (String) requestJsonData.get("marketName");
-                String startDate = (String) requestJsonData.get("startDate");
-                String endDate = (String) requestJsonData.get("endDate");
-                String status = (String) requestJsonData.get("status");
+		        String documentName = null;
 
-                requestPayload.put("marketingId", marketingId);
-                requestPayload.put("marketName", marketName);
-                requestPayload.put("startDate", startDate);
-                requestPayload.put("endDate", endDate);
-                requestPayload.put("status", status);
-            } else {
-                logger.error("Invalid type provided: {}", type);
-                resp.setCode("error");
-                resp.setMessage("Invalid type. Must be 'coupon' or 'marketing'.");
-                return resp;
-            }
+		        // Handle file upload for marketing
+		        if ("marketing".equals(type) && file != null && !file.isEmpty()) {
+		            String originalFilename = file.getOriginalFilename();
+		            String ext = getFileExtension(originalFilename);
+		            byte[] imageBytes = file.getBytes();
+		            documentName = saveAllMultiImagesAll(imageBytes, ext);
+		            requestPayload.put("documentName", documentName);
+		            logger.info("Document saved with name: {}", documentName);
+		        }
 
-            logger.info("Sending promotion/marketing data to the service: {}", requestPayload);
+		        if ("coupon".equals(type)) {
+		            // Handle Coupon Data
+		            String couponId = (String) requestJsonData.get("couponId");
+		            String couponNo = (String) requestJsonData.get("couponNo");
+		            String discount = (String) requestJsonData.get("discount");
+		            String price = (String) requestJsonData.get("price");
+		            String validFrom = (String) requestJsonData.get("validFrom");
+		            String validTo = (String) requestJsonData.get("validTo");
+		            String status = (String) requestJsonData.get("status");
+		            List<Map<String, Object>> rows = (List<Map<String, Object>>) requestJsonData.get("rows");
 
-            resp = restTemplate.postForObject(url, requestPayload, JsonResponse.class);
-        } catch (Exception e) {
-            logger.error("Error in savePromotionMarketing: ", e);
-            resp.setCode("error");
-            resp.setMessage("Failed to save data: " + e.getMessage());
-        }
+		            requestPayload.put("couponId", couponId);
+		            requestPayload.put("couponNo", couponNo);
+		            requestPayload.put("discount", discount);
+		            requestPayload.put("price", price);
+		            requestPayload.put("validFrom", validFrom);
+		            requestPayload.put("validTo", validTo);
+		            requestPayload.put("status", status);
+		            requestPayload.put("rows", rows);
+		        } else if ("marketing".equals(type)) {
+		            // Handle Marketing Data
+		            String marketingId = (String) requestJsonData.get("marketingId");
+		            String marketName = (String) requestJsonData.get("marketName");
+		            String startDate = (String) requestJsonData.get("startDate");
+		            String endDate = (String) requestJsonData.get("endDate");
+		            String status = (String) requestJsonData.get("status");
 
-        logger.info("Method : savePromotionMarketing ends");
-        return resp;
-    }
+		            requestPayload.put("marketingId", marketingId);
+		            requestPayload.put("marketName", marketName);
+		            requestPayload.put("startDate", startDate);
+		            requestPayload.put("endDate", endDate);
+		            requestPayload.put("status", status);
+		            // documentName already added above if file present
+		        } else {
+		            logger.error("Invalid type provided: {}", type);
+		            resp.setCode("error");
+		            resp.setMessage("Invalid type. Must be 'coupon' or 'marketing'.");
+		            return resp;
+		        }
+
+		        logger.info("Sending promotion/marketing data to the service: {}", requestPayload);
+
+		        resp = restTemplate.postForObject(url, requestPayload, JsonResponse.class);
+		    } catch (Exception e) {
+		        logger.error("Error in savePromotionMarketing: ", e);
+		        resp.setCode("error");
+		        resp.setMessage("Failed to save data: " + e.getMessage());
+		    }
+
+		    logger.info("Method : savePromotionMarketing ends");
+		    return resp;
+		}
+
+		// Helper method to get file extension
+		private String getFileExtension(String filename) {
+		    if (filename == null || filename.isEmpty()) {
+		        return "";
+		    }
+		    int lastDotIndex = filename.lastIndexOf('.');
+		    if (lastDotIndex > 0 && lastDotIndex < filename.length() - 1) {
+		        return filename.substring(lastDotIndex + 1).toLowerCase();
+		    }
+		    return "";
+		}
+
+		// The provided saveAllMultiImagesAll method (unchanged)
+		public String saveAllMultiImagesAll(byte[] imageBytes, String ext) {
+		    logger.info("Method : saveAllMultiImages starts");
+		    String imageName1 = null;
+		    try {
+		        if (imageBytes != null) {
+		            long nowTime = new Date().getTime();
+		            if (ext.contentEquals("jpeg")) {
+		                imageName1 = nowTime + ".jpg";
+		            } else {
+		                imageName1 = nowTime + "." + ext;
+		            }
+		        }
+		        Path path = Paths.get(env.getFileUploadDocumenttUrl() + imageName1);
+		        if (imageBytes != null) {
+		            Files.write(path, imageBytes);
+		        }
+		    } catch (Exception e) {
+		        e.printStackTrace();
+		    }
+		    logger.info("Method : saveAllMultiImages ends");
+		    return imageName1;
+		}
 
 		@SuppressWarnings("unchecked")
 		@GetMapping("promotion-marketing-edit")
