@@ -38,6 +38,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import nirmalya.aathithya.webmodule.common.utils.DropDownModel;
 import nirmalya.aathithya.webmodule.common.utils.EnvironmentVaribles;
@@ -499,6 +501,36 @@ public class AcademicCourseController {
 		return resp;
 	}
 	
+	
+	@SuppressWarnings("unchecked")
+	@GetMapping("academic-course-quiz-view")
+	public @ResponseBody Object coursequiz(HttpSession session) {
+		logger.info("Method :coursequiz starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String orgName = "";
+		String orgDivision = "";
+		try {
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+
+			resp = restClient.getForObject(
+					env.getHisUrl() + "rest-coursequiz?orgName=" + orgName + "&orgDivision=" + orgDivision,
+					JsonResponse.class);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		if (resp.getMessage() != "" && resp.getMessage() != null) {
+			resp.setCode(resp.getMessage());
+			resp.setMessage("Unsuccess");
+		} else {
+			resp.setMessage("Success");
+		}
+		logger.info("Method :coursequiz ends"+resp);
+		return resp;
+	}
+	
 	@SuppressWarnings("unchecked")
 	@GetMapping("academic-training-view")
 	public @ResponseBody Object viewtraining(@RequestParam String id,HttpSession session) {
@@ -875,6 +907,100 @@ public class AcademicCourseController {
 
 		logger.info("Method : subcategory ends");
 		return resp;
+	}
+	
+	
+	// Fixed Web Controller Method (in AcademicCourseWebController or similar)
+	@SuppressWarnings("unchecked")
+	@PostMapping("academic-course-quiz-save")
+	public @ResponseBody JsonResponse<Object> saveQuizMappings(HttpSession session,
+	        @RequestBody String quizData) {
+
+	    logger.info("Method : saveQuizMappings starts");
+
+	    JsonResponse<Object> resp = new JsonResponse<Object>();
+	    String userId = "";
+	    String orgName = "";
+	    String orgDivision = "";
+
+	    try {
+	        userId = (String) session.getAttribute("USER_ID");
+	        orgName = (String) session.getAttribute("ORGANIZATION");
+	        orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+	    } catch (Exception e) {
+	        logger.error("Error getting session attributes", e);
+	    }
+
+	    if (userId == null || userId.isEmpty()) {
+	        resp.setMessage("User session not found.");
+	        resp.setCode("Failed");
+	        return resp;
+	    }
+
+	    try {
+	        // Parse the incoming JSON payload
+	        ObjectMapper mapper = new ObjectMapper();
+	        ObjectNode jsonNode = (ObjectNode) mapper.readTree(quizData);
+	        
+	        // Extract and validate courseId
+	        String courseId = "";
+	        if (jsonNode.has("courseId") && !jsonNode.get("courseId").isNull()) {
+	            courseId = jsonNode.get("courseId").asText();
+	            logger.info("Extracted courseId from JSON: " + courseId);
+	        } else {
+	            logger.info("No courseId found in JSON or courseId is null");
+	            resp.setMessage("Course ID is required.");
+	            resp.setCode("Failed");
+	            return resp;
+	        }
+
+	        // Clean and validate quizMappings if present
+	        if (jsonNode.has("quizMappings")) {
+	            ArrayNode mappingsArray = (ArrayNode) jsonNode.get("quizMappings");
+				/*
+				 * if (mappingsArray.isEmpty()) {
+				 * logger.info("Empty quizMappings array provided; this will unmap all quizzes."
+				 * ); }
+				 */
+	            for (JsonNode mapping : mappingsArray) {
+	                // Validate required fields in each mapping
+	                if (!mapping.has("courseId") || !mapping.has("quizCode") || !mapping.has("status")) {
+	                    logger.warn("Invalid mapping entry: missing required fields");
+	                    resp.setMessage("Invalid quiz mapping data.");
+	                    resp.setCode("Failed");
+	                    return resp;
+	                }
+	                // Optional: Clean any text fields if added in future (e.g., quizDesc)
+	                // if (mapping.has("quizDesc")) { ... similar to courseDesc cleaning }
+	            }
+	            jsonNode.set("quizMappings", mappingsArray);
+	        } else {
+	            logger.info("No quizMappings found in payload; unmapping all quizzes for course.");
+	        }
+
+	        // Convert cleaned jsonNode to Map for consistent serialization (mirrors saveCourse approach)
+	        Map<String, Object> quizPayload = mapper.convertValue(jsonNode, new TypeReference<Map<String, Object>>() {});
+	        logger.info("Prepared quizPayload: " + mapper.writeValueAsString(quizPayload));
+
+	        // --- Log JSON Payload ---
+	        ObjectMapper mapper3 = new ObjectMapper();
+	        logger.info("JSON Payload: {}", mapper3.writeValueAsString(quizPayload));
+
+	        // --- Call REST API ---
+	        // Now sending Map directly, serializes to {"courseId":..., "quizMappings":[...]} JSON
+	        resp = restClient.postForObject(
+	                env.getHisUrl() + "rest-academic-course-quiz-save?userId=" + userId
+	                        + "&org=" + orgName + "&orgDiv=" + orgDivision,
+	                quizPayload, JsonResponse.class);
+
+	    } catch (Exception e) {
+	        logger.error("Error saving quiz mappings", e);
+	        resp.setMessage("Error saving quiz mappings: " + e.getMessage());
+	        resp.setCode("Failed");
+	    }
+
+	    logger.info("Method : saveQuizMappings ends");
+	    return resp;
 	}
 
 }

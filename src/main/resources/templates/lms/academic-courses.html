@@ -494,7 +494,7 @@ $(document).ready(function () {
 	        }
 
 	        $("#priceField").val("");
-	        $("#saveBtn").addClass('d-none'); // Explicitly hide on reset
+	        $("#saveBtn").addClass('d-none'); // Explicitlyhide on reset
 	        $("#editBtn").addClass('d-none');
 	        currentCategory = "";
 	    }
@@ -550,8 +550,15 @@ $(document).ready(function () {
 	new agGrid.Grid(gridDivDoc, gridOptionsDoc); 
 	gridOptionsDoc.api.setRowData([]);
 	
+	 var gridDivQuiz = document.querySelector('#quizGrid');
+	 new agGrid.Grid(gridDivQuiz, gridOptionsQuiz); 
+	 gridOptionsQuiz.api.setRowData([]);
+	
 
     getCourseDetails();
+    setQuizEditMode(false);
+    originalSelectedQuizIds = [];
+    
 
     $("#courseForm :input").prop("disabled", true);
     CKEDITOR.instances['courseDesc'].setReadOnly(true);
@@ -943,6 +950,76 @@ var gridOptionsCourse = {
 			onSelectionChanged : rowSelectDetailsDoc,
 		};
 	
+	
+	
+
+	 const columnDefsQuiz = [
+			{
+				headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				cellEditorPopup: true,  
+				width : 10,
+				pinned: 'left',
+				sortable : false,
+				filter : false,
+				resizable : true
+			},
+			{
+				headerName : "Sl No",
+				field : "slno",
+				width : 70,
+				pinned: 'left',
+			},
+			
+			{
+				headerName : 'Quiz Code',
+				field : "quizCode",
+				width : 230,
+				pinned: 'left',
+				
+			},
+			
+			{
+				headerName : 'courseId',
+				field : "courseProducts",
+				width : 230,
+				hide : true,
+				pinned: 'left',
+				
+			},
+			{
+				headerName : 'Status',
+				field : "statusList",
+				width : 300,
+				
+			}
+		];
+	 let quizEditMode = false;
+	 let originalSelectedQuizIds = []; // To store original selected quizCodes before edit
+
+	 // Update gridOptionsQuiz to include isRowSelectable callback
+	 const gridOptionsQuiz = {
+	     columnDefs: columnDefsQuiz,
+	     rowSelection: 'multiple',
+	     groupSelectsChildren: true,
+	     suppressRowClickSelection: true,
+	     suppressAggFuncInHeader: true,
+	     defaultColDef: {
+	         sortable: true,
+	         filter: true,
+	         resizable: true,
+	         width: 190,
+	         singleClickEdit: true,
+	     },
+	     // Add this callback to control row selectability based on edit mode
+	     // This prevents NEW selections/deselections in view mode, but preserves existing ones
+	     isRowSelectable: function(rowNode) {
+	         return quizEditMode;
+	     },
+	     onSelectionChanged: rowSelectDetailsQuiz,
+	 };
+	
 
 var courseId = "";
 let selectedEmployeeIds = [];
@@ -963,7 +1040,8 @@ function onSelectionChanged() {
         courseId = selectedRows[0].courseId;
         editCourseDetails(courseId);
         getAllEmployeeDetails(employeeList);
-        getTrainingDetails(courseId);
+       // getTrainingDetails(courseId);
+        getQuizDetails(courseId);
     } else {
         $("#courseId").val('');
         $("#courseTittle").val('');
@@ -1000,6 +1078,15 @@ function rowSelectDetailsDoc() {
 		$('#docAddBtn').attr("disabled", false);
 		$('#docDeleteBtn').attr("disabled", true);
 	}
+}
+
+function rowSelectDetailsQuiz() {
+    var selectedRows = gridOptionsQuiz.api.getSelectedRows();
+    var rowCount = selectedRows.length; // Simplified count
+    
+    console.log(`Currently selected: ${rowCount} quizzes (Edit mode: ${quizEditMode})`);
+    
+    // Optional: Enable/disable Save button based on changes, but for now, always enabled in edit mode
 }
 
 
@@ -1617,7 +1704,185 @@ function getCourseDetails() {
         }
     });
 }
+ 
+//Function to toggle quiz grid edit mode (no deselect here)
+ function setQuizEditMode(enabled) {
+     quizEditMode = enabled;
+     if (gridOptionsQuiz.api) {
+         // Refresh header to update header checkbox state
+         gridOptionsQuiz.api.refreshHeader();
+         // Refresh cells to update row checkboxes (enables/disables based on isRowSelectable)
+         gridOptionsQuiz.api.refreshCells({ force: true });
+         // DO NOT deselectAll here - preserves current selections
+     }
+ }
 
+ // Edit Quiz function
+ function editQuiz() {
+     // Store current selections as original before enabling edit
+     originalSelectedQuizIds = [];
+  /*    if (gridOptionsQuiz.api) {
+         const selectedRows = gridOptionsQuiz.api.getSelectedRows();
+         originalSelectedQuizIds = selectedRows.map(row => row.data.quizCode); // Assuming 'quizCode' is unique ID; change if needed (e.g., 'quizId')
+     }
+     
+     // Switch to edit mode
+     setQuizEditMode(true);
+      */
+     // Show Save and Cancel buttons
+     $("#saveQuiz").removeClass('d-none'); // Update to #saveQuizBtn if you change HTML IDs
+     $("#cancelQuiz").removeClass('d-none'); // Update to #cancelQuizBtn if changed
+     
+     // Hide Edit button
+     $("#editQuiz").addClass('d-none'); // Update to #editQuizBtn if changed
+     
+ }
+
+ // Cancel Quiz function - Restore original selections
+ function cancelQuiz() {
+     if (gridOptionsQuiz.api && originalSelectedQuizIds.length > 0) {
+         // First, deselect all to clear current (edited) selections
+         gridOptionsQuiz.api.deselectAll();
+         
+         // Then, re-select the original mapped ones
+         gridOptionsQuiz.api.forEachNode(function(node) {
+             if (node.data && originalSelectedQuizIds.includes(node.data.quizCode)) { // Match on quizCode
+                 node.setSelected(true);
+             }
+         });
+     }
+     
+     
+     // Hide Save and Cancel buttons
+     $("#saveQuiz").addClass('d-none');
+     $("#cancelQuiz").addClass('d-none');
+     
+     // Show Edit button
+     $("#editQuiz").removeClass('d-none');
+     
+     // Clear original for next time
+     originalSelectedQuizIds = [];
+     
+ }
+
+ // Save Quiz function - Keep current selections (now saved), just disable edit
+ function saveQuiz() {
+     // Stop any editing if needed
+     gridOptionsQuiz.api.stopEditing();
+     
+     // Get CURRENT selected rows (user's edited selections)
+     const selectedNodes = gridOptionsQuiz.api.getSelectedNodes();
+     const selectedData = selectedNodes.map(node => node.data);
+     
+     // Extract quiz codes/IDs
+     const selectedQuizCodes = selectedData.map(quiz => quiz.quizCode); // Adjust field if needed
+     
+     const courseId = $("#courseId").val();
+     
+     if (!courseId) {
+         toastr.error("No course selected. Please select a course first.");
+         return;
+     }
+     
+     // Optional: Warn if no selections
+     if (selectedQuizCodes.length === 0) {
+         if (!confirm("No quizzes selected. This will unmap all quizzes from the course. Proceed?")) {
+             return;
+         }
+     }
+     
+     // Prepare payload - send the CURRENT selections to update mappings
+     let payload = {
+         courseId: courseId,
+         quizMappings: selectedQuizCodes.map(quizCode => ({
+             courseId: courseId,
+             quizCode: quizCode,
+             status: 'active' // Or whatever default status
+         }))
+     };
+     
+     console.log("Saving updated quiz mappings:", payload);
+     
+     // AJAX call (adjust endpoint/payload as per backend)
+     $.ajax({
+         url: 'academic-course-quiz-save', // Replace with your actual save endpoint
+         type: 'POST',
+         contentType: 'application/json',
+         data: JSON.stringify(payload),
+         success: function (response) {
+             if (response.code === "Success" || response.message === "Success") {
+                 toastr.success(response.message || "Quiz mappings updated successfully!");
+                 
+                 // DO NOT restore original - keep the new (saved) selections
+                 // Just disable edit mode to lock in the changes
+                 setQuizEditMode(false);
+                 
+                 // Hide Save and Cancel, show Edit
+                 $("#saveQuiz").addClass('d-none');
+                 $("#cancelQuiz").addClass('d-none');
+                 $("#editQuiz").removeClass('d-none');
+                 
+                 // Clear original since changes are saved
+                 originalSelectedQuizIds = [];
+                 
+                 // Optional: Update the courseProducts field in grid data to reflect new mappings
+                 // (If backend doesn't auto-update, you may need to re-fetch here)
+                 // For now, assume selections are preserved visually; re-fetch if needed for data sync
+                 // getQuizDetails(courseId); // Uncomment if you want to re-fetch after save (will re-select based on backend)
+             } else {
+                 toastr.error(response.message || "Failed to save quiz mappings.");
+             }
+         },
+         error: function (xhr, status, error) {
+             console.error("Error saving quiz mappings:", xhr.responseText);
+             toastr.error("Error saving quiz mappings: " + (xhr.responseText || "Unknown error"));
+         }
+     });
+ }
+ 
+ 
+//Ensure getQuizDetails preserves selections correctly (no changes needed, but confirm)
+ function getQuizDetails(courseId) {
+     agGrid.simpleHttpRequest({
+         url: "academic-course-quiz-view" // Assumes this returns ALL quizzes with courseProducts populated for mapped ones
+     }).then(function (response) {
+         if (response.message === "Success") {
+             const jsonString = response.body[0];
+             const responseBody = JSON.parse(jsonString);
+             const coursequiz = responseBody.coursequiz;
+             
+             const coursequizWithSlNo = coursequiz.map((quiz, index) => ({
+                 ...quiz,
+                 slno: index + 1
+             }));
+             
+             gridOptionsQuiz.api.setRowData(coursequizWithSlNo);
+             console.log('Loaded quizzes:', coursequizWithSlNo);
+
+             // Select mapped quizzes based on courseId in courseProducts field
+             if (courseId) {
+            	 alert(courseId)
+                 gridOptionsQuiz.api.forEachNode(function(node) {
+                     if (node.data && node.data.courseProducts === courseId) {
+                         node.setSelected(true);
+                     }
+                 });
+             } else {
+                 // No course: deselect all
+                 gridOptionsQuiz.api.deselectAll();
+             }
+             
+             // Ensure view mode after load (disables changes, preserves selections)
+             setQuizEditMode(true);
+         } else {
+             console.error("Failed to fetch quiz data");
+             gridOptionsQuiz.api.setRowData([]);
+             gridOptionsQuiz.api.deselectAll();
+             setQuizEditMode(false);
+         }
+    
+     });
+ }
 function editCourseDetails(courseId) {
     $.ajax({
         type: "GET",
@@ -1875,70 +2140,107 @@ function reset() {
     }
 }
 
+// ------------------- CORRECTED TAB NAVIGATION FUNCTIONS -------------------
+// Tab order: 1 = Course Overview (#course-overview), 2 = Course Training (#training), 3 = Course Quiz Map (#quizMap), 4 = Instructors Assign (#examination)
+
 function next(tab) {
-	if(tab == 1){
-		 $("#examination").addClass('hidden');
-		    $("#course-overview").addClass('hidden');
-		    $("#training").removeClass('hidden');
-		    $(".nav-link").removeClass("active");
-		    $(".nav-link[href='#training']").addClass("active");
-		    $("#tab-training").addClass("active").attr("aria-selected", "true");
-		    $("#tab-course-overview").removeClass("active").attr("aria-selected", "false");
-		    $("#tab-examination").removeClass("active").attr("aria-selected", "false");
-		    $("#examination").removeClass("show active");
-		    $("#course-overview").removeClass("show active");
-		    $("#training").addClass("show active");
-	}
-	
-	if(tab == 2){
-		 $("#examination").removeClass('hidden');
-		    $("#course-overview").addClass('hidden');
-		    $("#training").addClass('hidden');
-		    $(".nav-link").removeClass("active");
-		    $(".nav-link[href='#examination']").addClass("active");
-		    $("#tab-examination").addClass("active").attr("aria-selected", "true");
-		    $("#tab-course-overview").removeClass("active").attr("aria-selected", "false");
-		    $("#tab-training").removeClass("active").attr("aria-selected", "false");
-		    $("#examination").addClass("show active");
-		    $("#course-overview").removeClass("show active");
-		    $("#training").removeClass("show active");
-	}
-   
+    let nextTabHref = '';
+    let nextTabId = '';
+
+    if (tab === 1) {
+        // From Course Overview to Course Training
+        nextTabHref = '#training';
+        nextTabId = 'tab-training';
+        $("#examination").addClass('hidden');
+        $("#course-overview").addClass('hidden');
+        $("#training").removeClass('hidden');
+        $("#quizMap").removeClass('hidden');
+    } else if (tab === 2) {
+        // From Course Training to Course Quiz Map
+        nextTabHref = '#quizMap';
+        nextTabId = 'tab-quizMap'; // Assuming ID for Quiz Map tab-pane
+        $("#examination").addClass('hidden');
+        $("#course-overview").addClass('hidden');
+        $("#training").addClass('hidden');
+        $("#quizMap").removeClass('hidden');
+    } else if (tab === 3) {
+        // From Course Quiz Map to Instructors Assign
+        nextTabHref = '#examination';
+        nextTabId = 'tab-examination';
+        $("#course-overview").addClass('hidden');
+        $("#training").addClass('hidden');
+        $("#quizMap").addClass('hidden');
+        $("#examination").removeClass('hidden');
+    }
+
+    // Activate the next tab using Bootstrap
+    if (nextTabHref) {
+        $(".nav-link").removeClass("active");
+        $(`.nav-link[href="${nextTabHref}"]`).addClass("active");
+        $(`#${nextTabId}`).addClass("active").attr("aria-selected", "true");
+
+        // Show the next tab-pane
+        $(`${nextTabHref}`).addClass("show active").removeClass('hidden');
+        
+        // Hide previous tab-panes
+        if (tab === 1) {
+            $("#course-overview").removeClass("show active").addClass('hidden');
+        } else if (tab === 2) {
+            $("#training").removeClass("show active").addClass('hidden');
+        } else if (tab === 3) {
+            $("#quizMap").removeClass("show active").addClass('hidden');
+        }
+    }
 }
 
 function prev(tab) {
-	if(tab == 1){
-		 $("#course-overview").removeClass('hidden');
-		    $("#examination").addClass('hidden');
-		    $("#training").addClass('hidden');
-		    $(".nav-link").removeClass("active");
-		    $(".nav-link[href='#course-overview']").addClass("active");
-		    $(".nav-link[href='#examination']").removeClass("active");
-		    $(".nav-link[href='#training']").removeClass("active");
-		    $("#tab-course-overview").addClass("active").attr("aria-selected", "true");
-		    $("#tab-examination").removeClass("active").attr("aria-selected", "false");
-		    $("#tab-training").removeClass("active").attr("aria-selected", "false");
-		    $("#course-overview").addClass("show active");
-		    $("#examination").removeClass("show active");
-		    $("#training").removeClass("show active");
-	}
-	
-	if(tab == 2){
-		 $("#course-overview").addClass('hidden');
-		    $("#examination").addClass('hidden');
-		    $("#training").removeClass('hidden');
-		    $(".nav-link").removeClass("active");
-		    $(".nav-link[href='#course-overview']").removeClass("active");
-		    $(".nav-link[href='#examination']").removeClass("active");
-		    $(".nav-link[href='#training']").addClass("active");
-		    $("#tab-course-overview").removeClass("active").attr("aria-selected", "true");
-		    $("#tab-examination").addClass("active").attr("aria-selected", "false");
-		    $("#tab-training").addClass("active").attr("aria-selected", "false");
-		    $("#course-overview").removeClass("show active");
-		    $("#examination").removeClass("show active");
-		    $("#training").addClass("show active");
-	}
-   
+    let prevTabHref = '';
+    let prevTabId = '';
+
+    if (tab === 2) {
+        // From Course Training to Course Overview
+        prevTabHref = '#course-overview';
+        prevTabId = 'tab-course-overview';
+        $("#training").addClass('hidden');
+        $("#quizMap").addClass('hidden');
+        $("#examination").addClass('hidden');
+        $("#course-overview").removeClass('hidden');
+    } else if (tab === 3) {
+        // From Course Quiz Map to Course Training
+        prevTabHref = '#training';
+        prevTabId = 'tab-training';
+        $("#quizMap").addClass('hidden');
+        $("#examination").addClass('hidden');
+        $("#course-overview").addClass('hidden');
+        $("#training").removeClass('hidden');
+    } else if (tab === 4) {
+        // From Instructors Assign to Course Quiz Map
+        prevTabHref = '#quizMap';
+        prevTabId = 'tab-quizMap'; // Assuming ID for Quiz Map tab-pane
+        $("#examination").addClass('hidden');
+        $("#training").addClass('hidden');
+        $("#course-overview").addClass('hidden');
+        $("#quizMap").removeClass('hidden');
+    }
+
+    // Activate the previous tab using Bootstrap
+    if (prevTabHref) {
+        $(".nav-link").removeClass("active");
+        $(`.nav-link[href="${prevTabHref}"]`).addClass("active");
+        $(`#${prevTabId}`).addClass("active").attr("aria-selected", "true");
+
+        // Show the previous tab-pane
+        $(`${prevTabHref}`).addClass("show active").removeClass('hidden');
+        
+        // Hide current tab-pane
+        if (tab === 2) {
+            $("#training").removeClass("show active").addClass('hidden');
+        } else if (tab === 3) {
+            $("#quizMap").removeClass("show active").addClass('hidden');
+        } else if (tab === 4) {
+            $("#examination").removeClass("show active").addClass('hidden');
+        }
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -2338,20 +2640,25 @@ function getTrainingDetails(courseId) {
 										<div class="d-flex gap-2">
 											<ul class="nav nav-pills newtab" role="tablist">
 												<li class="nav-item" role="presentation" id="courseDetails">
-													<a class="nav-link active" data-bs-toggle="pill"
+													<a class="nav-link active" id="tab-course-overview" data-bs-toggle="pill"
 													href="#course-overview" aria-selected="true" role="tab">Course
 														Overview</a>
 												</li>
 
 												<li class="nav-item wd-11" role="presentation"
-													id="courseForTraing"><a class="nav-link"
+													id="courseForTraing"><a class="nav-link" id="tab-training"
 													data-bs-toggle="pill" href="#training"
 													aria-selected="false" role="tab" tabindex="-1">Course
 														Training</a></li>
 
+												<li class="nav-item wd-11" role="presentation"
+													id="courseMapQuiz"><a class="nav-link" id="tab-quizMap"
+													data-bs-toggle="pill" href="#quizMap" aria-selected="false"
+													role="tab" tabindex="-1">Course Quiz Map</a></li>
+
 
 												<li class="nav-item wd-11" role="presentation"
-													id="instructorDetails"><a class="nav-link"
+													id="instructorDetails"><a class="nav-link" id="tab-examination"
 													data-bs-toggle="pill" href="#examination"
 													aria-selected="false" role="tab" tabindex="-1">Instructors
 														Assign</a></li>
@@ -2671,6 +2978,8 @@ function getTrainingDetails(courseId) {
 										</div>
 
 
+
+
 										<div id="training" class="tab-pane fade hidden p-2 h-100">
 											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
 												<div class="">
@@ -2703,7 +3012,7 @@ function getTrainingDetails(courseId) {
 
 																		<div class="mr-3">
 																			<button id="prev" class="btn m-0 edit-btn"
-																				onclick="prev(1)" type="button">Prev</button>
+																				onclick="prev(2)" type="button">Prev</button>
 																		</div>
 																		<div class="mr-3">
 																			<button id="next" class="btn edit-btn"
@@ -2771,8 +3080,8 @@ function getTrainingDetails(courseId) {
 																	</div>
 																</div>
 																<div>
-																	<button id="addCustomTraining" class="btn btn-primary" disabled
-																		data-bs-toggle="modal"
+																	<button id="addCustomTraining" class="btn btn-primary"
+																		disabled data-bs-toggle="modal"
 																		data-bs-target="#customCategoryModal">
 																		<i class="fa fa-plus"></i> Add Custom
 																	</button>
@@ -2815,6 +3124,63 @@ function getTrainingDetails(courseId) {
 											</div>
 										</div>
 
+										<div id="quizMap" class="tab-pane fade hidden p-2 h-100">
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+												<div class="">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<td width="80%"><strong id="programNameDisplay"></strong></td>
+																<td>
+																	<div class="d-flex justify-content-end gap-2">
+																		
+																		<div class="ml-3">
+																			<button id="editQuiz"
+																				class="btn btn-primary edit-btn" type="button"
+																				onclick="editQuiz()">Edit</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="saveQuiz" class="btn edit-btn d-none"
+																				onclick="saveQuiz()" type="button">Save</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="cancelQuiz"
+																				class="btn m-0 edit-btn d-none"
+																				onclick="cancelQuiz()" type="button">Cancel</button>
+																		</div>
+
+
+																		<div class="mr-3">
+																			<button id="prev" class="btn m-0 edit-btn"
+																				onclick="prev(3)" type="button">Prev</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="next" class="btn edit-btn"
+																				onclick="next(3)" type="button">Next</button>
+																		</div>
+																	</div>
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+												<div class="card p-2">
+													<div class="row">
+														<div class="col-md-12">
+															<h5 class="mb-3">Quiz Mapping:</h5>
+
+															<div class="card m-2 p-2">
+																<div id="quizGrid" class="ag-theme-alpine"></div>
+															</div>
+
+
+
+
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
 
 
 										<div id="examination" class="tab-pane fade hidden p-2 h-100">
@@ -2828,7 +3194,7 @@ function getTrainingDetails(courseId) {
 																	<div class="d-flex justify-content-end gap-2">
 																		<div class="mr-0">
 																			<button id="prev" class="btn m-0 edit-btn"
-																				onclick="prev(2)" type="button">Prev</button>
+																				onclick="prev(4)" type="button">Prev</button>
 																		</div>
 																		<div class="mr-0">
 																			<button id="assign" class="btn edit-btn"
