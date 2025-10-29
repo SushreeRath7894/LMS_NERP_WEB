@@ -4,6 +4,8 @@
 	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
 	layout:decorate="~{layout/master}">
 
+    <script src="https://cdn.ckeditor.com/4.22.1/standard/ckeditor.js"></script>
+
 <head>
 <style type="text/css">
 .ag-theme-alpine {
@@ -115,7 +117,54 @@ input[type=radio] {
 <script
 	src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script type="text/javascript">
+
+
+       let descriptionEditor = null;
         $(document).ready(function () {
+function initCKEditor() {
+    if (descriptionEditor) {
+        try { descriptionEditor.destroy(); } catch(e) {}
+        descriptionEditor = null;
+    }
+
+    setTimeout(() => {
+        if (document.getElementById('description')) {
+            descriptionEditor = CKEDITOR.replace('description', {
+                height: 150,
+                toolbar: 'Full',
+                on: {
+                    instanceReady: function () {
+                        console.log('CKEditor ready');
+                    }
+                }
+            });
+        }
+    }, 100);
+}
+
+function destroyCKEditor() {
+    if (descriptionEditor) {
+        try { descriptionEditor.destroy(); } catch(e) {}
+        descriptionEditor = null;
+    }
+}
+
+$("#marketingCheck").on("change", function () {
+    if (this.checked) {
+        $("#marketingCard").show();
+        $("#couponCard").hide();
+        initCKEditor();
+    }
+});
+
+$("#couponCheck").on("change", function () {
+    if (this.checked) {
+        $("#couponCard").show();
+        $("#marketingCard").hide();
+        destroyCKEditor();
+    }
+});
+
             // Initialize grids and other elements
             var gridDiv = document.querySelector('#myGrid');
             new agGrid.Grid(gridDiv, gridOptions);
@@ -196,6 +245,7 @@ input[type=radio] {
                 }
             });
 
+         
 
 
         });
@@ -300,7 +350,18 @@ input[type=radio] {
                     }
                 }
                 return '<span class="text-muted">No Document</span>';
-            }}];
+            }},
+        {
+    headerName: 'Description',
+    field: "description",
+    width: 300,
+    cellRenderer: function (params) {
+        if (!params.value) return '<span class="text-muted">—</span>';
+        // Simple HTML sanitisation – CKEditor output is safe
+        return '<div style="white-space: normal; word-wrap: break-word;">' +
+               params.value + '</div>';
+    }
+}];
 
         var gridOptions = {
             columnDefs: columnDefs,
@@ -529,6 +590,7 @@ input[type=radio] {
             // Clear document preview
             clearFileUploadFields();
             document.getElementById('documentPreview').innerHTML = '';
+         if (descriptionEditor) descriptionEditor.setData('');
         }
 
         function cancelCoupon() {
@@ -538,6 +600,7 @@ input[type=radio] {
             $("#cancelBtn").hide();
             $("#addBtn").show();
             $("#dltBtn").show();
+           if (descriptionEditor) descriptionEditor.setData('');
             viewCoupon();
         }
 
@@ -692,6 +755,13 @@ function clearFileUploadFields() {
                             $("#starmarketNametDate").val(parsedBody.validFrom.split(' ')[0]); // Assuming date only for input type=date
                             $("#endDate").val(parsedBody.validTo.split(' ')[0]);
                             $("#marketingStatus").val(parsedBody.status);
+
+        initCKEditor();  // Ensure editor exists
+    setTimeout(() => {
+        if (descriptionEditor) {
+            descriptionEditor.setData(parsedBody.description || "");
+        }
+    }, 400);
 
                             // Handle existing document
                             if (parsedBody.document) {
@@ -871,24 +941,20 @@ function clearFileUploadFields() {
         // }
 
 
-       function saveCoupon() {
+   function saveCoupon() {
     let allRowData = [];
-    var validation = true;
-
-    // Detect which option is selected
     let isCoupon = $("#couponCheck").is(":checked");
     let isMarketing = $("#marketingCheck").is(":checked");
 
     if (!isCoupon && !isMarketing) {
-        toastr.error("Please select either Coupon or Marketing before saving");
+        toastr.error("Please select either Coupon or Marketing");
         return;
     }
 
-    // Build data object
     let recordJsonData = {};
 
     if (isCoupon) {
-        // ===== COUPON FIELDS =====
+        // === COUPON LOGIC (unchanged) ===
         var couponId = $("#couponId").val();
         var couponNo = $("#couponNo").val();
         var discount = $("#discount").val();
@@ -897,51 +963,21 @@ function clearFileUploadFields() {
         var validTo = $("#validTo").val();
         var status = $("#status").val();
 
-        // Grid data (if applicable)
         activityOptions.api.forEachNode(function (node) {
             let rowData = {};
             activityDefs.forEach(function (column) {
                 const field = column.field;
-                if (field) {
-                    rowData[field] = node.data[field] || "";
-                }
+                if (field) rowData[field] = node.data[field] || "";
             });
             allRowData.push(rowData);
         });
 
-        // ===== COUPON VALIDATION =====
-        if (couponNo === "") {
-            toastr.error("Coupon Code is required");
-            return;
-        }
-        if (discount === "") {
-            toastr.error("Discount is required");
-            return;
-        }
-        if (isNaN(discount) || Number(discount) <= 0) {
-            toastr.error("Please enter a valid Discount (%) greater than 0");
-            return;
-        }
-        if (price === "") {
-            toastr.error("Minimum Purchase Price is required");
-            return;
-        }
-        if (isNaN(price) || Number(price) < 0) {
-            toastr.error("Please enter a valid Minimum Purchase Price (>= 0)");
-            return;
-        }
-        if (validFrom === "") {
-            toastr.error("Valid From date is required");
-            return;
-        }
-        if (validTo === "") {
-            toastr.error("Valid To date is required");
-            return;
-        }
-        if (status === "") {
-            toastr.error("Status must be selected");
-            return;
-        }
+        if (!couponNo) { toastr.error("Coupon Code is required"); return; }
+        if (!discount || discount <= 0) { toastr.error("Valid Discount required"); return; }
+        if (!price || price < 0) { toastr.error("Valid Price required"); return; }
+        if (!validFrom) { toastr.error("Valid From required"); return; }
+        if (!validTo) { toastr.error("Valid To required"); return; }
+        if (!status) { toastr.error("Status required"); return; }
 
         recordJsonData = {
             type: "coupon",
@@ -957,29 +993,29 @@ function clearFileUploadFields() {
     }
 
     if (isMarketing) {
-        // ===== MARKETING FIELDS =====
         var marketingId = $("#marketingId").val();
         var marketName = $("#marketName").val();
         var startDate = $("#starmarketNametDate").val();
         var endDate = $("#endDate").val();
         var marketingStatus = $("#marketingStatus").val();
 
-        // ===== MARKETING VALIDATION =====
-        if (marketName === "") {
-            toastr.error("Marketing Name is required");
+        // === SAFELY GET EDITOR DATA ===
+        let description = "";
+        if (descriptionEditor && descriptionEditor.instanceReady) {
+            description = descriptionEditor.getData();
+        } else {
+            toastr.warning("Editor loading... retrying");
+            setTimeout(saveCoupon, 300);
             return;
         }
-        if (startDate === "") {
-            toastr.error("Start Date is required");
-            return;
-        }
-        if (endDate === "") {
-            toastr.error("End Date is required");
-            return;
-        }
-        if (marketingStatus === "") {
-            toastr.error("Status must be selected");
-            return;
+
+        if (!marketName) { toastr.error("Marketing Name is required"); return; }
+        if (!startDate) { toastr.error("Start Date is required"); return; }
+        if (!endDate) { toastr.error("End Date is required"); return; }
+        if (!marketingStatus) { toastr.error("Status required"); return; }
+        if (!description.trim()) { 
+            toastr.error("Description is required"); 
+            return; 
         }
 
         recordJsonData = {
@@ -988,43 +1024,36 @@ function clearFileUploadFields() {
             marketName: marketName,
             startDate: startDate,
             endDate: endDate,
-            status: marketingStatus
+            status: marketingStatus,
+            description: description
         };
     }
 
-    // Prepare FormData for AJAX (handles both JSON and file)
+    // === SEND DATA ===
     let formData = new FormData();
-    let jsonString = JSON.stringify(recordJsonData);
-    formData.append('data', jsonString);
+    formData.append('data', JSON.stringify(recordJsonData));
 
-    // Append file only if marketing and a file is selected
     if (isMarketing) {
         const fileInput = document.getElementById('uploadWarDoc_0');
-        if (fileInput.files && fileInput.files[0]) {
-            formData.append('file', fileInput.files[0]);
-        }
+        if (fileInput.files[0]) formData.append('file', fileInput.files[0]);
     }
 
-    console.log("Record JSON Data ===>", jsonString);
-
-    // ===== AJAX CALL =====
     $.ajax({
         url: 'promotion-marketing-save-data',
         type: 'POST',
         data: formData,
-        processData: false,  // Important: Do not process the data
-        contentType: false,  // Important: Let jQuery set the content-type
+        processData: false,
+        contentType: false,
         success: function (response) {
-            if (response.code == "success") {
+            if (response.code === "success") {
                 toastr.success(response.message);
                 cancelCoupon();
-                shouldHideNextTabBtn = true;
-                const tabElement = document.querySelector('#' + "courseDetails" + ' a');
-                tabElement.click();
+                const tab = document.querySelector('#courseDetails a');
+                if (tab) tab.click();
             }
         },
-        error: function (xhr, status, error) {
-            console.log("Error saving data:", error);
+        error: function () {
+            toastr.error("Save failed");
         }
     });
 }
@@ -1313,6 +1342,10 @@ function clearFileUploadFields() {
 																<option value="active">Active</option>
 																<option value="inactive">Inactive</option>
 															</select>
+														</div>
+                                                        	<div class="col-md-12">
+															<label>Description<span class="text-danger">*</span></label>
+                                                         <div id="description"></div>
 														</div>
 														<div class="col-md-6">
 															<h6 class="mt-2">Document</h6>
