@@ -331,14 +331,14 @@ public class AcademicCourseController {
 	        @RequestParam("level") String level,
 	        @RequestParam(value = "documents", required = false) MultipartFile documents,
 	        @RequestParam(value = "uploadList", required = false) String uploadList) {
-
+ 
 	    logger.info("Method : saveCourse starts");
-
+ 
 	    JsonResponse<Object> resp = new JsonResponse<Object>();
 	    String userId = "";
 	    String orgName = "";
 	    String orgDivision = "";
-
+ 
 	    try {
 	        userId = (String) session.getAttribute("USER_ID");
 	        orgName = (String) session.getAttribute("ORGANIZATION");
@@ -346,7 +346,7 @@ public class AcademicCourseController {
 	    } catch (Exception e) {
 	        logger.error("Error getting session attributes", e);
 	    }
-
+ 
 	    try {
 	        Map<String, Object> courseData = new HashMap<>();
 	        courseData.put("courseId", courseId);
@@ -357,7 +357,7 @@ public class AcademicCourseController {
 	        courseData.put("startDate", startDate);
 	        courseData.put("endDate", endDate);
 	        courseData.put("patientStatus", patientStatus);
-
+ 
 	        // --- Decode courseDesc (Base64 + URL decode safe) ---
 	        String decodedCourseDesc = new String(Base64.getDecoder().decode(courseDesc), StandardCharsets.UTF_8);
 	        try {
@@ -368,18 +368,18 @@ public class AcademicCourseController {
 	        decodedCourseDesc = decodedCourseDesc.replaceAll("\\\\{2,}", "")
 	                                             .replaceAll("\\\\n", "")
 	                                             .replaceAll("\\\\t", "");
-
+ 
 	        ObjectMapper mapper = new ObjectMapper();
 	        String escapedCourseDesc = mapper.writeValueAsString(decodedCourseDesc)
 	                                         .replaceFirst("^\"", "")
 	                                         .replaceFirst("\"$", "");
 	        courseData.put("courseDesc", escapedCourseDesc);
-
+ 
 	        courseData.put("rate", rate);
 	        courseData.put("currencySymbol", currencySymbol);
 	        courseData.put("level", level);
 	       // courseData.put("categoryData", categoryData);
-
+ 
 	        // --- Single document upload ---
 	        if (documents != null && !documents.isEmpty()) {
 	            String ext = FilenameUtils.getExtension(documents.getOriginalFilename());
@@ -391,20 +391,20 @@ public class AcademicCourseController {
 	                courseData.put("documentName", fileName);
 	            }
 	        }
-
+ 
 	        // --- Handle uploadList (old + new files) ---
 	        List<Map<String, Object>> uploadListData = new ArrayList<>();
-
+ 
 	        if (uploadList != null && !uploadList.isEmpty()) {
 	            ObjectMapper mapper1 = new ObjectMapper();
 	            List<Map<String, Object>> parsedUploadList =
 	                    mapper1.readValue(uploadList, new TypeReference<List<Map<String, Object>>>() {});
-
+ 
 	            for (Map<String, Object> item : parsedUploadList) {
 	                if (item.containsKey("documentFile")) {
 	                    Object documentFileObj = item.get("documentFile");
 	                    String base64Data = "";
-
+ 
 	                    // Handle both ArrayList and single String
 	                    if (documentFileObj instanceof ArrayList) {
 	                        @SuppressWarnings("unchecked")
@@ -418,54 +418,54 @@ public class AcademicCourseController {
 	                        logger.warn("Unexpected documentFile type: " + documentFileObj.getClass().getName());
 	                        continue;
 	                    }
-
+ 
 	                    // Remove common data URL prefixes for any type
 	                    base64Data = base64Data.replaceFirst("^data:[^;]+;base64,", "");
-
+ 
 	                    // Decode Base64
 	                    byte[] bytes = Base64.getDecoder().decode(base64Data);
-
+ 
 	                    // Determine file extension
 	                    String ext = (String) item.get("docType");
 	                    if (ext == null || ext.isEmpty()) {
 	                        ext = "bin"; // fallback for unknown types
 	                    }
-
+ 
 	                    // Save the file
 	                    String fileName = saveAllMultiImages(bytes, ext);
 	                    if (fileName != null) {
 	                        String fileURL = env.getBaseURL() + "document/image/" + fileName;
-
+ 
 	                        Map<String, Object> docItem = new HashMap<>();
 	                        docItem.put("fileName", fileName);
 	                        docItem.put("docUrl", fileURL);
 	                        docItem.put("docName", item.getOrDefault("docName", fileName));
-
+ 
 	                        uploadListData.add(docItem);
 	                    }
 	                }
 	            }
 	        }
-
-
+ 
+ 
 	        courseData.put("uploadList", uploadListData);
-
+ 
 	        // --- Log JSON Payload ---
 	        ObjectMapper mapper3 = new ObjectMapper();
 	        logger.info("JSON Payload: {}", mapper3.writeValueAsString(courseData));
-
+ 
 	        // --- Call REST API ---
 	        resp = restClient.postForObject(
 	                env.getHisUrl() + "rest-academic-course-add?userId=" + userId
 	                        + "&org=" + orgName + "&orgDiv=" + orgDivision,
 	                courseData, JsonResponse.class);
-
+ 
 	    } catch (Exception e) {
 	        logger.error("Error saving course", e);
 	        resp.setMessage("Error saving course: " + e.getMessage());
 	        resp.setCode("Failed");
 	    }
-
+ 
 	    logger.info("Method : saveCourse ends");
 	    return resp;
 	}

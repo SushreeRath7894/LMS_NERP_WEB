@@ -1,3 +1,4 @@
+
 package nirmalya.aathithya.webmodule.lms.controller;
 
 import java.util.Arrays;
@@ -222,12 +223,15 @@ import nirmalya.aathithya.webmodule.common.utils.JsonResponse;
 		            String startDate = (String) requestJsonData.get("startDate");
 		            String endDate = (String) requestJsonData.get("endDate");
 		            String status = (String) requestJsonData.get("status");
+                    String description = (String) requestJsonData.get("description");
+
 
 		            requestPayload.put("marketingId", marketingId);
 		            requestPayload.put("marketName", marketName);
 		            requestPayload.put("startDate", startDate);
 		            requestPayload.put("endDate", endDate);
 		            requestPayload.put("status", status);
+                    requestPayload.put("description", description);
 		            // documentName already added above if file present
 		        } else {
 		            logger.error("Invalid type provided: {}", type);
@@ -382,3 +386,4 @@ import nirmalya.aathithya.webmodule.common.utils.JsonResponse;
 //
 		
 }
+

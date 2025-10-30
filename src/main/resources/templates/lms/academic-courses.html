@@ -826,7 +826,7 @@ var columnDefsCourse = [{
 var gridOptionsCourse = {
     columnDefs: columnDefsCourse,
     rowSelection: 'single',
-    suppressRowClickSelection: true,
+    suppressRowClickSelection: false,
     defaultColDef: {
         sortable: true,
         filter: true,
@@ -838,7 +838,7 @@ var gridOptionsCourse = {
     paginationPageSize: 15,
     onGridReady: function (params) {
         window.gridApi = params.api;
-        window.gridOptionsCourse = params.api;
+        // window.gridOptionsCourse = params.api;
         getCourseDetails();
     },
     onSelectionChanged: onSelectionChanged,
@@ -1025,42 +1025,153 @@ var courseId = "";
 let selectedEmployeeIds = [];
 let employeeData = [];
 
+// function onSelectionChanged() {
+//     var selectedNodes = window.gridApi.getSelectedNodes();
+//     var selectedData = selectedNodes.map(node => node.data);
+//     courseId = selectedData.map(node => node.courseId);
+//     $("#courseId").val(courseId);
+//     employeeList = selectedData.map(node => node.employeeList);
+//     var selectedRows = window.gridApi.getSelectedRows();
+//     var rowCount = 0;
+//     selectedRows.forEach(function (i) {
+//         rowCount = rowCount + 1;
+//     });
+//     if (selectedRows.length > 0) {
+//         courseId = selectedRows[0].courseId;
+//         editCourseDetails(courseId);
+//         getAllEmployeeDetails(employeeList);
+//         getTrainingDetails(courseId);
+//     } else {
+//         $("#courseId").val('');
+//         $("#courseTittle").val('');
+//         $("#parentCategory").val('');
+//         $("#duration").val('');
+//         $("#price").val('');
+//         $("#startDate").val('');
+//         $("#endDate").val('');
+//         $("#patientStatus").val('');
+//         $("#courseDesc").val('');
+//         $("#priceType").val('B2C');
+//         $("#currencySymbol").val('₹');
+//         $("#customers").val('');
+//         togglePriceFields();
+//     }
+//     courseId = '';
+// }
+
 function onSelectionChanged() {
-    var selectedNodes = window.gridApi.getSelectedNodes();
-    var selectedData = selectedNodes.map(node => node.data);
-    courseId = selectedData.map(node => node.courseId);
-    $("#courseId").val(courseId);
-    employeeList = selectedData.map(node => node.employeeList);
-    var selectedRows = window.gridApi.getSelectedRows();
-    var rowCount = 0;
-    selectedRows.forEach(function (i) {
-        rowCount = rowCount + 1;
-    });
-    if (selectedRows.length > 0) {
-        courseId = selectedRows[0].courseId;
-        editCourseDetails(courseId);
-        getAllEmployeeDetails(employeeList);
-       // getTrainingDetails(courseId);
-        getQuizDetails(courseId);
-    } else {
-        $("#courseId").val('');
-        $("#courseTittle").val('');
-        $("#parentCategory").val('');
-        $("#duration").val('');
-        $("#price").val('');
-        $("#startDate").val('');
-        $("#endDate").val('');
-        $("#patientStatus").val('');
-        $("#courseDesc").val('');
-        $("#priceType").val('B2C');
-        $("#currencySymbol").val('₹');
-        $("#customers").val('');
-        togglePriceFields();
+    const selectedRows = window.gridApi.getSelectedRows();
+    if (selectedRows.length === 0) {
+        clearRightSideForm();
+        return;
     }
-    courseId = '';
+
+    const row = selectedRows[0];
+
+    // --- BASIC FIELDS ---
+    $("#courseId").val(row.courseId || '');
+    $("#courseTittle").val(row.courseTittle || '');
+    $("#parentCategory").val(row.parentCategoryId || '');
+    getsubcategoryList(row.parentCategoryId, row.subcategoryId || '');
+    $("#patientStatus").val(row.statusId === "1" ? "1" : "0");
+    $("#startDate").val(row.startDate || '');
+    $("#endDate").val(row.endDate || '');
+
+    // --- DURATION ---
+    const dur = row.duration || '';
+    const h = dur.match(/(\d+)h/) ? dur.match(/(\d+)h/)[1] : 0;
+    const m = dur.match(/(\d+)m/) ? dur.match(/(\d+)m/)[1] : 0;
+    $("#durationHours").val(h);
+    $("#durationMinutes").val(m);
+
+    // --- PRICING ---
+    $("#price").val(row.price || '');
+    $("#rate").val(row.rate || '');
+    $("#currencySymbol").val(row.currencySymbol || 'INR');
+    $("#level").val(row.courselevel || '');
+    $("#priceType").val(row.priceType || 'B2C');
+    togglePriceFields();
+
+    // --- DESCRIPTION ---
+    if (CKEDITOR.instances.courseDesc) {
+        CKEDITOR.instances.courseDesc.setData(row.courseDesc || '');
+    }
+
+    // --- DOCUMENT PREVIEW ---
+    const docPreview = $("#uploadedWarrDiv_0");
+docPreview.empty();
+$("#imageWarrName_0").text("");
+$("#imageRemoveBtn_0").html("");
+
+if (row.documentURL && row.documentURL.trim() !== "") {
+    let url = row.documentURL.trim().replace(/ /g, '%20');
+    let fileName = row.fileName || decodeURIComponent(url.split('/').pop().split('?')[0]);
+    const ext = fileName.split('.').pop().toLowerCase();
+
+    let html = '';
+    if (ext === 'pdf') {
+        html = `<a href="${url}" target="_blank" class="btn btn-primary btn-sm">View PDF</a>`;
+    } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
+        html = `<img src="${url}" alt="${fileName}" 
+                     style="max-width:60px; height:60px; object-fit:cover; border-radius:5px; 
+                            box-shadow:0 2px 4px rgba(0,0,0,0.1); cursor:pointer; border:1px solid #ddd;" 
+                     onclick="window.open('${url}', '_blank')" />`;
+    } else {
+        html = `<i class="fa fa-file-o" style="font-size:40px; color:#777;"></i>`;
+    }
+
+    docPreview.html(`
+        <div style="display:flex; align-items:center; gap:8px;">
+            <div>${html}</div>
+            <div style="flex:1; min-width:0;">
+                <span style="cursor:pointer; color:#337ab7; font-weight:bold;" 
+                      onclick="window.open('${url}', '_blank')">
+                    ${fileName}
+                </span>
+            </div>
+            <div>
+                <i class="fa fa-times-circle" 
+                   style="color:#d9534f; font-size:20px; cursor:pointer;" 
+                   title="Remove" 
+                   onclick="clearFileUploadFields()"></i>
+            </div>
+        </div>
+    `);
+
+    hideUploadPlusButton();  // HIDE + BUTTON
+
+} else {
+    docPreview.html(
+        '<div style="color:#999; font-size:13px; text-align:center; margin-top:8px;">No Document Available</div>'
+    );
+    showUploadPlusButton();  // SHOW + BUTTON
+}
+    // --- AJAX CALLS ---
+    editCourseDetails(row.courseId);
+    getAllEmployeeDetails(row.employeeList || []);
+    getTrainingDetails(row.courseId);
 }
 
+function clearFileUploadFields() {
+    $("#uploadWarDoc_0").val("");
+    $("#uploadHidden_0").val("");
 
+    // CLEAR preview
+    $("#uploadedWarrDiv_0").html(
+        '<div style="color:#999; font-size:13px; text-align:center; margin-top:8px;"></div>'
+    ).removeData("original-file");
+
+    // Clear name & X
+    $("#imageWarrName_0").text("");
+    $("#imageRemoveBtn_0").html("");
+
+    // SHOW original "+" button
+    showUploadPlusButton();
+}
+function showUploadPlusButton() {
+    const label = document.querySelector('label[for="uploadWarDoc_0"]');
+    if (label) label.style.display = 'inline-block';
+}
 function rowSelectDetailsDoc() {
 	
 	var selectedRows = gridOptionsDoc.api.getSelectedRows();
@@ -1493,116 +1604,10 @@ function saveMultiFile(event) {
     }); 
 } */
 
-function masterSaveCourse() {
-    gridOptionsDoc.api.stopEditing();
 
-    // Collect documents from grid (Course Materials)
-    var uploadList = [];
-    if (gridOptionsDoc.api.getDisplayedRowCount() > 0) {
-        gridOptionsDoc.api.forEachNode(function (rowNode) {
-            uploadList.push(rowNode.data);
-        });
-    }
-console.log('uploadList',uploadList)
-    // ------------------- FORM FIELD VALUES -------------------
-    let courseId = $("#courseId").val() || "";
-    let courseTittle = $("#courseTittle").val().trim();
-    let parentCategory = $("#parentCategory").val();
-    let subcategory = $("#subcategory").val();
-    let patientStatus = $("#patientStatus").val();
-    let startDate = $("#startDate").val();
-    let endDate = $("#endDate").val();
-    let price = $("#price").val() || "0";
-    let rate = $("#rate").val() || "0";
-    let currencySymbol = $("#currencySymbol").val() || "";
-    let level = $("#level").val() || "";
-  //  let categoryDataText = $("#jsonOutput").text().trim();
-   
-    
-    // Duration
-    let hours = parseInt($("#durationHours").val()) || 0;
-    let minutes = parseInt($("#durationMinutes").val()) || 0;
 
-    // CKEditor content
-    let courseDescRaw = CKEDITOR.instances.courseDesc.getData().trim();
 
-    // ------------------- VALIDATION -------------------
-    if (!courseTittle) { toastr.error("Course Title is mandatory"); return; }
-    if (!parentCategory) { toastr.error("Course Category is mandatory"); return; }
-    if (!patientStatus) { toastr.error("Status is mandatory"); return; }
-    if (hours < 0 || minutes < 0 || minutes > 59) { toastr.error("Invalid Duration"); return; }
-    if (!startDate) { toastr.error("Start Date is mandatory"); return; }
-    if (!endDate) { toastr.error("End Date is mandatory"); return; }
 
-    // Convert to Date for validation
-    let sDate = new Date(startDate.split("-").reverse().join("-")); // assuming dd-mm-yyyy
-    let eDate = new Date(endDate.split("-").reverse().join("-"));
-    if (eDate < sDate) { toastr.error("End Date cannot be earlier than Start Date"); return; }
-
-    if (!courseDescRaw) { toastr.error("Course Description is mandatory"); return; }
-    if (uploadList.length === 0) { toastr.error("At least one Course Material document is mandatory"); return; }
-
-    // ------------------- DURATION -------------------
-    let duration = (hours > 0 ? hours + "h" : "") + (minutes > 0 ? (hours > 0 ? " " : "") + minutes + "m" : "");
-    if (!duration) duration = "0h";
-
-    // Encode Course Description to Base64
-    courseDescRaw = courseDescRaw.replace(/\n/g, '').replace(/\t/g, '');
-    let courseDescEncoded = btoa(courseDescRaw);
-
-    // ------------------- FORM DATA -------------------
-    let formData = new FormData();
-    formData.append("courseId", courseId);
-    formData.append("courseTittle", courseTittle);
-    formData.append("parentCategory", parentCategory);
-    formData.append("subcategory", subcategory);
-    formData.append("duration", duration);
-    formData.append("price", price);
-    formData.append("startDate", startDate);
-    formData.append("endDate", endDate);
-    formData.append("patientStatus", patientStatus);
-    formData.append("courseDesc", courseDescEncoded);
-    formData.append("rate", rate);
-    formData.append("currencySymbol", currencySymbol);
-    formData.append("level", level);
-    
- // ✅ Attach your category JSON here (now with content and pricing as separate keys in the JSON structure)
- //console.log($("#jsonOutput").text(),"sssssssss");
-   // formData.append("categoryData", categoryDataText);
-
-    // Attach documents (grid data as JSON)
-    formData.append("uploadList", JSON.stringify(uploadList));
-    // Attach multiple files (from .wardocument inputs)
-    $(".wardocument").each(function () {
-        if (this.files && this.files.length > 0) {
-            for (let i = 0; i < this.files.length; i++) {
-                formData.append("documents", this.files[i]);  // <-- multiple documents
-            }
-        }
-    });
-
-    // ------------------- DEBUG -------------------
-    for (let pair of formData.entries()) {
-        console.log(pair[0] + ':', pair[1]);
-    }
-
-    // ------------------- AJAX CALL -------------------
-    $.ajax({
-        url: 'academic-course-add',
-        type: 'POST',
-        data: formData,
-        processData: false,
-        contentType: false,
-        success: function (response) {
-            toastr.success(response.message || "Course saved successfully!");
-            getCourseDetails();
-            cancel();
-        },
-        error: function (xhr) {
-            toastr.error("Error saving course: " + (xhr.responseText || "Unknown error"));
-        }
-    }); 
-}
 
  
 /*  function masterSaveCourse() {
@@ -1663,6 +1668,121 @@ console.log(formData);
 	}
  */
 
+
+
+
+
+ function masterSaveCourse() {
+    gridOptionsDoc.api.stopEditing();
+ 
+    // Collect documents from grid (Course Materials)
+    var uploadList = [];
+    if (gridOptionsDoc.api.getDisplayedRowCount() > 0) {
+        gridOptionsDoc.api.forEachNode(function (rowNode) {
+            uploadList.push(rowNode.data);
+        });
+    }
+console.log('uploadList',uploadList)
+    // ------------------- FORM FIELD VALUES -------------------
+    let courseId = $("#courseId").val() || "";
+    let courseTittle = $("#courseTittle").val().trim();
+    let parentCategory = $("#parentCategory").val();
+    let subcategory = $("#subcategory").val();
+    let patientStatus = $("#patientStatus").val();
+    let startDate = $("#startDate").val();
+    let endDate = $("#endDate").val();
+    let price = $("#price").val() || "0";
+    let rate = $("#rate").val() || "0";
+    let currencySymbol = $("#currencySymbol").val() || "";
+    let level = $("#level").val() || "";
+  //  let categoryDataText = $("#jsonOutput").text().trim();
+   
+    
+    // Duration
+    let hours = parseInt($("#durationHours").val()) || 0;
+    let minutes = parseInt($("#durationMinutes").val()) || 0;
+ 
+    // CKEditor content
+    let courseDescRaw = CKEDITOR.instances.courseDesc.getData().trim();
+ 
+    // ------------------- VALIDATION -------------------
+    if (!courseTittle) { toastr.error("Course Title is mandatory"); return; }
+    if (!parentCategory) { toastr.error("Course Category is mandatory"); return; }
+    if (!patientStatus) { toastr.error("Status is mandatory"); return; }
+    if (hours < 0 || minutes < 0 || minutes > 59) { toastr.error("Invalid Duration"); return; }
+    if (!startDate) { toastr.error("Start Date is mandatory"); return; }
+    if (!endDate) { toastr.error("End Date is mandatory"); return; }
+ 
+    // Convert to Date for validation
+    let sDate = new Date(startDate.split("-").reverse().join("-")); // assuming dd-mm-yyyy
+    let eDate = new Date(endDate.split("-").reverse().join("-"));
+    if (eDate < sDate) { toastr.error("End Date cannot be earlier than Start Date"); return; }
+ 
+    if (!courseDescRaw) { toastr.error("Course Description is mandatory"); return; }
+    if (uploadList.length === 0) { toastr.error("At least one Course Material document is mandatory"); return; }
+ 
+    // ------------------- DURATION -------------------
+    let duration = (hours > 0 ? hours + "h" : "") + (minutes > 0 ? (hours > 0 ? " " : "") + minutes + "m" : "");
+    if (!duration) duration = "0h";
+ 
+    // Encode Course Description to Base64
+    courseDescRaw = courseDescRaw.replace(/\n/g, '').replace(/\t/g, '');
+    let courseDescEncoded = btoa(courseDescRaw);
+ 
+    // ------------------- FORM DATA -------------------
+    let formData = new FormData();
+    formData.append("courseId", courseId);
+    formData.append("courseTittle", courseTittle);
+    formData.append("parentCategory", parentCategory);
+    formData.append("subcategory", subcategory);
+    formData.append("duration", duration);
+    formData.append("price", price);
+    formData.append("startDate", startDate);
+    formData.append("endDate", endDate);
+    formData.append("patientStatus", patientStatus);
+    formData.append("courseDesc", courseDescEncoded);
+    formData.append("rate", rate);
+    formData.append("currencySymbol", currencySymbol);
+    formData.append("level", level);
+    
+// ✅ Attach your category JSON here (now with content and pricing as separate keys in the JSON structure)
+//console.log($("#jsonOutput").text(),"sssssssss");
+   // formData.append("categoryData", categoryDataText);
+ 
+    // Attach documents (grid data as JSON)
+    formData.append("uploadList", JSON.stringify(uploadList));
+    // Attach multiple files (from .wardocument inputs)
+    $(".wardocument").each(function () {
+        if (this.files && this.files.length > 0) {
+            for (let i = 0; i < this.files.length; i++) {
+                formData.append("documents", this.files[i]);  // <-- multiple documents
+            }
+        }
+    });
+ 
+    // ------------------- DEBUG -------------------
+    for (let pair of formData.entries()) {
+        console.log(pair[0] + ':', pair[1]);
+    }
+ 
+    // ------------------- AJAX CALL -------------------
+    $.ajax({
+        url: 'academic-course-add',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function (response) {
+            toastr.success(response.message || "Course saved successfully!");
+            getCourseDetails();
+            cancel();
+        },
+        error: function (xhr) {
+            toastr.error("Error saving course: " + (xhr.responseText || "Unknown error"));
+        }
+    });
+}
+ 
 
 
 
@@ -1998,6 +2118,9 @@ function addApplication() {
     $("#instructorDetails").addClass('d-none');
     $("#courseForm :input").prop("disabled", false);
     CKEDITOR.instances['courseDesc'].setReadOnly(false);
+	clearFileUploadFields();
+
+    // showUploadPlusButton();
 }
 
 function cancel() {
