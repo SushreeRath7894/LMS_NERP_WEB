@@ -76,6 +76,7 @@ import nirmalya.aathithya.webmodule.common.utils.JsonResponse;
 				e.printStackTrace();
 			}
 			try {
+				logger.info("url----"+env.getMasterUrl() + "rest-viewCoupon?orgName=" + orgName + "&orgDivision=" + orgDivision);
 				resp = restTemplate.getForObject(
 						env.getMasterUrl() + "rest-viewCoupon?orgName=" + orgName + "&orgDivision=" + orgDivision,
 						JsonResponse.class);
