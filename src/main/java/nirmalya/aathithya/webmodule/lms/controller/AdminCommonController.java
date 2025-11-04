@@ -147,6 +147,34 @@ public class AdminCommonController {
 		logger.info("Method :viewStudent ends"+resp);
 		return resp;
 	}
+	
+	@SuppressWarnings("unchecked")
+	@GetMapping("subscription-get-course-details")
+	public @ResponseBody Object getTheCourseDetails(HttpSession session,@RequestParam String enrollId) {
+		logger.info("Method :getTheCourseDetails starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String orgName = "";
+		String orgDivision = "";
+		try {
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+
+			resp = restTemplate.getForObject(env.getHisUrl() + "rest-editCourseTrainingDetails?Id=" + enrollId + "&organization="
+					+ orgName + "&orgDivision=" + orgDivision, JsonResponse.class);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		if (resp.getMessage() != "" && resp.getMessage() != null) {
+			resp.setCode(resp.getMessage());
+			resp.setMessage("Success");
+		} else {
+			resp.setMessage("Unsuccess");
+		}
+		logger.info("Method :getTheCourseDetails ends"+resp);
+		return resp;
+	}
 	//
 	@SuppressWarnings("unchecked")
 	@GetMapping("subscription-student-course-enable")
