@@ -26,7 +26,11 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import nirmalya.aathithya.webmodule.common.utils.EmailAttachmentSender;
 import nirmalya.aathithya.webmodule.common.utils.EnvironmentVaribles;
@@ -384,6 +388,122 @@ import nirmalya.aathithya.webmodule.common.utils.JsonResponse;
 			return resp;
 		}
 //
+		
+		
+		// Fixed Web Controller Method (in AcademicCourseWebController or similar)
+		@SuppressWarnings("unchecked")
+		@PostMapping("promotion-marketing-coupon-save")
+		public @ResponseBody JsonResponse<Object> saveCourseCoupon(HttpSession session,
+		        @RequestBody String couponData) {
+
+		    logger.info("Method : saveCourseCoupon starts");
+
+		    JsonResponse<Object> resp = new JsonResponse<Object>();
+		    String userId = "";
+		    String orgName = "";
+		    String orgDivision = "";
+
+		    try {
+		        userId = (String) session.getAttribute("USER_ID");
+		        orgName = (String) session.getAttribute("ORGANIZATION");
+		        orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		    } catch (Exception e) {
+		        logger.error("Error getting session attributes", e);
+		    }
+
+		    if (userId == null || userId.isEmpty()) {
+		        resp.setMessage("User session not found.");
+		        resp.setCode("Failed");
+		        return resp;
+		    }
+
+		    try {
+		        // Parse the incoming JSON payload
+		        ObjectMapper mapper = new ObjectMapper();
+		        ObjectNode jsonNode = (ObjectNode) mapper.readTree(couponData);
+		        
+		        // Extract and validate courseId
+		        String couponId = "";
+		        if (jsonNode.has("couponId") && !jsonNode.get("couponId").isNull()) {
+		        	couponId = jsonNode.get("couponId").asText();
+		            logger.info("Extracted courseId from JSON: " + couponId);
+		        } else {
+		            logger.info("No couponId found in JSON or couponId is null");
+		            resp.setMessage("coupon ID is required.");
+		            resp.setCode("Failed");
+		            return resp;
+		        }
+
+		        // Clean and validate quizMappings if present
+		        if (jsonNode.has("activityMappings")) {
+		            ArrayNode mappingsArray = (ArrayNode) jsonNode.get("activityMappings");
+					
+		            for (JsonNode mapping : mappingsArray) {
+		                // Validate required fields in each mapping
+		                if (!mapping.has("courseId") || !mapping.has("couponId") || !mapping.has("status")) {
+		                    logger.warn("Invalid mapping entry: missing required fields");
+		                    resp.setMessage("Invalid  mapping data.");
+		                    resp.setCode("Failed");
+		                    return resp;
+		                }
+		            }
+		            jsonNode.set("activityMappings", mappingsArray);
+		        } else {
+		            logger.info("No activityMappings found in payload; unmapping all quizzes for course.");
+		        }
+
+		        // Convert cleaned jsonNode to Map for consistent serialization (mirrors saveCourse approach)
+		        Map<String, Object> couponPayload = mapper.convertValue(jsonNode, new TypeReference<Map<String, Object>>() {});
+		        logger.info("Prepared quizPayload: " + mapper.writeValueAsString(couponPayload));
+
+		        // --- Log JSON Payload ---
+		        ObjectMapper mapper3 = new ObjectMapper();
+		        logger.info("JSON Payload: {}", mapper3.writeValueAsString(couponPayload));
+
+		        // --- Call REST API ---
+		        // Now sending Map directly, serializes to {"courseId":..., "quizMappings":[...]} JSON
+		        resp = restTemplate.postForObject(
+		                env.getMasterUrl() + "rest-saveCourseCoupon?userId=" + userId
+		                        + "&org=" + orgName + "&orgDiv=" + orgDivision,
+		                        couponPayload, JsonResponse.class);
+
+		    } catch (Exception e) {
+		        logger.error("Error saving  mappings", e);
+		        resp.setMessage("Error saving  mappings: " + e.getMessage());
+		        resp.setCode("Failed");
+		    }
+
+		    logger.info("Method : saveCourseCoupon ends");
+		    return resp;
+		}
+		
+		
+		@SuppressWarnings("unchecked")
+		@GetMapping("promotion-marketing-course-view")
+		public @ResponseBody Object viewCourse(HttpSession session,@RequestParam String id) {
+			logger.info("Method :viewCourse starts");
+			JsonResponse<Object> resp = new JsonResponse<Object>();
+			String orgName = "";
+			String orgDivision = "";
+			try {
+				orgName = (String) session.getAttribute("ORGANIZATION");
+				orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			try {
+				logger.info("url----"+env.getMasterUrl() + "rest-viewCourse?orgName=" + orgName + "&orgDivision=" + orgDivision + "&id=" + id);
+				resp = restTemplate.getForObject(
+						env.getMasterUrl() + "rest-viewCourse?orgName=" + orgName + "&orgDivision=" + orgDivision + "&id=" + id,
+						JsonResponse.class);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+
+			
+			logger.info("Method :viewCourse ends");
+			return resp;
+		}
 		
 }
 
