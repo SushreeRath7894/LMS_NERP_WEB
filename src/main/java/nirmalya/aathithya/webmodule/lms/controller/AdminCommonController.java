@@ -73,6 +73,35 @@ public class AdminCommonController {
 		return resp;
 	}
 	
+	@SuppressWarnings("unchecked")
+	@GetMapping("admin-dashboard-get-recent-courses")
+	public @ResponseBody Object getRecentPurchaseCourses(HttpSession session) {
+
+		logger.info("Method :getRecentPurchaseCourses starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String userId = "";
+		String org = "";
+		String orgDiv = "";
+		try {
+			userId = (String) session.getAttribute("USER_ID");
+			org = (String) session.getAttribute("ORGANIZATION");
+			orgDiv = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		} catch (Exception e) {
+
+		}
+		try {
+			String url = env.getHisUrl()+ "rest-get-reccent-courses?orgName=" + org + "&orgDivision=" + orgDiv
+					+ "&userId=" + userId;
+			resp = restTemplate.getForObject(url, JsonResponse.class);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		logger.info("Method :getRecentPurchaseCourses ends" + resp);
+
+		return resp;
+	}
+	
 	@GetMapping("instructor-dashboard")
 	public String facultyDashboard(Model model, HttpSession session) {
 		logger.info("Mothod:view faculty dashboard page started...");
