@@ -1133,10 +1133,7 @@ function onSelectionChanged() {
     $("#priceType").val(row.priceType || 'B2C');
     togglePriceFields();
 
-    // --- DESCRIPTION ---
-    if (CKEDITOR.instances.courseDesc) {
-        CKEDITOR.instances.courseDesc.setData(row.courseDesc || '');
-    }
+   
 
     // --- DOCUMENT PREVIEW ---
     const docPreview = $("#uploadedWarrDiv_0");
@@ -1568,28 +1565,31 @@ function editCourseDetails(courseId) {
         async: false,
         success: function (response) {
             if (response.code === "success") {
-                const courseDetails = JSON.parse(response.body).courseDetails;
-                console.log('dddddddddddd',courseDetails)
+                const courseDetails = JSON.parse(response.body);
+                
                 if (courseDetails == null) {
                     // Handle null case
                 } else {
-                    $("#courseId").val(courseDetails[0].courseId || "");
-                    $("#courseTittle").val(courseDetails[0].courseTittle || "");
-                    $("#parentCategory").val(courseDetails[0].parentCategoryId || "");
-                    $("#price").val(courseDetails[0].price || "");
-                    $("#startDate").val(courseDetails[0].startDate || "");
-                    $("#endDate").val(courseDetails[0].endDate || "");
-                    $("#patientStatus").val(courseDetails[0].patientStatusId || "");
-                    // Decode and set course description (assuming 'dec' is the base64 field from DB)
-                    let decodedDesc = courseDetails[0].dec ? atob(courseDetails[0].dec) : (courseDetails[0].courseDesc || "");
+                    console.log('dddddddddddd', courseDetails);
+                    
+                    // Use direct object properties since courseDetails is an object, not an array
+                    $("#courseId").val(courseDetails.courseId || "");
+                    $("#courseTittle").val(courseDetails.courseTitle || "");  // Note: Response uses "courseTitle", not "courseTittle"
+                    $("#price").val(courseDetails.price || "");  // Assuming "price" exists; add if missing in response
+                    $("#startDate").val(courseDetails.startDate || "");
+                    $("#endDate").val(courseDetails.endDate || "");
+                    $("#patientStatus").val(courseDetails.patientStatusId || "");  // Assuming this exists
+                    
+                    // FIXED: 'dec' is plain escaped HTML (not base64), so no atob needed - use directly
+                    let decodedDesc = courseDetails.dec || courseDetails.courseDesc || "";
                     if (CKEDITOR.instances.courseDesc) {
                         CKEDITOR.instances.courseDesc.setData(decodedDesc);
                     } else {
                         console.error("CKEditor instance for 'courseDesc' not found.");
                     }
-                  // $("#documentURL").val(courseDetails[0].documentURL || "");
-                 // $("#uploadWarDoc_0").attr("src", courseDetails[0].documentURL || "");
-
+                    
+                    // Handle document preview
+                    
                   if (courseDetails[0].documentURL == null || courseDetails[0].documentURL == '') {
                       $("#uploadedWarrDiv_0").html("");
                       $("#imageWarrName_0").html("");
@@ -1602,36 +1602,15 @@ function editCourseDetails(courseId) {
                      /* $("#imageRemoveBtn_0").html('<i style="color: red; cursor: pointer;" class="bi bi-x-lg" onclick="clearFileUploadFields();"></i>'); */
                   }
 
-                  const courseDetailsArray = JSON.parse(response.body).courseDetails;
-                  if (courseDetailsArray && courseDetailsArray.length > 0) {
-                      const courseDetails = courseDetailsArray[0];
-
-                      // Map documents
-                      if (courseDetails.courseDocuments && courseDetails.courseDocuments.length > 0) {
-                          const mappedDocs = courseDetails.courseDocuments.map((doc, index) => {
-                              return {
-                                  slno: index + 1,
-                                  isEditDoc: false,
-                                  docName: doc.docName || doc.docView,
-                                  docType: doc.docView ? doc.docView.split('.').pop().toLowerCase() : "N/A",
-                                  dociURL: doc.dociURL || "",
-                                  documentFile: null,
-                                  docView: doc.docView || doc.docName
-                              };
-                          });
-                          gridOptionsDoc.api.setRowData(mappedDocs);
-                      } else {
-                          gridOptionsDoc.api.setRowData([]);
-                      }
-                  }
-
-                    $("#rate").val(courseDetails[0].rate || "");
-                    $("#currencySymbol").val(courseDetails[0].currencySymbol || "");
-                    $("#level").val(courseDetails[0].level || "");
-                    $("#priceType").val(courseDetails[0].priceType || "B2C");
-                    $("#customers").val(courseDetails[0].customers ? JSON.parse(courseDetails[0].customers) : "");
-
-                    var duration = courseDetails[0].duration || "";
+                    
+                    $("#rate").val(courseDetails.rate || "");
+                    $("#currencySymbol").val(courseDetails.currencySymbol || "");
+                    $("#level").val(courseDetails.level || "");
+                    $("#priceType").val(courseDetails.priceType || "B2C");
+                    $("#customers").val(courseDetails.customers ? JSON.parse(courseDetails.customers) : "");
+                    
+                    // Handle duration parsing
+                    var duration = courseDetails.duration || "";
                     var hours = 0;
                     var minutes = 0;
                     if (duration) {
@@ -1647,14 +1626,77 @@ function editCourseDetails(courseId) {
                     $("#durationHours").val(hours);
                     $("#durationMinutes").val(minutes);
                     togglePriceFields();
+                    
+                    // FIXED: Handle Category and Subcategory setting by matching names (since IDs may be missing in response)
+                    const categoryName = courseDetails.categoryName || '';
+                    if (categoryName) {
+                        // Find option by text and set value to its key (ID)
+                        const categoryOption = $('#parentCategory option').filter(function() {
+                            return $(this).text().trim() === categoryName.trim();
+                        }).first();
+                        if (categoryOption.length > 0) {
+                            const categoryId = categoryOption.val();
+                            $("#parentCategory").val(categoryId);
+                            // FIXED: Load subcategories WITHOUT passing subcategory name as ID (load all, then set by name below)
+                            getsubcategoryList(categoryId, '');
+                        } else {
+                            console.warn('Category name "' + categoryName + '" not found in options');
+                            // Fallback: If category not found, still try to load subcategories if possible (e.g., from existing ID)
+                            if (courseDetails.parentCategoryId) {
+                                getsubcategoryList(courseDetails.parentCategoryId, '');
+                            }
+                        }
+                    }
+                    
+                    // Set subcategory after parent loads (increased delay for AJAX completion; set by name matching)
+                    const subCategoryName = courseDetails.subCategoryName || '';
+                    if (subCategoryName) {
+                        setTimeout(() => {
+                            const subOption = $('#subcategory option').filter(function() {
+                                return $(this).text().trim() === subCategoryName.trim();
+                            }).first();
+                            if (subOption.length > 0) {
+                                $("#subcategory").val(subOption.val()).trigger('change');
+                                console.log('Subcategory set successfully:', subCategoryName);
+                            } else {
+                                console.warn('Subcategory name "' + subCategoryName + '" not found in options');
+                            }
+                        }, 300);  // Increased timeout to 300ms for AJAX to complete
+                    }
+                    
+                    // Optional: Load training details if courseCategoryType exists
+                    if (courseDetails.courseCategoryType && Array.isArray(courseDetails.courseCategoryType)) {
+                        getTrainingDetails(courseId);  // Assuming this function exists to populate training tabs
+                    }
+                    
+                    // Optional: Handle image if "image" field exists
+                    if (courseDetails.image) {
+                        // Set preview for course image if needed
+                        console.log('Course Image URL:', courseDetails.image);
+                    }
+                    
+                    // Optional: Populate structured description fields if separate sections exist
+                    if (courseDetails.courseOverview) {
+                        // Assuming additional CKEditor instances for sections; adjust as needed
+                        // e.g., if (CKEDITOR.instances.courseOverview) CKEDITOR.instances.courseOverview.setData(courseDetails.courseOverview);
+                    }
+                    if (courseDetails.targetGroup) {
+                        // e.g., if (CKEDITOR.instances.targetGroup) CKEDITOR.instances.targetGroup.setData(courseDetails.targetGroup);
+                    }
+                    if (courseDetails.conceptsCovered) {
+                        // e.g., if (CKEDITOR.instances.conceptsCovered) CKEDITOR.instances.conceptsCovered.setData(courseDetails.conceptsCovered);
+                    }
+                    if (courseDetails.examAndPrerequisite) {
+                        // e.g., if (CKEDITOR.instances.examAndPrerequisite) CKEDITOR.instances.examAndPrerequisite.setData(courseDetails.examAndPrerequisite);
+                    }
                 }
             }
         },
         error: function (error) {
-            console.error("Error fetching patient details:", error);
+            console.error("Error fetching course details:", error);
         }
     });
-}
+}  
 
 function addApplication() {
     if (window.gridApi) {
@@ -1717,7 +1759,7 @@ function editCourse() {
     $("#edit").addClass('d-none');
     $("#next").addClass('d-none');
     $("#courseForm :input").prop("disabled", false);
-    CKEDITOR.instances['courseDesc'].setReadOnly(false);
+   // CKEDITOR.instances['courseDesc'].setReadOnly(false);
 }
 
 function saveFile() {
@@ -1817,25 +1859,34 @@ function saveAssign(data) {
 }
 
 
-
 function onQuickFilterChanged() {
-    if (document.getElementById('quickFilter').value) {
-        window.gridOptionsCourse.setQuickFilter(document.getElementById('quickFilter').value);
-        window.gridOptionsCourse.getDisplayedRowAtIndex(0).setSelected(true);
+    const filterValue = document.getElementById('quickFilter').value;
+    if (filterValue) {
+        window.gridApi.setQuickFilter(filterValue);  // Use gridApi, not gridOptionsCourse
+        
+        // Safely select the first displayed row after filter applies
+        setTimeout(() => {  // Small delay to ensure filter renders
+            const firstRow = window.gridApi.getDisplayedRowAtIndex(0);
+            if (firstRow) {
+                firstRow.setSelected(true);
+            }
+        }, 100);
     }
 }
-
 
 
 function reset() {
-    let data = $("#quickFilter").val('');
-    if (data != null && data != "") {
-        $("#quickFilter").val('');
-        window.gridOptionsCourse.setQuickFilter(document.getElementById('quickFilter').value);
-        window.gridOptionsCourse.getDisplayedRowAtIndex(0).setSelected(true);
-    }
+    $("#quickFilter").val('');  // Clear the input
+    window.gridApi.setQuickFilter('');  // Clear the grid filter (use gridApi)
+    
+    // Re-select first row if data exists
+    setTimeout(() => {
+        const firstRow = window.gridApi.getDisplayedRowAtIndex(0);
+        if (firstRow) {
+            firstRow.setSelected(true);
+        }
+    }, 100);
 }
-
 // ------------------- CORRECTED TAB NAVIGATION FUNCTIONS -------------------
 // Tab order: 1 = Course Overview (#course-overview), 2 = Course Training (#training), 3 = Course Quiz Map (#quizMap), 4 = Instructors Assign (#examination)
 
@@ -3050,6 +3101,13 @@ function onSelectionChangedEmployee() {
     const selectedData = employeeData.filter(emp => selectedEmployeeIds.includes(emp.employeeId));
     console.log('Selected Employees:', selectedData);
 }
+
+function enterToSearch(event) {
+    if (event.key === 'Enter') {
+        onQuickFilterChanged();
+    }
+}
+
 </script>
 </head>
 

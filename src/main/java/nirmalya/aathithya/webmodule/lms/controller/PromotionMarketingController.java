@@ -210,6 +210,7 @@ import nirmalya.aathithya.webmodule.common.utils.JsonResponse;
 		            String validFrom = (String) requestJsonData.get("validFrom");
 		            String validTo = (String) requestJsonData.get("validTo");
 		            String status = (String) requestJsonData.get("status");
+		            String trackingUrl = (String) requestJsonData.get("trackingUrl");
 		            List<Map<String, Object>> rows = (List<Map<String, Object>>) requestJsonData.get("rows");
 
 		            requestPayload.put("couponId", couponId);
@@ -219,6 +220,7 @@ import nirmalya.aathithya.webmodule.common.utils.JsonResponse;
 		            requestPayload.put("validFrom", validFrom);
 		            requestPayload.put("validTo", validTo);
 		            requestPayload.put("status", status);
+		            requestPayload.put("trackingUrl", trackingUrl);
 		            requestPayload.put("rows", rows);
 		        } else if ("marketing".equals(type)) {
 		            // Handle Marketing Data
@@ -228,7 +230,7 @@ import nirmalya.aathithya.webmodule.common.utils.JsonResponse;
 		            String endDate = (String) requestJsonData.get("endDate");
 		            String status = (String) requestJsonData.get("status");
                     String description = (String) requestJsonData.get("description");
-
+                    String trackingUrl = (String) requestJsonData.get("trackingUrl");
 
 		            requestPayload.put("marketingId", marketingId);
 		            requestPayload.put("marketName", marketName);
@@ -236,6 +238,7 @@ import nirmalya.aathithya.webmodule.common.utils.JsonResponse;
 		            requestPayload.put("endDate", endDate);
 		            requestPayload.put("status", status);
                     requestPayload.put("description", description);
+                    requestPayload.put("trackingUrl", trackingUrl);
 		            // documentName already added above if file present
 		        } else {
 		            logger.error("Invalid type provided: {}", type);
