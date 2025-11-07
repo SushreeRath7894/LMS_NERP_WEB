@@ -324,36 +324,56 @@ to {
 }
 }
 </style>
-
 <script type="text/javascript"
 	src="https://cdn.ckeditor.com/4.16.0/standard/ckeditor.js"></script>
 
 <script type="text/javascript">
 let savedData = {};
 let currentCategory = "";
+let isTrainingEditMode = false; // Global flag for training edit mode
 const predefinedCategories = ["Online Bootcamp", "Corporate Training", "Mock Tests", "eLearning + Exam Bundle", "Books"];
 
-// Helper to load data and toggle buttons (fixes timing)
+/* // Helper to load data and toggle buttons (fixes timing)
 function handleCategoryLoad(editor) {
-    // Enable fields
-    $("#priceField").prop("disabled", false);
-    editor.setReadOnly(false);
-
-    // If saved data exists → load into fields
+    // Always load data if exists
     if (savedData[currentCategory]) {
         editor.setData(savedData[currentCategory].content);
         $("#priceField").val(savedData[currentCategory].pricing);
-        $("#saveBtn").addClass('d-none');
-        $("#editBtn").removeClass('d-none');
+        // Load documents into grid for this category
+        if (gridOptionsDoc && gridOptionsDoc.api) {
+            gridOptionsDoc.api.setRowData(savedData[currentCategory].documents || []);
+        }
     } else {
         editor.setData("");
         $("#priceField").val("");
-        $("#saveBtn").removeClass('d-none');
+        // Clear grid if no data
+        if (gridOptionsDoc && gridOptionsDoc.api) {
+            gridOptionsDoc.api.setRowData([]);
+        }
+    }
+
+    // Enable/disable fields and buttons based on mode
+    if (isTrainingEditMode) {
+        $("#priceField").prop("disabled", false);
+        editor.setReadOnly(false);
+        // Set button visibility based on data existence
+        if (savedData[currentCategory]) {
+            $("#saveBtn").addClass('d-none');
+            $("#editBtn").removeClass('d-none');
+        } else {
+            $("#saveBtn").removeClass('d-none');
+            $("#editBtn").addClass('d-none');
+        }
+    } else {
+        $("#priceField").prop("disabled", true);
+        editor.setReadOnly(true);
+        // Hide both buttons in view mode
+        $("#saveBtn").addClass('d-none');
         $("#editBtn").addClass('d-none');
     }
     // Always refresh display after loading to ensure saved selection and JSON output are updated
     refreshDisplay();
-}
+} */
 
 // ---------------- Refresh Display ----------------
 function refreshDisplay() {
@@ -362,8 +382,16 @@ function refreshDisplay() {
 
     $.each(savedData, function (category, data) {
         html += "<b>" + category + "</b>: " +
-                "<br>Content: " + data.content +
-                "<br>Pricing: " + data.pricing + "<hr>";
+                "<br>Content: " + (data.content || "N/A") +
+                "<br>Pricing: " + (data.pricing || "0") +
+                "<br>Documents: ";
+        if (data.documents && data.documents.length > 0) {
+            let docList = data.documents.map(doc => (doc.docName || doc.docView || "Unnamed Doc")).join(', ');
+            html += docList + " (" + data.documents.length + " files)";
+        } else {
+            html += "None";
+        }
+        html += "<hr>";
 
         jsonOutput[category] = data;
     });
@@ -401,8 +429,8 @@ function calculateTotalPrice() {
 $(document).ready(function () {
 
 cancelTraing();
-    // ---------------- Category Checkbox Change ----------------
-    $(".categoryCheck").on("change", function () {
+    // ---------------- Category Checkbox Change (DELEGATED FOR DYNAMIC ELEMENTS) ----------------
+  $(document).on("change", ".categoryCheck", function () {
         $(".categoryCheck").not(this).prop("checked", false); // only one active at a time
 
         if ($(this).is(":checked")) {
@@ -412,11 +440,21 @@ cancelTraing();
             // Init CKEditor if not already (with callback for timing)
             if (!CKEDITOR.instances.notesField) {
                 CKEDITOR.replace("notesField", {
-                    // Your config here if needed
+                    height: 150,
+                    removePlugins: 'wsc,exportpdf',
+                    scayt_autoStartup: true,
+                    scayt_maxSuggestions: 3,
+                    autoParagraph: false,
                 }, function(editor) {
                     // instanceReady callback ensures setData happens after init
                     handleCategoryLoad(editor);
                 });
+                // ✅ Init training doc grid ONLY if not already initialized
+                var gridDivDoc = document.querySelector('#myDocumentGrid');
+                if (gridDivDoc && !gridOptionsDoc.api) { // Check if api not set to avoid re-init
+                    new agGrid.Grid(gridDivDoc, gridOptionsDoc);
+                    gridOptionsDoc.api.setRowData([]); // Start empty
+                }
             } else {
                 handleCategoryLoad(CKEDITOR.instances.notesField);
             }
@@ -454,124 +492,130 @@ cancelTraing();
         `;
         $(".row.g-3").append(newCheckHtml); // Append to the checkboxes container
 
-        // Bind change event to the new checkbox
-        $(`#custom_${safeId}`).on("change", function () {
-            $(".categoryCheck").not(this).prop("checked", false); // Ensure single selection
-
-            if ($(this).is(":checked")) {
-                currentCategory = $(this).val();
-                $("#dynamicFields").show();
-                if (!CKEDITOR.instances.notesField) {
-                    CKEDITOR.replace("notesField", {}, function(editor) {
-                        handleCategoryLoad(editor);
-                    });
-                } else {
-                    handleCategoryLoad(CKEDITOR.instances.notesField);
-                }
-            } else {
-                $("#dynamicFields").hide();
-                currentCategory = "";
-            }
-        }).prop("checked", true).trigger("change"); // Auto-check and open fields
+        // No manual bind needed - delegation handles it
+        $(`#custom_${safeId}`).prop("checked", true).trigger("change"); // Auto-check and open fields
 
         $("#customCategoryModal").modal('hide');
     });
 
-    // ---------------- SAVE ----------------
-    $("#saveBtn").on("click", function () {
-        if (!currentCategory) return;
 
-        let notes = CKEDITOR.instances.notesField.getData();
-        let price = $("#priceField").val();
 
-        savedData[currentCategory] = { content: notes, pricing: price };
+        // ---------------- SAVE ----------------
+        $("#saveBtn").on("click", function () {
+            if (!currentCategory) return;
 
-        refreshDisplay();
-        resetUI();
+            let notes = CKEDITOR.instances.notesField.getData();
+            let price = $("#priceField").val();
+
+            // Collect documents
+            let documents = [];
+            if (gridOptionsDoc.api) {
+             gridOptionsDoc.api.forEachNode(function(rowNode) {
+                    documents.push(rowNode.data);
+                });
+            }
+
+            savedData[currentCategory] = {
+                content: notes,
+                pricing: price,
+                documents: documents
+            };
+
+            refreshDisplay();
+            resetUI();
+        });
+
+        // ---------------- EDIT (Update) ----------------
+        $("#editBtn").on("click", function () {
+            if (!currentCategory) return;
+
+            let notes = CKEDITOR.instances.notesField.getData();
+            let price = $("#priceField").val();
+
+            // Collect documents
+            let documents = [];
+            if (gridOptionsDoc.api) {
+             gridOptionsDoc.api.forEachNode(function(rowNode) {
+                    documents.push(rowNode.data);
+                });
+            }
+
+            savedData[currentCategory] = {
+                content: notes,
+                pricing: price,
+                documents: documents
+            };
+
+            refreshDisplay();
+            resetUI();
+        });
+        // ---------------- CANCEL ----------------
+        $("#cancelTraing").on("click", function () {
+            cancelTraing();
+        });
+
+    CKEDITOR.replace('courseDesc', {
+          height: 150,
+          removePlugins: 'wsc,exportpdf',
+          scayt_autoStartup: true,
+          scayt_maxSuggestions: 3,
+          autoParagraph : false,
+          });
+
+        var dateFormat = localStorage.getItem("dateFormat");
+        $("#toDateCalendar").datetimepicker({
+            format: dateFormat,
+            closeOnDateSelect: true,
+            timepicker: false,
+        }).on("change", function () {
+            $('#startDate').val($(this).val());
+        });
+
+        $('#startDate').blur(function () {
+            $("#toDateCalendar").val($(this).val());
+        });
+
+        $("#toDateCalendar1").datetimepicker({
+            format: dateFormat,
+            closeOnDateSelect: true,
+            timepicker: false,
+        }).on("change", function () {
+            $('#endDate').val($(this).val());
+        });
+
+        $('#endDate').blur(function () {
+            $("#toDateCalendar1").val($(this).val());
+        });
+
+        var gridDivm = document.querySelector('#orgGRid');
+        new agGrid.Grid(gridDivm, gridOptionsCourse);
+        gridOptionsCourse.api.setRowData([]);
+
+       /* var gridDivDoc = document.querySelector('#myDocumentGrid');
+    new agGrid.Grid(gridDivDoc, gridOptionsDoc);
+    gridOptionsDoc.api.setRowData([]); */
+
+     var gridDivQuiz = document.querySelector('#quizGrid');
+     new agGrid.Grid(gridDivQuiz, gridOptionsQuiz);
+     gridOptionsQuiz.api.setRowData([]);
+
+        getCourseDetails();
+        setQuizEditMode(false);
+        originalSelectedQuizIds = [];
+
+        $("#courseForm :input").prop("disabled", true);
+        CKEDITOR.instances['courseDesc'].setReadOnly(true);
+        // Disable training checkboxes and fields on load
+        $(".categoryCheck").prop("disabled", true);
+        $("#priceField").prop("disabled", true);
+        if (CKEDITOR.instances.notesField) {
+            CKEDITOR.instances.notesField.setReadOnly(true);
+        }
+        // Initialize price type handling
+        togglePriceFields();
+        $('#priceType').on('change', togglePriceFields);
+
     });
-
-    // ---------------- EDIT (Update) ----------------
-    $("#editBtn").on("click", function () {
-        if (!currentCategory) return;
-
-        let notes = CKEDITOR.instances.notesField.getData();
-        let price = $("#priceField").val();
-
-        savedData[currentCategory] = { content: notes, pricing: price };
-
-        refreshDisplay();
-        resetUI();
-    });
-
-    // ---------------- CANCEL ----------------
-    $("#cancelTraing").on("click", function () {
-        cancelTraing();
-    });
-
-CKEDITOR.replace('courseDesc', {
-      height: 150,
-      removePlugins: 'wsc,exportpdf',
-      scayt_autoStartup: true,
-      scayt_maxSuggestions: 3,
-      autoParagraph : false,
-      });
-
-    var dateFormat = localStorage.getItem("dateFormat");
-    $("#toDateCalendar").datetimepicker({
-        format: dateFormat,
-        closeOnDateSelect: true,
-        timepicker: false,
-    }).on("change", function () {
-        $('#startDate').val($(this).val());
-    });
-
-    $('#startDate').blur(function () {
-        $("#toDateCalendar").val($(this).val());
-    });
-
-    $("#toDateCalendar1").datetimepicker({
-        format: dateFormat,
-        closeOnDateSelect: true,
-        timepicker: false,
-    }).on("change", function () {
-        $('#endDate').val($(this).val());
-    });
-
-    $('#endDate').blur(function () {
-        $("#toDateCalendar1").val($(this).val());
-    });
-
-    var gridDivm = document.querySelector('#orgGRid');
-    new agGrid.Grid(gridDivm, gridOptionsCourse);
-    gridOptionsCourse.api.setRowData([]);
-
-    var gridDivDoc = document.querySelector('#myDocumentGrid');
-new agGrid.Grid(gridDivDoc, gridOptionsDoc);
-gridOptionsDoc.api.setRowData([]);
-
- var gridDivQuiz = document.querySelector('#quizGrid');
- new agGrid.Grid(gridDivQuiz, gridOptionsQuiz);
- gridOptionsQuiz.api.setRowData([]);
-
-    getCourseDetails();
-    setQuizEditMode(false);
-    originalSelectedQuizIds = [];
-
-    $("#courseForm :input").prop("disabled", true);
-    CKEDITOR.instances['courseDesc'].setReadOnly(true);
-    // Disable training checkboxes and fields on load
-    $(".categoryCheck").prop("disabled", true);
-    $("#priceField").prop("disabled", true);
-    if (CKEDITOR.instances.notesField) {
-        CKEDITOR.instances.notesField.setReadOnly(true);
-    }
-    // Initialize price type handling
-    togglePriceFields();
-    $('#priceType').on('change', togglePriceFields);
-
-  
-});
-
 
 
 
@@ -952,71 +996,71 @@ onSelectionChanged : rowSelectDetailsDoc,
 };
 
 const columnDefsQuiz = [
-	{
-		headerCheckboxSelection : false,
-		headerCheckboxSelectionFilteredOnly : true,
-		checkboxSelection : true,
-		cellEditorPopup: true,  
-		width : 10,
-		pinned: 'left',
-		sortable : false,
-		filter : false,
-		resizable : true
-	},
-	{
-		headerName : "Sl No",
-		field : "slno",
-		width : 70,
-		pinned: 'left',
-	},
-	
-	{
-		headerName : 'Quiz Code',
-		field : "quizCode",
-		width : 230,
-		pinned: 'left',
-		
-	},
-	
-	{
-		headerName : 'courseId',
-		field : "courseProducts",
-		width : 230,
-		hide : true,
-		pinned: 'left',
-		
-	},
-	{
-		headerName : 'Status',
-		field : "statusList",
-		width : 300,
-		
-	}
+{
+headerCheckboxSelection : false,
+headerCheckboxSelectionFilteredOnly : true,
+checkboxSelection : true,
+cellEditorPopup: true,
+width : 10,
+pinned: 'left',
+sortable : false,
+filter : false,
+resizable : true
+},
+{
+headerName : "Sl No",
+field : "slno",
+width : 70,
+pinned: 'left',
+},
+
+{
+headerName : 'Quiz Code',
+field : "quizCode",
+width : 230,
+pinned: 'left',
+ 
+},
+
+{
+headerName : 'courseId',
+field : "courseProducts",
+width : 230,
+hide : true,
+pinned: 'left',
+ 
+},
+{
+headerName : 'Status',
+field : "statusList",
+width : 300,
+ 
+}
 ];
 let quizEditMode = false;
 let originalSelectedQuizIds = []; // To store original selected quizCodes before edit
 
  // Update gridOptionsQuiz to include isRowSelectable callback
-	 const gridOptionsQuiz = {
-	     columnDefs: columnDefsQuiz,
-	     rowSelection: 'multiple',
-	     groupSelectsChildren: true,
-	     suppressRowClickSelection: true,
-	     suppressAggFuncInHeader: true,
-	     defaultColDef: {
-	         sortable: true,
-	         filter: true,
-	         resizable: true,
-	         width: 190,
-	         singleClickEdit: true,
-	     },
-	     // Add this callback to control row selectability based on edit mode
-	     // This prevents NEW selections/deselections in view mode, but preserves existing ones
-	     isRowSelectable: function(rowNode) {
-	         return quizEditMode;
-	     },
-	     onSelectionChanged: rowSelectDetailsQuiz,
-	 };
+ const gridOptionsQuiz = {
+     columnDefs: columnDefsQuiz,
+     rowSelection: 'multiple',
+     groupSelectsChildren: true,
+     suppressRowClickSelection: true,
+     suppressAggFuncInHeader: true,
+     defaultColDef: {
+         sortable: true,
+         filter: true,
+         resizable: true,
+         width: 190,
+         singleClickEdit: true,
+     },
+     // Add this callback to control row selectability based on edit mode
+     // This prevents NEW selections/deselections in view mode, but preserves existing ones
+     isRowSelectable: function(rowNode) {
+         return quizEditMode;
+     },
+     onSelectionChanged: rowSelectDetailsQuiz,
+ };
 
 var courseId = "";
 let selectedEmployeeIds = [];
@@ -1089,10 +1133,7 @@ function onSelectionChanged() {
     $("#priceType").val(row.priceType || 'B2C');
     togglePriceFields();
 
-    // --- DESCRIPTION ---
-    if (CKEDITOR.instances.courseDesc) {
-        CKEDITOR.instances.courseDesc.setData(row.courseDesc || '');
-    }
+   
 
     // --- DOCUMENT PREVIEW ---
     const docPreview = $("#uploadedWarrDiv_0");
@@ -1150,7 +1191,9 @@ if (row.documentURL && row.documentURL.trim() !== "") {
     getQuizDetails(row.courseId);
 }
 
+ 
 
+ 
 
 function next(tab) {
     let nextTabHref = '';
@@ -1190,7 +1233,7 @@ function next(tab) {
 
         // Show the next tab-pane
         $(`${nextTabHref}`).addClass("show active").removeClass('hidden');
-        
+
         // Hide previous tab-panes
         if (tab === 1) {
             $("#course-overview").removeClass("show active").addClass('hidden');
@@ -1240,7 +1283,7 @@ function prev(tab) {
 
         // Show the previous tab-pane
         $(`${prevTabHref}`).addClass("show active").removeClass('hidden');
-        
+
         // Hide current tab-pane
         if (tab === 2) {
             $("#training").removeClass("show active").addClass('hidden');
@@ -1315,23 +1358,19 @@ function showUploadPlusButton() {
     if (label) label.style.display = 'inline-block';
 }
 function rowSelectDetailsDoc() {
+    var selectedRows = gridOptionsDoc.api.getSelectedRows();
+    var rowCount = selectedRows.length; // Use .length for count
 
-var selectedRows = gridOptionsDoc.api.getSelectedRows();
-var rowCount = 0;
-selectedRows.forEach(function(selectedRow, index) {
-rowCount = rowCount + 1;
-});
-
-
-
-if (rowCount > 0) {
-$('#docAddBtn').attr("disabled", true);
-$('#docDeleteBtn').attr("disabled", false);
-} else {
-$('#docAddBtn').attr("disabled", false);
-$('#docDeleteBtn').attr("disabled", true);
+    if (rowCount > 0) {
+        $('#docAddBtn').attr("disabled", true);
+        $('#docDeleteBtn').attr("disabled", false);
+    } else {
+        $('#docAddBtn').attr("disabled", false);
+        $('#docDeleteBtn').attr("disabled", true);
+    }
 }
-}
+
+ 
 
 function rowSelectDetailsQuiz() {
     var selectedRows = gridOptionsQuiz.api.getSelectedRows();
@@ -1358,21 +1397,21 @@ function setQuizEditMode(enabled) {
 function editQuiz() {
     // Store current selections as original before enabling edit
     originalSelectedQuizIds = [];
- /*    if (gridOptionsQuiz.api) {
+ /* if (gridOptionsQuiz.api) {
         const selectedRows = gridOptionsQuiz.api.getSelectedRows();
         originalSelectedQuizIds = selectedRows.map(row => row.data.quizCode); // Assuming 'quizCode' is unique ID; change if needed (e.g., 'quizId')
     }
-    
+
     // Switch to edit mode
     setQuizEditMode(true);
      */
     // Show Save and Cancel buttons
     $("#saveQuiz").removeClass('d-none'); // Update to #saveQuizBtn if you change HTML IDs
     $("#cancelQuiz").removeClass('d-none'); // Update to #cancelQuizBtn if changed
-    
+
     // Hide Edit button
     $("#editQuiz").addClass('d-none'); // Update to #editQuizBtn if changed
-    
+
 }
 
 // Cancel Quiz function - Restore original selections
@@ -1380,7 +1419,7 @@ function cancelQuiz() {
     if (gridOptionsQuiz.api && originalSelectedQuizIds.length > 0) {
         // First, deselect all to clear current (edited) selections
         gridOptionsQuiz.api.deselectAll();
-        
+
         // Then, re-select the original mapped ones
         gridOptionsQuiz.api.forEachNode(function(node) {
             if (node.data && originalSelectedQuizIds.includes(node.data.quizCode)) { // Match on quizCode
@@ -1388,46 +1427,47 @@ function cancelQuiz() {
             }
         });
     }
-    
-    
+
+ 
+
     // Hide Save and Cancel buttons
     $("#saveQuiz").addClass('d-none');
     $("#cancelQuiz").addClass('d-none');
-    
+
     // Show Edit button
     $("#editQuiz").removeClass('d-none');
-    
+
     // Clear original for next time
     originalSelectedQuizIds = [];
-    
+
 }
 
 // Save Quiz function - Keep current selections (now saved), just disable edit
 function saveQuiz() {
     // Stop any editing if needed
     gridOptionsQuiz.api.stopEditing();
-    
+
     // Get CURRENT selected rows (user's edited selections)
     const selectedNodes = gridOptionsQuiz.api.getSelectedNodes();
     const selectedData = selectedNodes.map(node => node.data);
-    
+
     // Extract quiz codes/IDs
     const selectedQuizCodes = selectedData.map(quiz => quiz.quizCode); // Adjust field if needed
-    
+
     const courseId = $("#courseId").val();
-    
+
     if (!courseId) {
         toastr.error("No course selected. Please select a course first.");
         return;
     }
-    
+
     // Optional: Warn if no selections
     if (selectedQuizCodes.length === 0) {
         if (!confirm("No quizzes selected. This will unmap all quizzes from the course. Proceed?")) {
             return;
         }
     }
-    
+
     // Prepare payload - send the CURRENT selections to update mappings
     let payload = {
         courseId: courseId,
@@ -1437,9 +1477,9 @@ function saveQuiz() {
             status: 'active' // Or whatever default status
         }))
     };
-    
+
     console.log("Saving updated quiz mappings:", payload);
-    
+
     // AJAX call (adjust endpoint/payload as per backend)
     $.ajax({
         url: 'academic-course-quiz-save', // Replace with your actual save endpoint
@@ -1449,19 +1489,19 @@ function saveQuiz() {
         success: function (response) {
             if (response.code === "Success" || response.message === "Success") {
                 toastr.success(response.message || "Quiz mappings updated successfully!");
-                
+
                 // DO NOT restore original - keep the new (saved) selections
                 // Just disable edit mode to lock in the changes
                 setQuizEditMode(false);
-                
+
                 // Hide Save and Cancel, show Edit
                 $("#saveQuiz").addClass('d-none');
                 $("#cancelQuiz").addClass('d-none');
                 $("#editQuiz").removeClass('d-none');
-                
+
                 // Clear original since changes are saved
                 originalSelectedQuizIds = [];
-                
+
                 // Optional: Update the courseProducts field in grid data to reflect new mappings
                 // (If backend doesn't auto-update, you may need to re-fetch here)
                 // For now, assume selections are preserved visually; re-fetch if needed for data sync
@@ -1477,7 +1517,6 @@ function saveQuiz() {
     });
 }
 
-
 //Ensure getQuizDetails preserves selections correctly (no changes needed, but confirm)
 function getQuizDetails(courseId) {
     agGrid.simpleHttpRequest({
@@ -1487,12 +1526,12 @@ function getQuizDetails(courseId) {
             const jsonString = response.body[0];
             const responseBody = JSON.parse(jsonString);
             const coursequiz = responseBody.coursequiz;
-            
+
             const coursequizWithSlNo = coursequiz.map((quiz, index) => ({
                 ...quiz,
                 slno: index + 1
             }));
-            
+
             gridOptionsQuiz.api.setRowData(coursequizWithSlNo);
             console.log('Loaded quizzes:', coursequizWithSlNo);
 
@@ -1507,7 +1546,7 @@ function getQuizDetails(courseId) {
                 // No course: deselect all
                 gridOptionsQuiz.api.deselectAll();
             }
-            
+
             // Ensure view mode after load (disables changes, preserves selections)
             setQuizEditMode(true);
         } else {
@@ -1516,7 +1555,7 @@ function getQuizDetails(courseId) {
             gridOptionsQuiz.api.deselectAll();
             setQuizEditMode(false);
         }
-   
+
     });
 }
 function editCourseDetails(courseId) {
@@ -1526,28 +1565,31 @@ function editCourseDetails(courseId) {
         async: false,
         success: function (response) {
             if (response.code === "success") {
-                const courseDetails = JSON.parse(response.body).courseDetails;
-                console.log('dddddddddddd',courseDetails)
+                const courseDetails = JSON.parse(response.body);
+                
                 if (courseDetails == null) {
                     // Handle null case
                 } else {
-                    $("#courseId").val(courseDetails[0].courseId || "");
-                    $("#courseTittle").val(courseDetails[0].courseTittle || "");
-                    $("#parentCategory").val(courseDetails[0].parentCategoryId || "");
-                    $("#price").val(courseDetails[0].price || "");
-                    $("#startDate").val(courseDetails[0].startDate || "");
-                    $("#endDate").val(courseDetails[0].endDate || "");
-                    $("#patientStatus").val(courseDetails[0].patientStatusId || "");
-                    // Decode and set course description (assuming 'dec' is the base64 field from DB)
-                    let decodedDesc = courseDetails[0].dec ? atob(courseDetails[0].dec) : (courseDetails[0].courseDesc || "");
+                    console.log('dddddddddddd', courseDetails);
+                    
+                    // Use direct object properties since courseDetails is an object, not an array
+                    $("#courseId").val(courseDetails.courseId || "");
+                    $("#courseTittle").val(courseDetails.courseTitle || "");  // Note: Response uses "courseTitle", not "courseTittle"
+                    $("#price").val(courseDetails.price || "");  // Assuming "price" exists; add if missing in response
+                    $("#startDate").val(courseDetails.startDate || "");
+                    $("#endDate").val(courseDetails.endDate || "");
+                    $("#patientStatus").val(courseDetails.patientStatusId || "");  // Assuming this exists
+                    
+                    // FIXED: 'dec' is plain escaped HTML (not base64), so no atob needed - use directly
+                    let decodedDesc = courseDetails.dec || courseDetails.courseDesc || "";
                     if (CKEDITOR.instances.courseDesc) {
                         CKEDITOR.instances.courseDesc.setData(decodedDesc);
                     } else {
                         console.error("CKEditor instance for 'courseDesc' not found.");
                     }
-                  // $("#documentURL").val(courseDetails[0].documentURL || "");
-                 // $("#uploadWarDoc_0").attr("src", courseDetails[0].documentURL || "");
-
+                    
+                    // Handle document preview
+                    
                   if (courseDetails[0].documentURL == null || courseDetails[0].documentURL == '') {
                       $("#uploadedWarrDiv_0").html("");
                       $("#imageWarrName_0").html("");
@@ -1560,36 +1602,15 @@ function editCourseDetails(courseId) {
                      /* $("#imageRemoveBtn_0").html('<i style="color: red; cursor: pointer;" class="bi bi-x-lg" onclick="clearFileUploadFields();"></i>'); */
                   }
 
-                  const courseDetailsArray = JSON.parse(response.body).courseDetails;
-                  if (courseDetailsArray && courseDetailsArray.length > 0) {
-                      const courseDetails = courseDetailsArray[0];
-
-                      // Map documents
-                      if (courseDetails.courseDocuments && courseDetails.courseDocuments.length > 0) {
-                          const mappedDocs = courseDetails.courseDocuments.map((doc, index) => {
-                              return {
-                                  slno: index + 1,
-                                  isEditDoc: false,
-                                  docName: doc.docName || doc.docView,
-                                  docType: doc.docView ? doc.docView.split('.').pop().toLowerCase() : "N/A",
-                                  dociURL: doc.dociURL || "",
-                                  documentFile: null,
-                                  docView: doc.docView || doc.docName
-                              };
-                          });
-                          gridOptionsDoc.api.setRowData(mappedDocs);
-                      } else {
-                          gridOptionsDoc.api.setRowData([]);
-                      }
-                  }
-
-                    $("#rate").val(courseDetails[0].rate || "");
-                    $("#currencySymbol").val(courseDetails[0].currencySymbol || "");
-                    $("#level").val(courseDetails[0].level || "");
-                    $("#priceType").val(courseDetails[0].priceType || "B2C");
-                    $("#customers").val(courseDetails[0].customers ? JSON.parse(courseDetails[0].customers) : "");
-
-                    var duration = courseDetails[0].duration || "";
+                    
+                    $("#rate").val(courseDetails.rate || "");
+                    $("#currencySymbol").val(courseDetails.currencySymbol || "");
+                    $("#level").val(courseDetails.level || "");
+                    $("#priceType").val(courseDetails.priceType || "B2C");
+                    $("#customers").val(courseDetails.customers ? JSON.parse(courseDetails.customers) : "");
+                    
+                    // Handle duration parsing
+                    var duration = courseDetails.duration || "";
                     var hours = 0;
                     var minutes = 0;
                     if (duration) {
@@ -1605,14 +1626,77 @@ function editCourseDetails(courseId) {
                     $("#durationHours").val(hours);
                     $("#durationMinutes").val(minutes);
                     togglePriceFields();
+                    
+                    // FIXED: Handle Category and Subcategory setting by matching names (since IDs may be missing in response)
+                    const categoryName = courseDetails.categoryName || '';
+                    if (categoryName) {
+                        // Find option by text and set value to its key (ID)
+                        const categoryOption = $('#parentCategory option').filter(function() {
+                            return $(this).text().trim() === categoryName.trim();
+                        }).first();
+                        if (categoryOption.length > 0) {
+                            const categoryId = categoryOption.val();
+                            $("#parentCategory").val(categoryId);
+                            // FIXED: Load subcategories WITHOUT passing subcategory name as ID (load all, then set by name below)
+                            getsubcategoryList(categoryId, '');
+                        } else {
+                            console.warn('Category name "' + categoryName + '" not found in options');
+                            // Fallback: If category not found, still try to load subcategories if possible (e.g., from existing ID)
+                            if (courseDetails.parentCategoryId) {
+                                getsubcategoryList(courseDetails.parentCategoryId, '');
+                            }
+                        }
+                    }
+                    
+                    // Set subcategory after parent loads (increased delay for AJAX completion; set by name matching)
+                    const subCategoryName = courseDetails.subCategoryName || '';
+                    if (subCategoryName) {
+                        setTimeout(() => {
+                            const subOption = $('#subcategory option').filter(function() {
+                                return $(this).text().trim() === subCategoryName.trim();
+                            }).first();
+                            if (subOption.length > 0) {
+                                $("#subcategory").val(subOption.val()).trigger('change');
+                                console.log('Subcategory set successfully:', subCategoryName);
+                            } else {
+                                console.warn('Subcategory name "' + subCategoryName + '" not found in options');
+                            }
+                        }, 300);  // Increased timeout to 300ms for AJAX to complete
+                    }
+                    
+                    // Optional: Load training details if courseCategoryType exists
+                    if (courseDetails.courseCategoryType && Array.isArray(courseDetails.courseCategoryType)) {
+                        getTrainingDetails(courseId);  // Assuming this function exists to populate training tabs
+                    }
+                    
+                    // Optional: Handle image if "image" field exists
+                    if (courseDetails.image) {
+                        // Set preview for course image if needed
+                        console.log('Course Image URL:', courseDetails.image);
+                    }
+                    
+                    // Optional: Populate structured description fields if separate sections exist
+                    if (courseDetails.courseOverview) {
+                        // Assuming additional CKEditor instances for sections; adjust as needed
+                        // e.g., if (CKEDITOR.instances.courseOverview) CKEDITOR.instances.courseOverview.setData(courseDetails.courseOverview);
+                    }
+                    if (courseDetails.targetGroup) {
+                        // e.g., if (CKEDITOR.instances.targetGroup) CKEDITOR.instances.targetGroup.setData(courseDetails.targetGroup);
+                    }
+                    if (courseDetails.conceptsCovered) {
+                        // e.g., if (CKEDITOR.instances.conceptsCovered) CKEDITOR.instances.conceptsCovered.setData(courseDetails.conceptsCovered);
+                    }
+                    if (courseDetails.examAndPrerequisite) {
+                        // e.g., if (CKEDITOR.instances.examAndPrerequisite) CKEDITOR.instances.examAndPrerequisite.setData(courseDetails.examAndPrerequisite);
+                    }
                 }
             }
         },
         error: function (error) {
-            console.error("Error fetching patient details:", error);
+            console.error("Error fetching course details:", error);
         }
     });
-}
+}  
 
 function addApplication() {
     if (window.gridApi) {
@@ -1675,7 +1759,7 @@ function editCourse() {
     $("#edit").addClass('d-none');
     $("#next").addClass('d-none');
     $("#courseForm :input").prop("disabled", false);
-    CKEDITOR.instances['courseDesc'].setReadOnly(false);
+   // CKEDITOR.instances['courseDesc'].setReadOnly(false);
 }
 
 function saveFile() {
@@ -1775,29 +1859,38 @@ function saveAssign(data) {
 }
 
 
-
 function onQuickFilterChanged() {
-    if (document.getElementById('quickFilter').value) {
-        window.gridOptionsCourse.setQuickFilter(document.getElementById('quickFilter').value);
-        window.gridOptionsCourse.getDisplayedRowAtIndex(0).setSelected(true);
+    const filterValue = document.getElementById('quickFilter').value;
+    if (filterValue) {
+        window.gridApi.setQuickFilter(filterValue);  // Use gridApi, not gridOptionsCourse
+        
+        // Safely select the first displayed row after filter applies
+        setTimeout(() => {  // Small delay to ensure filter renders
+            const firstRow = window.gridApi.getDisplayedRowAtIndex(0);
+            if (firstRow) {
+                firstRow.setSelected(true);
+            }
+        }, 100);
     }
 }
-
 
 
 function reset() {
-    let data = $("#quickFilter").val('');
-    if (data != null && data != "") {
-        $("#quickFilter").val('');
-        window.gridOptionsCourse.setQuickFilter(document.getElementById('quickFilter').value);
-        window.gridOptionsCourse.getDisplayedRowAtIndex(0).setSelected(true);
-    }
+    $("#quickFilter").val('');  // Clear the input
+    window.gridApi.setQuickFilter('');  // Clear the grid filter (use gridApi)
+    
+    // Re-select first row if data exists
+    setTimeout(() => {
+        const firstRow = window.gridApi.getDisplayedRowAtIndex(0);
+        if (firstRow) {
+            firstRow.setSelected(true);
+        }
+    }, 100);
 }
-
 // ------------------- CORRECTED TAB NAVIGATION FUNCTIONS -------------------
 // Tab order: 1 = Course Overview (#course-overview), 2 = Course Training (#training), 3 = Course Quiz Map (#quizMap), 4 = Instructors Assign (#examination)
 
- 
+
 
 document.addEventListener('DOMContentLoaded', function() {
     // Multi-select dropdown functionality for B2B customers
@@ -1933,42 +2026,51 @@ error : function(e) {
 });
 }
 
-// Training section functions
 function addtraining() {
-    $("#addtraining").addClass('d-none');
-    $("#editTraing").addClass('d-none');
-    $("#saveTraing").removeClass('d-none');
-    $("#cancelTraing").removeClass('d-none');
-    $(".categoryCheck").prop("disabled", false);
-    $("#addCustomTraining").prop("disabled", false);
-    // Do NOT clear savedData for add - preserve existing design/data (as per request)
-    // savedData = {}; // Commented out to keep same design
-    refreshDisplay();
-    // Uncheck all but do not reset fields - keep design
+    // ✅ Clear existing data for new additions
+    savedData = {}; // Remove existing data
+    refreshDisplay(); // Update display to empty
+    // Uncheck all and hide fields
     $(".categoryCheck").prop("checked", false);
     $("#dynamicFields").hide();
     currentCategory = "";
-    // Explicitly hide buttons
+    // Explicitly clear fields
+    if (CKEDITOR.instances.notesField) {
+        CKEDITOR.instances.notesField.setData("");
+        CKEDITOR.instances.notesField.setReadOnly(false); // Enable for new
+    }
+    $("#priceField").val("");
     $("#saveBtn").addClass('d-none');
     $("#editBtn").addClass('d-none');
-}
-
-function editTraing() {
-    // No need for category check—data is loaded, checkboxes enabled
+    // Enable checkboxes and add button for new selection
+    $(".categoryCheck").prop("disabled", false);
+    $("#addCustomTraining").prop("disabled", false);
+    isTrainingEditMode = true; // Set edit mode
+    // Show add/edit buttons
     $("#addtraining").addClass('d-none');
     $("#editTraing").addClass('d-none');
     $("#saveTraing").removeClass('d-none');
     $("#cancelTraing").removeClass('d-none');
-
-    // Fields already enabled via checkbox change; just ensure
-    if (currentCategory && CKEDITOR.instances.notesField) {
-        CKEDITOR.instances.notesField.setReadOnly(false);
-    }
-    $("#priceField").prop("disabled", false);
-    // Keep existing design - no clear
-    refreshDisplay();
 }
-
+function editTraing() {
+    // Enable fields for editing existing data (keep savedData as is)
+    // Enable checkboxes and add button
+    $(".categoryCheck").prop("disabled", false);
+    $("#addCustomTraining").prop("disabled", false);
+    isTrainingEditMode = true; // Set edit mode
+    // Show save/cancel buttons
+    $("#addtraining").addClass('d-none');
+    $("#editTraing").addClass('d-none');
+    $("#saveTraing").removeClass('d-none');
+    $("#cancelTraing").removeClass('d-none');
+    // If currentCategory is set (from view mode auto-select), reload with enabled mode
+    if (currentCategory && CKEDITOR.instances.notesField) {
+        handleCategoryLoad(CKEDITOR.instances.notesField);
+        // Re-trigger the checkbox to ensure dynamicFields shown
+        $(`.categoryCheck[value="${currentCategory}"]`).prop("checked", true).trigger("change");
+    }
+    refreshDisplay(); // Refresh to show existing
+}
 function saveTraing() {
     // Ensure latest data is saved to savedData
     if ($("#editBtn").hasClass('d-none')) {
@@ -1976,24 +2078,20 @@ function saveTraing() {
     } else {
         $("#editBtn").click();
     }
-
     // Get the courseId
     let courseId = $("#courseId").val() || "";
     if (!courseId) {
         toastr.error("No course selected. Please select a course first.");
         return;
     }
-
     // Get the JSON data text
     let categoryDataText = $("#jsonOutput").text().trim();
     if (!categoryDataText) {
         toastr.error("No training data to save.");
         return;
     }
-
     try {
         let parsedData = JSON.parse(categoryDataText);
-
         // If parsedData is an object (as per current structure), convert to array with IDs
         if (typeof parsedData === 'object' && !Array.isArray(parsedData)) {
             let trainingArray = [];
@@ -2003,7 +2101,8 @@ function saveTraing() {
                     id: courseId + '_tr' + String(counter).padStart(3, '0'), // e.g., C001_tr001
                     category: category,
                     content: parsedData[category].content,
-                    pricing: parsedData[category].pricing
+                    pricing: parsedData[category].pricing,
+                    documents: parsedData[category].documents || [] // Include documents
                 });
                 counter++;
             }
@@ -2015,11 +2114,14 @@ function saveTraing() {
                 if (!item.id) {
                     item.id = courseId + '_tr' + String(counter).padStart(3, '0');
                 }
+                // Ensure documents are present
+                if (!item.documents) {
+                    item.documents = [];
+                }
                 counter++;
             });
             categoryDataText = JSON.stringify(parsedData, null, 2);
         }
-
         // Validate that each item has an 'id'
         let finalParsed = JSON.parse(categoryDataText);
         if (!Array.isArray(finalParsed) || !finalParsed.every(item => item.id)) {
@@ -2027,17 +2129,15 @@ function saveTraing() {
             return;
         }
     } catch (e) {
-
         toastr.error("Invalid JSON data.");
         return;
     }
-
     // Prepare JSON payload
     let payload = {
         courseId: courseId,
         categoryData: categoryDataText
     };
-
+    console.log("xxxx",payload);
     // Post to controller as JSON
     $.ajax({
         url: 'academic-course-training-save',
@@ -2053,7 +2153,6 @@ function saveTraing() {
         }
     });
 }
-
 function cancelTraing() {
     // Reload dynamic data from backend to restore state (as per request)
     const courseId = $("#courseId").val();
@@ -2061,23 +2160,35 @@ function cancelTraing() {
         getTrainingDetails(courseId);
     } else {
         // If no course, clear as fallback
-        savedData = {};
-        refreshDisplay();
-        $(".categoryCheck").prop("checked", false);
-        $("#dynamicFields").hide();
+        clearTrainingUI();
     }
-    // Disable UI
+    // Disable UI and reset mode
     $(".categoryCheck").prop("disabled", true);
     $("#saveTraing").addClass('d-none');
     $("#cancelTraing").addClass('d-none');
     $("#addtraining").removeClass('d-none');
     $("#editTraing").removeClass('d-none');
     $("#addCustomTraining").prop("disabled", true);
+    isTrainingEditMode = false; // Reset to view mode
 }
-
-
-
-function getTrainingDetails(courseId) {
+//Helper function to explicitly clear training UI elements
+/* function clearTrainingUI() {
+    savedData = {};
+    refreshDisplay();
+    $(".categoryCheck").prop("checked", false);
+    $("#dynamicFields").hide();
+    // Force clear CKEditor and price field
+    if (CKEDITOR.instances.notesField) {
+        CKEDITOR.instances.notesField.setData("");
+        CKEDITOR.instances.notesField.setReadOnly(true);
+        // Optionally destroy instance to fully reset (recreate on next use)
+        // CKEDITOR.instances.notesField.destroy(true);
+    }
+    $("#priceField").val("");
+    $("#priceField").prop("disabled", true);
+    currentCategory = "";
+} */
+/* function getTrainingDetails(courseId) {
     agGrid.simpleHttpRequest({
         url: "academic-training-view?id=" + courseId,
     }).then(function (response) {
@@ -2087,14 +2198,12 @@ function getTrainingDetails(courseId) {
             const responseBody = JSON.parse(innerJsonString);
             const courseData = responseBody.courseCategoryType;
             console.log(courseData, 'mmmmmmmmmmm');
-
             // ✅ DYNAMICALLY FETCH UNIQUE CATEGORIES FROM DB (replaces hardcoded predefinedCategories)
             let dynamicCategories = [];
             if (courseData && Array.isArray(courseData)) {
                 dynamicCategories = [...new Set(courseData.map(item => item.trainingCategory).filter(Boolean))];
             }
             console.log('Dynamically fetched categories:', dynamicCategories);
-
             // ✅ DYNAMICALLY SET DATA FROM DB: Clear and repopulate savedData based on DB response
             savedData = {};
             if (courseData && Array.isArray(courseData)) {
@@ -2103,85 +2212,275 @@ function getTrainingDetails(courseId) {
                     if (category) {
                         savedData[category] = {
                             content: item.trainingDescription || "",
-                            pricing: item.trainingPrice || ""
+                            pricing: item.trainingPrice || "",
+                            documents: [] // Initialize empty; backend update needed for loading existing docs
+                        };
+                    }
+                });
+            }
+            // ✅ CLEAR EXISTING CHECKBOXES TO AVOID DUPLICATES OR HARDCODED ONES WHEN DATA LOADED
+            $(".row.g-3").empty();
+            // ✅ DYNAMICALLY CREATE/ENSURE CHECKBOXES FOR ALL CATEGORIES FROM DB
+            dynamicCategories.forEach(category => {
+                let safeId = category.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+                let checkboxId = `cat_${safeId}`; // Unique ID prefix for dynamic categories
+                // ✅ UNCOMMENTED AND FIXED: CREATE AND APPEND CHECKBOX HTML
+                let checkHtml = `
+                    <div class="col-md-4">
+                        <div class="form-check">
+                            <input class="form-check-input categoryCheck" type="checkbox" id="${checkboxId}" value="${category}">
+                            <label class="form-check-label" for="${checkboxId}">${category}</label>
+                        </div>
+                    </div>
+                `;
+                $(".row.g-3").append(checkHtml);
+                // Bind change event for the dynamic checkbox (delegated, so no need)
+            });
+            // ✅ CORRECTION: If no dynamic categories (empty data), handle as "no data" case
+            if (dynamicCategories.length === 0) {
+                // Handle empty data case in success block
+                console.log("No training data available for this course");
+                clearTrainingUI(); // Use helper to clear everything (CKEditor, price, savedData, etc.)
+                $(".categoryCheck").prop("disabled", true);
+                $("#addCustomTraining").prop("disabled", true);
+                // ✅ REPLACE ROW WITH MESSAGE TO HIDE/REMOVE ALL CHECKBOXES, PREVENTING ANY CLICKS
+                $(".row.g-3").html('<div class="col-12"><p class="text-muted text-center">No training categories available for this course.</p></div>');
+                refreshDisplay(); // Ensure display is empty
+                return; // Exit early, no further processing
+            }
+            // ✅ REFRESH UI WITH LOADED DB DATA (shows descriptions and prices in summary)
+            refreshDisplay();
+            // ✅ CORRECTION: ALWAYS DISABLE FIELDS AFTER LOAD (VIEW MODE)
+            $(".categoryCheck").prop("disabled", true);
+            $("#addCustomTraining").prop("disabled", true);
+            if (CKEDITOR.instances.notesField) {
+                CKEDITOR.instances.notesField.setReadOnly(true);
+            }
+            $("#priceField").prop("disabled", true);
+            // ✅ DYNAMICALLY CHECK FIRST CATEGORY IF DATA EXISTS AND LOAD ITS DESC/PRICE (BUT DISABLED)
+            if (Object.keys(savedData).length > 0) {
+                const firstCategory = Object.keys(savedData)[0];
+                const firstCheckbox = $(`.categoryCheck[value="${firstCategory}"]`);
+                if (firstCheckbox.length) {
+                    firstCheckbox.prop("checked", true).trigger("change"); // This loads content and pricing via handleCategoryLoad (but fields disabled)
+                }
+            } else {
+                // Even if categories exist but no savedData, clear fields explicitly
+                clearTrainingFields();
+            }
+            // Update JSON output after loading data
+            refreshDisplay();
+            isTrainingEditMode = false; // Ensure view mode
+        } else {
+            // Handle no data or error: Show "No data" message AND REMOVE CHECKBOXES TO PREVENT CLICKS
+            console.error("Failed to fetch data or no data available");
+            clearTrainingUI(); // Use helper to clear everything
+            $(".categoryCheck").prop("disabled", true);
+            $("#addCustomTraining").prop("disabled", true);
+            // ✅ REPLACE ROW WITH MESSAGE TO HIDE/REMOVE ALL CHECKBOXES, PREVENTING ANY CLICKS
+            $(".row.g-3").html('<div class="col-12"><p class="text-muted text-center">No training categories available for this course.</p></div>');
+            refreshDisplay(); // Ensure display is empty
+            isTrainingEditMode = false; // Ensure view mode
+        }
+    });
+} */
+
+function getTrainingDetails(courseId) {
+    agGrid.simpleHttpRequest({
+        url: "academic-training-view?id=" + courseId,
+    }).then(function (response) {
+        if (response.message === "Success") {
+            // ✅ Parse the JSON safely
+            const innerJsonString = response.body[0];
+            const responseBody = JSON.parse(innerJsonString);
+            // ✅ FIXED: Handle if responseBody is an array with one object
+            const courseData = Array.isArray(responseBody) ? (responseBody[0] ? responseBody[0].courseCategoryType : []) : (responseBody.courseCategoryType || []);
+
+            console.log(courseData, 'Training Data Received');
+
+            // ✅ Extract unique training categories
+            let dynamicCategories = [];
+            if (courseData && Array.isArray(courseData)) {
+                dynamicCategories = [...new Set(courseData.map(item => item.trainingCategory).filter(Boolean))];
+            }
+
+            console.log('Dynamically fetched categories:', dynamicCategories);
+
+            // ✅ Initialize savedData map
+            savedData = {};
+
+            if (courseData && Array.isArray(courseData)) {
+                courseData.forEach(item => {
+                    const category = item.trainingCategory;
+                    if (category) {
+                        // ✅ Map documents array to match grid column defs (docName, docType, dociURL, etc.)
+                        let documentFiles = [];
+                        if (Array.isArray(item.documents) && item.documents.length > 0) {
+                            documentFiles = item.documents.map((doc, index) => ({
+                                slno: index + 1,
+                                isEditDoc: false,
+                                docName: doc.documentName || doc.fileName || 'Unnamed Document',
+                                docType: (doc.type || (doc.fileName ? doc.fileName.split('.').pop().toLowerCase() : "N/A")).replace(/^\./, ''), // ✅ FIXED: Remove leading dot from type
+                                dociURL: doc.documentUrl || "",
+                                documentFile: null, // No file upload for existing docs; set to null
+                                docView: doc.documentName || doc.fileName || 'Unnamed Document'
+                            }));
+                        }
+
+                        savedData[category] = {
+                            content: item.trainingDescription || "",
+                            pricing: item.trainingPrice || "",
+                            documents: documentFiles // Now properly mapped for grid
                         };
                     }
                 });
             }
 
-            // ✅ DYNAMICALLY CREATE/ENSURE CHECKBOXES FOR ALL CATEGORIES FROM DB
+            // ✅ Clear and dynamically rebuild category checkboxes
+            $(".row.g-3").empty();
+
             dynamicCategories.forEach(category => {
                 let safeId = category.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
-                let checkboxId = `cat_${safeId}`; // Unique ID prefix for dynamic categories
-                if (!$(`#${checkboxId}`).length) {
-                   /* let checkHtml = `
-                        <div class="col-md-4">
-                            <div class="form-check">
-                                <input class="form-check-input categoryCheck" type="checkbox" id="${checkboxId}" value="${category}">
-                                <label class="form-check-label" for="${checkboxId}">${category}</label>
-                            </div>
+                let checkboxId = `cat_${safeId}`;
+                let checkHtml = `
+                    <div class="col-md-4">
+                        <div class="form-check">
+                            <input class="form-check-input categoryCheck" type="checkbox" id="${checkboxId}" value="${category}">
+                            <label class="form-check-label" for="${checkboxId}">${category}</label>
                         </div>
-                    `;
-                    $(".row.g-3").append(checkHtml);
- */
-                    // Bind change event for the dynamic checkbox
-                    $(`#${checkboxId}`).on("change", function () {
-                        $(".categoryCheck").not(this).prop("checked", false); // Ensure single selection
-
-                        if ($(this).is(":checked")) {
-                            currentCategory = $(this).val();
-                            $("#dynamicFields").show();
-                            if (!CKEDITOR.instances.notesField) {
-                                CKEDITOR.replace("notesField", {}, function(editor) {
-                                    handleCategoryLoad(editor);
-                                });
-                            } else {
-                                handleCategoryLoad(CKEDITOR.instances.notesField);
-                            }
-                        } else {
-                            $("#dynamicFields").hide();
-                            currentCategory = "";
-                        }
-                    });
-                }
+                    </div>
+                `;
+                $(".row.g-3").append(checkHtml);
             });
 
-            // ✅ REFRESH UI WITH LOADED DB DATA (shows descriptions and prices in summary)
-        // refreshDisplay();
+            // ✅ Handle no category data case
+            if (dynamicCategories.length === 0) {
+                clearTrainingUI();
+                $(".categoryCheck").prop("disabled", true);
+                $("#addCustomTraining").prop("disabled", true);
+                $(".row.g-3").html('<div class="col-12"><p class="text-muted text-center">No training categories available for this course.</p></div>');
+                refreshDisplay();
+                return;
+            }
 
-            // ✅ ENABLE FIELDS FOR EDIT/VIEW MODE
-            $(".categoryCheck").prop("disabled", false);
-            $("#addCustomTraining").prop("disabled", false);
+            // ✅ Refresh display with loaded data
+            refreshDisplay();
 
-            // ✅ DYNAMICALLY CHECK FIRST CATEGORY IF DATA EXISTS AND LOAD ITS DESC/PRICE
+            // ✅ Disable fields (view-only mode)
+            $(".categoryCheck").prop("disabled", true);
+            $("#addCustomTraining").prop("disabled", true);
+            if (CKEDITOR.instances.notesField) {
+                CKEDITOR.instances.notesField.setReadOnly(true);
+            }
+            $("#priceField").prop("disabled", true);
+
+            // ✅ Auto-select first category and display its data (FIX: Set currentCategory and trigger change to load grid)
             if (Object.keys(savedData).length > 0) {
                 const firstCategory = Object.keys(savedData)[0];
                 const firstCheckbox = $(`.categoryCheck[value="${firstCategory}"]`);
                 if (firstCheckbox.length) {
-                    firstCheckbox.prop("checked", true).trigger("change"); // This loads content and pricing via handleCategoryLoad
+                    currentCategory = firstCategory; // Set currentCategory explicitly
+                    firstCheckbox.prop("checked", true).trigger("change"); // Trigger change to call handleCategoryLoad(editor) and load grid
                 }
+            } else {
+                clearTrainingFields();
             }
-            // Update JSON output after loading data
+
             refreshDisplay();
+            isTrainingEditMode = false;
         } else {
-            console.error("Failed to fetch data");
-            // On error, clear and disable
-            savedData = {};
-            refreshDisplay();
-            $(".categoryCheck").prop("checked", false);
-            $("#dynamicFields").hide();
+            console.error("Failed to fetch data or no data available");
+            clearTrainingUI();
             $(".categoryCheck").prop("disabled", true);
             $("#addCustomTraining").prop("disabled", true);
+            $(".row.g-3").html('<div class="col-12"><p class="text-muted text-center">No training categories available for this course.</p></div>');
+            refreshDisplay();
+            isTrainingEditMode = false;
         }
     });
-// Assuming this is what you meant by "set" – perhaps setting up a call to the function?
-// Example usage: getTrainingDetails("PRD000045");
-
 }
+
+// ---------------- Updated handleCategoryLoad Function ----------------
+// This function loads content, pricing, and documents into the grid for the current category.
+// Now properly handles editor callback and grid data setting.
+function handleCategoryLoad(editor) {
+    // Always load data if exists
+    if (savedData[currentCategory]) {
+        editor.setData(savedData[currentCategory].content);
+        $("#priceField").val(savedData[currentCategory].pricing);
+
+        // ✅ Load documents into grid for this category (mapped data ready for columns)
+        if (gridOptionsDoc && gridOptionsDoc.api) {
+            const categoryDocs = savedData[currentCategory].documents || [];
+            gridOptionsDoc.api.setRowData(categoryDocs); // Set row data with slno, docName, docType, etc.
+
+            // ✅ Optional: Auto-select all rows in the grid for the current category (header checkbox)
+            if (categoryDocs.length > 0) {
+                gridOptionsDoc.api.selectAll(); // Select all documents for the category
+            } else {
+                gridOptionsDoc.api.deselectAll(); // Clear if no docs
+            }
+
+            // ✅ Update button states based on selection
+            rowSelectDetailsDoc(); // Refresh add/delete button states
+        }
+    } else {
+        editor.setData("");
+        $("#priceField").val("");
+
+        // Clear grid if no data
+        if (gridOptionsDoc && gridOptionsDoc.api) {
+            gridOptionsDoc.api.setRowData([]);
+            gridOptionsDoc.api.deselectAll();
+            rowSelectDetailsDoc(); // Update button states
+        }
+    }
+
+    // Enable/disable fields and buttons based on mode
+    if (isTrainingEditMode) {
+        $("#priceField").prop("disabled", false);
+        editor.setReadOnly(false);
+        // Set button visibility based on data existence
+        if (savedData[currentCategory]) {
+            $("#saveBtn").addClass('d-none');
+            $("#editBtn").removeClass('d-none');
+        } else {
+            $("#saveBtn").removeClass('d-none');
+            $("#editBtn").addClass('d-none');
+        }
+    } else {
+        $("#priceField").prop("disabled", true);
+        editor.setReadOnly(true);
+        // Hide both buttons in view mode
+        $("#saveBtn").addClass('d-none');
+        $("#editBtn").addClass('d-none');
+    }
+
+    // Always refresh display after loading to ensure saved selection and JSON output are updated
+    refreshDisplay();
+}
+
+/* ✅ Clear all training fields */
+function clearTrainingFields() {
+    if (CKEDITOR.instances.notesField) {
+        CKEDITOR.instances.notesField.setData("");
+    } else {
+        $("#notesField").val("");
+    }
+    $("#priceField").val("");
+    $("#documentList").empty();
+}
+
+/* ✅ Clear UI completely */
+function clearTrainingUI() {
+    $(".row.g-3").empty();
+    clearTrainingFields();
+    savedData = {};
+}
+
 function parseCourseDescription(text) {
     // Normalize newlines
     text = text.replace(/\r\n/g, "\n");
-
     // Split sections dynamically
     const sections = {
         courseOverview: "",
@@ -2189,7 +2488,6 @@ function parseCourseDescription(text) {
         conceptsCovered: [],
         examAndPrerequisite: []
     };
-
     // Regex patterns for headings
     const patterns = {
         courseOverview: /Course Overview([\s\S]*?)(?=Target Group|Concepts Covered|Exam and Prerequisite|$)/i,
@@ -2197,13 +2495,11 @@ function parseCourseDescription(text) {
         conceptsCovered: /Concepts Covered([\s\S]*?)(?=Exam and Prerequisite|$)/i,
         examAndPrerequisite: /Exam and Prerequisite([\s\S]*?)/i
     };
-
     // Extract matches
     for (let key in patterns) {
         const match = text.match(patterns[key]);
         if (match && match[1]) {
             let content = match[1].trim();
-
             if (key === "conceptsCovered" || key === "examAndPrerequisite") {
                 // Split bullet points into array
                 sections[key] = content
@@ -2215,10 +2511,8 @@ function parseCourseDescription(text) {
             }
         }
     }
-
     return sections;
 }
-
 //Upload Grid Document.
 
 function uploadDocOnClick(){
@@ -2415,8 +2709,6 @@ uploadList.push(objDoc);
 
 
 
-
-
 /* function masterSaveCourse() {
     var formData = new FormData();
 
@@ -2446,7 +2738,7 @@ uploadList.push(objDoc);
     examAndPrerequisite: CKEDITOR.instances.examAndPrerequisite ? CKEDITOR.instances.examAndPrerequisite.getData() : ""
 };
 
-     
+ 
 
     // ✅ Stringify and append
     formData.append("courseDesc", JSON.stringify(courseDescObj));
@@ -2479,14 +2771,14 @@ console.log(formData);
  function masterSaveCourse() {
     gridOptionsDoc.api.stopEditing();
 
-    // Collect documents from grid (Course Materials)
+  /* // Collect documents from grid (Course Materials)
     var uploadList = [];
     if (gridOptionsDoc.api.getDisplayedRowCount() > 0) {
         gridOptionsDoc.api.forEachNode(function (rowNode) {
             uploadList.push(rowNode.data);
         });
     }
-console.log('uploadList',uploadList)
+console.log('uploadList',uploadList) */
     // ------------------- FORM FIELD VALUES -------------------
     let courseId = $("#courseId").val() || "";
     let courseTittle = $("#courseTittle").val().trim();
@@ -2522,7 +2814,7 @@ console.log('uploadList',uploadList)
     if (eDate < sDate) { toastr.error("End Date cannot be earlier than Start Date"); return; }
 
     if (!courseDescRaw) { toastr.error("Course Description is mandatory"); return; }
-    if (uploadList.length === 0) { toastr.error("At least one Course Material document is mandatory"); return; }
+  /* if (uploadList.length === 0) { toastr.error("At least one Course Material document is mandatory"); return; } */
 
     // ------------------- DURATION -------------------
     let duration = (hours > 0 ? hours + "h" : "") + (minutes > 0 ? (hours > 0 ? " " : "") + minutes + "m" : "");
@@ -2553,7 +2845,7 @@ console.log('uploadList',uploadList)
    // formData.append("categoryData", categoryDataText);
 
     // Attach documents (grid data as JSON)
-    formData.append("uploadList", JSON.stringify(uploadList));
+ /* formData.append("uploadList", JSON.stringify(uploadList)); */
     // Attach multiple files (from .wardocument inputs)
     $(".wardocument").each(function () {
         if (this.files && this.files.length > 0) {
@@ -2808,6 +3100,12 @@ function clearSearch() {
 function onSelectionChangedEmployee() {
     const selectedData = employeeData.filter(emp => selectedEmployeeIds.includes(emp.employeeId));
     console.log('Selected Employees:', selectedData);
+}
+
+function enterToSearch(event) {
+    if (event.key === 'Enter') {
+        onQuickFilterChanged();
+    }
 }
 
 </script>
@@ -3145,82 +3443,6 @@ function onSelectionChangedEmployee() {
 															</div>
 														</div>
 
-														<div class="row">
-															<div class="col-md-12">
-																<div class="d-flex justify-content-between">
-																	<div>
-																		<h5 class="sub-header-new m-0">Course Material :</h5>
-																	</div>
-																	<div class="row">
-																		<div class="col-md-12 cnt-sp-end">
-																			<div class="d-flex gap-2 task-btn-sec">
-																				<span class="mandatory">*</span>
-																				<button id="docAddBtn"
-																					class="border-0 btn-transition btn btn-outline-primary"
-																					title="Add Doc" onClick="uploadDocOnClick()"
-																					data-bs-toggle="tooltip">
-																					<i class="fa fa-plus-square" aria-hidden="true"></i>
-
-																				</button>
-																				<button id="docDeleteBtn"
-																					class="border-0 btn-transition btn btn-outline-primary"
-																					title="Remove Doc" disabled
-																					onclick="deleteDocDetailsOnclick()"
-																					data-bs-toggle="tooltip">
-																					<i class="fa fa-trash"></i>
-																				</button>
-
-																			</div>
-																		</div>
-																	</div>
-																</div>
-																<div class="controls" hidden>
-																	<input type="file" class="document" id="uploadDoc_0"
-																		accept=".jpeg, .jpg, .png, .pdf" name="userImage"
-																		onchange="saveMultiFile(event)" />
-																</div>
-
-																<div class="row mt-2">
-																	<div id="myDocumentGrid"
-																		style="width: 100%; height: 200px;"
-																		class="ag-theme-alpine"></div>
-																</div>
-															</div>
-														</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 													</div>
 												</div>
 											</div>
@@ -3337,7 +3559,14 @@ function onSelectionChangedEmployee() {
 																		<i class="fa fa-plus"></i> Add Custom
 																	</button>
 																</div>
+																
+																
+																
+																
+																
 															</div>
+															
+															
 
 															<!-- Save and Edit Buttons in Header -->
 															<div class="d-flex justify-content-end mb-3">
@@ -3362,6 +3591,52 @@ function onSelectionChangedEmployee() {
 																</div>
 															</div>
 
+
+
+<div class="row">
+															<div class="col-md-12">
+																<div class="d-flex justify-content-between">
+																	<div>
+																		<h5 class="sub-header-new m-0">Course Material :</h5>
+																	</div>
+																	<div class="row">
+																		<div class="col-md-12 cnt-sp-end">
+																			<div class="d-flex gap-2 task-btn-sec">
+																				<span class="mandatory">*</span>
+																				<button id="docAddBtn"
+																					class="border-0 btn-transition btn btn-outline-primary"
+																					title="Add Doc" onClick="uploadDocOnClick()"
+																					data-bs-toggle="tooltip">
+																					<i class="fa fa-plus-square" aria-hidden="true"></i>
+
+																				</button>
+																				<button id="docDeleteBtn"
+																					class="border-0 btn-transition btn btn-outline-primary"
+																					title="Remove Doc" disabled
+																					onclick="deleteDocDetailsOnclick()"
+																					data-bs-toggle="tooltip">
+																					<i class="fa fa-trash"></i>
+																				</button>
+
+																			</div>
+																		</div>
+																	</div>
+																</div>
+																<div class="controls" hidden>
+																	<input type="file" class="document" id="uploadDoc_0"
+																		accept=".jpeg, .jpg, .png, .pdf" name="userImage"
+																		onchange="saveMultiFile(event)" />
+																</div>
+
+																<div class="row mt-2">
+																	<div id="myDocumentGrid"
+																		style="width: 100%; height: 200px;"
+																		class="ag-theme-alpine"></div>
+																</div>
+															</div>
+														</div>
+																
+
 															<div class="col-md-12 mt-4">
 																<h6>Saved Selections:</h6>
 																<div id="resultContainer"></div>
@@ -3372,6 +3647,11 @@ function onSelectionChangedEmployee() {
 														</div>
 													</div>
 												</div>
+												
+												
+												
+												
+												
 											</div>
 
 											
