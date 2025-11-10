@@ -704,6 +704,51 @@ body {
 .text-purple {
     color: #be03fe !important;  
 }
+.no-popular-courses {
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  height : 290px;
+}
+
+.emoji-placeholder {
+  line-height: 2;
+  user-select: none;
+}
+.coupon-box {
+  background-color: #f8f9fa;
+  border-left: 4px solid #6c63ff;
+  font-style: italic;
+}
+
+.coupon-code {
+  display: inline-block;
+  background-color: #be03fe;
+  color: #fff;
+  font-weight: bold;
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-top: 5px;
+  font-size: 0.95rem;
+  letter-spacing: 0.5px;
+}
+
+.success-message {
+  background: #e8f9ee;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.95rem;
+}
+
+.training-card-item {
+  transition: all 0.3s ease;
+}
+
+.training-card-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
 /* ... existing styles ... */
 @keyframes fadeIn {
 	from {opacity: 0;
@@ -801,14 +846,14 @@ to {
 			</div>
 			<div class="dashboard-grid" id="dashboardWidgets">
 				<div id="popularCoursesContainer" class="popular-courses">
-					<h5>Popular Courses</h5>
+					<h5><strong>Popular Courses</strong></h5>
 					<div id="coursesList" class="course-list"></div>
 					<div id="courseDetail" style="display: none;"></div>
 				</div>
 
 
 				<div class="activity-card">
-					<h5>Monthly Progress</h5>
+					<h5><strong>Monthly Progress</strong></h5>
 					<p class="text-muted">This is the latest improvement</p>
 					<div id="monthlyProgressChart" style="height: 250px;"></div>
 				</div>
@@ -1057,28 +1102,42 @@ function recentPurchaseCourses() {
        const recentCourses = data.recentPurchases || [];
        let html = "";
 
-       recentCourses.forEach((course, index) => {
-         // Store the full course object in a data attribute for the click handler
-         const courseDataString = JSON.stringify(course).replace(/"/g, '&quot;');
-         
-         html += `
-           <div class="recent-course-item shadow-sm mb-2" data-course-index="${index}">
-             <div class="recent-course-left">
-               <img src="${course.CourseImage}" class="rounded" width="50" height="50" alt="course image" style="object-fit:cover;">
-               <div class="recent-course-text">
-                 <h6 class="mb-0">${course.CourseName}</h6>
-                 <small class="text-muted">⭐ ${course.Rating}</small>
-               </div>
-             </div>
-             <i class="fas fa-chevron-right recent-course-toggle-arrow" 
-                data-course-data="${courseDataString}"></i>
-           </div>`;
-       });
+       if (!recentCourses || recentCourses.length === 0) {
+     	   html = `
+    	     <div class="no-recent-purchase text-center p-4">
+    		   <img src="https://cdn-icons-png.flaticon.com/512/1048/1048953.png"  
+    	            alt="No purchases" 
+    	            width="120" 
+    	            class="mb-3 opacity-75">
+    	       <h6 class="text-muted mb-1">No recent purchases</h6>
+    	       <small class="text-secondary">Your recently purchased courses will appear here.</small>
+    	     </div>
+    	   `;
+    	 } else {
+     	   recentCourses.forEach((course, index) => {
+    	     const courseDataString = JSON.stringify(course).replace(/"/g, '&quot;');
 
-       $("#recentCoursesContainer").html(html);
+    	     html += `
+    	       <div class="recent-course-item shadow-sm mb-2" data-course-index="${index}">
+    	         <div class="recent-course-left d-flex align-items-center gap-2">
+    	           <img src="${course.CourseImage}" 
+    	                class="rounded" 
+    	                width="50" 
+    	                height="50" 
+    	                alt="course image" 
+    	                style="object-fit:cover;">
+    	           <div class="recent-course-text">
+    	             <h6 class="mb-0">${course.CourseName}</h6>
+    	             <small class="text-muted">⭐ ${course.Rating}</small>
+    	           </div>
+    	         </div>
+    	         <i class="fas fa-chevron-right recent-course-toggle-arrow" 
+    	            data-course-data="${courseDataString}"></i>
+    	       </div>`;
+    	   });
+    	 }
 
-       // Attach click handler to the right arrows
-    // Attach click handler to the right arrows
+    	 $("#recentCoursesContainer").html(html); 
        $(".recent-course-toggle-arrow").on("click", function() {
           const courseData = $(this).data('course-data');  
           showExpandedCourseDetail(courseData);
@@ -1093,40 +1152,90 @@ function recentPurchaseCourses() {
    },
  });
 }
-
-/**
-* Helper: Renders the training bars with the input field and button 
-* (used inside the expanded user view).
-*/
 /**
  * Helper: Renders individual training cards with input field and button.
  */
-function renderTrainings(trainings) {
-  if (!trainings || trainings.length === 0) {
-    return "<div class='text-muted'>No trainings found.</div>";
-  }
+ function renderTrainings(trainings, userId, enrollId, productId) {
+	  if (!trainings || trainings.length === 0) {
+	    return "<div class='text-muted'>No trainings found.</div>";
+	  }
+      console.log("Training Data------>",trainings);
+	  return trainings
+	    .map((t, i) => {
+	      const hasCoupon = t.CouponCode && t.CouponCode.trim() !== "null" && t.CouponCode.trim() !== "";
+         console.log("Has Coupon------>",hasCoupon);
+	      return `
+	        <div class="training-card-item shadow-sm p-3 mb-3 rounded bg-white" 
+	             data-training-id="${t.TrainingId}"
+	             data-user-id="${userId}"
+	             data-enroll-id="${enrollId}"
+	             data-product-id="${productId}"
+	             data-coupon-code="${t.CouponCode || ''}">
 
-  return trainings
-    .map(
-      (t) => `
-    <div class="training-card-item" data-training-id="${t.TrainingId || 'N/A'}">
-      <div class="training-info-top">
-        <h6><i class="fas fa-graduation-cap text-primary text-purple me-2"></i> ${t.TrainingCategory}</h6>
-        <span class="price text-purple">${t.TrainingPrice} ${t.Currency || ""}</span>
-      </div>
-      <div class="code-input-group">
-        <input type="text" class="form-control form-control-sm training-code-input" 
-               placeholder="Input Code" maxlength="10">
-        <button class="brd-purple submit-training-code">Submit</button>
-      </div>
-    </div>`
-    )
-    .join("");
-}
+	          <div class="training-info-top d-flex justify-content-between align-items-center mb-2">
+	            <h6 class="mb-0">
+	              <i class="fas fa-graduation-cap text-purple me-2"></i>${t.TrainingCategory}
+	            </h6>
+	            <span class="price text-purple fw-semibold">${t.TrainingPrice || "—"}</span>
+	          </div>
 
-/**
-* Handles the full-screen expanded detail view logic.
-*/
+	          ${
+	            hasCoupon
+	              ? `
+	                <!-- ✅ Coupon Already Applied -->
+	                <div class="coupon-box p-3 rounded mt-2">
+	                  <strong class="text-dark fst-italic">Coupon for the training:</strong>
+	                  <div class="coupon-code mt-2">${t.CouponCode}</div>
+	                  <i class="fas fa-trash text-danger delete-coupon" 
+	                       title="Delete Coupon" 
+	                       style="cursor:pointer; font-size:1rem;"></i>
+	                </div>
+	                <div class="d-flex align-items-center mt-3 success-message">
+	                  <img src="https://cdn-icons-png.flaticon.com/512/992/992703.png" 
+	                       alt="success" width="26" height="26" class="me-2">
+	                  <span class="text-success fw-semibold">Coupon applied successfully!</span>
+	                </div>
+	              `
+	              : `
+	                <!-- 🏷️ No Coupon Yet: Show Input + Button -->
+	                <div class="code-input-group d-flex align-items-center gap-2 mt-2">
+	                  <input type="text" 
+	                         id="coupon-${t.TrainingId}" 
+	                         class="form-control form-control-sm training-code-input" 
+	                         placeholder="Enter Coupon Code" maxlength="15">
+	                  <button class="brd-purple submit-training-code">Submit</button>
+	                </div>
+	              `
+	          }
+	        </div>
+	      `;
+	    })
+	    .join("");
+	}
+
+ function renderCouponSuccessHTML(coupon) {
+	  return `
+	    <div class="coupon-box p-3 rounded mt-2" data-coupon-code="${coupon}">
+	      <strong class="text-dark fst-italic d-block mb-2">Coupon for the training:</strong>
+	      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+	        <div class="coupon-code fw-semibold text-white px-3 py-1 rounded-pill bg-purple">
+	          ${coupon}
+	        </div>
+	        <i class="fas fa-trash text-danger delete-coupon"
+	            title="Delete Coupon"
+	            style="cursor:pointer; font-size:1rem;"></i>
+	      </div>
+	    </div>
+
+	    <div class="d-flex align-items-center mt-3 success-message">
+	      <img src="https://cdn-icons-png.flaticon.com/512/992/992703.png"
+	           alt="success" width="24" height="24" class="me-2">
+	      <span class="text-success fw-semibold">Coupon applied successfully!</span>
+	    </div>
+	  `;
+	}
+
+
 /**
  * Handles the expansion, hiding the left two columns and filling the space.
  */
@@ -1135,31 +1244,29 @@ function showExpandedCourseDetail(course) {
     const detailContainer = $("#expandedDetailView");
     const dashboardGrid = $("#dashboardWidgets");
 
-    // 1. Hide the list view and show the detail view within the same column
-    listWrapper.hide();
+     listWrapper.hide();
     detailContainer.empty();
     
-    // 2. Add the 'expanded' class to the grid to trigger CSS changes 
-    // (hiding the left two columns and expanding the current column)
+     // (hiding the left two columns and expanding the current column)
     dashboardGrid.addClass('expanded');
 
     // 3. Render the detail structure into the detail container
-    const html = `
-        <div class="d-flex align-items-center mb-4 border-bottom pb-3">
-            <div class="me-3">
-                <img src="${course.CourseImage}" class="rounded shadow-sm" width="80" height="80" alt="course image" style="object-fit:cover;">
-            </div>
-            <div>
-                <h3 class="fw-bold mb-0">${course.CourseName}</h3>
-                <small class="text-muted">Rating: ⭐ ${course.Rating}</small>
-            </div>
-            <i class="fas fa-times close-expanded-detail ms-auto" style="font-size: 2rem; cursor: pointer; color: #dc3545;"></i>
-        </div>
-        
-        <div id="expandedUsersList" class="row">
-            ${renderExpandedUsers(course.Users)}
-        </div>
-    `;
+	   const html = `
+	  <div class="d-flex align-items-center mb-4 border-bottom pb-3">
+	    <div class="me-3">
+	      <img src="${course.CourseImage}" class="rounded shadow-sm" width="80" height="80" alt="course image" style="object-fit:cover;">
+	    </div>
+	    <div>
+	      <h3 class="fw-bold mb-0">${course.CourseName}</h3>
+	      <small class="text-muted">Rating: ⭐ ${course.Rating}</small>
+	    </div>
+	    <i class="fas fa-times close-expanded-detail ms-auto" style="font-size: 2rem; cursor: pointer; color: #dc3545;"></i>
+	  </div>
+	
+	  <div id="expandedUsersList" class="row">
+	    ${renderExpandedUsers(course.Users, course.CourseId)}
+	  </div>
+	`;
 
     detailContainer.html(html).fadeIn(300);
 
@@ -1171,66 +1278,147 @@ function showExpandedCourseDetail(course) {
             
             // Show the original list view
             listWrapper.fadeIn(300);
+            recentPurchaseCourses();
+
         });
     });
+    
+ // ✅ Attach dynamically — works for both old and newly added elements
+    $(document).on("click", ".submit-training-code", function () {
+      const card = $(this).closest(".training-card-item");
+      const inputField = card.find(".training-code-input");
+      const coupon = inputField.val().trim();
 
-    // 5. Attach event handler for the new Submit button (same as before)
-    $(".submit-training-code").on("click", function() {
-        const trainingBar = $(this).closest('.training-bar-item');
-        const inputField = trainingBar.find('.training-code-input');
-        const code = inputField.val().trim();
-        const trainingId = trainingBar.data('training-id');
+      const userId = card.data("user-id");
+      const enrollId = card.data("enroll-id");
+      const productId = card.data("product-id");
+      const trainingId = card.data("training-id");
+      const submitBtn = $(this);
 
-        if (code) {
-            alert(`Submitting code: ${code} for Training ID: ${trainingId}`);
-            $(this).text('Submitted!').prop('disabled', true).removeClass('btn-primary').addClass('btn-success');
-        } else {
-            alert("Please enter a code before submitting.");
-            inputField.focus();
-        }
+      if (!coupon) {
+        toastr.warning("Please enter a coupon code before submitting.", "Missing Code");
+        inputField.focus();
+        return;
+      }
+
+      const payload = { userId, enrollId, productId, trainingId, couponCode: coupon };
+      console.log("🎟️ Submitting coupon payload:", JSON.stringify(payload));
+
+      submitBtn.text("Submitting...").prop("disabled", true).addClass("btn-loading");
+
+      $.ajax({
+        type: "POST",
+        url: "admin-dashboard-add-coupon",
+        data: JSON.stringify(payload),
+        contentType: "application/json",
+        success: (res) => {
+          if (res.code === "success") {
+            toastr.success("Coupon applied successfully!", "Success 🎉");
+
+            const couponHTML = renderCouponSuccessHTML(coupon);
+            card.find(".code-input-group").fadeOut(200, function () {
+              $(this).replaceWith(couponHTML);
+            });
+          } else {
+            toastr.warning(res.message || "Unexpected response.", "Notice ⚠️");
+            submitBtn.text("Submit").prop("disabled", false).removeClass("btn-loading");
+          }
+        },
+        error: (err) => {
+          console.error("Error applying coupon:", err);
+          toastr.error("Failed to apply coupon. Please try again.", "Error ❌");
+          submitBtn.text("Submit").removeClass("btn-loading").prop("disabled", false);
+        },
+      });
     });
+
+    // ✅ Also use delegated binding for delete
+    $(document).on("click", ".delete-coupon", function () {
+      const icon = $(this);
+      const card = icon.closest(".training-card-item");
+
+      const userId = card.data("user-id");
+      const enrollId = card.data("enroll-id");
+      const productId = card.data("product-id");
+      const trainingId = card.data("training-id");
+      const couponCode = card.find(".coupon-box").data("coupon-code") || card.data("coupon-code");
+
+      icon.removeClass("fa-trash text-danger").addClass("fa-spinner fa-spin text-secondary");
+
+      const payload = { userId, enrollId, productId, trainingId, couponCode };
+      console.log("🗑️ Deleting coupon:", JSON.stringify(payload));
+
+      $.ajax({
+        type: "POST",
+        url: "admin-dashboard-delete-coupon",
+        data: JSON.stringify(payload),
+        contentType: "application/json",
+        success: (res) => {
+          if (res.code === "success") {
+            toastr.success("Coupon deleted successfully!", "Success ✅");
+
+            const inputHTML = `
+              <div class="code-input-group d-flex align-items-center gap-2 mt-2">
+                <input type="text"
+                       id="coupon-${trainingId}"
+                       class="form-control form-control-sm training-code-input"
+                       placeholder="Enter Coupon Code" maxlength="15">
+                <button class="brd-purple submit-training-code">Submit</button>
+              </div>
+            `;
+
+            card.find(".coupon-box, .success-message").fadeOut(200).promise().done(function () {
+              $(this).remove();
+              card.append(inputHTML);
+            });
+          } else {
+            toastr.warning(res.message || "Unable to delete coupon.", "Notice ⚠️");
+            icon.removeClass("fa-spinner fa-spin text-secondary").addClass("fa-trash text-danger");
+          }
+        },
+        error: (err) => {
+          console.error("Error deleting coupon:", err);
+          toastr.error("Failed to delete coupon. Please try again.", "Error ❌");
+          icon.removeClass("fa-spinner fa-spin text-secondary").addClass("fa-trash text-danger");
+        },
+      });
+    });
+
 }
 
  
- function renderExpandedUsers(users) {
-   if (!users || users.length === 0) {
-     return `<div class="col-12"><div class="alert alert-info mt-3">No user data for this course.</div></div>`;
-   }
+function renderExpandedUsers(users, productId) {
+	  if (!users || users.length === 0) {
+	    return `<div class="col-12"><div class="alert alert-info mt-3">No user data for this course.</div></div>`;
+	  }
+	  const user = users[0];
 
-   // Assuming we are always showing details for a single user in this expanded view
-   const user = users[0]; 
+	  return `
+	    <div class="col-12">
+	      <div class="user-detail-header bg-white rounded p-4 mb-4 shadow-sm">
+	        <div class="d-flex justify-content-between align-items-center mb-3">
+	          <div class="d-flex align-items-center gap-3">
+	            <img src="https://randomuser.me/api/portraits/men/${Math.floor(Math.random() * 60)}.jpg" 
+	                 class="rounded-circle" width="60" height="60" alt="user">
+	            <div>
+	              <div class="fw-bold h5 mb-0">${user.UserName || user.UserId}</div>
+	              <small class="text-muted">Enrolled on: ${user.EnrollDate}</small>
+	            </div>
+	          </div>
+	          <div class="text-end">
+	            <span class="badge text-success border border-success me-2">${user.PaymentMethod} ✅</span>
+	            <div class="fw-semibold text-primary mt-1">Total: ${user.TotalAmount || 'N/A'}</div>
+	          </div>
+	        </div>
+	      </div>
 
-   return `
-     <div class="col-12"> <div class="user-detail-header bg-white rounded p-4 mb-4 shadow-sm">
-         <div class="d-flex justify-content-between align-items-center mb-3">
-           <div class="d-flex align-items-center gap-3">
-             <img src="https://randomuser.me/api/portraits/men/${Math.floor(
-               Math.random() * 60
-             )}.jpg" class="rounded-circle" width="60" height="60" alt="user">
-             <div>
-               <div class="fw-bold h5 mb-0">${user.UserName || user.UserId}</div>
-               <small class="text-muted">Enrolled on: ${user.EnrollDate}</small>
-             </div>
-           </div>
-           <div class="text-end">
-             <span class="badge text-success border border-success me-2">
-               ${user.PaymentMethod} ✅
-             </span>
-             <div class="fw-semibold text-primary mt-1">Total: ${user.TotalAmount || 'N/A'}</div>
-           </div>
-         </div>
-       </div>
-       
-       <h6 class="fw-semibold text-secondary border-bottom pb-2 mb-3">All Trainings:</h6>
-       <div class="trainings-grid">
-         ${renderTrainings(user.Trainings)}
-       </div>
-     </div>`;
- }
+	      <h6 class="fw-semibold text-secondary border-bottom pb-2 mb-3">All Trainings:</h6>
+	      <div class="trainings-grid">
+	        ${renderTrainings(user.Trainings, user.UserId, user.EnrollId, productId)}
+	      </div>
+	    </div>`;
+	}
 
- // NOTE: The showExpandedCourseDetail and recentPurchaseCourses functions remain the same.
-
-// NOTE: The renderTrainings function (with the input/submit bar) remains the same.
 // NOTE: The recentPurchaseCourses function (with the arrow click fix) remains the same.
   
   /** =====================
@@ -1267,9 +1455,19 @@ function showExpandedCourseDetail(course) {
 	           listContainer.empty();
 
 	           if (courses.length === 0) {
-	             listContainer.html("<p>No popular courses available.</p>");
-	             return;
-	           }
+	        	   const emptyHtml = `
+	        	     <div class="no-popular-courses text-center p-4">
+	        	       <div class="emoji-placeholder mb-3" style="font-size: 64px;">📚</div>
+	        	       <h6 class="text-muted mb-1">No popular courses available</h6>
+	        	       <small class="text-secondary">Please check back later — new courses will appear here soon.</small>
+	        	     </div>
+	        	   `;
+
+	        	   listContainer.html(emptyHtml);
+	        	   return;
+	        	 }
+
+
 
 	           courses.forEach((course, index) => {
 	             const firstLetter = course.TPM_Product_Name?.charAt(0).toUpperCase() || "?";

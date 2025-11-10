@@ -1,12 +1,11 @@
 package nirmalya.aathithya.webmodule.lms.controller;
 
-import java.io.IOException;
-import java.util.Arrays;
+ import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
+ import javax.servlet.http.HttpSession;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+ import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -24,8 +24,7 @@ import org.springframework.web.client.RestTemplate;
 import nirmalya.aathithya.webmodule.common.utils.DropDownModel;
 import nirmalya.aathithya.webmodule.common.utils.EnvironmentVaribles;
 import nirmalya.aathithya.webmodule.common.utils.JsonResponse;
-import nirmalya.aathithya.webmodule.master.model.AdvanceManagementModel;
-
+ 
 @Controller
 @RequestMapping("academic")
 public class AdminCommonController {
@@ -73,6 +72,78 @@ public class AdminCommonController {
 		return resp;
 	}
 	
+	@SuppressWarnings("unchecked")
+	@PostMapping("admin-dashboard-add-coupon")
+	public @ResponseBody Object saveCouponDetails(
+	        HttpSession session,
+	        @RequestBody Map<String, Object> payload) {
+
+	    logger.info("Method : saveCouponDetails starts");
+	    JsonResponse<Object> resp = new JsonResponse<Object>();
+
+	    try {
+	        // 1️⃣ Fetch session attributes
+	        String userId = (String) session.getAttribute("USER_ID");
+	        String org = (String) session.getAttribute("ORGANIZATION");
+	        String orgDiv = (String) session.getAttribute("ORGANIZATION_DIVISION");
+
+	        Map<String, Object> sessionData = new HashMap<>();
+	        sessionData.put("orgName", org);
+	        sessionData.put("orgDivision", orgDiv);
+	        sessionData.put("loginUserId", userId);
+
+	        payload.putAll(sessionData);  
+
+	        logger.info("📦 Final payload to send: {}", payload);
+
+	        String url = env.getHisUrl() + "rest-add-coupon";
+	        resp = restTemplate.postForObject(url, payload, JsonResponse.class);
+ 
+
+	    } catch (Exception e) {
+	        logger.error("Error in saveCouponDetails:", e);
+  	    }
+
+	    logger.info("Method : saveCouponDetails ends");
+	    return resp;
+	}
+	
+	@SuppressWarnings("unchecked")
+	@PostMapping("admin-dashboard-delete-coupon")
+	public @ResponseBody Object deleteCoupon(
+	        HttpSession session,
+	        @RequestBody Map<String, Object> payload) {
+
+	    logger.info("Method : deleteCoupon starts");
+	    JsonResponse<Object> resp = new JsonResponse<Object>();
+
+	    try {
+	        // 1️⃣ Fetch session attributes
+	        String userId = (String) session.getAttribute("USER_ID");
+	        String org = (String) session.getAttribute("ORGANIZATION");
+	        String orgDiv = (String) session.getAttribute("ORGANIZATION_DIVISION");
+
+	        Map<String, Object> sessionData = new HashMap<>();
+	        sessionData.put("orgName", org);
+	        sessionData.put("orgDivision", orgDiv);
+	        sessionData.put("loginUserId", userId);
+
+	        payload.putAll(sessionData);  
+
+	        logger.info("📦 Final payload to send: {}", payload);
+
+	        String url = env.getHisUrl() + "rest-delete-coupon";
+	        resp = restTemplate.postForObject(url, payload, JsonResponse.class);
+ 
+
+	    } catch (Exception e) {
+	        logger.error("Error in deleteCoupon:", e);
+  	    }
+
+	    logger.info("Method : deleteCoupon ends");
+	    return resp;
+	}
+
 	@SuppressWarnings("unchecked")
 	@GetMapping("admin-dashboard-get-recent-courses")
 	public @ResponseBody Object getRecentPurchaseCourses(HttpSession session) {
