@@ -323,15 +323,470 @@ to {
 	transform: translateY(0);
 }
 }
+.loader-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255,255,255,0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loader {
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #007bff;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+}
+
+.loader-text {
+  margin-top: 10px;
+  font-size: 16px;
+  color: #333;
+  font-weight: 500;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+
 </style>
-
-<script type="text/javascript"
+ <script type="text/javascript"
 	src="https://cdn.ckeditor.com/4.16.0/standard/ckeditor.js"></script>
+<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-
-<script type="text/javascript">
+<script type="text/javascript"> 
+let validatedRows = [];
+function getCourseName(fileName) {
+    if (!fileName) return "UNKNOWN";
+    return fileName.replace(/\.(xlsx|xls|csv)$/i, '').trim();
+}
 $(document).ready(function () {
+	$("#save").addClass('d-none');
+    console.log("✅ Document ready — initializing Excel upload script...");
 
+    // --- CRITICAL CHECK ---
+    if (typeof XLSX === 'undefined') {
+        console.error("❌ XLSX library is not loaded. Please ensure the script tag is correct and runs before this code.");
+        return;
+    }
+    // --- END CRITICAL CHECK ---
+
+    const fileInput   = document.getElementById('excelFile');
+    const previewBtn  = document.getElementById('previewBtn');
+   // const uploadBtn   = document.getElementById('uploadBtn');
+    const clearBtn    = document.getElementById('clearBtn');
+    const previewArea = document.getElementById('previewArea');
+    const msg         = document.getElementById('msg');
+    const uploadTrigger = document.getElementById('uploadTrigger');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const removeFile = document.getElementById('removeFile');
+
+    let parsedData = [];
+    let headers = [];
+ 
+    // ------------------------------------------------------------
+    // Header Normalization & Mapping
+    // ------------------------------------------------------------
+    function normalizeHeader(h) {
+        if (!h) return '';
+        return String(h).trim()
+            .replace(/\s+/g, ' ')
+            .replace(/[:#]/g, '')
+            .toLowerCase();
+    }
+
+    function mapHeaderToKey(h) {
+        const s = normalizeHeader(h);
+        if (/question\s*text|^question$|ques.?/.test(s)) return 'Question';
+        if (/correct.*answer|answer\s*correct|^answer$/.test(s)) return 'Correct Answer';
+        if (/option\s*1|option\s*a/.test(s)) return 'Option 1';
+        if (/option\s*2|option\s*b/.test(s)) return 'Option 2';
+        if (/option\s*3|option\s*c/.test(s)) return 'Option 3';
+        if (/option\s*4|option\s*d/.test(s)) return 'Option 4';
+        if (/rationale\s*1|rationale\s*a/.test(s)) return 'Rationale 1';
+        if (/rationale\s*2|rationale\s*b/.test(s)) return 'Rationale 2';
+        if (/rationale\s*3|rationale\s*c/.test(s)) return 'Rationale 3';
+        if (/rationale\s*4|rationale\s*d/.test(s)) return 'Rationale 4';
+        if (/syllabus.*ref|reference/.test(s)) return 'Syllabus Ref';
+        return String(h).trim();
+    }
+    // ------------------------------------------------------------
+    // Validation Rules
+    // ------------------------------------------------------------
+    const VALIDATION_RULES = {
+        required: ['Question', 'Correct Answer'],
+        maxLengths: { 'Question': 2000, 'Option 1': 500, 'Syllabus Ref': 200 },
+        allowedCorrectFormats: ['A','B','C','D']
+    };
+
+    function validateRow(rowObj, rowIndex, seenQuestions) {
+        const errors = [];
+
+        // Required fields
+        for (const col of VALIDATION_RULES.required) {
+            if (!String(rowObj[col] ?? '').trim()) {
+                errors.push({ type: 'required', message: `${col} is required.` });
+            }
+        }
+
+        // Length limits
+        for (const [col, max] of Object.entries(VALIDATION_RULES.maxLengths)) {
+            if ((rowObj[col] ?? '').length > max) {
+                errors.push({ type: 'length', message: `${col} exceeds ${max} chars.` });
+            }
+        }
+
+        // Correct Answer validation
+        const correctVal = String(rowObj['Correct Answer'] ?? '').trim();
+        if (correctVal) {
+            const normalized = correctVal.toUpperCase();
+            if (!VALIDATION_RULES.allowedCorrectFormats.includes(normalized)) {
+                const matchesOption = ['Option 1','Option 2','Option 3','Option 4'].some(optKey => {
+                    const val = String(rowObj[optKey] ?? '').trim();
+                    return val && val === correctVal;
+                });
+                if (!matchesOption) {
+                    errors.push({ type: 'answer_mismatch', message: 'Correct Answer does not match A/B/C/D nor any Option text.' });
+                }
+            }
+        }
+
+        // Duplicate question check
+        const qnorm = String(rowObj['Question'] ?? '').trim().toLowerCase();
+        if (qnorm && seenQuestions.has(qnorm)) {
+            errors.push({ type: 'duplicate', message: 'Duplicate question in file.' });
+        } else if (qnorm) {
+            seenQuestions.add(qnorm);
+        }
+
+        // At least two options
+        const opts = ['Option 1','Option 2','Option 3','Option 4']
+            .map(k => String(rowObj[k] ?? '').trim())
+            .filter(Boolean);
+        if (opts.length < 2) {
+            errors.push({ type: 'options_count', message: 'At least two options required.' });
+        }
+
+        return { valid: errors.length === 0, errors };
+    }
+
+    // ------------------------------------------------------------
+    // Event: File Selection
+    // ------------------------------------------------------------
+    uploadTrigger.addEventListener('click', () => {
+	  fileInput.click();
+	});
+	
+	// When file is selected
+	fileInput.addEventListener('change', () => {
+	  if (fileInput.files.length > 0) {
+	    const file = fileInput.files[0];
+	    fileName.textContent = file.name;
+	
+	    // Show file name and remove icon
+	    fileInfo.classList.remove('d-none');
+	    uploadTrigger.classList.add('d-none'); // hide plus icon
+	
+	    console.log(`📁 Selected file: ${file.name}`);
+	  }
+	});
+	
+	// When remove icon is clicked
+	removeFile.addEventListener('click', () => {
+	  fileInput.value = ''; // clear file input
+	  fileInfo.classList.add('d-none');
+	  uploadTrigger.classList.remove('d-none'); // show plus icon again
+	  console.log("🗑️ File removed, ready to upload new one");
+	});
+
+    // ------------------------------------------------------------
+    // Event: Clear
+    // ------------------------------------------------------------
+    clearBtn.addEventListener('click', () => {
+        fileInput.value = '';
+        previewBtn.disabled = false;
+        $("#save").addClass('d-none');
+       // uploadBtn.disabled  = true;
+        previewArea.innerHTML = '';
+        parsedData = [];
+        headers = [];
+        msg.innerHTML = '';
+        fileInput.value = ''; // clear file input
+  	    fileInfo.classList.add('d-none');
+  	    uploadTrigger.classList.remove('d-none');
+        console.log("🧹 Form and data cleared.");
+    });
+
+    // ------------------------------------------------------------
+    // Preview Logic
+    // ------------------------------------------------------------
+    previewBtn.addEventListener('click', () => {
+        console.log("👀 Preview button clicked");
+
+        const file = fileInput.files[0];
+        if (!file) {
+            console.log('Please select a file first.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const courseName = getCourseName(file.name);
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+
+                if (!rows || rows.length === 0) {
+                    previewArea.innerHTML = '<div class="alert alert-warning">No data found in the sheet.</div>';
+                    return;
+                }
+
+             let headerRowIndex = -1;
+             for (let i = 0; i < rows.length; i++) {
+                 const row = rows[i].map(c => String(c).trim());
+                 const headerLike = row.some(cell => /question|option|answer|rationale/i.test(cell));
+                 if (headerLike) {
+                     headerRowIndex = i;
+                     break;
+                 }
+             }
+
+             if (headerRowIndex === -1) {
+                 previewArea.innerHTML = '<div class="alert alert-warning">❌ Could not find a valid header row (no "Question" or "Option" columns found).</div>';
+                 console.error("❌ Could not find header row with recognizable column names.");
+                 return;
+             }
+
+             console.log(`✅ Header row likely found at index ${headerRowIndex + 1}`);
+             const rawHeaders = rows[headerRowIndex];
+             headers = rawHeaders.map(h => String(h).trim());
+
+
+                parsedData = rows.slice(headerRowIndex + 1)
+                    .filter(r => r.some(c => c !== "" && c !== null))
+                    .map(r => {
+                        const obj = {};
+                        headers.forEach((h, i) => obj[h || `COL_${i}`] = r[i] ?? "");
+                        return obj;
+                    });
+
+                console.log(`🧩 Detected Headers: ${headers.join(', ')}`);
+                console.log(`✅ Parsed ${parsedData.length} rows`);
+
+                validatedRows = renderPreviewTableWithValidation(headers, parsedData, sheetName);
+                const validCount = validatedRows.filter(r => r.validation.valid).length;
+                validCount === 0 ? $("#save").addClass("d-none") : $("#save").removeClass("d-none");
+
+                msg.innerHTML = `<div class="alert alert-success">
+                    Parsed ${parsedData.length} row(s) from sheet "<strong>${sheetName}</strong>".
+                    <br><strong>Quiz Code/Section Title:</strong> ${courseName}<br>
+                    Valid rows: ${validCount}
+                </div>`;
+            } catch (err) {
+                console.error("❌ Error parsing file:", err);
+                previewArea.innerHTML = '<div class="alert alert-danger">Error parsing file: ' + escapeHtml(err.message) + '</div>';
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    // ------------------------------------------------------------
+    // Preview Renderer
+    // ------------------------------------------------------------
+   function renderPreviewTableWithValidation(headers, rows, sheetName) {
+    const seenQuestions = new Set();
+
+    // Step 1️⃣: Validate each row and build objects
+    const rowsWithValidation = rows.map((r, idx) => {
+        const obj = {};
+        headers.forEach(h => obj[h.trim()] = r[h] ?? ""); // preserve all Excel columns dynamically
+        const validation = validateRowDynamic(obj, idx + 1, seenQuestions);
+        return { rowObj: obj, validation, originalIndex: idx + 1 };
+    });
+
+    // Step 2️⃣: Build HTML table dynamically from headers
+    let html = `<div class="mb-2">Sheet: ${escapeHtml(sheetName)} — Total rows: ${rowsWithValidation.length}</div>`;
+    html += '<table class="table table-sm table-bordered"><thead><tr>';
+
+    // use all headers dynamically
+    headers.forEach(c => html += `<th>${escapeHtml(c)}</th>`);
+    html += '<th>Status</th></tr></thead><tbody>';
+
+    rowsWithValidation.forEach(rwv => {
+        const r = rwv.rowObj;
+        html += '<tr>';
+        headers.forEach(c => html += `<td title="${escapeHtml(String(r[c] ?? ''))}">${escapeHtml(String(r[c] ?? ''))}</td>`);
+        if (rwv.validation.valid) {
+            html += `<td class="text-success">Valid</td>`;
+        } else {
+            const msgs = rwv.validation.errors.map(e => e.message).join('; ');
+            html += `<td class="text-danger" title="${escapeHtml(msgs)}">Invalid: ${escapeHtml(rwv.validation.errors[0].message)}</td>`;
+        }
+        html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+
+    // Step 3️⃣: Summary
+    const invalidCount = rowsWithValidation.filter(r => !r.validation.valid).length;
+    html = `<div class="mb-2">Valid rows: ${rowsWithValidation.length - invalidCount} • Invalid rows: ${invalidCount}</div>` + html;
+
+    previewArea.innerHTML = html;
+    return rowsWithValidation;
+}
+    
+   function validateRowDynamic(rowObj, rowNum, seenQuestions) {
+	    const errors = [];
+
+	    // 1️⃣ Question required
+	    const question = rowObj["Question"]?.trim();
+	    if (!question) errors.push({ message: "Question is required" });
+	    else if (seenQuestions.has(question)) errors.push({ message: "Duplicate question text" });
+	    else seenQuestions.add(question);
+
+	    // 2️⃣ Map correct answer text → A/B/C/D if possible
+	    let answer = rowObj["Correct Answer"]?.trim();
+	    let mappedAnswer = answer?.toUpperCase();
+
+	    const options = [
+	        rowObj["Option 1"]?.trim(),
+	        rowObj["Option 2"]?.trim(),
+	        rowObj["Option 3"]?.trim(),
+	        rowObj["Option 4"]?.trim()
+	    ];
+
+	    // Try to match answer text with one of the options (case-insensitive)
+	    if (answer && !["A", "B", "C", "D"].includes(mappedAnswer)) {
+	        const matchIndex = options.findIndex(opt => opt && opt.toLowerCase() === answer.toLowerCase());
+	        if (matchIndex >= 0) {
+	            mappedAnswer = String.fromCharCode(65 + matchIndex); // A=65
+	            rowObj["Correct Answer"] = mappedAnswer; // update the actual data
+	        } else {
+	            errors.push({ message: "Correct Answer does not match any Option (1–4)" });
+	        }
+	    }
+
+	    // 3️⃣ Final validation for Correct Answer
+	    if (!mappedAnswer) {
+	        errors.push({ message: "Correct Answer is required" });
+	    } else if (!["A", "B", "C", "D"].includes(mappedAnswer)) {
+	        errors.push({ message: "Correct Answer must be A, B, C, or D" });
+	    }
+
+	    // 4️⃣ Check Options are not empty (if they exist)
+	    for (let i = 1; i <= 4; i++) {
+	        const opt = rowObj[`Option ${i}`]?.trim();
+	        if (!opt) errors.push({ message: `Option ${i} is missing` });
+	    }
+
+	    return {
+	        valid: errors.length === 0,
+	        errors
+	    };
+	}
+
+
+
+    // ------------------------------------------------------------
+    // Upload Logic
+    // ------------------------------------------------------------
+   /*  uploadBtn.addEventListener('click', async () => {
+        console.log("☁️ Upload button clicked");
+
+        const file = fileInput.files[0];
+        const courseName = getCourseName(file.name);
+
+        const validRows = validatedRows.filter(r => r.validation.valid).map(r => {
+            const src = r.rowObj;
+            return {
+                quizCode: courseName,
+                sectionTitle: courseName,
+                question: src['Question'] ?? "",
+                correctAnswer: src['Correct Answer'] ?? "",
+                optionA: src['Option 1'] ?? "",
+                rationaleA: src['Rationale 1'] ?? "",
+                optionB: src['Option 2'] ?? "",
+                rationaleB: src['Rationale 2'] ?? "",
+                optionC: src['Option 3'] ?? "",
+                rationaleC: src['Rationale 3'] ?? "",
+                optionD: src['Option 4'] ?? "",
+                rationaleD: src['Rationale 4'] ?? "",
+                syllabusRef: src['Syllabus Ref'] ?? "",
+                rowIndex: r.originalIndex
+            };
+        });
+
+        if (!validRows.length) {
+            alert('No valid rows to upload.');
+            return;
+        }
+
+        if (!confirm(`Upload ${validRows.length} valid record(s) for course "${courseName}"?`)) {
+            console.log("⏹ Upload cancelled by user.");
+            return;
+        }
+
+        try {
+            uploadBtn.disabled = true;
+            msg.innerHTML = '<div class="alert alert-info">Uploading...</div>';
+
+            const response = await fetch('/quiz/upload-json', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ course: courseName, rows: validRows })
+            });
+
+            if (!response.ok) throw new Error(await response.text() || response.statusText);
+
+            const result = await response.json();
+            msg.innerHTML = `<div class="alert alert-success">✅ Uploaded ${result.saved} records successfully!</div>`;
+            console.log("✅ Server response:", result);
+
+            // Optional: Refresh data grid
+            if (typeof getQuizDetails === 'function') getQuizDetails();
+        } catch (err) {
+            console.error("❌ Upload failed:", err);
+            msg.innerHTML = `<div class="alert alert-danger">Upload failed: ${escapeHtml(err.message)}</div>`;
+        } finally {
+            uploadBtn.disabled = false;
+        }
+    }); */
+
+    // ------------------------------------------------------------
+    // Utility: Escape HTML
+    // ------------------------------------------------------------
+    function escapeHtml(s) {
+        if (!s && s !== 0) return '';
+        return String(s)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+});
+
+
+$(document).ready(function () {
+	window.addEventListener("load", () => {
+	    const f = document.getElementById("excelFile");
+	    if (f && f.disabled) f.disabled = false;
+	  });
 	cancelQuiz();
     var gridDiv = document.querySelector('#quizGrid');
     new agGrid.Grid(gridDiv, gridOptionsQuiz);
@@ -339,7 +794,7 @@ $(document).ready(function () {
     
     getQuizDetails();
 
-    $("#quizForm :input").prop("disabled", true);
+    //$("#quizForm :input").prop("disabled", true);
 
     // Initialize price type handling
     togglePriceFields();
@@ -542,57 +997,134 @@ function editQuizDetails(quizId,sno) {
         }
     });
 }
-
 function masterSaveQuiz() {
-    var valid = true;
-    var formData = new FormData();
-    formData.append('quizId', $("#quizId").val());
-    formData.append('quiz_code', $("#quiz_code").val());
-    formData.append('section_title', $("#section_title").val());
-    formData.append('question_text', $("#question_text").val());
-    formData.append('option_a', $("#option_a").val());
-    formData.append('option_b', $("#option_b").val());
-    formData.append('option_c', $("#option_c").val());
-    formData.append('option_d', $("#option_d").val());
-    formData.append('rationale_a', $("#rationale_a").val());
-    formData.append('rationale_b', $("#rationale_b").val());
-    formData.append('rationale_c', $("#rationale_c").val());
-    formData.append('rationale_d', $("#rationale_d").val());
-    formData.append('right_answer', $("#right_answer").val());
-    formData.append('syllabus_ref', $("#syllabus_ref").val());
+    console.log("🚀 masterSaveQuiz() triggered — bulk JSON via AJAX");
 
-    if (!formData.get('quiz_code')?.trim()) {
-        toastr.error("Quiz Code Required");
-        return;
-    }
-    if (!formData.get('section_title')?.trim()) {
-        toastr.error("Section Title Required");
-        return;
-    }
-    if (!formData.get('question_text')?.trim()) {
-        toastr.error("Question Text Required");
+     if (typeof validatedRows === "undefined" || !Array.isArray(validatedRows) || validatedRows.length === 0) {
+        toastr.error("No quiz data found. Please upload and preview the Excel file first.");
         return;
     }
 
-    if (valid) {
-        $.ajax({
-            url: 'quiz-config-add',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function (response) {
-                toastr.success(response.message);
-                getQuizDetails();
-                cancelQuiz();
-            },
-            error: function (xhr, status, error) {
-                toastr.error("Error saving quiz: " + xhr.responseText);
-            }
-        });
+     const validRows = validatedRows.filter(r => r.validation.valid).map(r => r.rowObj);
+    if (!validRows.length) {
+        toastr.warning("No valid rows to upload. Please fix invalid rows before saving.");
+        return;
     }
+
+    const fileInput = document.getElementById('excelFile');
+    const courseName = fileInput?.files?.[0] ? getCourseName(fileInput.files[0].name) : "UNKNOWN";
+
+     Swal.fire({
+        title: 'Confirm Upload',
+        html: `
+            <p>You are about to upload <strong>${validRows.length}</strong> quiz question(s)</p>
+            <p>for quiz <strong>${courseName}</strong>.</p>
+            <p>Do you want to continue?</p>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '✅ Yes, Upload',
+        cancelButtonText: '❌ Cancel',
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            uploadAllQuizData(validRows, courseName);  
+        } else {
+            toastr.info("Upload cancelled.");
+            console.log("⏹ Upload cancelled by user.");
+        }
+    });
 }
 
+// ------------------------------------------------------------
+// ✅ Function: Upload all quiz data (no extra Swal.fire here)
+// ------------------------------------------------------------
+function uploadAllQuizData(validRows, courseName) {
+    console.log("📦 Preparing bulk JSON payload...");
+
+    if (!validRows || !validRows.length) {
+        toastr.warning("No valid quiz data to upload.");
+        return;
+    }
+    
+    const loader = `
+        <div id="uploadLoader" class="loader-overlay">
+            <div class="loader"></div>
+            <p class="loader-text">Uploading quiz data, please wait...</p>
+        </div>
+    `;
+    $("body").append(loader);
+     const quizArray = validRows.map((row) => {
+        const options = [];
+        for (let i = 1; i <= 4; i++) {
+            options.push({
+                option: String.fromCharCode(64 + i), // A, B, C, D
+                text: row[`Option ${i}`]?.trim() || "",
+                rationale: row[`Rationale ${i}`]?.trim() || ""
+            });
+        }
+
+        return {
+            quiz_code: courseName,
+            section_title: courseName,
+            question_text: row["Question"] ?? "",
+            right_answer: row["Correct Answer"] ?? "",
+            syllabus_ref: row["Syllabus Ref"] ?? "",
+            options
+        };
+    });
+
+    console.log("🧩 Final quizArray structure:", quizArray);
+
+     toastr.info("Uploading all quiz data...");
+
+    // --- AJAX POST ---
+    $.ajax({
+        url: "quiz-config-add",
+        type: "POST",
+        data: JSON.stringify(quizArray),
+        contentType: "application/json",
+        processData: false,
+        success: function (response) {
+            console.log("✅ Server response:", response);
+            $("#uploadLoader").remove();
+            if (response?.code === "success") {
+            	 $("#save").addClass('d-none');
+            	 document.getElementById('msg').innerHTML = '';
+            	 document.getElementById('excelFile').value = '';  
+            	 document.getElementById('fileInfo').classList.add('d-none');
+            	 document.getElementById('uploadTrigger').classList.remove('d-none');
+            	 toastr.success(response.message || "✅ Quiz saved successfully!");
+                Swal.fire({
+                    title: "Upload Successful!",
+                    text: response.message || `Uploaded ${quizArray.length} quiz question(s).`,
+                    icon: "success",
+                    confirmButtonText: "OK"
+                }).then(() => {
+                    if (typeof getQuizDetails === "function") getQuizDetails();
+                    $("#excelFile").val("");
+                    $("#previewArea").html("");
+                    validatedRows = [];
+                    parsedData = [];
+                });
+            } else {
+                toastr.error(response.message || "❌ Upload failed on server.");
+                Swal.fire("Upload Failed", response.message || "Server returned error.", "error");
+            }
+
+        },
+        error: function (xhr, status, error) {
+            console.error("❌ Upload failed:", error, xhr.responseText);
+            toastr.error("Upload failed: " + (xhr.responseText || error));
+            Swal.fire("❌ Upload Failed", xhr.responseText || error, "error");
+            $("#save").removeClass('d-none');
+            $("#uploadLoader").remove();
+        }
+    });
+}
+ 
 function addQuiz() {
     if (window.gridApi) {
         window.gridApi.deselectAll();
@@ -615,16 +1147,16 @@ function addQuiz() {
     $("#cancel").removeClass('d-none');
     $("#add").addClass('d-none');
     $("#edit").addClass('d-none');
-    $("#quizForm :input").prop("disabled", false);
+  //  $("#quizForm :input").prop("disabled", false);
 }
 
 function cancelQuiz() {
-    $("#save").addClass('d-none');
+   // $("#save").addClass('d-none');
     $("#cancel").addClass('d-none');
     $("#add").removeClass('d-none');
     $("#edit").removeClass('d-none');
     getQuizDetails();
-    $("#quizForm :input").prop("disabled", true);
+   // $("#quizForm :input").prop("disabled", true);
 }
 
 function editQuiz() {
@@ -632,7 +1164,7 @@ function editQuiz() {
     $("#cancel").removeClass('d-none');
     $("#add").addClass('d-none');
     $("#edit").addClass('d-none');
-    $("#quizForm :input").prop("disabled", false);
+   // $("#quizForm :input").prop("disabled", false);
 }
 
 function onQuickFilterChanged() {
@@ -665,6 +1197,9 @@ function togglePriceFields() {
         $('#customers').val(''); // Clear customer selection
     }
 }
+
+ 
+
 </script>
 </head>
 
@@ -722,8 +1257,8 @@ function togglePriceFields() {
 										</div>
 									</div>
 									<div class="tab-content flex-fill">
-										<div id="quiz-form"
-											class="tab-pane active show p-2 h-100" role="tabpanel">
+										<div id="quiz-form" class="tab-pane active show p-2 h-100"
+											role="tabpanel">
 											<div class="requisition-tbl d-flex flex-column h-100">
 												<div class="mb-2">
 													<table class="table table-bordered mb-0" width="100%">
@@ -732,16 +1267,16 @@ function togglePriceFields() {
 																<td width="80%"><strong id="programNameDisplay"></strong></td>
 																<td>
 																	<div class="d-flex justify-content-end">
-																		<div class="ml-3">
+																		<!-- <div class="ml-3">
 																			<button id="add" class="btn btn-primary edit-btn"
 																				type="button" onclick="addQuiz()">Add</button>
 																		</div>
 																		<div class="ml-3">
 																			<button id="edit" class="btn btn-primary edit-btn"
 																				type="button" onclick="editQuiz()">Edit</button>
-																		</div>
+																		</div> -->
 																		<div class="mr-0">
-																			<button id="save" class="btn edit-btn d-none"
+																			<button id="save" class="btn edit-btn"
 																				onclick="masterSaveQuiz()" type="button">Save</button>
 																		</div>
 																		<div class="mr-0">
@@ -760,7 +1295,52 @@ function togglePriceFields() {
 														<h5
 															class="text-lg font-semibold text-gray-700 mb-2 flex items-center text-primary">
 															Quiz Question Details</h5>
-														<div class="row mb-3">
+														<div class="mb-3 text-center">
+														  <label class="form-label fw-bold">Upload Excel File (.xlsx / .xls)</label>
+														  
+														  <div id="fileUploadContainer" class="d-flex align-items-center justify-content-center gap-2">
+														    <!-- Plus Icon (Upload Trigger) -->
+														    <button id="uploadTrigger" class="btn btn-outline-primary rounded-circle" title="Select Excel File">
+														      <i class="fa fa-plus"></i>
+														    </button>
+														    
+														    <!-- Hidden File Input -->
+														    <input type="file" id="excelFile" name="file" accept=".xlsx,.xls" style="display: none;">
+														    
+														    <!-- File Info (name + remove icon) -->
+														    <div id="fileInfo" class="d-none align-items-center gap-2">
+														      <span id="fileName" class="fw-semibold text-primary"></span>
+														      <button id="removeFile" class="btn btn-sm btn-danger rounded-circle" title="Remove File">
+														        <i class="fa fa-times"></i>
+														      </button>
+														    </div>
+														  </div>
+														</div>
+
+
+														<!-- Mapping / preview controls -->
+														<div class="mb-3">
+															<button id="previewBtn" class="btn btn-outline-primary">
+																<i class="bi bi-eye"></i> Preview Parsed Data
+															</button>
+
+															<!-- <button id="uploadBtn" class="btn btn-primary">
+																<i class="bi bi-cloud-upload"></i> Upload to Server
+															</button> -->
+
+															<button id="clearBtn" class="btn btn-secondary">
+																<i class="bi bi-x-circle"></i> Clear
+															</button>
+														</div>
+
+
+														<!-- Area for messages -->
+														<div id="msg" class="mb-3"></div>
+
+														<!-- Preview table -->
+														<div id="previewArea" class="table-responsive"
+															style="max-height: 480px; overflow: auto;"></div>
+														<!-- <div class="row mb-3">
 															<div class="col-md-6">
 																<div class="form-group">
 																	<label>Quiz Code</label> <span class="mandatory">*</span>
@@ -849,7 +1429,7 @@ function togglePriceFields() {
 																	<textarea id="syllabus_ref" class="form-control" rows="2" placeholder="Enter syllabus reference..."></textarea>
 																</div>
 															</div>
-														</div>
+														</div> -->
 													</div>
 												</div>
 											</div>
@@ -862,6 +1442,6 @@ function togglePriceFields() {
 				</div>
 			</div>
 		</div>
-	</div>
+	</div> 
 </body>
 </html>
