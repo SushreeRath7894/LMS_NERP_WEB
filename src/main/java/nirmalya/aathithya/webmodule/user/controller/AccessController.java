@@ -963,7 +963,7 @@ public class AccessController {
 	@SuppressWarnings("unchecked")
 	@GetMapping("/index-get-function-list/{id}")
 	public String getMenuDetails(Model model, HttpSession session, @PathVariable String id) {
-		logger.info("Method : index starts");
+		logger.info("Method : index starts"+id);
 
 		List<Module> module = new ArrayList<Module>();
 		List<Function> funDetails = new ArrayList<Function>();
