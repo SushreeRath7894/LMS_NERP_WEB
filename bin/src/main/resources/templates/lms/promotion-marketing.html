@@ -2,6 +2,8 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org"
     xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/master}">
 
+<script src="https://cdn.ckeditor.com/4.22.1/standard/ckeditor.js"></script>
+
 <head>
     <style type="text/css">
         .ag-theme-alpine {
@@ -113,7 +115,52 @@
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script type="text/javascript">
+
+
+        let descriptionEditor = null;
         $(document).ready(function () {
+            function initCKEditor() {
+                if (descriptionEditor) {
+                    try { descriptionEditor.destroy(); } catch (e) { }
+                    descriptionEditor = null;
+                }
+
+                if (!document.getElementById('description')) return;
+
+                descriptionEditor = CKEDITOR.replace('description', {
+                    height: 150,
+                    toolbar: 'Full'
+                });
+
+                // Optional: More reliable ready check
+                descriptionEditor.on('instanceReady', function () {
+                    console.log('CKEditor ready');
+                });
+            }
+
+            function destroyCKEditor() {
+                if (descriptionEditor) {
+                    try { descriptionEditor.destroy(); } catch (e) { }
+                    descriptionEditor = null;
+                }
+            }
+
+            $("#marketingCheck").on("change", function () {
+                if (this.checked) {
+                    $("#marketingCard").show();
+                    $("#couponCard").hide();
+                    initCKEditor();
+                }
+            });
+
+            $("#couponCheck").on("change", function () {
+                if (this.checked) {
+                    $("#couponCard").show();
+                    $("#marketingCard").hide();
+                    destroyCKEditor();
+                }
+            });
+
             // Initialize grids and other elements
             var gridDiv = document.querySelector('#myGrid');
             new agGrid.Grid(gridDiv, gridOptions);
@@ -161,7 +208,7 @@
             // Show first tab by default
             $('#courseDetails a').tab('show');
 
-            getCourseDetails();
+            
 
 
             const couponCheck = document.getElementById("couponCheck");
@@ -196,6 +243,7 @@
 
 
 
+
         });
 
         // Simplified tab handling
@@ -215,6 +263,22 @@
 
         function nextTab(tabId) {
             $('a[href="#' + tabId + '"]').tab('show');
+        }
+
+        function parseDate(dateStr) {
+            if (!dateStr) return null;
+            let parts = dateStr.split(' ');
+            let datePart = parts[0];
+            let timePart = parts.length > 1 ? parts[1].split(':').map(Number) : [0, 0, 0];
+            let dateParts = datePart.split('-');
+            if (dateParts.length === 3) {
+                if (dateParts[0].length === 4) { // YYYY-MM-DD
+                    return new Date(dateParts[0], dateParts[1] - 1, dateParts[2], ...timePart);
+                } else { // DD-MM-YYYY
+                    return new Date(dateParts[2], dateParts[1] - 1, dateParts[0], ...timePart);
+                }
+            }
+            return null;
         }
 
         // Grid and other functions remain the same
@@ -265,6 +329,40 @@
             headerName: 'Valid To Date',
             field: "validTo",
             width: 160,
+        }, {
+            headerName: 'Document',
+            field: "document",
+            width: 150,
+            cellRenderer: function (params) {
+                if (params.value) {
+                    const url = `/document/image/${params.value}`;
+                    let ext = params.value.split('.').pop().toLowerCase();
+                    if (ext === 'pdf') {
+                        return `<button class="btn btn-sm btn-outline-primary" onclick="window.open('${url}', '_blank')">View PDF</button>`;
+                    } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+                        return `<img src="${url}" alt="Document" style="max-width: 50px; max-height: 50px; border-radius: 3px; cursor: pointer;" onclick="window.open('${url}', '_blank')" />`;
+                    } else {
+                        return `<button class="btn btn-sm btn-outline-secondary" onclick="window.open('${url}', '_blank')">View File</button>`;
+                    }
+                }
+                return '<span class="text-muted">No Document</span>';
+            }
+        },
+        {
+            headerName: 'Description',
+            field: "description",
+            width: 300,
+            cellRenderer: function (params) {
+                if (!params.value) return '<span class="text-muted">—</span>';
+                // Simple HTML sanitisation – CKEditor output is safe
+                return '<div style="white-space: normal; word-wrap: break-word;">' +
+                    params.value + '</div>';
+            }
+        },{
+                headerName: 'Url',
+                field: "trackingUrl",
+                width: 300,
+            
         }];
 
         var gridOptions = {
@@ -305,7 +403,7 @@
                 hide: true
             }, {
                 headerName: "Course Name",
-                field: "courseTittle",
+                field: "courseName",
                 pinned: 'left',
             }, {
                 headerName: "Duration",
@@ -326,7 +424,7 @@
         // let the grid know which columns and what data to use product table
         var activityOptions = {
             columnDefs: activityDefs,
-            rowSelection: 'single',
+            rowSelection: 'multiple',
             groupSelectsChildren: true,
             suppressRowClickSelection: true,
             suppressAggFuncInHeader: true,
@@ -351,15 +449,15 @@
                 rowCount = rowCount + 1;
             });
             if (rowCount > 0) {
-                $('#newchild').attr("disabled", true);
-                $('#deleteChild').attr("disabled", false);
-
-            } else {
                 $('#newchild').attr("disabled", false);
                 $('#deleteChild').attr("disabled", true);
+
+            } else {
+                $('#newchild').attr("disabled", true);
+                $('#deleteChild').attr("disabled", false);
             }
         }
-
+var couponId = "";
         function rowSelect() {
             var selectedRows = gridOptions.api.getSelectedRows();
             if (selectedRows.length > 0) {
@@ -370,39 +468,111 @@
                 $("#addBtn").show();
 
                 var rowData = selectedRows[0];
-                let couponleft = rowData.daysValid + " Days";
-                $("#daysleft").text(couponleft);
+                var isMarketing = (!rowData.discount || rowData.discount === null || rowData.discount === '');
+                getCourseDetails(rowData.couponId);
+                // Set title
+                $('.lead').text(isMarketing ? rowData.couponNo : 'Coupon Detail goes here');
+
+                // Set short info dynamically
+                const shortInfoElement = document.querySelector('.text-muted.mb-0');
+                if (isMarketing) {
+                    shortInfoElement.textContent = 'Marketing promotion details';
+                } else {
+                    shortInfoElement.textContent = 'Short info about voucher';
+                }
+
+                // Set status
                 $("#ststusBadge").text(rowData.status);
-                // Update QR code and other details
-                var qrData = JSON.stringify({
-                    CouponNo: rowData.couponNo,
-                    Minimum_Price: rowData.price,
-                    Discount: rowData.discount,
-                    ValidFrom: rowData.validFrom,
-                    ValidTo: rowData.validTo
-                });
 
-                var tempContainer = document.createElement("div");
-                new QRCode(tempContainer, {
-                    text: qrData,
-                    width: 150,
-                    height: 150,
-                    colorDark: "#000000",
-                    colorLight: "#ffffff",
-                    correctLevel: QRCode.CorrectLevel.H
-                });
-
-                setTimeout(function () {
-                    var generatedImg = tempContainer.querySelector('img');
-                    if (generatedImg) {
-                        document.getElementById("qrImage").src = generatedImg.src;
+                // Calculate days left/valid
+                let daysText;
+                if (rowData.daysValid) {
+                    daysText = rowData.daysValid + " Days";
+                } else {
+                    const from = parseDate(rowData.validFrom);
+                    const to = parseDate(rowData.validTo);
+                    if (from && to) {
+                        const diff = Math.ceil((to - from) / (1000 * 60 * 60 * 24));
+                        daysText = diff + " days";
+                    } else {
+                        daysText = "0 days";
                     }
-                    /* $("#daysleft").text(); */
-                }, 100);
+                }
+                $("#daysleft").text(daysText);
+
+                // Handle QR or Document in icon-container
+                const qrImg = document.getElementById("qrImage");
+                if (!isMarketing) {
+                    // Generate QR for coupon
+                    var qrData = JSON.stringify({
+                        CouponNo: rowData.couponNo,
+                        Minimum_Price: rowData.price,
+                        Discount: rowData.discount,
+                        ValidFrom: rowData.validFrom,
+                        ValidTo: rowData.validTo,
+                        couponId : rowData.couponId,
+                        
+                    });
+                    
+                 
+
+                    var tempContainer = document.createElement("div");
+                    new QRCode(tempContainer, {
+                        text: qrData,
+                        width: 150,
+                        height: 150,
+                        colorDark: "#000000",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+
+                    setTimeout(function () {
+                        var generatedImg = tempContainer.querySelector('img');
+                        if (generatedImg) {
+                            qrImg.src = generatedImg.src;
+                        }
+                    }, 100);
+                    qrImg.alt = "QR Code";
+                } else if (rowData.document) {
+                    // Show document preview for marketing
+                    const docUrl = `/document/image/${rowData.document}`;
+                    let ext = rowData.document.split('.').pop().toLowerCase();
+                    if (ext === 'pdf') {
+                        qrImg.src = '/images/pdf-icon.png'; // Assume you have a pdf icon
+                        qrImg.alt = "PDF Document";
+                    } else {
+                        qrImg.src = docUrl;
+                        qrImg.alt = "Document";
+                    }
+                } else {
+                    qrImg.src = '/images/default.png';
+                    qrImg.alt = "No Document";
+                }
+                
+
+                // Document preview below - always ensure it's visible and updated
+                const docPreview = document.getElementById('documentPreview');
+                docPreview.innerHTML = '';
+                docPreview.style.display = 'block'; // Ensure visibility
+                if (rowData.document) {
+                    const url = `/document/image/${rowData.document}`;
+                    let ext = rowData.document.split('.').pop().toLowerCase();
+                    let html;
+                    if (ext === 'pdf') {
+                        html = `<a href="${url}" target="_blank" class="btn btn-primary btn-sm">View PDF</a>`;
+                    } else {
+                        html = `<img src="${url}" alt="Document" style="max-width: 200px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;" onclick="window.open('${url}', '_blank')" />`;
+                    }
+                    docPreview.innerHTML = html;
+                } else {
+                    docPreview.innerHTML = '<span class="text-muted">No Document Available</span>';
+                }
             } else {
                 $('#dltBtn').hide();
                 add();
             }
+            
+            couponId = "";
         }
 
         function add() {
@@ -415,12 +585,23 @@
             $("#addBtn").hide();
             $("#dltBtn").hide();
             $("#couponId").val('');
+            $("#marketingTrackUrl").val('');
+            $("#trackUrl").val('');
             $("#couponNo").val('');
             $("#discount").val('');
             $("#price").val('');
             $("#validFrom").val('');
             $("#validTo").val('');
             $("#status").val('');
+            $("#marketingId").val('');
+            $("#marketName").val('');
+            $("#starmarketNametDate").val('');
+            $("#endDate").val('');
+            $("#marketingStatus").val('');
+            // Clear document preview
+            clearFileUploadFields();
+            document.getElementById('documentPreview').innerHTML = '';
+            if (descriptionEditor) descriptionEditor.setData('');
         }
 
         function cancelCoupon() {
@@ -430,11 +611,12 @@
             $("#cancelBtn").hide();
             $("#addBtn").show();
             $("#dltBtn").show();
+            if (descriptionEditor) descriptionEditor.setData('');
             viewCoupon();
         }
 
         function enableFields() {
-            let fieldIds = ["validTo", "validFrom", "discount", "couponNo", "price", "status"];
+            let fieldIds = ["validTo", "validFrom", "discount", "couponNo", "price", "status","trackUrl"];
             fieldIds.forEach(id => {
                 $("#" + id).prop("disabled", false);
             });
@@ -461,29 +643,6 @@
             gridOptions.api.deselectAll();
         }
 
-        function add() {
-            $('.formValidation').remove();
-
-            enableFields();
-            $("#couponDiv").hide();
-            $("#couponForm").show();
-            $("#saveBtn").show();
-            $("#cancelBtn").show();
-            $("#courseAllocation").show();
-            $("#nextTabBtn").show();
-            $("#prevTabBtn").show();
-            $("#addBtn").hide();
-            $("#dltBtn").hide();
-            $("#couponId").val('');
-            $("#couponNo").val('');
-            $("#discount").val('');
-            $("#price").val('');
-            $("#validFrom").val('');
-            $("#validTo").val('');
-            $("#status").val('');
-            //
-
-        }
 
         function saveFile(event) {
             const fileInput = $("#uploadWarDoc_0")[0];
@@ -494,9 +653,42 @@
             const extension = fileName.split(".").pop().toLowerCase();
             const iURL = URL.createObjectURL(uFile);
 
+            // Define valid image extensions
+            const imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp"];
+
             // Clear old preview
             $("#uploadedWarrDiv_0").html("");
 
+            // Check if the file is an image
+            if (imageExtensions.includes(extension)) {
+                // Load image to check dimensions
+                const img = new Image();
+                img.src = iURL;
+
+                img.onload = function () {
+                    if (img.width !== 1920 || img.height !== 1080) {
+                        // Invalid dimensions, show error and reset
+                        alert("Image must be 1920x1080 pixels. Please upload a valid image.");
+                        clearFileUploadFields();
+                        return;
+                    }
+
+                    // Valid image dimensions, proceed with preview
+                    displayFilePreview(iURL, fileName, extension);
+                };
+
+                img.onerror = function () {
+                    alert("Failed to load image. Please try another file.");
+                    clearFileUploadFields();
+                };
+            } else {
+                // Non-image file (e.g., PDF), proceed without dimension check
+                displayFilePreview(iURL, fileName, extension);
+            }
+        }
+
+        // Helper function to display file preview
+        function displayFilePreview(iURL, fileName, extension) {
             // Choose icon
             let docIcon;
             if (extension === "pdf") {
@@ -530,22 +722,18 @@
             $("#uploadWarDoc_0").val("");
             $("#uploadedWarrDiv_0").html(
                 '<i class="ti-plus" id="addIcon_0" style="color:#000; cursor:pointer; font-size:22px" onclick="$(\'#uploadWarDoc_0\').click();"></i>'
-            );
+            ).removeData("original-file");
             $("#imageWarrName_0").text("");
             $("#imageRemoveBtn_0").html("");
         }
-
-        function editCoupon() {
-
+        function editPromotion() {
             var selectedRows = gridOptions.api.getSelectedRows();
             var selectedNodes = gridOptions.api.getSelectedNodes();
-
             var selectedData = selectedNodes.map(node => node.data);
-            var couponId = selectedData[0].couponId;
-
+            var itemId = selectedData[0].couponId;
 
             $.ajax({
-                url: 'promotion-marketing-edit?couponId=' + couponId,
+                url: 'promotion-marketing-edit?couponId=' + itemId,
                 method: 'GET',
                 success: function (response) {
                     if (response.code === "success") {
@@ -556,22 +744,73 @@
                         $("#addBtn").hide();
                         $("#dltBtn").hide();
 
-                        $("#courseAllocation").show();
+                        var parsedBody = JSON.parse(response.body)[0];
+                        var isMarketing = (!parsedBody.discount || parsedBody.discount === null || parsedBody.discount === '');
 
-                        $("#nextTabBtn").show();
-                        $("#prevTabBtn").show();
-                        var parsedBody = JSON.parse(response.body);
-                        var courseData = parsedBody[0].courseData;
+                        if (isMarketing) {
+                            // === MARKETING MODE ===
+                            $("#marketingCheck").prop("checked", true).trigger("change");
+                            $("#couponCheck").prop("checked", false);
 
-                        $("#couponId").val(parsedBody[0].couponId);
-                        $("#couponNo").val(parsedBody[0].couponNo);
-                        $("#discount").val(parsedBody[0].discount);
-                        $("#price").val(parsedBody[0].price);
-                        $("#validFrom").val(parsedBody[0].validFrom);
-                        $("#validTo").val(parsedBody[0].validTo);
-                        $("#status").val(parsedBody[0].status);
-                        /* activityOptions.api.setRowData(courseData); */
+                            $("#marketingId").val(parsedBody.couponId);
+                            $("#marketName").val(parsedBody.couponNo);
+                            $("#starmarketNametDate").val(parsedBody.validFrom.split(' ')[0]);
+                            $("#endDate").val(parsedBody.validTo.split(' ')[0]);
+                            $("#marketingStatus").val(parsedBody.status);
+                            $("#marketingTrackUrl").val(parsedBody.trackingUrl);
+                            //$("#description").val(parsedBody.description);
+                            CKEDITOR.instances['description'].setData(parsedBody.description);
 
+
+                            // === FIX 1: Properly init + set CKEditor ===
+                           // destroyCKEditor(); // Ensure clean state
+                          //  initCKEditor();
+
+                            // Wait for instanceReady event
+                            // setTimeout(() => {
+                            //     if (descriptionEditor) {
+                            //         descriptionEditor.setData(parsedBody.description || "");
+                            //     }
+                            // }, 500);
+
+                            // === FIX 2: Restore Document with Remove Button ===
+                            clearFileUploadFields(); // Reset UI
+                            if (parsedBody.document) {
+                                const url = `/document/image/${parsedBody.document}`;
+                                const fileName = parsedBody.document;
+                                const ext = fileName.split('.').pop().toLowerCase();
+
+                                // Store original filename in hidden field or data attr if needed
+                                $("#uploadedWarrDiv_0").data("original-file", fileName);
+
+                                const icon = ext === 'pdf'
+                                    ? '<i class="bi bi-file-earmark-pdf" style="font-size:30px; color:#d32f2f;"></i>'
+                                    : '<i class="bi bi-image" style="font-size:30px; color:#28a745;"></i>';
+
+                                $("#uploadedWarrDiv_0").html(`<a href="${url}" target="_blank">${icon}</a>`);
+                                $("#imageWarrName_0").text(fileName);
+                                $("#imageRemoveBtn_0").html(
+                                    '<i class="bi bi-x-lg" style="color:red; cursor:pointer;" onclick="clearFileUploadFields();"></i>'
+                                );
+                            }
+
+                        } else {
+                            // === COUPON MODE ===
+                            $("#couponCheck").prop("checked", true).trigger("change");
+                            $("#marketingCheck").prop("checked", false);
+
+                            $("#couponId").val(parsedBody.couponId);
+                            $("#couponNo").val(parsedBody.couponNo);
+                            $("#discount").val(parsedBody.discount);
+                            $("#price").val(parsedBody.price);
+                            $("#validFrom").val(parsedBody.validFrom);
+                            $("#validTo").val(parsedBody.validTo);
+                            $("#status").val(parsedBody.status);
+                            $("#trackUrl").val(parsedBody.trackingUrl);
+                            
+                            clearFileUploadFields();
+                            destroyCKEditor();
+                        }
                     }
                 },
                 error: function (xhr, status, error) {
@@ -713,115 +952,31 @@
 
 
         function saveCoupon() {
-            let allRowData = [];
-            var validation = true;
-
-            // Detect which option is selected
-            let isCoupon = $("#couponCheck").is(":checked");
             let isMarketing = $("#marketingCheck").is(":checked");
-
-            if (!isCoupon && !isMarketing) {
-                toastr.error("Please select either Coupon or Marketing before saving");
-                return;
-            }
-
-            // Build data object
             let recordJsonData = {};
 
-            if (isCoupon) {
-                // ===== COUPON FIELDS =====
-                var couponId = $("#couponId").val();
-                var couponNo = $("#couponNo").val();
-                var discount = $("#discount").val();
-                var price = $("#price").val();
-                var validFrom = $("#validFrom").val();
-                var validTo = $("#validTo").val();
-                var status = $("#status").val();
-
-                // Grid data (if applicable)
-                activityOptions.api.forEachNode(function (node) {
-                    let rowData = {};
-                    activityDefs.forEach(function (column) {
-                        const field = column.field;
-                        if (field) {
-                            rowData[field] = node.data[field] || "";
-                        }
-                    });
-                    allRowData.push(rowData);
-                });
-
-                // ===== COUPON VALIDATION =====
-                if (couponNo === "") {
-                    toastr.error("Coupon Code is required");
-                    return;
-                }
-                if (discount === "") {
-                    toastr.error("Discount is required");
-                    return;
-                }
-                if (isNaN(discount) || Number(discount) <= 0) {
-                    toastr.error("Please enter a valid Discount (%) greater than 0");
-                    return;
-                }
-                if (price === "") {
-                    toastr.error("Minimum Purchase Price is required");
-                    return;
-                }
-                if (isNaN(price) || Number(price) < 0) {
-                    toastr.error("Please enter a valid Minimum Purchase Price (>= 0)");
-                    return;
-                }
-                if (validFrom === "") {
-                    toastr.error("Valid From date is required");
-                    return;
-                }
-                if (validTo === "") {
-                    toastr.error("Valid To date is required");
-                    return;
-                }
-                if (status === "") {
-                    toastr.error("Status must be selected");
-                    return;
-                }
-
-                recordJsonData = {
-                    type: "coupon",
-                    couponId: couponId,
-                    couponNo: couponNo,
-                    discount: discount,
-                    price: price,
-                    validFrom: validFrom,
-                    validTo: validTo,
-                    status: status,
-                    rows: allRowData
-                };
-            }
-
             if (isMarketing) {
-                // ===== MARKETING FIELDS =====
                 var marketingId = $("#marketingId").val();
-                var marketName = $("#marketName").val();
+                var marketName = $("#marketName").val().trim();
                 var startDate = $("#starmarketNametDate").val();
                 var endDate = $("#endDate").val();
                 var marketingStatus = $("#marketingStatus").val();
+                var trackingUrl = $("#marketingTrackUrl").val();
 
-                // ===== MARKETING VALIDATION =====
-                if (marketName === "") {
-                    toastr.error("Marketing Name is required");
+                // === Get CKEditor Data Safely ===
+                let description = "";
+                if (descriptionEditor && typeof descriptionEditor.getData === 'function') {
+                    description = descriptionEditor.getData();
+                } else {
+                    toastr.error("Description editor not ready");
                     return;
                 }
-                if (startDate === "") {
-                    toastr.error("Start Date is required");
-                    return;
-                }
-                if (endDate === "") {
-                    toastr.error("End Date is required");
-                    return;
-                }
-                if (marketingStatus === "") {
-                    toastr.error("Status must be selected");
-                    return;
-                }
+
+                if (!marketName) return toastr.error("Marketing Name is required");
+                if (!startDate) return toastr.error("Start Date is required");
+                if (!endDate) return toastr.error("End Date is required");
+                if (!marketingStatus) return toastr.error("Status is required");
+                if (!description.trim()) return toastr.error("Description is required");
 
                 recordJsonData = {
                     type: "marketing",
@@ -829,51 +984,125 @@
                     marketName: marketName,
                     startDate: startDate,
                     endDate: endDate,
-                    status: marketingStatus
+                    status: marketingStatus,
+                    description: description,
+                    trackingUrl: trackingUrl,
+                    originalDocument: $("#uploadedWarrDiv_0").data("original-file") || "" // Send old filename
                 };
+
+            } else {
+            	
+            	    let allRowData = [];
+            	    var validation = true;
+
+            	    var couponId = $("#couponId").val();
+            	    var couponNo = $("#couponNo").val();
+            	    var discount = $("#discount").val();
+            	    var price = $("#price").val();
+            	    var validFrom = $("#validFrom").val();
+            	    var validTo = $("#validTo").val();
+            	    var status = $("#status").val();
+            	    var trackingUrl = $("#trackUrl").val();
+
+            	    activityOptions.api.forEachNode(function (node) {
+            	        let rowData = {};
+
+            	        activityDefs.forEach(function (column) {
+            	            const field = column.field;
+            	            if (field) {
+            	                rowData[field] = node.data[field] || "";
+            	            }
+            	        });
+
+            	        allRowData.push(rowData);
+            	    });
+
+            	    if (couponNo === "") return toastr.error("Coupon Code is required");
+            	    if (discount === "") return toastr.error("Discount is required");
+            	    if (isNaN(discount) || Number(discount) <= 0)
+            	        return toastr.error("Please enter a valid Discount (%) greater than 0");
+            	    if (price === "") return toastr.error("Minimum Purchase Price is required");
+            	    if (isNaN(price) || Number(price) < 0)
+            	        return toastr.error("Please enter a valid Minimum Purchase Price (>= 0)");
+            	    if (validFrom === "") return toastr.error("Valid From date is required");
+            	    if (validTo === "") return toastr.error("Valid To date is required");
+            	    if (status === "") return toastr.error("Status must be selected");
+
+            	    // ✅ Add type: "coupon" here
+            	    recordJsonData = {
+            	        type: "coupon",
+            	        couponId: couponId,
+            	        couponNo: couponNo,
+            	        discount: discount,
+            	        price: price,
+            	        validFrom: validFrom,
+            	        validTo: validTo,
+            	        status: status,
+            	        trackingUrl: trackingUrl,
+            	        rows: allRowData
+            	    };
+            	
+            
             }
 
-            // Convert to JSON for AJAX
-            let jsonData = JSON.stringify(recordJsonData);
-            console.log("Record JSON Data ===>", jsonData);
+            // === FormData with Conditional File ===
+            let formData = new FormData();
+            formData.append('data', JSON.stringify(recordJsonData));
 
-            // ===== AJAX CALL =====
+            if (isMarketing) {
+                const fileInput = $("#uploadWarDoc_0")[0];
+                if (fileInput.files[0]) {
+                    // New file selected → send it
+                    formData.append('file', fileInput.files[0]);
+                }
+                // If no new file, backend should keep original (based on originalDocument)
+            }
+
             $.ajax({
                 url: 'promotion-marketing-save-data',
                 type: 'POST',
-                contentType: 'application/json',
-                data: jsonData,
+                data: formData,
+                processData: false,
+                contentType: false,
                 success: function (response) {
-                    if (response.code == "success") {
+                    if (response.code === "success") {
                         toastr.success(response.message);
                         cancelCoupon();
-                        shouldHideNextTabBtn = true;
-                        const tabElement = document.querySelector('#' + "courseDetails" + ' a');
-                        tabElement.click();
+                        $('#courseDetails a').tab('show');
+                    } else {
+                        toastr.error(response.message || "Save failed");
                     }
                 },
-                error: function (xhr, status, error) {
-                    console.log("Error saving data:", error);
+                error: function () {
+                    toastr.error("Save failed");
                 }
             });
         }
 
-        function getCourseDetails() {
+        function getCourseDetails(couponId) {
             agGrid.simpleHttpRequest({
-                url: "academic-course-view"
+                url: "promotion-marketing-course-view?id=" +couponId,
+                
             }).then(function (response) {
-                if (response.message === "Success") {
+                if (response.code === "success") {
                     const responseBody = JSON.parse(response.body);
-                    const courseData = responseBody.courseData;
+                    const courseData = responseBody.viewCourses;
                     activityOptions.api.setRowData(courseData);
-                    /* window.gridApi.setRowData(courseData); */
-                    /* if (courseData && courseData.length > 0) {
-                        window.gridApi.forEachNode(function (node) {
-                            if (node.rowIndex === 0) {
+                    
+                    activityOptions.api.setRowData(courseData);
+                    console.log('Loaded quizzes:', courseData);
+
+                    if (couponId) {
+                    	activityOptions.api.forEachNode(function(node) {
+                            if (node.data && node.data.couponId === couponId) {
                                 node.setSelected(true);
                             }
                         });
-                    } */
+                    } else {
+                        // No course: deselect all
+                        activityOptions.api.deselectAll();
+                    }
+                    
                 } else {
                     console.error("Failed to fetch data");
                 }
@@ -881,6 +1110,216 @@
         }
 
         // Other functions remain the same...
+        
+        
+        
+        // Save Quiz function - Keep current selections (now saved), just disable edit
+function openBrowseCourse() {
+        	
+	   var selectedRowsGrid = gridOptions.api.getSelectedRows();
+       var selectedNodesGrid = gridOptions.api.getSelectedNodes();
+       var selectedDataGrid = selectedNodesGrid.map(node => node.data);
+
+       var couponId = selectedDataGrid[0].couponId;   	
+        	
+        	
+        	
+    // Stop any editing if needed
+    activityOptions.api.stopEditing();
+    
+    // Get CURRENT selected rows (user's edited selections)
+    const selectedNodes = activityOptions.api.getSelectedNodes();
+    const selectedData = selectedNodes.map(node => node.data);
+    
+    // Extract quiz codes/IDs
+    const selectedActive = selectedData.map(course => course.courseId); // Adjust field if needed
+    
+  //  const couponId = $("#couponId").val();
+    alert(couponId)
+    if (!couponId) {
+        toastr.error("No coupon selected. Please select a coupon first.");
+        return;
+    }
+    
+    // Optional: Warn if no selections
+    if (selectedActive.length === 0) {
+        if (!confirm("No Course selected. This will unmap all Courses from the coupon. Proceed?")) {
+            return;
+        }
+    }
+    
+    // Prepare payload - send the CURRENT selections to update mappings
+    let payload = {
+    		couponId: couponId,
+        activityMappings: selectedActive.map(courseId => ({
+        	couponId: couponId,
+        	courseId: courseId,
+            status: 'active' // Or whatever default status
+        }))
+    };
+    
+    console.log("Saving :", payload);
+    
+    // AJAX call (adjust endpoint/payload as per backend)
+    $.ajax({
+        url: 'promotion-marketing-coupon-save', // Replace with your actual save endpoint
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(payload),
+        success: function (response) {
+            if (response.code === "Success" || response.message === "Success") {
+                toastr.success(response.message || "Allocated successfully!");
+                
+                
+            } else {
+                toastr.error(response.message || "Failed to allocate.");
+            }
+        },
+        error: function (xhr, status, error) {
+            console.error("Error s:", xhr.responseText);
+            toastr.error("Error " + (xhr.responseText || "Unknown error"));
+        }
+    });
+}
+
+function editCourseDetails(courseId) {
+    $.ajax({
+        type: "GET",
+        url: "academic-course-edit?Id=" + courseId,
+        async: false,
+        success: function (response) {
+            if (response.code === "success") {
+                const courseDetails = JSON.parse(response.body);
+                
+                if (courseDetails == null) {
+                    // Handle null case
+                } else {
+                    console.log('dddddddddddd', courseDetails);
+                    
+                    // Use direct object properties since courseDetails is an object, not an array
+                    $("#courseId").val(courseDetails.courseId || "");
+                    $("#courseTittle").val(courseDetails.courseTitle || "");  // Note: Response uses "courseTitle", not "courseTittle"
+                    $("#price").val(courseDetails.price || "");  // Assuming "price" exists; add if missing in response
+                    $("#startDate").val(courseDetails.startDate || "");
+                    $("#endDate").val(courseDetails.endDate || "");
+                    $("#patientStatus").val(courseDetails.patientStatusId || "");  // Assuming this exists
+                    
+                    // FIXED: 'dec' is plain escaped HTML (not base64), so no atob needed - use directly
+                    let decodedDesc = courseDetails.dec || courseDetails.courseDesc || "";
+                    if (CKEDITOR.instances.courseDesc) {
+                        CKEDITOR.instances.courseDesc.setData(decodedDesc);
+                    } else {
+                        console.error("CKEditor instance for 'courseDesc' not found.");
+                    }
+                    
+                    // Handle document preview
+                    if (!courseDetails.documentURL || courseDetails.documentURL === '') {
+                        $("#uploadedWarrDiv_0").html("");
+                        $("#imageWarrName_0").html("");
+                        $("#imageRemoveBtn_0").empty();
+                    } else {
+                        $("#uploadedWarrDiv_0").html("");
+                        var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + courseDetails.documentURL + "' title='" + (courseDetails.fileName || '') + "' target='_blank'><i class='fa fa-file-o' style='color: blue'></i></a></div>";
+                        $("#uploadedWarrDiv_0").html(LightImg);
+                        $("#imageWarrName_0").html(courseDetails.fileName || "");
+                        /* $("#imageRemoveBtn_0").html('<i style="color: red; cursor: pointer;" class="bi bi-x-lg" onclick="clearFileUploadFields();"></i>'); */
+                    }
+                    
+                    $("#rate").val(courseDetails.rate || "");
+                    $("#currencySymbol").val(courseDetails.currencySymbol || "");
+                    $("#level").val(courseDetails.level || "");
+                    $("#priceType").val(courseDetails.priceType || "B2C");
+                    $("#customers").val(courseDetails.customers ? JSON.parse(courseDetails.customers) : "");
+                    
+                    // Handle duration parsing
+                    var duration = courseDetails.duration || "";
+                    var hours = 0;
+                    var minutes = 0;
+                    if (duration) {
+                        var parts = duration.split(" ");
+                        for (var part of parts) {
+                            if (part.endsWith("h")) {
+                                hours = parseInt(part.replace("h", "")) || 0;
+                            } else if (part.endsWith("m")) {
+                                minutes = parseInt(part.replace("m", "")) || 0;
+                            }
+                        }
+                    }
+                    $("#durationHours").val(hours);
+                    $("#durationMinutes").val(minutes);
+                    togglePriceFields();
+                    
+                    // FIXED: Handle Category and Subcategory setting by matching names (since IDs may be missing in response)
+                    const categoryName = courseDetails.categoryName || '';
+                    if (categoryName) {
+                        // Find option by text and set value to its key (ID)
+                        const categoryOption = $('#parentCategory option').filter(function() {
+                            return $(this).text().trim() === categoryName.trim();
+                        }).first();
+                        if (categoryOption.length > 0) {
+                            const categoryId = categoryOption.val();
+                            $("#parentCategory").val(categoryId);
+                            // FIXED: Load subcategories WITHOUT passing subcategory name as ID (load all, then set by name below)
+                            getsubcategoryList(categoryId, '');
+                        } else {
+                            console.warn('Category name "' + categoryName + '" not found in options');
+                            // Fallback: If category not found, still try to load subcategories if possible (e.g., from existing ID)
+                            if (courseDetails.parentCategoryId) {
+                                getsubcategoryList(courseDetails.parentCategoryId, '');
+                            }
+                        }
+                    }
+                    
+                    // Set subcategory after parent loads (increased delay for AJAX completion; set by name matching)
+                    const subCategoryName = courseDetails.subCategoryName || '';
+                    if (subCategoryName) {
+                        setTimeout(() => {
+                            const subOption = $('#subcategory option').filter(function() {
+                                return $(this).text().trim() === subCategoryName.trim();
+                            }).first();
+                            if (subOption.length > 0) {
+                                $("#subcategory").val(subOption.val()).trigger('change');
+                                console.log('Subcategory set successfully:', subCategoryName);
+                            } else {
+                                console.warn('Subcategory name "' + subCategoryName + '" not found in options');
+                            }
+                        }, 300);  // Increased timeout to 300ms for AJAX to complete
+                    }
+                    
+                    // Optional: Load training details if courseCategoryType exists
+                    if (courseDetails.courseCategoryType && Array.isArray(courseDetails.courseCategoryType)) {
+                        getTrainingDetails(courseId);  // Assuming this function exists to populate training tabs
+                    }
+                    
+                    // Optional: Handle image if "image" field exists
+                    if (courseDetails.image) {
+                        // Set preview for course image if needed
+                        console.log('Course Image URL:', courseDetails.image);
+                    }
+                    
+                    // Optional: Populate structured description fields if separate sections exist
+                    if (courseDetails.courseOverview) {
+                        // Assuming additional CKEditor instances for sections; adjust as needed
+                        // e.g., if (CKEDITOR.instances.courseOverview) CKEDITOR.instances.courseOverview.setData(courseDetails.courseOverview);
+                    }
+                    if (courseDetails.targetGroup) {
+                        // e.g., if (CKEDITOR.instances.targetGroup) CKEDITOR.instances.targetGroup.setData(courseDetails.targetGroup);
+                    }
+                    if (courseDetails.conceptsCovered) {
+                        // e.g., if (CKEDITOR.instances.conceptsCovered) CKEDITOR.instances.conceptsCovered.setData(courseDetails.conceptsCovered);
+                    }
+                    if (courseDetails.examAndPrerequisite) {
+                        // e.g., if (CKEDITOR.instances.examAndPrerequisite) CKEDITOR.instances.examAndPrerequisite.setData(courseDetails.examAndPrerequisite);
+                    }
+                }
+            }
+        },
+        error: function (error) {
+            console.error("Error fetching course details:", error);
+        }
+    });
+}  
+        
     </script>
 </head>
 
@@ -933,12 +1372,12 @@
                                         <ul class="nav nav-pills newtab" role="tablist">
                                             <li class="nav-item" role="presentation" id="courseDetails">
                                                 <a class="nav-link active" data-bs-toggle="pill" href="#course-overview"
-                                                    aria-selected="true" role="tab">Coupon Overview</a>
+                                                    aria-selected="true" role="tab">Coupon
+                                                    Overview</a>
                                             </li>
-                                            <li class="nav-item" role="presentation" id="courseAllocation">
-                                                <a class="nav-link" data-bs-toggle="pill" href="#course-allocation"
-                                                    aria-selected="false" role="tab">Coupon Allocation</a>
-                                            </li>
+                                            <li class="nav-item" role="presentation" id="courseAllocation"><a
+                                                    class="nav-link" data-bs-toggle="pill" href="#course-allocation"
+                                                    aria-selected="false" role="tab">Coupon Allocation</a></li>
                                         </ul>
                                     </div>
                                 </div>
@@ -1019,13 +1458,13 @@
                                                                 <div class="info m-3 d-flex align-items-center">
                                                                     <div class="w-100">
                                                                         <div class="block">
-                                                                            <span class="time font-weight-light">
-                                                                                <span id="daysleft">0 days</span>
+                                                                            <span class="time font-weight-light"> <span
+                                                                                    id="daysleft">0 days</span>
                                                                             </span>
                                                                         </div>
                                                                         <button class="btn btn-primary edit-btn"
-                                                                            type="button" onclick="editCoupon()"
-                                                                            style="background: linear-gradient(45deg, #8e2de2 0%, #4a00e0 100%); color: white; border: none; transition: 0.3s;">
+                                                                            type="button" onclick="editPromotion()"
+                                                                            style="background: linear-gradient(45deg, #09063b 0%, #4a00e0 100%); color: white; border: none; transition: 0.3s;">
                                                                             View</button>
                                                                     </div>
                                                                 </div>
@@ -1033,6 +1472,7 @@
                                                         </div>
                                                     </div>
                                                 </div>
+                                                <!--  <div id="documentPreview" class="text-center mt-3"></div> -->
                                             </div>
 
                                             <div class="card p-2" id="couponForm">
@@ -1044,14 +1484,10 @@
                                                 <div>
                                                     <h6>Type</h6>
                                                     <div class="d-flex gap-4 align-items-center">
-                                                        <label>
-                                                            <input type="radio" name="type" value="coupon"
+                                                        <label> <input type="radio" name="type" value="coupon"
                                                                 id="couponCheck" checked> Coupon
-                                                        </label>
-                                                        <label>
-                                                            <input type="radio" name="type" value="marketing"
-                                                                id="marketingCheck">
-                                                            Marketing
+                                                        </label> <label> <input type="radio" name="type"
+                                                                value="marketing" id="marketingCheck"> Marketing
                                                         </label>
                                                     </div>
                                                 </div>
@@ -1082,6 +1518,13 @@
                                                                 <label for="instiname">Minimum Purchase Price<span
                                                                         class="mandatory">*</span></label> <input
                                                                     type="text" id="price" class="form-control"
+                                                                    onblur="removeValid(event);">
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <div class="form-group">
+                                                                <label for="instiname">Tracking URL</label> <input
+                                                                    type="text" id="trackUrl" class="form-control"
                                                                     onblur="removeValid(event);">
                                                             </div>
                                                         </div>
@@ -1128,7 +1571,8 @@
                                                             <div class="form-group">
                                                                 <label>Start Date<span
                                                                         class="text-danger">*</span></label>
-                                                                <input type="date" id="starmarketNametDate" class="form-control">
+                                                                <input type="date" id="starmarketNametDate"
+                                                                    class="form-control">
                                                             </div>
                                                         </div>
                                                         <div class="col-md-6">
@@ -1139,12 +1583,23 @@
                                                             </div>
                                                         </div>
                                                         <div class="col-md-6">
+                                                            <div class="form-group">
+                                                                <label for="instiname">Tracking URL</label> <input
+                                                                    type="text" id="marketingTrackUrl" class="form-control"
+                                                                    onblur="removeValid(event);">
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6">
                                                             <label>Status<span class="text-danger">*</span></label>
                                                             <select class="form-select" id="marketingStatus">
                                                                 <option value="">Select</option>
                                                                 <option value="active">Active</option>
                                                                 <option value="inactive">Inactive</option>
                                                             </select>
+                                                        </div>
+                                                        <div class="col-md-12">
+                                                            <label>Description<span class="text-danger">*</span></label>
+                                                            <div id="description"></div>
                                                         </div>
                                                         <div class="col-md-6">
                                                             <h6 class="mt-2">Document</h6>
