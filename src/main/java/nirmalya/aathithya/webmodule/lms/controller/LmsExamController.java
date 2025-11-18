@@ -14,6 +14,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -53,25 +54,12 @@ public class LmsExamController {
 	// Web Controller Method
 	@SuppressWarnings("unchecked")
 	@PostMapping("quiz-config-add")
-	public @ResponseBody JsonResponse<Object> saveQuiz(HttpSession session,
-	        @RequestParam("quizId") String quizId,
-	        @RequestParam("quiz_code") String quizCode,
-	        @RequestParam("section_title") String sectionTitle,
-	        @RequestParam("question_text") String questionText,
-	        @RequestParam("option_a") String optionA,
-	        @RequestParam("option_b") String optionB,
-	        @RequestParam("option_c") String optionC,
-	        @RequestParam("option_d") String optionD,
-	        @RequestParam("rationale_a") String rationaleA,
-	        @RequestParam("rationale_b") String rationaleB,
-	        @RequestParam("rationale_c") String rationaleC,
-	        @RequestParam("rationale_d") String rationaleD,
-	        @RequestParam("right_answer") String rightAnswer,
-	        @RequestParam("syllabus_ref") String syllabusRef) {
+	public @ResponseBody JsonResponse<Object> saveQuizBulk(HttpSession session,
+	        @RequestBody List<Map<String, Object>> quizzes) {  // 👈 root is the array now
+	    logger.info("Method : saveQuizBulk starts");
 
-	    logger.info("Method : saveQuiz starts");
+	    JsonResponse<Object> resp = new JsonResponse<>();
 
-	    JsonResponse<Object> resp = new JsonResponse<Object>();
 	    String userId = "";
 	    String orgName = "";
 	    String orgDivision = "";
@@ -85,42 +73,38 @@ public class LmsExamController {
 	    }
 
 	    try {
-	        Map<String, Object> quizData = new HashMap<>();
-	        quizData.put("quizId", quizId);
-	        quizData.put("quiz_code", quizCode);
-	        quizData.put("section_title", sectionTitle);
-	        quizData.put("question_text", questionText);
-	        quizData.put("option_a", optionA);
-	        quizData.put("option_b", optionB);
-	        quizData.put("option_c", optionC);
-	        quizData.put("option_d", optionD);
-	        quizData.put("rationale_a", rationaleA);
-	        quizData.put("rationale_b", rationaleB);
-	        quizData.put("rationale_c", rationaleC);
-	        quizData.put("rationale_d", rationaleD);
-	        quizData.put("right_answer", rightAnswer);
-	        quizData.put("syllabus_ref", syllabusRef);
+	        if (quizzes == null || quizzes.isEmpty()) {
+	            resp.setCode("Failed");
+	            resp.setMessage("No quiz data found in request.");
+	            return resp;
+	        }
 
-	        // --- Log JSON Payload ---
+	        logger.info("📦 Received {} quiz records", quizzes.size());
+
+	        // --- Build request payload for REST call ---
+	        Map<String, Object> bodyToSend = new HashMap<>();
+	        bodyToSend.put("userId", userId);
+	        bodyToSend.put("org", orgName);
+	        bodyToSend.put("orgDiv", orgDivision);
+	        bodyToSend.put("quizzes", quizzes);
+
 	        ObjectMapper mapper = new ObjectMapper();
-	        logger.info("JSON Payload: {}", mapper.writeValueAsString(quizData));
+	        logger.debug("🔹 Forwarding payload: {}", mapper.writeValueAsString(bodyToSend));
 
-	        // --- Call REST API ---
 	        resp = restClient.postForObject(
-	                env.getMasterUrl() + "rest-quiz-config-add?userId=" + userId
-	                        + "&org=" + orgName + "&orgDiv=" + orgDivision,
-	                quizData, JsonResponse.class);
+	                env.getMasterUrl() + "rest-quiz-config-add",
+	                bodyToSend,
+	                JsonResponse.class);
 
 	    } catch (Exception e) {
-	        logger.error("Error saving quiz", e);
-	        resp.setMessage("Error saving quiz: " + e.getMessage());
+	        logger.error("Error saving quizzes", e);
 	        resp.setCode("Failed");
+	        resp.setMessage("Error saving quizzes: " + e.getMessage());
 	    }
 
-	    logger.info("Method : saveQuiz ends");
+	    logger.info("Method : saveQuizBulk ends");
 	    return resp;
 	}
-
 
 
 	    /**

@@ -728,6 +728,8 @@ public class AcademicCourseController {
 	                                        // Optionally preserve or set docName from docView if needed
 	                                        String docName = (String) doc.getOrDefault("docView", doc.getOrDefault("docName", fileName));
 	                                        doc.put("docName", docName);
+	                                        // Remove the documentFile field to eliminate the bytearray/base64 data
+	                                        doc.remove("documentFile");
 	                                        logger.info("Document saved for course {}: {}", courseId, fileName);
 	                                    }
 	                                } catch (Exception decodeEx) {
@@ -735,6 +737,13 @@ public class AcademicCourseController {
 	                                }
 	                            } else {
 	                                logger.info("Skipping empty documentFile for doc: {}", doc.get("docName"));
+	                                // Remove empty documentFile as well
+	                                doc.remove("documentFile");
+	                            }
+	                        } else {
+	                            // If no documentFile, ensure it's not present
+	                            if (doc.containsKey("documentFile")) {
+	                                doc.remove("documentFile");
 	                            }
 	                        }
 	                    }
@@ -742,7 +751,7 @@ public class AcademicCourseController {
 	                logger.info("Documents processed for training item in course {}: {} items checked", courseId, (documents != null ? documents.size() : 0));
 	            }
 
-	            // Re-stringify the updated categoryData
+	            // Re-stringify the updated categoryData (now without bytearray data)
 	            String updatedCategoryData = objectMapper.writeValueAsString(trainingData);
 	            payload.put("categoryData", updatedCategoryData);
 	        }
@@ -766,7 +775,6 @@ public class AcademicCourseController {
 	    logger.info("Method: saveTraining ends");
 	    return resp;
 	}
-	
 	
 	// view instructor
 	@SuppressWarnings("unchecked")
