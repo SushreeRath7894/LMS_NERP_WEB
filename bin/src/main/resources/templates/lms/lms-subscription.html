@@ -265,13 +265,8 @@
 
 <script type="text/javascript">
 
-$(document).ready(function() {
-	
-	getStudentDetails();
-	var gridDivm = document.querySelector('#mygrid');
-	new agGrid.Grid(gridDivm, gridOptions);
-	gridOptions.api.setRowData([]);
-});
+var tb = 'Normal User';
+var fullStudentData = [];
 
 var columnDefs = [
     {
@@ -283,11 +278,11 @@ var columnDefs = [
         filter: false,
         resizable: true,
         pinned: 'left',
-    }, 
+    },
     {
         headerName: "Enroll Id",
         field: "enrollId",
-    }, 
+    },
     {
         headerName: "User Name",
         field: "studentName",
@@ -305,11 +300,11 @@ var columnDefs = [
         headerName: "Course Id",
         field: "courseId",
         hide: true
-    }, 
+    },
     {
         headerName: "Email",
         field: "email",
-    }, 
+    },
     {
         headerName: "Status",
         field: "userStatus",
@@ -356,9 +351,9 @@ var columnDefs = [
         field: "paymentMode",
         cellStyle: function(params) {
             if (params.value) {
-                return { 
+                return {
                     color: '#2563eb', // Blue for payment mode
-                    fontWeight: '500' 
+                    fontWeight: '500'
                 };
             }
             return null;
@@ -367,51 +362,77 @@ var columnDefs = [
 ];
 
 var gridOptions = {
-	columnDefs: columnDefs,
-	rowSelection: 'single',
-	suppressRowClickSelection: true,
+columnDefs: columnDefs,
+rowSelection: 'single',
+suppressRowClickSelection: true,
 
-	defaultColDef: {
-		sortable: true,
-		filter: true,
-		resizable: true,
-		width: 185,
-		height: 10
-	},
-	pagination: true,
-	paginationPageSize: 15,
-	onGridReady: function(params) {
-		window.gridApi = params.api;
-		window.gridOptionsCourse = params.api;
-	},
-	onSelectionChanged: onSelectionChanged,
+defaultColDef: {
+sortable: true,
+filter: true,
+resizable: true,
+width: 185,
+height: 10
+},
+pagination: true,
+paginationPageSize: 15,
+onGridReady: function(params) {
+window.gridApi = params.api;
+window.gridOptionsCourse = params.api;
+},
+onSelectionChanged: onSelectionChanged,
 };
 
+$(document).ready(function() {
+var gridDivm = document.querySelector('#mygrid');
+new agGrid.Grid(gridDivm, gridOptions);
+gridOptions.api.setRowData([]);
+
+getStudentDetails(tb);
+
+// Custom click handlers for tabs (since content is shared, no need for Bootstrap panes)
+$('#normalTabLink').on('click', function(e) {
+    e.preventDefault();
+    $('.nav-link').removeClass('active');
+    $(this).addClass('active');
+    tb = 'Normal User';
+    getStudentDetails(tb);
+});
+
+$('#publicTabLink').on('click', function(e) {
+    e.preventDefault();
+    $('.nav-link').removeClass('active');
+    $(this).addClass('active');
+    tb = 'Public Batches';
+    getStudentDetails(tb);
+});
+
+});
+
 function onSelectionChanged() {
-	var selectedNodes = window.gridApi.getSelectedNodes();
-	var selectedData = selectedNodes.map(node => node.data);
-	
-	if (selectedData.length > 0) {
-		updateStudentProfile(selectedData[0]);
-		enrollId = selectedData.map(node => node.enrollId);
-		getTheCourseDetails(enrollId);
- 	} else {
-		// Show empty state if no row is selected
-		document.getElementById('student-profile-container').innerHTML = `
-			<div class="no-selection">
-				<p>Select a student from the grid to view details</p>
-			</div>
-		`;
-	}
+var selectedNodes = window.gridApi.getSelectedNodes();
+var selectedData = selectedNodes.map(node => node.data);
+
+if (selectedData.length > 0) {
+updateStudentProfile(selectedData[0]);
+var enrollId = selectedData[0].enrollId;
+getTheCourseDetails(enrollId);
+  } else {
+// Show empty state if no row is selected
+document.getElementById('student-profile-container').innerHTML = `
+<div class="no-selection">
+<p>Select a student from the grid to view details</p>
+</div>
+`;
+}
 }
 
 function updateStudentProfile(studentData) {
     // Format the enrollment date
     const enrollDate = studentData.enrollDate ? new Date(studentData.enrollDate).toLocaleDateString() : 'N/A';
-    
+
     // Determine status badge class
     const statusClass = studentData.userStatus === 'Active' ? 'status-active' : 'status-inactive';
-    
+
     // Determine payment status class
     let paymentClass = '';
     if (studentData.paymentStaus === 'PAID') {
@@ -424,7 +445,7 @@ function updateStudentProfile(studentData) {
     const image = studentData.candidateImage
     ? studentData.candidateImage
     : `https://ui-avatars.com/api/?name=${encodeURIComponent(studentData.studentName)}&background=667eea&color=fff&size=80`;
-    
+
     // Create the profile HTML
     const profileHtml = `
         <div class="student-profile-card">
@@ -436,7 +457,7 @@ function updateStudentProfile(studentData) {
                     <span class="status-badge ${statusClass}">${studentData.userStatus || 'N/A'}</span>
                 </div>
             </div>
-            
+
             <div class="profile-details">
                 <div class="detail-row">
                     <span class="detail-label">Enrollment ID:</span>
@@ -467,7 +488,7 @@ function updateStudentProfile(studentData) {
                     <span class="detail-value">${studentData.paymentMode || 'N/A'}</span>
                 </div>
             </div>
-            
+
             <div class="action-buttons">
                 <button class="go-btn btn-success" onclick="enableCourse(1)">
                     <i class="fas fa-check-circle me-2"></i> Enable
@@ -478,43 +499,88 @@ function updateStudentProfile(studentData) {
             </div>
         </div>
     `;
-    
+
     document.getElementById('student-profile-container').innerHTML = profileHtml;
 }
 
-function getStudentDetails() {
-	Promise.resolve(
-			  agGrid.simpleHttpRequest({ url: "subscription-student-view" })
-			).then(function(response) {
-			  if (response.message === "Success") {
-			    const responseBody = JSON.parse(response.body);
-			    let studentData = responseBody.studentData || [];
+function getStudentDetails(tb) {
+    // alert(tb); // Commented out to avoid annoying alerts
+    Promise.resolve(
+        agGrid.simpleHttpRequest({ url: "subscription-student-view?id=" + tb })
 
-			    // Sort descending by enrollId (e.g., TECM0107 → TECM0001)
-			    studentData.sort((a, b) => {
-			      const numA = parseInt(a.enrollId.replace(/\D/g, ""), 10);
-			      const numB = parseInt(b.enrollId.replace(/\D/g, ""), 10);
-			      return numB - numA;
-			    });
+    ).then(function(response) {
+        if (response.message === "Success") {
+            const responseBody = JSON.parse(response.body);
+            fullStudentData = responseBody.studentData || [];
 
-			    window.gridApi.setRowData(studentData);
+            fullStudentData.sort((a, b) => {
+                const numA = parseInt(a.enrollId.replace(/\D/g, ""), 10);
+                const numB = parseInt(b.enrollId.replace(/\D/g, ""), 10);
+                return numB - numA;
+            });
 
-			    if (studentData.length > 0) {
-			      window.gridApi.forEachNode(node => {
-			        if (node.rowIndex === 0) node.setSelected(true);
-			      });
-			    }
-			  } else {
-			    console.error("Failed to fetch data");
-			  }
-			}).catch(function(error) {
-			  console.error("Error fetching data:", error);
-			});
-
+            // Load data for the current tab type
+            filterGridData(tb);
+        }
+    }).catch(console.error);
 }
 
+function filterGridData(type) {
+
+    let filtered = fullStudentData.filter(row => {
+        return row.type.startsWith(type);
+    });
+
+    // Base Column Defs
+    let columnDefs = [
+        { headerName: "Enroll ID", field: "enrollId", width: 150 },
+        { headerName: "Student Name", field: "studentName", width: 180 },
+        { headerName: "Email", field: "email", width: 200 },
+        { headerName: "Phone", field: "phoneNo", width: 150 },
+        { headerName: "Course ID", field: "courseId", width: 150 },
+        { headerName: "Course Name", field: "courseName", width: 250 }
+    ];
+
+    // ⭐ ADD EXTRA COLUMNS ONLY FOR PUBLIC BATCHES
+    if (type === "Public Batches") {
+
+        columnDefs.push(
+            { headerName: "Batch Title", field: "batchTitle", width: 200 },
+            { headerName: "Batch To Time", field: "batchToTime", width: 170 },
+            { headerName: "Batch Start Date", field: "batchStartDate", width: 180 },
+            { headerName: "Batch End Date", field: "batchEndDate", width: 180 },
+            { headerName: "Batch From Time", field: "batchFromTime", width: 170 },
+            { headerName: "Student Name", field: "studentName", width: 200 } // duplicate allowed if needed
+        );
+    }
+
+    // Apply columns to grid
+    window.gridApi.setColumnDefs(columnDefs);
+
+    // Set data
+    window.gridApi.setRowData(filtered);
+
+    // Handle empty result
+    if (filtered.length === 0) {
+        document.getElementById('student-profile-container').innerHTML = `
+            <div class="no-selection">
+                <p>No students found in this category.</p>
+            </div>
+        `;
+        $('#courseCard').empty().html('<p class="text-muted">No course data.</p>');
+    } else {
+        // Auto-select first row
+        window.gridApi.deselectAll();
+        window.gridApi.forEachNode(node => {
+            if (node.rowIndex === 0) node.setSelected(true);
+        });
+    }
+}
+
+
+
 function enableCourse(status) {
-    var selectedNodes = gridOptions.api.getSelectedNodes();
+    var selectedNodes = window.gridApi.getSelectedNodes();
     var selectedData = selectedNodes.map(node => node.data);
 
     if (selectedData.length > 0) {
@@ -528,7 +594,7 @@ function enableCourse(status) {
                 if (response.message === "Success") {
                     toastr.success("Course updated successfully");
                     // Refresh the grid and profile after update
-                    getStudentDetails();
+                    getStudentDetails(tb); // Use current tb to refresh
                 } else {
                     toastr.error("Something went wrong: " + response.message);
                 }
@@ -565,7 +631,7 @@ function getTheCourseDetails(enrollId) {
 
             // Parse JSON string if needed
             const data = typeof response.body === 'string' ? JSON.parse(response.body) : response.body;
-            
+
             // Clear existing content
             $('#courseCard').empty();
 
@@ -583,8 +649,8 @@ function getTheCourseDetails(enrollId) {
 
             // Trainings List
             data.courseCategoryType.forEach(training => {
-                const priceText = training.trainingPrice && training.trainingPrice !== "" 
-                    ? `<span class="fw-semibold text-success">₹${training.trainingPrice}</span>` 
+                const priceText = training.trainingPrice && training.trainingPrice !== ""
+                    ? `<span class="fw-semibold text-success">₹${training.trainingPrice}</span>`
                     : `<span class="text-muted">Contact for price</span>`;
 
                 const trainingHTML = `
@@ -609,9 +675,9 @@ function getTheCourseDetails(enrollId) {
     });
 }
 function nextTab(id) {
-	const tabElement = document.querySelector('#' + id + ' a');
-	const tab = new bootstrap.Tab(tabElement);
-	tab.show();
+const tabElement = document.querySelector('#' + id + ' a');
+const tab = new bootstrap.Tab(tabElement);
+tab.show();
 }
 </script>
 </head>
@@ -629,16 +695,17 @@ function nextTab(id) {
 								<div class="out-box">
 									<div class="d-flex justify-content-between bdr-line p-2">
 
-										<div class="col-md-8 col-12">
-											<div class="d-flex gap-2 search-sec position-relative">
-												<input class="form-control" type="text"
-													onkeydown="enterToSearch(event)" placeholder="Search"
-													id="quickFilter" autocomplete="off">
-												<button class="btn go-btn" type="button"
-													onclick="onQuickFilterChanged()">Go</button>
-												<button class="btn go-btn" type="button" onclick="reset()">Reset</button>
-											</div>
-										</div>
+										<ul class="nav nav-pills newtab" role="tablist"
+											id="userTypeTabs">
+											<li class="nav-item" role="presentation"><a
+												class="nav-link active" id="normalTabLink"
+												href="javascript:void(0);">Normal User</a></li>
+											<li class="nav-item" role="presentation"><a
+												class="nav-link" id="publicTabLink"
+												href="javascript:void(0);">Public Batches</a></li>
+										</ul>
+
+
 
 										<button class="btn btn-primary max-btn" id="collapseButtonR1"
 											onclick="triggerExpansionR(1)" data-bs-toggle="tooltip"
@@ -646,8 +713,21 @@ function nextTab(id) {
 											<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
 												class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
 										</button>
-
 									</div>
+
+									<div class="col-md-8 col-12">
+										<div class="d-flex gap-2 search-sec position-relative p-2">
+											<input class="form-control" type="text"
+												onkeydown="enterToSearch(event)" placeholder="Search"
+												id="quickFilter" autocomplete="off">
+											<button class="btn go-btn" type="button"
+												onclick="onQuickFilterChanged()">Go</button>
+											<button class="btn go-btn" type="button" onclick="reset()">Reset</button>
+										</div>
+									</div>
+
+									<!-- 👇 NEW: Tabs for "Normal User" and "Public Batches" -->
+
 									<div class="card m-2 p-2">
 										<div id="mygrid" class="ag-theme-alpine"></div>
 									</div>
@@ -676,28 +756,29 @@ function nextTab(id) {
 													href="#courseDetails" aria-selected="true" role="tab">Course
 														Details</a></li>
 												<!-- <li class="nav-item" role="presentation"
-												id="pendingPoints-tab"><a class="nav-link active"
-												data-bs-toggle="pill" href="#pendingPoints"
-												aria-selected="true" role="tab">Open Issues</a></li>
-											<li class="nav-item" role="presentation" id="createMom-tab"><a
-												class="nav-link" data-bs-toggle="pill" href="#createMom"
-												aria-selected="false" role="tab">Create MoM</a></li> -->
+id="pendingPoints-tab"><a class="nav-link active"
+data-bs-toggle="pill" href="#pendingPoints"
+aria-selected="true" role="tab">Open Issues</a></li>
+<li class="nav-item" role="presentation" id="createMom-tab"><a
+class="nav-link" data-bs-toggle="pill" href="#createMom"
+aria-selected="false" role="tab">Create MoM</a></li> -->
 												<!-- <li class="nav-item" role="presentation" id="agendaTab-tab"><a
-												class="nav-link" data-bs-toggle="pill" href="#agendaTab"
-												aria-selected="false" role="tab">Agenda</a></li> -->
+class="nav-link" data-bs-toggle="pill" href="#agendaTab"
+aria-selected="false" role="tab">Agenda</a></li> -->
 											</ul>
 										</div>
 									</div>
 
 									<div class="tab-content flex-fill" id="tabContent">
-										<div class="tab-pane active show  h-100" role="tabpanel"
+										<div class="tab-pane active show h-100" role="tabpanel"
 											id="studentProfile">
 
-											<div class="requisition-tbl d-flex flex-column p-2 gap-2 h-100">
-											<div class="d-flex justify-content-end border p-2 rounded">
-														<button class="btn m-0 edit-btn" type="button"
-															onclick="nextTab('course-details')">Next</button>
-													</div>
+											<div
+												class="requisition-tbl d-flex flex-column p-2 gap-2 h-100">
+												<div class="d-flex justify-content-end border p-2 rounded">
+													<button class="btn m-0 edit-btn" type="button"
+														onclick="nextTab('course-details')">Next</button>
+												</div>
 												<div class="card p-2">
 													<div id="student-profile-container">
 														<div class="no-selection">
@@ -710,11 +791,11 @@ function nextTab(id) {
 										<div class="tab-pane show p-2 h-100" id="courseDetails"
 											role="tabpanel">
 											<div class="requisition-tbl d-flex flex-column h-100">
-											<div class="d-flex justify-content-end">
-														<button class="btn m-0 edit-btn" type="button"
-															onclick="nextTab('student-profile')">Previous</button>
-													</div>
-												<div class="card m-2 p-3 shadow-sm" id="courseCard"> </div>
+												<div class="d-flex justify-content-end">
+													<button class="btn m-0 edit-btn" type="button"
+														onclick="nextTab('student-profile')">Previous</button>
+												</div>
+												<div class="card m-2 p-3 shadow-sm" id="courseCard"></div>
 											</div>
 										</div>
 									</div>
@@ -725,6 +806,5 @@ function nextTab(id) {
 				</div>
 			</div>
 		</div>
-	</div>
 </body>
 </html>
