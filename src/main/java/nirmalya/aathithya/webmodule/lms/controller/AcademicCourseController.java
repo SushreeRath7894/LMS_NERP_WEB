@@ -660,7 +660,7 @@ public class AcademicCourseController {
 	@SuppressWarnings("unchecked")
 	@PostMapping("academic-course-training-save")
 	public @ResponseBody JsonResponse<Object> saveTraining(HttpSession session, @RequestBody Map<String, Object> payload) {
-	    logger.info("Method: saveTraining starts - Payload: {}");
+	    logger.info("Method: saveTraining starts - Payload: {}"+payload);
 
 	    JsonResponse<Object> resp = new JsonResponse<Object>();
 	    String userId = "";
