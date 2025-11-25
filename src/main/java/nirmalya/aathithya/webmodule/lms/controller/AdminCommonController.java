@@ -227,12 +227,14 @@ public class AdminCommonController {
 		JsonResponse<Object> resp = new JsonResponse<Object>();
 		String orgName = "";
 		String orgDivision = "";
+		String userId = "";
 		try {
 			orgName = (String) session.getAttribute("ORGANIZATION");
 			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+			userId = (String) session.getAttribute("USER_ID");
 
 			resp = restTemplate.getForObject(env.getHisUrl() + "rest-subscription-student-view?orgName=" + orgName + "&orgDivision="
-					+ orgDivision , JsonResponse.class);
+					+ orgDivision + "&userId=" + userId , JsonResponse.class);
 
 		} catch (Exception e) {
 			e.printStackTrace();
