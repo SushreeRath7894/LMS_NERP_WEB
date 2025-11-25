@@ -223,7 +223,7 @@ public class AdminCommonController {
 	@SuppressWarnings("unchecked")
 	@GetMapping("subscription-student-view")
 	public @ResponseBody Object viewStudent(HttpSession session,@RequestParam String id) {
-		logger.info("Method :viewStudent starts");
+		logger.info("Method :viewStudent starts"+id);
 		JsonResponse<Object> resp = new JsonResponse<Object>();
 		String orgName = "";
 		String orgDivision = "";
@@ -232,8 +232,9 @@ public class AdminCommonController {
 			orgName = (String) session.getAttribute("ORGANIZATION");
 			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
 			userId = (String) session.getAttribute("USER_ID");
-
-			resp = restTemplate.getForObject(env.getHisUrl() + "rest-subscription-student-view?orgName=" + orgName + "&orgDivision="
+logger.info("ss"+env.getHisUrl() + "rest-subscription-student-view?orgName=" + orgName + "&orgDivision="
+		+ orgDivision + "&id=" + id);		
+resp = restTemplate.getForObject(env.getHisUrl() + "rest-subscription-student-view?orgName=" + orgName + "&orgDivision="
 					+ orgDivision + "&id=" + id, JsonResponse.class);
 
 		} catch (Exception e) {
