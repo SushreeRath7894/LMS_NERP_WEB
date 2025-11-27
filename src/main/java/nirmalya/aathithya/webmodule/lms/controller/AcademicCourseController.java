@@ -268,28 +268,17 @@ public class AcademicCourseController {
 	// Assuming this is in a utility or service class, but for completeness, including it here.
 	// If it's in a separate class, autowire it accordingly.
 	// Note: This method is as provided, but ensure 'env' is autowired or accessible (e.g., @Autowired Environment env;)
-	public String saveAllMultiImages(byte[] imageBytes, String ext) {
-	    logger.info("Method : saveAllMultiImages starts");
-	    String imageName1 = null;
-	    try {
-	        if (imageBytes != null) {
-	            long nowTime = new Date().getTime();
-	            if (ext.contentEquals("jpeg")) {
-	                imageName1 = nowTime + ".jpg";
-	            } else {
-	                imageName1 = nowTime + "." + ext;
-	            }
-	        }
-	        Path path = Paths.get(env.getFileUploadDocumenttUrl() + imageName1);
-	        if (imageBytes != null) {
-	            Files.write(path, imageBytes);
-	        }
-	    } catch (Exception e) {
-	        e.printStackTrace();
-	    }
-	    logger.info("Method : saveAllMultiImages ends");
-	    return imageName1;
-	}
+	/*
+	 * public String saveAllMultiImages(byte[] imageBytes, String ext) {
+	 * logger.info("Method : saveAllMultiImages starts"); String imageName1 = null;
+	 * try { if (imageBytes != null) { long nowTime = new Date().getTime(); if
+	 * (ext.contentEquals("jpeg")) { imageName1 = nowTime + ".jpg"; } else {
+	 * imageName1 = nowTime + "." + ext; } } Path path =
+	 * Paths.get(env.getFileUploadDocumenttUrl() + imageName1); if (imageBytes !=
+	 * null) { Files.write(path, imageBytes); } } catch (Exception e) {
+	 * e.printStackTrace(); } logger.info("Method : saveAllMultiImages ends");
+	 * return imageName1; }
+	 */
 	
 	public String saveAllMultiImagesAll(byte[] imageBytes, String ext) {
 	    logger.info("Method : saveAllMultiImages starts");
@@ -660,12 +649,15 @@ public class AcademicCourseController {
 	@SuppressWarnings("unchecked")
 	@PostMapping("academic-course-training-save")
 	public @ResponseBody JsonResponse<Object> saveTraining(HttpSession session, @RequestBody Map<String, Object> payload) {
-	    logger.info("Method: saveTraining starts - Payload: {}"+payload);
+
+	    logger.info("Method: saveTraining starts - Payload: {}", payload);
 
 	    JsonResponse<Object> resp = new JsonResponse<Object>();
 	    String userId = "";
 	    String orgName = "";
 	    String orgDivision = "";
+
+	    // Session values
 	    try {
 	        userId = (String) session.getAttribute("USER_ID");
 	        orgName = (String) session.getAttribute("ORGANIZATION");
@@ -674,108 +666,142 @@ public class AcademicCourseController {
 	        logger.error("Error retrieving session attributes", e);
 	    }
 
-	    // Handle local file saving before forwarding to external service
+	    // ------------------------- PROCESS DOCUMENT FILES -------------------------
 	    try {
+
 	        String courseId = (String) payload.get("courseId");
 	        String categoryDataText = (String) payload.get("categoryData");
 
 	        if (courseId != null && categoryDataText != null && !categoryDataText.trim().isEmpty()) {
-	            // Parse the categoryData JSON string
-	            ObjectMapper objectMapper = new ObjectMapper();
-	            List<Map<String, Object>> trainingData = objectMapper.readValue(
-	                categoryDataText, new TypeReference<List<Map<String, Object>>>() {});
 
-	            // Iterate over training items and process documents
+	            ObjectMapper mapper = new ObjectMapper();
+
+	            // Parse categoryData
+	            List<Map<String, Object>> trainingData =
+	                    mapper.readValue(categoryDataText, new TypeReference<List<Map<String, Object>>>() {});
+
 	            for (Map<String, Object> item : trainingData) {
-	                @SuppressWarnings("unchecked")
+
 	                List<Map<String, Object>> documents = (List<Map<String, Object>>) item.get("documents");
+
 	                if (documents != null && !documents.isEmpty()) {
+
 	                    for (Map<String, Object> doc : documents) {
-	                        if (doc.containsKey("documentFile")) {
-	                            Object documentFileObj = doc.get("documentFile");
+
+	                        Object documentFileObj = doc.get("documentFile");
+
+	                        // ------------------------- CASE 1: NEW FILE PRESENT -------------------------
+	                        if (documentFileObj != null) {
+
 	                            String base64Data = "";
-	                            // Handle both ArrayList and single String
+
 	                            if (documentFileObj instanceof ArrayList) {
-	                                @SuppressWarnings("unchecked")
-	                                ArrayList<String> documentFileList = (ArrayList<String>) documentFileObj;
-	                                if (!documentFileList.isEmpty()) {
-	                                    base64Data = documentFileList.get(0);
-	                                }
+	                                List<String> list = (List<String>) documentFileObj;
+	                                if (!list.isEmpty()) base64Data = list.get(0);
 	                            } else if (documentFileObj instanceof String) {
 	                                base64Data = (String) documentFileObj;
-	                            } else {
-	                                logger.warn("Unexpected documentFile type: " + documentFileObj.getClass().getName());
-	                                continue;
 	                            }
+
+	                            // New file given
 	                            if (base64Data != null && !base64Data.trim().isEmpty()) {
-	                                // Remove common data URL prefixes for any type
+
 	                                base64Data = base64Data.replaceFirst("^data:[^;]+;base64,", "");
+
 	                                try {
-	                                    // Decode Base64
 	                                    byte[] bytes = Base64.getDecoder().decode(base64Data);
-	                                    // Determine file extension
+
 	                                    String ext = (String) doc.get("docType");
-	                                    if (ext == null || ext.isEmpty()) {
-	                                        ext = "bin"; // fallback for unknown types
-	                                    }
-	                                    // Save the file
+	                                    if (ext == null || ext.isEmpty()) ext = "bin";
+
+	                                    // Save file locally
 	                                    String fileName = saveAllMultiImages(bytes, ext);
+
 	                                    if (fileName != null) {
 	                                        String fileURL = env.getBaseURL() + "document/image/" + fileName;
-	                                        // Update the document entry with saved details
+
 	                                        doc.put("fileName", fileName);
 	                                        doc.put("docUrl", fileURL);
-	                                        // Optionally preserve or set docName from docView if needed
-	                                        String docName = (String) doc.getOrDefault("docView", doc.getOrDefault("docName", fileName));
-	                                        doc.put("docName", docName);
-	                                        // Remove the documentFile field to eliminate the bytearray/base64 data
-	                                        doc.remove("documentFile");
-	                                        logger.info("Document saved for course {}: {}", courseId, fileName);
 	                                    }
-	                                } catch (Exception decodeEx) {
-	                                    logger.error("Error decoding/saving document: {}", doc.get("docName"), decodeEx);
-	                                }
-	                            } else {
-	                                logger.info("Skipping empty documentFile for doc: {}", doc.get("docName"));
-	                                // Remove empty documentFile as well
-	                                doc.remove("documentFile");
-	                            }
-	                        } else {
-	                            // If no documentFile, ensure it's not present
-	                            if (doc.containsKey("documentFile")) {
-	                                doc.remove("documentFile");
-	                            }
-	                        }
-	                    }
-	                }
-	                logger.info("Documents processed for training item in course {}: {} items checked", courseId, (documents != null ? documents.size() : 0));
-	            }
 
-	            // Re-stringify the updated categoryData (now without bytearray data)
-	            String updatedCategoryData = objectMapper.writeValueAsString(trainingData);
-	            payload.put("categoryData", updatedCategoryData);
+	                                } catch (Exception ex) {
+	                                    logger.error("Error saving document", ex);
+	                                }
+	                            }
+
+	                            // Remove documentFile from JSON
+	                            doc.remove("documentFile");
+	                        }
+
+	                        // ------------------------- CASE 2: OLD FILE (NO NEW UPLOAD) -------------------------
+	                        else {
+	                            logger.info("Existing document retained: {}", doc.get("docView"));
+
+	                            // Ensure old keys remain
+	                            doc.put("fileName", doc.get("docView"));
+	                            doc.put("docUrl", doc.get("dociURL"));
+
+	                            // Clear 'documentFile' if present
+	                            doc.remove("documentFile");
+	                        }
+	                    } // END LOOP documents
+	                }
+	            } // END LOOP trainingData
+
+	            // Replace cleaned data back into payload
+	            payload.put("categoryData", mapper.writeValueAsString(trainingData));
 	        }
-	    } catch (Exception parseEx) {
-	        logger.error("Error processing payload for file saving", parseEx);
-	        // Continue to forward, but log the issue - or return error if critical
+	    } catch (Exception e) {
+	        logger.error("Error processing training documents", e);
 	    }
 
-	    // Forward to external service (HIS URL)
+	    // ------------------------- FORWARD TO EXTERNAL HIS URL -------------------------
 	    try {
-	        String hisUrl = env.getHisUrl() + "rest-academic-saveTraining?userId=" + userId
-	                + "&org=" + orgName + "&orgDiv=" + orgDivision;
-	        // Assuming 'env' is injected @Autowired YourEnvConfig env;
+	        String hisUrl = env.getHisUrl()
+	                + "rest-academic-saveTraining?userId=" + userId
+	                + "&org=" + orgName
+	                + "&orgDiv=" + orgDivision;
+
 	        resp = restClient.postForObject(hisUrl, payload, JsonResponse.class);
-	        logger.info("External service response: {}", resp);
+
 	    } catch (Exception e) {
-	        logger.error("Error calling external service", e);
+	        logger.error("Error calling HIS service", e);
 	        resp.setMessage("Error saving training data");
 	    }
 
 	    logger.info("Method: saveTraining ends");
 	    return resp;
 	}
-	
+
+
+	// ------------------------- SAVE FILE FUNCTION -------------------------
+	public String saveAllMultiImages(byte[] imageBytes, String ext) {
+
+	    logger.info("Method : saveAllMultiImages starts");
+
+	    String imageName = null;
+
+	    try {
+	        if (imageBytes != null) {
+
+	            long now = new Date().getTime();
+
+	            if ("jpeg".equalsIgnoreCase(ext)) ext = "jpg";
+
+	            imageName = now + "." + ext;
+
+	            Path path = Paths.get(env.getFileUploadDocumenttUrl() + imageName);
+
+	            Files.write(path, imageBytes);
+	        }
+
+	    } catch (Exception e) {
+	        logger.error("Error saving file", e);
+	    }
+
+	    logger.info("Method : saveAllMultiImages ends");
+	    return imageName;
+	}
+
 	// view instructor
 	@SuppressWarnings("unchecked")
 	@GetMapping("get-all-instructor-list")
