@@ -87,7 +87,7 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 				.antMatchers("/oauth/token").permitAll()
 				.antMatchers("/api-docs/**").permitAll()
 				.antMatchers("/index-assets/**").permitAll()
-
+                
 				.antMatchers("/register").permitAll()
 				.antMatchers("/login").permitAll()
 				.antMatchers("/term-and-condition").permitAll()
@@ -225,6 +225,7 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 				.antMatchers("/enterprise").permitAll()
 				.antMatchers("/upgrading").permitAll()
 				.antMatchers("/save-candidate-reg-details").permitAll()
+				.antMatchers("/rest-delete-public-batches").permitAll()
 				.antMatchers("/academic/get-catlog-courses").permitAll()
 				.and().formLogin().loginPage("/login").permitAll().successHandler(customAuthenticationSuccessHandler)
 				.and().authorizeRequests().antMatchers("/**").authenticated()
