@@ -1,6 +1,12 @@
 package nirmalya.aathithya.webmodule.lms.controller;
 
- import java.util.Arrays;
+ import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -53,6 +59,13 @@ public class AdminCommonController {
 
 		logger.info("Mothod: view public batches page ends...");
 		return "lms/lms-public-batches";
+	}
+	@GetMapping("blogs")
+	public String blogPageView(Model model, HttpSession session) {
+		logger.info("Mothod:view blog page started...");
+
+		logger.info("Mothod: view blog page ends...");
+		return "lms/blogs";
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -398,6 +411,141 @@ resp = restTemplate.getForObject(env.getHisUrl() + "rest-subscription-student-vi
 	    logger.info("Method : deletePublicBatches ends");
 	    return response;
 	}
+	public String saveAllMultiImages(byte[] imageBytes, String ext) {
+	    logger.info("Method : saveAllMultiImages starts");
+	    String imageName1 = null;
+	    try {
+	        if (imageBytes != null) {
+	            long nowTime = new Date().getTime();
+	            if (ext.contentEquals("jpeg")) {
+	                imageName1 = nowTime + ".jpg";
+	            } else {
+	                imageName1 = nowTime + "." + ext;
+	            }
+	        }
+	        Path path = Paths.get(env.getFileUploadDocumenttUrl() + imageName1);
+	        if (imageBytes != null) {
+	            Files.write(path, imageBytes);
+	        }
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	    }
+	    logger.info("Method : saveAllMultiImages ends");
+	    return imageName1;
+	}
+	@SuppressWarnings("unchecked")
+	@PostMapping("blogs-add-content")
+	public @ResponseBody JsonResponse<Object> addContentData(
+	        HttpSession session,
+	        @RequestBody Map<String, Object> payload) {
 
+	    logger.info("Method : addContentData starts");
+	    JsonResponse<Object> response = new JsonResponse<>();
+
+	    try { 
+	        String orgName = (String) session.getAttribute("ORGANIZATION");
+	        String orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+	        String userId = (String) session.getAttribute("USER_ID");
+
+	        // Pass session org data correctly
+	        payload.put("todOrgName", orgName);
+	        payload.put("todOrgDivision", orgDivision);
+	        payload.put("loginUserId", userId); 
+	        String fileBase64 = (String) payload.get("fileBase64");
+	        String fileName = (String) payload.get("fileName");
+
+	        if (fileBase64 != null && !fileBase64.isEmpty()) {
+
+	            logger.info("📁 New file detected: {}", fileName);
+
+ 	            String ext = "";
+	            if (fileName != null && fileName.contains(".")) {
+	                ext = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+	            }
+
+ 	            if (fileBase64.contains(",")) {
+	                fileBase64 = fileBase64.split(",")[1];
+	            }
+
+	            byte[] imageBytes = Base64.getDecoder().decode(fileBase64);
+
+ 	            String savedFileName = saveAllMultiImages(imageBytes, ext);
+
+	            logger.info("📸 Saved File: {}", savedFileName);
+
+	            payload.put("uploadedFile", savedFileName);
+	        }
+	        else {
+	            logger.info("⚠ No new file uploaded.");
+
+ 	            payload.put("uploadedFile", payload.get("fileName"));
+	        }
+
+	        logger.info("📦 Final payload sent to backend: {}", payload); 
+	        String url = env.getHisUrl() + "rest-add-content-data";
+	        response = restTemplate.postForObject(url, payload, JsonResponse.class);
+
+	    } catch (Exception e) {
+	        logger.error("❌ Error calling REST service:", e);
+	    }
+
+	    logger.info("Method : addContentData ends");
+	    return response;
+	}
+
+	
+	@SuppressWarnings("unchecked")
+	@GetMapping("blogs-view-all-data")
+	public @ResponseBody Object getAllBlogs(HttpSession session) {
+
+	    logger.info("Method : getAllBlogs starts");
+
+	    JsonResponse<Object> resp = new JsonResponse<>();
+
+	    try {
+	        String orgName = (String) session.getAttribute("ORGANIZATION");
+	        String orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+
+ 	        resp = restTemplate.getForObject(
+	                env.getHisUrl() + "rest-view-all-blogs?orgName=" + orgName + "&orgDivision=" + orgDivision,
+	                JsonResponse.class);
+
+ 	        String fileServeUrl = env.getBaseURL() + "document/document/";
+
+	        if (resp.getBody() != null) {
+
+	            List<Object> list = (List<Object>) resp.getBody();
+	            List<Map<String, Object>> updatedList = new ArrayList<>();
+
+	            ObjectMapper mapper = new ObjectMapper();
+
+	            for (Object obj : list) {
+
+ 	                Map<String, Object> map = mapper.readValue(obj.toString(), Map.class);
+
+ 	                String fileName = (String) map.get("uploadDoc");
+
+	                if (fileName != null && !fileName.trim().isEmpty()) {
+
+ 	                    String finalUrl = fileServeUrl + fileName;
+
+	                    map.put("uploadDoc", finalUrl);
+	                }
+
+	                updatedList.add(map);
+	            }
+
+	            resp.setBody(updatedList);
+	        }
+
+	    } catch (Exception e) {
+	        logger.error("Error in getAllBlogs:", e);
+	    }
+
+	    logger.info("Method : getAllBlogs ends => " + resp);
+	    return resp;
+	}
+
+	
 
 }
