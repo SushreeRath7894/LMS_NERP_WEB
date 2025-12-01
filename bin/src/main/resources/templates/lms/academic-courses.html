@@ -344,13 +344,11 @@ to {
 </style>
 <script type="text/javascript"
 	src="https://cdn.ckeditor.com/4.16.0/standard/ckeditor.js"></script>
-
 <script type="text/javascript">
 let savedData = {};
 let currentCategory = "";
 let isTrainingEditMode = false; // Global flag for training edit mode
 const predefinedCategories = ["Online Bootcamp", "Corporate Training", "Mock Tests", "eLearning + Exam Bundle", "Books"];
-
 function populateCheckboxes(categories, containerId = '#trainingCategoryContainer', disabled = false) {
   const $container = $(containerId);
   $container.empty();
@@ -368,7 +366,6 @@ function populateCheckboxes(categories, containerId = '#trainingCategoryContaine
     $container.append(checkHtml);
   });
 }
-
 // ---------------- Refresh Display ----------------
 function refreshDisplay() {
     let html = "";
@@ -388,6 +385,11 @@ function refreshDisplay() {
             html += docList + " (" + data.documents.length + " files)";
         } else {
             html += "None";
+        }
+        if (data.bootcampSchedules && data.bootcampSchedules.length > 0) {
+            data.bootcampSchedules.forEach((sch, i) => {
+                html += `<br>&nbsp;&nbsp;Schedule ${i+1}: ${sch.startDate} to ${sch.endDate}, ${sch.fromTime}-${sch.toTime}, Status: ${sch.scheduleStatus ? 'Active' : 'Inactive'}`;
+            });
         }
         html += "<hr>";
         jsonOutput[category] = data;
@@ -467,7 +469,6 @@ $(document).on('click', '.remove-schedule', function() {
   }
 });
 $(document).ready(function () {
-	 
 $(document).on('shown.bs.tab', 'a[data-bs-toggle="pill"]', function (e) {
     if (CKEDITOR.instances.notesField && currentCategory) {
         setTimeout(() => {
@@ -475,27 +476,20 @@ $(document).on('shown.bs.tab', 'a[data-bs-toggle="pill"]', function (e) {
         }, 20);
     }
 });
-
 cancelTraing();
 $(document).on("shown.bs.tab", 'a[data-bs-toggle="pill"]', function (e) {
     const target = $(e.target).attr("href"); // e.g. "#trainingDynamicPane"
-
     if (target === "#trainingDynamicPane" && currentCategory) {
         loadTrainingCategory(currentCategory);
     }
 });
-
     // ---------------- Category Checkbox Change (DELEGATED FOR DYNAMIC ELEMENTS) ----------------
 $(document).on("change", ".categoryCheck", function () {
-
     $(".categoryCheck").not(this).prop("checked", false);
-
     if ($(this).is(":checked")) {
         currentCategory = $(this).val();
-
         createTrainingTab(currentCategory);
         ensureEditorInitialized();
-
     } else {
         currentCategory = "";
     }
@@ -511,9 +505,6 @@ function ensureEditorInitialized() {
         });
     }
 }
-
-
-
     // ---------------- Add Custom Training + Icon ----------------
     $("#addCustomTraining").on("click", function() {
         $("#customCategoryModal").modal('show');
@@ -548,13 +539,15 @@ function ensureEditorInitialized() {
              let fromTime = $(this).find('.bootcamp-from-time').val() || "";
              let toTime = $(this).find('.bootcamp-to-time').val() || "";
              let additionalInfo = $(this).find('.bootcamp-additional-info').val() || "";
-             if (startDate || endDate || fromTime || toTime) {
+             let isActive = $(this).find('.bootcamp-is-active').is(':checked');
+             if (startDate || endDate || fromTime || toTime || additionalInfo) {
                bootcampSchedules.push({
                  startDate,
                  endDate,
                  fromTime,
                  toTime,
-                 additionalInfo
+                 additionalInfo,
+                 isActive // ✅ Add this field
                });
              }
            });
@@ -576,11 +569,9 @@ function ensureEditorInitialized() {
        // resetUI();
          $("#saveTraing").removeClass('d-none');
     $("#cancelTraingDynamic").removeClass('d-none');
-
     // Switch to Update mode (since data now exists)
     $("#saveBtn").addClass('d-none');
     $("#editBtn").removeClass('d-none');
-
          $("#dynamicFields").show();
          $("#priceField").prop("disabled", false);
          if (CKEDITOR.instances.notesField) {
@@ -590,31 +581,30 @@ function ensureEditorInitialized() {
      // ---------------- EDIT (Update) ----------------
      $("#editBtn").on("click", function () {
     if (!currentCategory) return;
-
     let notes = CKEDITOR.instances.notesField.getData();
     let price = $("#priceField").val();
-
     // Collect bootcamp schedules if applicable
     let bootcampSchedules = [];
     if (currentCategory === "Online Bootcamp") {
-        $('#bootcampSchedulesContainer .schedule-set').each(function () {
-            let startDate = $(this).find('.bootcamp-start-date').val() || "";
-            let endDate = $(this).find('.bootcamp-end-date').val() || "";
-            let fromTime = $(this).find('.bootcamp-from-time').val() || "";
-            let toTime = $(this).find('.bootcamp-to-time').val() || "";
-            let additionalInfo = $(this).find('.bootcamp-additional-info').val() || "";
-            if (startDate || endDate || fromTime || toTime) {
-                bootcampSchedules.push({
-                    startDate,
-                    endDate,
-                    fromTime,
-                    toTime,
-                    additionalInfo
-                });
-            }
-        });
+      $('#bootcampSchedulesContainer .schedule-set').each(function() {
+        let startDate = $(this).find('.bootcamp-start-date').val() || "";
+        let endDate = $(this).find('.bootcamp-end-date').val() || "";
+        let fromTime = $(this).find('.bootcamp-from-time').val() || "";
+        let toTime = $(this).find('.bootcamp-to-time').val() || "";
+        let additionalInfo = $(this).find('.bootcamp-additional-info').val() || "";
+        let isActive = $(this).find('.bootcamp-is-active').is(':checked');
+        if (startDate || endDate || fromTime || toTime || additionalInfo) {
+          bootcampSchedules.push({
+            startDate,
+            endDate,
+            fromTime,
+            toTime,
+            additionalInfo,
+            isActive // ✅ Add this field
+          });
+        }
+      });
     }
-
     // Collect documents
     let documents = [];
     if (gridOptionsDoc.api) {
@@ -622,7 +612,6 @@ function ensureEditorInitialized() {
             documents.push(rowNode.data);
         });
     }
-
     // ✅ Update savedData (local only — not backend yet)
     savedData[currentCategory] = {
         content: notes,
@@ -630,23 +619,19 @@ function ensureEditorInitialized() {
         bootcampSchedules: bootcampSchedules,
         documents: documents
     };
-
     // ✅ Refresh the summary display
     refreshDisplay();
-
     $("#dynamicFields").show();
     $("#priceField").prop("disabled", false);
     if (CKEDITOR.instances.notesField) {
         CKEDITOR.instances.notesField.setReadOnly(false);
     }
-
     // ✅ Ensure main Save Training button is visible
     $("#saveTraing").removeClass('d-none');
     $("#cancelTraing").removeClass('d-none');
-
     // After update, stay in "Update" mode (or switch back to Save if you prefer)
     $("#editBtn").addClass('d-none');
-    $("#saveBtn").removeClass('d-none');
+    $("#saveBtn").addClass('d-none');
 });
      // ---------------- CANCEL ----------------
      $("#cancelTraing").on("click", function () {
@@ -711,8 +696,8 @@ function ensureEditorInitialized() {
      originalSelectedQuizIds = [];
      $("#courseForm :input").prop("disabled", true);
      CKEDITOR.instances['courseDesc'].on('instanceReady', function () {
-    	    this.setReadOnly(true);
-    	});
+         this.setReadOnly(true);
+     });
      // Disable training checkboxes and fields on load
      $(".categoryCheck").prop("disabled", true);
      $("#priceField").prop("disabled", true);
@@ -722,6 +707,27 @@ function ensureEditorInitialized() {
      // Initialize price type handling
      togglePriceFields();
      $('#priceType').on('change', togglePriceFields);
+     // ---------------- NEW: Document Type Filter on Dropdown Change ----------------
+     $('#docTypeSelect').on('change', function() {
+         const selectedType = $(this).val();
+         if (gridOptionsDoc.api) {
+          console.log(selectedType,'ss')
+             if (!selectedType) {
+                 // If no selection (or add 'All' option), clear filter
+                 gridOptionsDoc.api.setFilterModel(null);
+             } else {
+                 // Apply equals filter on docTypeSelect field (case-insensitive for flexibility)
+                 const filterModel = {
+                     docTypeSelect: {
+                         filterType: 'text',
+                         type: 'equals',
+                         filter: selectedType.toLowerCase()
+                     }
+                 };
+                 gridOptionsDoc.api.setFilterModel(filterModel);
+             }
+         }
+     });
  });
 var columnDefsCourse = [{
  headerCheckboxSelection: true,
@@ -1025,12 +1031,12 @@ field : "docType",
 width : 80,
 cellRenderer: function(params) {
 if(params.value != null || params.value != ""){
-if (params.value == "jpg" || params.value == "png" || params.value == "jpeg"){
+ if (params.value == "jpg" || params.value == "png" || params.value == "jpeg"){
 return `<div style = "font-style: italic;"><i style="color: blue" class='bi bi-image'></i> ${params.value.toUpperCase()}</div>`;
 }else if(params.value == "pdf"){
 return `<div style = "font-style: italic;"><i style="color: red" class="bi bi-file-pdf"></i> ${params.value.toUpperCase()}</div>`;
 }else{
-return `<div><i style="color: blue" class='bi bi-image'> ${params.value.toUpperCase()}</i></div>`;
+return `<div><i style="color: blue" class='bi bi-file-earmark'></i> ${params.value.toUpperCase()}</div>`;
 }
 }else{
 return "N/A"
@@ -1057,7 +1063,13 @@ cellRenderer: function(params) {
 const iURL = params.data.dociURL;
          return `<a style="text-decoration: none" href="${iURL}" target="_blank"><b>${params.value}</b></a>`;
      }
+},{
+	headerName : 'Document Type',
+	field : "docTypeSelect",
+	width : 300,
+	hide : true
 }
+
 ];
 const gridOptionsDoc = {
 columnDefs : columnDefsDoc,
@@ -1256,21 +1268,29 @@ function addEmptyScheduleSet() {
           <label>Start Date</label><span class="mandatory">*</span>
           <div class="position-relative">
             <input type="text" class="form-control bootcamp-start-date" onblur="removeValid(event)" readonly>
-            <i class="ti-calendar picker_calendar bootcamp-start-cal" ></i>
+            <i class="ti-calendar picker_calendar bootcamp-start-cal"></i>
           </div>
         </div>
         <div class="col-md-3 form-group calendar_box">
           <label>End Date</label><span class="mandatory">*</span>
           <div class="position-relative">
             <input type="text" class="form-control bootcamp-end-date" onblur="removeValid(event)" readonly>
-            <i class="ti-calendar picker_calendar bootcamp-end-cal" ></i>
+            <i class="ti-calendar picker_calendar bootcamp-end-cal"></i>
           </div>
         </div>
-        <div class="col-md-3">
-          <label>From Time</label> <input type="time" class="form-control bootcamp-from-time">
+        <div class="col-md-2">
+          <label>From Time</label>
+          <input type="time" class="form-control bootcamp-from-time">
         </div>
-        <div class="col-md-3">
-          <label>To Time</label> <input type="time" class="form-control bootcamp-to-time">
+        <div class="col-md-2">
+          <label>To Time</label>
+          <input type="time" class="form-control bootcamp-to-time">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <div class="form-check">
+            <input class="form-check-input bootcamp-is-active" type="checkbox" checked>
+            <label class="form-check-label">Active</label>
+          </div>
         </div>
         <div class="col-md-12">
           <button type="button" class="btn btn-danger btn-sm remove-schedule d-none">Remove Schedule</button>
@@ -1595,98 +1615,98 @@ function getQuizDetails(courseId) {
  });
 }
 function editCourseDetails(courseId) {
-	 $.ajax({
-	     type: "GET",
-	     url: "academic-course-edit?Id=" + courseId,
-	     async: false,
-	     success: function (response) {
-	         if (response.code === "success") {
-	             const courseDetails = JSON.parse(response.body);
-	             if (courseDetails == null) {
-	                 // Handle null case
-	             } else {
-	                 console.log('dddddddddddd', courseDetails);
-	                 // Use direct object properties since courseDetails is an object, not an array
-	                 $("#courseId").val(courseDetails.courseId || "");
-	                 $("#courseTittle").val(courseDetails.courseTitle || ""); // Note: Response uses "courseTitle", not "courseTittle"
-	                 $("#price").val(courseDetails.price || ""); // Assuming "price" exists; add if missing in response
-	                 $("#startDate").val(courseDetails.startDate || "");
-	                 $("#endDate").val(courseDetails.endDate || "");
-	                 $("#patientStatus").val(courseDetails.status || ""); // Assuming this exists
-	                 $("#parentCategory").val(courseDetails.categoryId || '');
-	                 getsubcategoryList(courseDetails.categoryId, courseDetails.subcategoryId || '');
-	                 // FIXED: 'dec' is plain escaped HTML (not base64), so no atob needed - use directly
-	                 let decodedDesc = courseDetails.dec || courseDetails.courseDesc || "";
-	                 if (CKEDITOR.instances.courseDesc) {
-	                     CKEDITOR.instances.courseDesc.setData(decodedDesc);
-	                 } else {
-	                     console.error("CKEditor instance for 'courseDesc' not found.");
-	                 }
-	                 // Handle document preview
-	               if (courseDetails[0].documentURL == null || courseDetails[0].documentURL == '') {
-	                   $("#uploadedWarrDiv_0").html("");
-	                   $("#imageWarrName_0").html("");
-	                   $("#imageRemoveBtn_0").empty();
-	               } else {
-	                   $("#uploadedWarrDiv_0").html("");
-	                   var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + courseDetails[0].documentURL + "' title='" + courseDetails[0].fileName + "' target='_balnk'><i class='fa fa-file-o' style='color: blue'></i></a></div>";
-	                   $("#uploadedWarrDiv_0").html(LightImg);
-	                   $("#imageWarrName_0").html(courseDetails[0].fileName);
-	                  /* $("#imageRemoveBtn_0").html('<i style="color: red; cursor: pointer;" class="bi bi-x-lg" onclick="clearFileUploadFields();"></i>'); */
-	               }
-	                 $("#rate").val(courseDetails.rate || "");
-	                 $("#currencySymbol").val(courseDetails.currencySymbol || "");
-	                 $("#level").val(courseDetails.level || "");
-	                 $("#priceType").val(courseDetails.priceType || "B2C");
-	                 $("#customers").val(courseDetails.customers ? JSON.parse(courseDetails.customers) : "");
-	                 // Handle duration parsing
-	                 var duration = courseDetails.duration || "";
-	                 var hours = 0;
-	                 var minutes = 0;
-	                 if (duration) {
-	                     var parts = duration.split(" ");
-	                     for (var part of parts) {
-	                         if (part.endsWith("h")) {
-	                             hours = parseInt(part.replace("h", "")) || 0;
-	                         } else if (part.endsWith("m")) {
-	                             minutes = parseInt(part.replace("m", "")) || 0;
-	                         }
-	                     }
-	                 }
-	                 $("#durationHours").val(hours);
-	                 $("#durationMinutes").val(minutes);
-	                 togglePriceFields();
-	                 // Optional: Load training details if courseCategoryType exists
-	                /* if (courseDetails.courseCategoryType && Array.isArray(courseDetails.courseCategoryType)) {
-	                     getTrainingDetails(courseId); // Assuming this function exists to populate training tabs
-	                 } */
-	                 // Optional: Handle image if "image" field exists
-	                 if (courseDetails.image) {
-	                     // Set preview for course image if needed
-	                     console.log('Course Image URL:', courseDetails.image);
-	                 }
-	                 // Optional: Populate structured description fields if separate sections exist
-	                 if (courseDetails.courseOverview) {
-	                     // Assuming additional CKEditor instances for sections; adjust as needed
-	                     // e.g., if (CKEDITOR.instances.courseOverview) CKEDITOR.instances.courseOverview.setData(courseDetails.courseOverview);
-	                 }
-	                 if (courseDetails.targetGroup) {
-	                     // e.g., if (CKEDITOR.instances.targetGroup) CKEDITOR.instances.targetGroup.setData(courseDetails.targetGroup);
-	                 }
-	                 if (courseDetails.conceptsCovered) {
-	                     // e.g., if (CKEDITOR.instances.conceptsCovered) CKEDITOR.instances.conceptsCovered.setData(courseDetails.conceptsCovered);
-	                 }
-	                 if (courseDetails.examAndPrerequisite) {
-	                     // e.g., if (CKEDITOR.instances.examAndPrerequisite) CKEDITOR.instances.examAndPrerequisite.setData(courseDetails.examAndPrerequisite);
-	                 }
-	             }
-	         }
-	     },
-	     error: function (error) {
-	         console.error("Error fetching course details:", error);
-	     }
-	 });
-	}
+ $.ajax({
+     type: "GET",
+     url: "academic-course-edit?Id=" + courseId,
+     async: false,
+     success: function (response) {
+         if (response.code === "success") {
+             const courseDetails = JSON.parse(response.body);
+             if (courseDetails == null) {
+                 // Handle null case
+             } else {
+                 console.log('dddddddddddd', courseDetails);
+                 // Use direct object properties since courseDetails is an object, not an array
+                 $("#courseId").val(courseDetails.courseId || "");
+                 $("#courseTittle").val(courseDetails.courseTitle || ""); // Note: Response uses "courseTitle", not "courseTittle"
+                 $("#price").val(courseDetails.price || ""); // Assuming "price" exists; add if missing in response
+                 $("#startDate").val(courseDetails.startDate || "");
+                 $("#endDate").val(courseDetails.endDate || "");
+                 $("#patientStatus").val(courseDetails.status || ""); // Assuming this exists
+                 $("#parentCategory").val(courseDetails.categoryId || '');
+                 getsubcategoryList(courseDetails.categoryId, courseDetails.subcategoryId || '');
+                 // FIXED: 'dec' is plain escaped HTML (not base64), so no atob needed - use directly
+                 let decodedDesc = courseDetails.dec || courseDetails.courseDesc || "";
+                 if (CKEDITOR.instances.courseDesc) {
+                     CKEDITOR.instances.courseDesc.setData(decodedDesc);
+                 } else {
+                     console.error("CKEditor instance for 'courseDesc' not found.");
+                 }
+                 // Handle document preview
+               if (courseDetails[0].documentURL == null || courseDetails[0].documentURL == '') {
+                   $("#uploadedWarrDiv_0").html("");
+                   $("#imageWarrName_0").html("");
+                   $("#imageRemoveBtn_0").empty();
+               } else {
+                   $("#uploadedWarrDiv_0").html("");
+                   var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + courseDetails[0].documentURL + "' title='" + courseDetails[0].fileName + "' target='_balnk'><i class='fa fa-file-o' style='color: blue'></i></a></div>";
+                   $("#uploadedWarrDiv_0").html(LightImg);
+                   $("#imageWarrName_0").html(courseDetails[0].fileName);
+                  /* $("#imageRemoveBtn_0").html('<i style="color: red; cursor: pointer;" class="bi bi-x-lg" onclick="clearFileUploadFields();"></i>'); */
+               }
+                 $("#rate").val(courseDetails.rate || "");
+                 $("#currencySymbol").val(courseDetails.currencySymbol || "");
+                 $("#level").val(courseDetails.level || "");
+                 $("#priceType").val(courseDetails.priceType || "B2C");
+                 $("#customers").val(courseDetails.customers ? JSON.parse(courseDetails.customers) : "");
+                 // Handle duration parsing
+                 var duration = courseDetails.duration || "";
+                 var hours = 0;
+                 var minutes = 0;
+                 if (duration) {
+                     var parts = duration.split(" ");
+                     for (var part of parts) {
+                         if (part.endsWith("h")) {
+                             hours = parseInt(part.replace("h", "")) || 0;
+                         } else if (part.endsWith("m")) {
+                             minutes = parseInt(part.replace("m", "")) || 0;
+                         }
+                     }
+                 }
+                 $("#durationHours").val(hours);
+                 $("#durationMinutes").val(minutes);
+                 togglePriceFields();
+                 // Optional: Load training details if courseCategoryType exists
+                /* if (courseDetails.courseCategoryType && Array.isArray(courseDetails.courseCategoryType)) {
+                     getTrainingDetails(courseId); // Assuming this function exists to populate training tabs
+                 } */
+                 // Optional: Handle image if "image" field exists
+                 if (courseDetails.image) {
+                     // Set preview for course image if needed
+                     console.log('Course Image URL:', courseDetails.image);
+                 }
+                 // Optional: Populate structured description fields if separate sections exist
+                 if (courseDetails.courseOverview) {
+                     // Assuming additional CKEditor instances for sections; adjust as needed
+                     // e.g., if (CKEDITOR.instances.courseOverview) CKEDITOR.instances.courseOverview.setData(courseDetails.courseOverview);
+                 }
+                 if (courseDetails.targetGroup) {
+                     // e.g., if (CKEDITOR.instances.targetGroup) CKEDITOR.instances.targetGroup.setData(courseDetails.targetGroup);
+                 }
+                 if (courseDetails.conceptsCovered) {
+                     // e.g., if (CKEDITOR.instances.conceptsCovered) CKEDITOR.instances.conceptsCovered.setData(courseDetails.conceptsCovered);
+                 }
+                 if (courseDetails.examAndPrerequisite) {
+                     // e.g., if (CKEDITOR.instances.examAndPrerequisite) CKEDITOR.instances.examAndPrerequisite.setData(courseDetails.examAndPrerequisite);
+                 }
+             }
+         }
+     },
+     error: function (error) {
+         console.error("Error fetching course details:", error);
+     }
+ });
+}
 function addApplication() {
  if (window.gridApi) {
      window.gridApi.deselectAll();
@@ -1749,7 +1769,7 @@ function editCourse() {
  $("#courseForm :input").prop("disabled", false);
  var editor = CKEDITOR.instances['courseDesc'];
  editor.setReadOnly(false);
- editor.readOnly = false; 
+ editor.readOnly = false;
 // CKEDITOR.instances['courseDesc'].setReadOnly(false);
 }
 function saveFile() {
@@ -2007,23 +2027,18 @@ function editTraing() {
    /* $(".categoryCheck").prop("disabled", false);
     $("#addCustomTraining").prop("disabled", false);
     isTrainingEditMode = true;
-
     $("#addtraining").addClass('d-none');
     $("#editTraing").addClass('d-none');
     $("#saveTraing").removeClass('d-none');
     $("#cancelTraing").removeClass('d-none');
-
     let allCats = [...new Set([...predefinedCategories, ...Object.keys(savedData)])];
     populateCheckboxes(allCats, '#trainingCategoryContainer', false);
-
     if (currentCategory) {
         ensureEditorInitialized();
         // If user clicks Edit while dynamic tab is visible, just reload in edit mode
         loadTrainingCategory(currentCategory);
     }
-
     refreshDisplay(); */
-
     $(".categoryCheck").prop("disabled", false);
     $("#addCustomTraining").prop("disabled", false);
     isTrainingEditMode = true; // Set edit mode
@@ -2040,13 +2055,55 @@ function editTraing() {
     }
     refreshDisplay(); // Refresh to show existing
 }
-
+function validateTrainingData() {
+    if (!currentCategory) {
+        toastr.error("No category selected.");
+        return false;
+    }
+    const data = savedData[currentCategory];
+    if (!data) {
+        toastr.error("No data available for " + currentCategory + ". Please fill in the details first.");
+        return false;
+    }
+    if (!data.content || data.content.trim() === '') {
+        toastr.error("Content is required for " + currentCategory);
+        CKEDITOR.instances.notesField.focus();
+        return false;
+    }
+   /* if (!data.pricing || parseFloat(data.pricing) <= 0) {
+        toastr.error("Valid price (greater than 0) is required for " + currentCategory);
+        $("#priceField").focus();
+        return false;
+    } */
+    if (currentCategory === "Online Bootcamp") {
+        const schedules = data.bootcampSchedules || [];
+        if (schedules.length === 0) {
+            toastr.error("At least one bootcamp schedule is required.");
+            return false;
+        }
+        const validSchedule = schedules.find(s => s.startDate && s.endDate && s.startDate.trim() !== '' && s.endDate.trim() !== '');
+        if (!validSchedule) {
+            toastr.error("Each bootcamp schedule requires start and end dates.");
+            return false;
+        }
+    }
+    // Documents are optional; add check if required
+    // if (data.documents && data.documents.length === 0) {
+    // toastr.error("At least one document is required for " + currentCategory);
+    // return false;
+    // }
+    return true;
+}
 function saveTraing() {
     // Ensure latest data is saved to savedData
     if ($("#editBtn").hasClass('d-none')) {
         $("#saveBtn").click();
     } else {
         $("#editBtn").click();
+    }
+    // Validate before proceeding
+    if (!validateTrainingData()) {
+        return;
     }
     // Get the courseId
     let courseId = $("#courseId").val() || "";
@@ -2119,7 +2176,7 @@ function saveTraing() {
     };
     console.log("xxxx",payload);
     // Post to controller as JSON
-    $.ajax({
+     $.ajax({
         url: 'academic-course-training-save',
         type: 'POST',
         contentType: 'application/json',
@@ -2270,28 +2327,21 @@ function getTrainingDetails(courseId) {
         url: "academic-training-view?id=" + courseId,
     }).then(function (response) {
         if (response.message === "Success") {
-
             const innerJsonString = response.body[0];
             const responseBody = JSON.parse(innerJsonString);
-
             const courseData = Array.isArray(responseBody)
                 ? (responseBody[0] ? responseBody[0].courseCategoryType : [])
                 : (responseBody.courseCategoryType || []);
-
             console.log('Training Data Received:', courseData);
-
             savedData = {};
             let dynamicCategories = [];
-
             if (Array.isArray(courseData)) {
                 courseData.forEach(item => {
                     const category = item.trainingCategory;
                     if (!category) return;
-
                     dynamicCategories.push(category);
-
                     // docs
-                    let documentFiles = [];
+                    /* let documentFiles = [];
                     if (Array.isArray(item.documents) && item.documents.length > 0) {
                         documentFiles = item.documents.map((doc, index) => ({
                             slno: index + 1,
@@ -2302,20 +2352,55 @@ function getTrainingDetails(courseId) {
                             documentFile: null,
                             docView: doc.documentName || doc.fileName || 'Unnamed Document'
                         }));
+                    } */
+                
+                    let documentFiles = [];
+                    const selectedType = $('#docTypeSelect').val() || '';
+                    if (Array.isArray(item.documents) && item.documents.length > 0) {
+                        let filteredDocs = item.documents;
+                        if (selectedType && selectedType.toLowerCase() !== 'all') { // Assuming 'All' clears, adjust if needed
+                            filteredDocs = item.documents.filter(doc => {
+                                // Prioritize documentType from DB, fallback to type or file extension
+                                const docType = (doc.type || (doc.fileName ? doc.fileName.split('.').pop().toLowerCase() : "N/A"))
+                                    .replace(/^\./, '') // Remove leading dot if from extension
+                                    .toLowerCase();
+                                return docType === selectedType.toLowerCase();
+                            });
+                            console.log(`Filtered documents by docType '${selectedType}': ${filteredDocs.length} items`);
+                        } else {
+                            console.log(`No docType filter: all ${item.documents.length} documents included`);
+                        }
+                        documentFiles = filteredDocs.map((doc, index) => {
+                            let fileExt = doc.fileName ? doc.fileName.split('.').pop().toLowerCase() : "N/A";
+                            return {
+                                slno: index + 1,
+                                isEditDoc: false,
+                                docName: doc.documentName || doc.fileName || 'Unnamed Document',
+                                // Set docType to file extension (not replaced)
+                                docType: fileExt.replace(/^\./, ''),
+                                // Add docTypeSelect as the category (from DB type or default)
+                                docTypeSelect: doc.type || '',
+                                dociURL: doc.documentUrl || "",
+                                documentFile: null,
+                                docView: doc.documentName || doc.fileName || 'Unnamed Document'
+                            };
+                        });
                     }
-
+                
                     // bootcamp
                     let bootcampSchedules = [];
                     if (category === "Online Bootcamp" && Array.isArray(item.bootcampDetails)) {
-                        bootcampSchedules = item.bootcampDetails.map(d => ({
+                     console.log(item.bootcampDetails)
+                     bootcampSchedules = item.bootcampDetails.map(d => ({
                             startDate: d.startDate || "",
                             endDate: d.endDate || "",
                             fromTime: d.fromTime || "",
                             toTime: d.toTime || "",
-                            additionalInfo: d.title || ""
+                            additionalInfo: d.title || "",
+                            isActive: d.sheduleStatus === "true" // ✅ Correct key + boolean conversion
                         }));
+               
                     }
-
                     savedData[category] = {
                         content: item.trainingDescription || "",
                         pricing: item.trainingPrice || "",
@@ -2324,13 +2409,10 @@ function getTrainingDetails(courseId) {
                     };
                 });
             }
-
             dynamicCategories = [...new Set(dynamicCategories)];
             console.log('Dynamically fetched categories:', dynamicCategories);
-
             // Build checkboxes inside #trainingCategoryContainer
             const $row = $("#trainingCategoryContainer");
-
             if (dynamicCategories.length === 0) {
                 $row.html('<div class="col-12"><p class="text-muted text-center">No training categories available for this course.</p></div>');
                 $(".categoryCheck").prop("disabled", true);
@@ -2339,16 +2421,13 @@ function getTrainingDetails(courseId) {
             } else {
               populateCheckboxes(dynamicCategories, '#trainingCategoryContainer', true);
             }
-
             // view mode by default
             $(".categoryCheck").prop("disabled", true);
             $("#addCustomTraining").prop("disabled", true);
-
             if (CKEDITOR.instances.notesField) {
                 CKEDITOR.instances.notesField.setReadOnly(true);
             }
             $("#priceField").prop("disabled", true);
-
             currentCategory = "";
             // no auto-selection – user must click a checkbox to open dynamic tab
         } else {
@@ -2362,7 +2441,6 @@ function getTrainingDetails(courseId) {
             if (keys.length > 0) {
                 const firstCategory = keys[0];
                 const $firstCheckbox = $(`.categoryCheck[value="${firstCategory}"]`);
-
                 if ($firstCheckbox.length) {
                     currentCategory = firstCategory;
                     $firstCheckbox.prop("checked", true);
@@ -2373,28 +2451,22 @@ function getTrainingDetails(courseId) {
         }, 300);
     });
 }
-
 function selectTrainingCategory(category) {
     currentCategory = category;
-
     // sync checkbox
     $(".categoryCheck").prop("checked", false);
     $(`.categoryCheck[value="${category}"]`).prop("checked", true);
-
     // sync pills
     $(".training-tab-btn").removeClass("active");
     $(`.training-tab-btn[data-category="${category}"]`).addClass("active");
-
     ensureEditorAndLoad(category);
 }
 $(document).on("click", ".training-tab-btn", function () {
     const category = $(this).data("category");
     selectTrainingCategory(category);
 });
-
 function ensureEditorAndLoad(category) {
     $("#dynamicFields").show();
-
     if (!CKEDITOR.instances.notesField) {
         CKEDITOR.replace("notesField", {
             height: 150,
@@ -2403,7 +2475,6 @@ function ensureEditorAndLoad(category) {
             scayt_maxSuggestions: 3,
             autoParagraph: false,
         });
-
         CKEDITOR.instances.notesField.on('instanceReady', function () {
             loadTrainingCategory(category);
         });
@@ -2412,16 +2483,13 @@ function ensureEditorAndLoad(category) {
     }
 }
 function loadTrainingCategory(category) {
-
     const data = savedData[category] || {
         content: "",
         pricing: "",
         bootcampSchedules: [],
         documents: []
     };
-
     $("#dynamicFields").show();
-
     const editor = CKEDITOR.instances.notesField;
     if (editor) {
         try {
@@ -2432,71 +2500,68 @@ function loadTrainingCategory(category) {
             }, 50);
         }
     }
-
     // Pricing
     $("#priceField").val(data.pricing || "");
-
     // Bootcamp
     if (category === "Online Bootcamp") {
         $("#bootcampSpecificFields").show();
         const schedules = data.bootcampSchedules || [];
         $("#bootcampSchedulesContainer").empty();
-
         if (schedules.length === 0) {
             addEmptyScheduleSet();
         } else {
-            schedules.forEach((sch, index) => {
-                const html = `
-                    <div class="schedule-set mb-3">
-                        <div class="row g-2">
-                            <div class="col-md-12">
-                                <label>Add Title</label>
-                                <textarea class="form-control bootcamp-additional-info" rows="3">${sch.additionalInfo || ''}</textarea>
-                            </div>
-                            <div class="col-md-3 form-group calendar_box">
-                                <label>Start Date</label><span class="mandatory">*</span>
-                                <div class="position-relative">
-                                    <input type="text"
-                                           class="form-control bootcamp-start-date"
-                                           value="${sch.startDate || ''}" readonly>
-                                    <i class="ti-calendar picker_calendar bootcamp-start-cal"></i>
-                                </div>
-                            </div>
-                            <div class="col-md-3 form-group calendar_box">
-                                <label>End Date</label><span class="mandatory">*</span>
-                                <div class="position-relative">
-                                    <input type="text"
-                                           class="form-control bootcamp-end-date"
-                                           value="${sch.endDate || ''}" readonly>
-                                    <i class="ti-calendar picker_calendar bootcamp-end-cal"></i>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <label>From Time</label>
-                                <input type="time" class="form-control bootcamp-from-time"
-                                       value="${sch.fromTime || ''}">
-                            </div>
-                            <div class="col-md-3">
-                                <label>To Time</label>
-                                <input type="time" class="form-control bootcamp-to-time"
-                                       value="${sch.toTime || ''}">
-                            </div>
-                            <div class="col-md-12">
-                                <button type="button" class="btn btn-danger btn-sm remove-schedule ${index === 0 ? 'd-none' : ''}">
-                                    Remove Schedule
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                $("#bootcampSchedulesContainer").append(html);
-            });
+         schedules.forEach((sch, index) => {
+             const isActive = sch.isActive !== false; // default true if missing
+             const html = `
+                 <div class="schedule-set mb-3">
+                     <div class="row g-2">
+                         <div class="col-md-12">
+                             <label>Add Title</label>
+                             <textarea class="form-control bootcamp-additional-info" rows="3">${sch.additionalInfo || ''}</textarea>
+                         </div>
+                         <div class="col-md-3 form-group calendar_box">
+                             <label>Start Date</label><span class="mandatory">*</span>
+                             <div class="position-relative">
+                                 <input type="text" class="form-control bootcamp-start-date" value="${sch.startDate || ''}" readonly>
+                                 <i class="ti-calendar picker_calendar bootcamp-start-cal"></i>
+                             </div>
+                         </div>
+                         <div class="col-md-3 form-group calendar_box">
+                             <label>End Date</label><span class="mandatory">*</span>
+                             <div class="position-relative">
+                                 <input type="text" class="form-control bootcamp-end-date" value="${sch.endDate || ''}" readonly>
+                                 <i class="ti-calendar picker_calendar bootcamp-end-cal"></i>
+                             </div>
+                         </div>
+                         <div class="col-md-2">
+                             <label>From Time</label>
+                             <input type="time" class="form-control bootcamp-from-time" value="${sch.fromTime || ''}">
+                         </div>
+                         <div class="col-md-2">
+                             <label>To Time</label>
+                             <input type="time" class="form-control bootcamp-to-time" value="${sch.toTime || ''}">
+                         </div>
+                         <div class="col-md-2 d-flex align-items-end">
+                             <div class="form-check">
+                                 <input class="form-check-input bootcamp-is-active" type="checkbox" ${isActive ? 'checked' : ''}>
+                                 <label class="form-check-label">Active</label>
+                             </div>
+                         </div>
+                         <div class="col-md-12">
+                             <button type="button" class="btn btn-danger btn-sm remove-schedule ${index === 0 ? 'd-none' : ''}">
+                                 Remove Schedule
+                             </button>
+                         </div>
+                     </div>
+                 </div>
+             `;
+             $("#bootcampSchedulesContainer").append(html);
+         });
         }
         initBootcampPickers();
     } else {
         $("#bootcampSpecificFields").hide();
     }
-
     // Documents grid
     if (gridOptionsDoc && gridOptionsDoc.api) {
         gridOptionsDoc.api.setRowData(data.documents || []);
@@ -2506,7 +2571,6 @@ function loadTrainingCategory(category) {
         }
         rowSelectDetailsDoc();
     }
-
     // View vs Edit mode
     if (isTrainingEditMode) {
         $("#priceField").prop("disabled", false);
@@ -2519,39 +2583,29 @@ function loadTrainingCategory(category) {
         $("#saveBtn").addClass('d-none');
         $("#editBtn").addClass('d-none');
     }
-
     // your existing summary / JSON output
     refreshDisplay();
 }
-
-
 //---------------- Updated handleCategoryLoad Function ----------------
 //This function loads content, pricing, and documents into the grid for the current category.
 //Now properly handles editor callback and grid data setting.
 function handleCategoryLoad(editor) {
-
     if (savedData[currentCategory]) {
-
         editor.setData(savedData[currentCategory].content);
         $("#priceField").val(savedData[currentCategory].pricing);
-
         // ---- Bootcamp Schedule Handling ----
         if (currentCategory === "Online Bootcamp") {
-
             const schedules = savedData[currentCategory].bootcampSchedules || [];
-
             $('#bootcampSchedulesContainer').empty();
-
             schedules.forEach((sch, index) => {
-
-                const setHtml = `
+                const isActive = sch.isActive !== false; // default true if missing
+                const html = `
                     <div class="schedule-set mb-3">
                         <div class="row g-2">
                             <div class="col-md-12">
                                 <label>Add Title</label>
                                 <textarea class="form-control bootcamp-additional-info" rows="3">${sch.additionalInfo || ''}</textarea>
                             </div>
-
                             <div class="col-md-3 form-group calendar_box">
                                 <label>Start Date</label><span class="mandatory">*</span>
                                 <div class="position-relative">
@@ -2559,7 +2613,6 @@ function handleCategoryLoad(editor) {
                                     <i class="ti-calendar picker_calendar bootcamp-start-cal"></i>
                                 </div>
                             </div>
-
                             <div class="col-md-3 form-group calendar_box">
                                 <label>End Date</label><span class="mandatory">*</span>
                                 <div class="position-relative">
@@ -2567,17 +2620,20 @@ function handleCategoryLoad(editor) {
                                     <i class="ti-calendar picker_calendar bootcamp-end-cal"></i>
                                 </div>
                             </div>
-
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label>From Time</label>
                                 <input type="time" class="form-control bootcamp-from-time" value="${sch.fromTime || ''}">
                             </div>
-
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label>To Time</label>
                                 <input type="time" class="form-control bootcamp-to-time" value="${sch.toTime || ''}">
                             </div>
-
+                            <div class="col-md-2 d-flex align-items-end">
+                                <div class="form-check">
+                                    <input class="form-check-input bootcamp-is-active" type="checkbox" ${isActive ? 'checked' : ''}>
+                                    <label class="form-check-label">Active</label>
+                                </div>
+                            </div>
                             <div class="col-md-12">
                                 <button type="button" class="btn btn-danger btn-sm remove-schedule ${index === 0 ? 'd-none' : ''}">
                                     Remove Schedule
@@ -2586,63 +2642,47 @@ function handleCategoryLoad(editor) {
                         </div>
                     </div>
                 `;
-
-                $('#bootcampSchedulesContainer').append(setHtml);
+                $("#bootcampSchedulesContainer").append(html);
             });
-
             if (schedules.length === 0) {
                 addEmptyScheduleSet();
             }
-
             initBootcampPickers();
         }
-
         // ---------- 📌 FIXED AG-GRID SECTION ----------
         if (gridOptionsDoc && gridOptionsDoc.api) {
-
             const docs = savedData[currentCategory].documents || [];
-
             gridOptionsDoc.api.setRowData(docs);
-
             // Select rows if exist
             if (docs.length > 0) {
                 gridOptionsDoc.api.selectAll();
             } else {
                 gridOptionsDoc.api.deselectAll();
             }
-
             rowSelectDetailsDoc();
-
             // 🔥 CRITICAL FIX: Force AG-Grid to redraw
             setTimeout(() => {
                 gridOptionsDoc.api.doLayout();
                 gridOptionsDoc.api.sizeColumnsToFit();
             }, 50);
         }
-
     }
     else {
-
         editor.setData("");
         $("#priceField").val("");
-
         if (currentCategory === "Online Bootcamp") addEmptyScheduleSet();
-
         if (gridOptionsDoc && gridOptionsDoc.api) {
             gridOptionsDoc.api.setRowData([]);
             gridOptionsDoc.api.deselectAll();
-
             setTimeout(() => {
                 gridOptionsDoc.api.doLayout();
             }, 50);
         }
     }
-
     // ---- Edit Mode Logic ----
     if (isTrainingEditMode) {
         $("#priceField").prop("disabled", false);
         editor.setReadOnly(false);
-
         if (savedData[currentCategory]) {
             $("#saveBtn").addClass('d-none');
             $("#editBtn").removeClass('d-none');
@@ -2655,10 +2695,8 @@ function handleCategoryLoad(editor) {
         editor.setReadOnly(true);
         $("#saveBtn, #editBtn").addClass('d-none');
     }
-
     refreshDisplay();
 }
-
 /* ✅ Clear all training fields */
 function clearTrainingFields() {
  if (CKEDITOR.instances.notesField) {
@@ -2732,71 +2770,75 @@ remove : selectedRows
  gridOptionsDoc.api.refreshCells({ force: true });
 }
 function saveMultiFile(event) {
-var AssignItemQty = event.currentTarget.value;
-var currentFldId = event.currentTarget.getAttribute('id');
-var l = currentFldId.split("_");
-var counter = l[1];
-var currentFldId = "#" + currentFldId;
-var uFile = $(currentFldId)[0].files[0];
-var fileName = event.currentTarget.value;
-var lastIndex = fileName.lastIndexOf("\\");
-if (lastIndex >= 0) {
-fileName = fileName.substring(lastIndex + 1);
-}
-var extension = fileName.split(".");
-var iURL = URL.createObjectURL(uFile);
-$("#uploadedBillDiv_" + counter).html("");
-if (extension[1] != null && extension[1] != "") {
-$("#uploadHidden_" + counter).val('');
-}
-/* if (extension[1] == "jpg" || extension[1] == "png"
-|| extension[1] == "jpeg") {
-var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='bi bi-image' style='font-size: 12px'></i></a></span>";
-} else if (extension[1] == "pdf") {
-var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-pdf-o'></i> </a></span>";
-} else if (extension[1] == "xls" || extension[1] == "xlsx") {
-var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-excel-o'></i></a></span>";
-} else if (extension[1] == "doc" || extension[1] == "dox"
-|| extension[1] == "docx") {
-var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-word-o'></i></a></span>";
-} else {
-var LightImg = "<span class='uploadicon position-l '> </div>";
-} */
-//var dltImg = "<i class='ti-close position-l rmv1' onclick='openDeleteConfirm()'></i>";
-/* $("#uploadedBillDiv_" + counter).html(LightImg);
-$("#imageName_" + counter).html(fileName);
-$("#dltImage_" + counter).html(dltImg);
-$("#dltImage_" + counter).addClass("custom-file-delete");
-$("#clickImg_" + counter).removeClass("ti-plus");
-$("#clickImg_" + counter).addClass("ti-pencil"); */
-var fileData = new FormData();
-fileData.append('file', uFile);
-fileData.append('path', 'none');
-var details = {};
- var data = [];
- var x = [];
- var reader = new FileReader();
-reader.readAsDataURL(uFile);
-var iURL = URL.createObjectURL(uFile);
-reader.onload = function() {
-data = reader.result.split(",");
-x.push(data[1]);
-//details.fileName=fileName;
-};
-const lastRowIndex = gridOptionsDoc.api.getDisplayedRowCount();
-//console.log("lastRowIndex>>>",lastRowIndex);
-let newRow = {
-slno : parseInt(lastRowIndex) + parseInt(1),
-docName : null,
-isEditDoc : 0,
-docType : extension[1],
-dociURL : iURL,
-documentFile : x,
-docView : fileName
-};
-gridOptionsDoc.api.applyTransaction({
-add : [ newRow ]
-});
+    var AssignItemQty = event.currentTarget.value;
+    var currentFldId = event.currentTarget.getAttribute('id');
+    var l = currentFldId.split("_");
+    var counter = l[1];
+    var currentFldId = "#" + currentFldId;
+    var uFile = $(currentFldId)[0].files[0];
+    var fileName = event.currentTarget.value;
+    var lastIndex = fileName.lastIndexOf("\\");
+    if (lastIndex >= 0) {
+        fileName = fileName.substring(lastIndex + 1);
+    }
+    var extension = fileName.split(".");
+    var iURL = URL.createObjectURL(uFile);
+    $("#uploadedBillDiv_" + counter).html("");
+    if (extension[1] != null && extension[1] != "") {
+        $("#uploadHidden_" + counter).val('');
+    }
+    /* if (extension[1] == "jpg" || extension[1] == "png"
+    || extension[1] == "jpeg") {
+    var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='bi bi-image' style='font-size: 12px'></i></a></span>";
+    } else if (extension[1] == "pdf") {
+    var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-pdf-o'></i> </a></span>";
+    } else if (extension[1] == "xls" || extension[1] == "xlsx") {
+    var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-excel-o'></i></a></span>";
+    } else if (extension[1] == "doc" || extension[1] == "dox"
+    || extension[1] == "docx") {
+    var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-word-o'></i></a></span>";
+    } else {
+    var LightImg = "<span class='uploadicon position-l '> </div>";
+    } */
+    //var dltImg = "<i class='ti-close position-l rmv1' onclick='openDeleteConfirm()'></i>";
+    /* $("#uploadedBillDiv_" + counter).html(LightImg);
+    $("#imageName_" + counter).html(fileName);
+    $("#dltImage_" + counter).html(dltImg);
+    $("#dltImage_" + counter).addClass("custom-file-delete");
+    $("#clickImg_" + counter).removeClass("ti-plus");
+    $("#clickImg_" + counter).addClass("ti-pencil"); */
+    var fileData = new FormData();
+    fileData.append('file', uFile);
+    fileData.append('path', 'none');
+    var details = {};
+     var data = [];
+     var x = [];
+     var reader = new FileReader();
+    reader.readAsDataURL(uFile);
+    reader.onload = function() {
+        data = reader.result.split(",");
+        x = [data[1]]; // Fixed: Set x as array with base64 directly
+        const lastRowIndex = gridOptionsDoc.api.getDisplayedRowCount();
+        let fileExt = (extension[1] || 'unknown').toLowerCase();
+        alert(fileExt)
+        let selectedType = $('#docTypeSelect').val() || 'Normal';
+        let newRow = {
+            slno : parseInt(lastRowIndex) + 1,
+            docName : fileName, // Set docName to fileName for new uploads
+            isEditDoc : false,
+            docType : fileExt, // Keep as file extension (not replaced)
+            docTypeSelect : selectedType, // Add docTypeSelect from dropdown
+            dociURL : iURL,
+            documentFile : x,
+            docView : fileName
+        };
+        gridOptionsDoc.api.applyTransaction({
+            add : [ newRow ]
+        });
+        rowSelectDetailsDoc(); // Update button states after add
+    };
+    // Clear the file input to allow re-uploading the same file
+    $(event.currentTarget).val('');
 }
 /* function masterSaveCourse() {
 gridOptionsDoc.api.stopEditing();
@@ -3211,7 +3253,6 @@ function enterToSearch(event) {
      onQuickFilterChanged();
  }
 }
-
 // FIXED: Define the missing removeValid function to prevent the jQuery selector error
 function removeValid(event) {
     if (!event || !event.target) return; // Safety check
@@ -3222,14 +3263,10 @@ function removeValid(event) {
     // Optional: Clear any error messages if they exist
     $(event.target).closest('.form-group').find('.text-danger').text('');
 }
-
-
 function createTrainingTab(category) {
     const safe = category.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, '');
-
     // remove previous dynamic tab (if any)
     $("#mainTabs .dynamic-training-tab").remove();
-
     // add new dynamic tab at the end
     const tabHtml = `
         <li class="nav-item dynamic-training-tab" role="presentation">
@@ -3241,11 +3278,9 @@ function createTrainingTab(category) {
             </a>
         </li>
     `;
-
     $("#mainTabs").append(tabHtml);
     setTimeout(() => {
         let gridDiv = document.querySelector("#myDocumentGrid");
-
         if (!gridOptionsDoc.api) { // Initialize only once
             new agGrid.Grid(gridDiv, gridOptionsDoc);
         } else {
@@ -3253,24 +3288,16 @@ function createTrainingTab(category) {
             gridOptionsDoc.api.doLayout();
         }
     }, 100);
-
-
 }
-
 function removeExistingDynamicTab() {
-
     if ($("#trainingMainBlock").length) {
         $("#defaultTrainingHolder").append($("#trainingMainBlock"));
     }
-
     $("#mainTabs .dynamic-tab").remove();
     $("#mainTabContent .dynamic-pane").remove();
 }
-
-
 </script>
 </head>
-
 <body>
 	<div layout:fragment="content" class="maincontent">
 		<div class="container-fluid">
@@ -3307,32 +3334,26 @@ function removeExistingDynamicTab() {
 								<div class="out-box">
 									<div class="d-flex gap-2">
 										<ul class="nav nav-pills newtab" role="tablist" id="mainTabs">
-
 											<!-- STATIC TABS -->
 											<li class="nav-item" role="presentation" id="courseDetails">
 												<a class="nav-link" id="tab-course-overview"
 												data-bs-toggle="pill" href="#course-overview" role="tab">
 													Course Overview </a>
 											</li>
-
 											<li class="nav-item" role="presentation" id="courseForTraing">
 												<a class="nav-link" id="tab-training" data-bs-toggle="pill"
 												href="#training" role="tab"> Course Training </a>
 											</li>
-
 											<li class="nav-item" role="presentation" id="courseMapQuiz">
 												<a class="nav-link" id="tab-quizMap" data-bs-toggle="pill"
 												href="#quizMap" role="tab"> Course Quiz Map </a>
 											</li>
-
 											<li class="nav-item" role="presentation"
 												id="instructorDetails"><a class="nav-link"
 												id="tab-examination" data-bs-toggle="pill"
 												href="#examination" role="tab"> Instructors Assign </a></li>
-
 										</ul>
 									</div>
-
 									<div class="tab-content flex-fill">
 										<div id="course-overview"
 											class="tab-pane active show p-2 h-100" role="tabpanel">
@@ -3372,7 +3393,6 @@ function removeExistingDynamicTab() {
 												</div>
 												<div class="card p-2">
 													<div id="courseForm">
-
 														<input type="hidden" id="courseId"> <input
 															type="hidden" id="assignId">
 														<h5
@@ -3401,7 +3421,6 @@ function removeExistingDynamicTab() {
 																	</div>
 																</div>
 															</div>
-
 															<div class="col-md-6">
 																<div class="form-group">
 																	<label>Sub-category</label><span class="mandatory">*</span>
@@ -3413,7 +3432,6 @@ function removeExistingDynamicTab() {
 																	</div>
 																</div>
 															</div>
-
 															<div class="col-md-6">
 																<div class="form-group">
 																	<label>Status</label> <span class="mandatory">*</span>
@@ -3426,7 +3444,6 @@ function removeExistingDynamicTab() {
 																	</div>
 																</div>
 															</div>
-
 															<div class="form-group">
 																<label class="block text-sm font-medium mb-1">Duration
 																	<span class="text-red-500">*</span>
@@ -3452,7 +3469,6 @@ function removeExistingDynamicTab() {
 																	</div>
 																</div>
 															</div>
-
 															<div class="col-md-6 form-group calendar_box">
 																<label>Start Date</label><span class="mandatory">*</span>
 																<div class="position-relative">
@@ -3475,7 +3491,6 @@ function removeExistingDynamicTab() {
 																		id="toDateCalendar1" onblur="removeValid(event)"></i>
 																</div>
 															</div>
-
 															<div class="col-md-6">
 																<div class="form-group">
 																	<label class="block text-sm font-medium mb-1">Course
@@ -3488,8 +3503,6 @@ function removeExistingDynamicTab() {
 																	</select>
 																</div>
 															</div>
-
-
 															<div class="col-md-6">
 																<div class="form-group">
 																	<label class="block text-sm font-medium ">Rating</label>
@@ -3520,7 +3533,6 @@ function removeExistingDynamicTab() {
 																		<option value="B2B">B2B (Corporate Clients)</option>
 																	</select>
 																</div>
-
 																<!-- Price -->
 																<div class="form-group" id="priceContainer">
 																	<label class="block text-sm font-medium mb-1">Price</label>
@@ -3537,7 +3549,6 @@ function removeExistingDynamicTab() {
 																			placeholder="0.00">
 																	</div>
 																</div>
-
 																<!-- Customers (B2B only) -->
 																<div class="form-group hidden md:col-span-2"
 																	id="customersContainer">
@@ -3553,14 +3564,9 @@ function removeExistingDynamicTab() {
 																		</div>
 																	</div>
 																</div>
-
 															</div>
-
-
-
 														</div>
 														<div class="row mb-3">
-
 															<div class="col-md-12 form-group">
 																<label for="courseDesc" class="mb-2">Course
 																	Description</label><span class="mandatory">*</span>
@@ -3593,10 +3599,8 @@ function removeExistingDynamicTab() {
 																</div>
 															</div>
 														</div>
-
 													</div>
 												</div>
-
 											</div>
 											</div>
 											<div id="training" class="tab-pane fade p-2 h-100">
@@ -3627,15 +3631,6 @@ onclick="saveTraing()" type="button">Save</button>
 																					class="btn m-0 edit-btn d-none"
 																					onclick="cancelTraing()" type="button">Cancel</button>
 																			</div>
-
-
-
-
-
-
-
-
-
 																			<div class="mr-3">
 																				<button id="prev" class="btn m-0 edit-btn"
 																					onclick="prev(2)" type="button">Prev</button>
@@ -3654,7 +3649,6 @@ onclick="saveTraing()" type="button">Save</button>
 														<div class="row">
 															<div class="col-md-12">
 																<h5 class="mb-3">Course Category Type :</h5>
-
 																<div class="d-flex gap-4 align-items-center mb-3">
 																	<!-- <div class="row g-3 flex-grow-1"></div> -->
 																	<div>
@@ -3666,15 +3660,11 @@ onclick="saveTraing()" type="button">Save</button>
 																	</div>
 																	<div class="row g-3" id="trainingCategoryContainer"></div>
 																</div>
-
-
 															</div>
 														</div>
 													</div>
 												</div>
-
 											</div>
-
 											<div id="quizMap" class="tab-pane fade hidden p-2 h-100">
 												<div class="requisition-tbl d-flex flex-column h-100 gap-2">
 													<div class="">
@@ -3684,7 +3674,6 @@ onclick="saveTraing()" type="button">Save</button>
 																	<td width="80%"><strong id="programNameDisplay"></strong></td>
 																	<td>
 																		<div class="d-flex justify-content-end gap-2">
-
 																			<div class="ml-3">
 																				<button id="editQuiz"
 																					class="btn btn-primary edit-btn" type="button"
@@ -3699,8 +3688,6 @@ onclick="saveTraing()" type="button">Save</button>
 																					class="btn m-0 edit-btn d-none"
 																					onclick="cancelQuiz()" type="button">Cancel</button>
 																			</div>
-
-
 																			<div class="mr-3">
 																				<button id="prev" class="btn m-0 edit-btn"
 																					onclick="prev(3)" type="button">Prev</button>
@@ -3719,13 +3706,9 @@ onclick="saveTraing()" type="button">Save</button>
 														<div class="row">
 															<div class="col-md-12">
 																<h5 class="mb-3">Quiz Mapping:</h5>
-
 																<div class="card m-2 p-2">
 																	<div id="quizGrid" class="ag-theme-alpine"></div>
 																</div>
-
-
-
 															</div>
 														</div>
 													</div>
@@ -3799,7 +3782,6 @@ onclick="saveTraing()" type="button">Save</button>
 																</table>
 															</div>
 														</div>
-
 														<!-- Save / Update buttons -->
 														<div class="row mb-3">
 															<div class="col-12 d-flex justify-content-end">
@@ -3809,7 +3791,6 @@ onclick="saveTraing()" type="button">Save</button>
 																	class="btn btn-success btn-sm d-none">Update</button>
 															</div>
 														</div>
-
 														<!-- Notes + Price -->
 														<div class="col-md-12 mt-3" id="dynamicFields"
 															style="display: none;">
@@ -3824,7 +3805,6 @@ onclick="saveTraing()" type="button">Save</button>
 																</div>
 															</div>
 														</div>
-
 														<!-- Bootcamp specific fields -->
 														<div class="col-md-12 mt-3" id="bootcampSpecificFields"
 															style="display: none;">
@@ -3835,7 +3815,6 @@ onclick="saveTraing()" type="button">Save</button>
 															<button type="button" class="btn btn-primary mt-2"
 																id="addScheduleBtn">Add Another Schedule</button>
 														</div>
-
 														<!-- Documents section -->
 														<div class="row mt-4">
 															<div class="col-md-12">
@@ -3843,7 +3822,13 @@ onclick="saveTraing()" type="button">Save</button>
 																	class="d-flex justify-content-between align-items-center">
 																	<h5 class="sub-header-new m-0">Course Material :</h5>
 																	<div class="d-flex gap-2">
-																		<span class="mandatory">*</span>
+																		<span class="mandatory">*</span> <select
+																			id="docTypeSelect" class="form-select"
+																			style="width: auto; height: 38px;">
+																			<option value="">All</option>
+																			<option value="Normal">Normal</option>
+																			<option value="SCORM">SCORM</option>
+																		</select>
 																		<button id="docAddBtn"
 																			class="border-0 btn-transition btn btn-outline-primary"
 																			title="Add Doc" onClick="uploadDocOnClick()"
@@ -3871,7 +3856,6 @@ onclick="saveTraing()" type="button">Save</button>
 																</div>
 															</div>
 														</div>
-
 														<!-- Saved / JSON preview -->
 														<div class="col-md-12 mt-4">
 															<h6>Saved Selections:</h6>
@@ -3883,14 +3867,12 @@ onclick="saveTraing()" type="button">Save</button>
 													</div>
 												</div>
 											</div>
-
 											<!-- <div id="dynamicTabContent"></div> -->
 										</div>
 									</div>
 								</div>
 							</div>
 						</div>
-
 						<!-- Custom Category Modal -->
 						<div class="modal fade" id="customCategoryModal" tabindex="-1"
 							aria-labelledby="customCategoryModalLabel" aria-hidden="true">
@@ -3921,6 +3903,5 @@ onclick="saveTraing()" type="button">Save</button>
 						</div>
 					</div>
 				</div>
-			</div>
 </body>
 </html>
