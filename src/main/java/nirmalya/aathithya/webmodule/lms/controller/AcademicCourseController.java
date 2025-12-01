@@ -27,6 +27,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import javax.servlet.http.HttpServletRequest;
 
 import javax.servlet.http.HttpSession;
 
@@ -1393,5 +1394,128 @@ public class AcademicCourseController {
 	    logger.info("Method : saveQuizMappings ends");
 	    return resp;
 	}
+
+
+	// Serve SCORM content (HTML, JS, CSS, images...) from extracted ZIP
+@GetMapping("scorm-content/{zipFileName:.+}/**")
+public ResponseEntity<Resource> serveScormPackage(HttpServletRequest request,
+                                                 @PathVariable String zipFileName) {
+    logger.info("[SCORM] serveScormPackage called with zipFileName={}", zipFileName);
+
+    try {
+        String requestUri = request.getRequestURI();
+        logger.info("[SCORM] Incoming request URI = {}", requestUri);
+
+        String prefix = "/academic/scorm-content/" + zipFileName + "/";
+        int idx = requestUri.indexOf(prefix);
+        String relativePath = "";
+        if (idx != -1) {
+            relativePath = requestUri.substring(idx + prefix.length());
+        }
+        if (relativePath.isEmpty()) {
+            relativePath = "index.html";
+        }
+
+        logger.info("[SCORM] Computed relativePath within SCORM package = {}", relativePath);
+
+        Path uploadBase = Paths.get(env.getFileUploadDocumenttUrl());
+        logger.info("[SCORM] uploadBase = {}", uploadBase.toAbsolutePath());
+
+        // Folder: <uploadDir>/scorm/<zipBaseName>/
+        String baseName = zipFileName;
+        int dot = baseName.lastIndexOf('.');
+        if (dot != -1) {
+            baseName = baseName.substring(0, dot);
+        }
+
+        Path scormRoot = uploadBase.resolve("scorm").resolve(baseName);
+        logger.info("[SCORM] scormRoot directory = {}", scormRoot.toAbsolutePath());
+
+        // First request → unzip
+        if (!Files.exists(scormRoot)) {
+            Path zipPath = uploadBase.resolve(zipFileName);
+            logger.info("[SCORM] scormRoot does not exist, will unzip. zipPath = {}", zipPath.toAbsolutePath());
+
+            if (!Files.exists(zipPath)) {
+                logger.error("[SCORM] Zip file not found at {}", zipPath.toAbsolutePath());
+                return ResponseEntity.notFound().build();
+            }
+            unzipScorm(zipPath, scormRoot);
+        }
+
+        Path target = scormRoot.resolve(relativePath);
+        logger.info("[SCORM] Target SCORM asset path = {}", target.toAbsolutePath());
+
+        if (!Files.exists(target) || Files.isDirectory(target)) {
+            logger.error("[SCORM] Target asset not found or is a directory: {}", target.toAbsolutePath());
+            return ResponseEntity.notFound().build();
+        }
+
+        Resource resource = new UrlResource(target.toUri());
+        MediaType mediaType = resolveMediaType(target);
+
+        logger.info("[SCORM] Serving asset with mediaType={} from {}", mediaType, target.toAbsolutePath());
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .body(resource);
+
+    } catch (Exception e) {
+        logger.error("[SCORM] Error serving SCORM content", e);
+        return ResponseEntity.notFound().build();
+    }
+}
+
+private void unzipScorm(Path zipPath, Path destinationDir) throws Exception {
+    logger.info("[SCORM] unzipScorm started. zipPath={}, destinationDir={}",
+            zipPath.toAbsolutePath(), destinationDir.toAbsolutePath());
+
+    Files.createDirectories(destinationDir);
+
+    try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipPath.toFile()))) {
+        ZipEntry entry;
+        while ((entry = zis.getNextEntry()) != null) {
+            Path newPath = destinationDir.resolve(entry.getName());
+            logger.info("[SCORM] Extracting entry: {} => {}", entry.getName(), newPath.toAbsolutePath());
+
+            if (entry.isDirectory()) {
+                Files.createDirectories(newPath);
+            } else {
+                if (newPath.getParent() != null) {
+                    Files.createDirectories(newPath.getParent());
+                }
+                Files.copy(zis, newPath, StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
+    }
+
+    logger.info("[SCORM] unzipScorm completed for {}", zipPath.toAbsolutePath());
+}
+
+private MediaType resolveMediaType(Path file) {
+    String fileName = file.getFileName().toString().toLowerCase();
+    logger.info("[SCORM] resolveMediaType for file {}", fileName);
+
+    if (fileName.endsWith(".html") || fileName.endsWith(".htm")) {
+        return MediaType.TEXT_HTML;
+    } else if (fileName.endsWith(".js")) {
+        return new MediaType("application", "javascript");
+    } else if (fileName.endsWith(".css")) {
+        return new MediaType("text", "css");
+    } else if (fileName.endsWith(".png")) {
+        return MediaType.IMAGE_PNG;
+    } else if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
+        return MediaType.IMAGE_JPEG;
+    } else if (fileName.endsWith(".gif")) {
+        return MediaType.IMAGE_GIF;
+    } else if (fileName.endsWith(".json")) {
+        return MediaType.APPLICATION_JSON;
+    } else if (fileName.endsWith(".xml")) {
+        return MediaType.APPLICATION_XML;
+    }
+
+    logger.info("[SCORM] Defaulting mediaType to OCTET_STREAM for file {}", fileName);
+    return MediaType.APPLICATION_OCTET_STREAM;
+}
+
 
 }
