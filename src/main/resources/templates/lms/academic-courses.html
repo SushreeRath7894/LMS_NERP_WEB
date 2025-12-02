@@ -1199,43 +1199,24 @@ const iURL = params.data.dociURL;
 {
     headerName: 'Document View',
     field: "docView",
-    width: 320,
+    width: 300,
     cellRenderer: function (params) {
-        console.log("[SCORM] cellRenderer row:", params.data);
+        const url = params.data.dociURL;
+        const label = params.value || "View File";
 
-        const docTypeSelect = (params.data.docTypeSelect || "").toUpperCase();
-        const label = params.value || params.data.documentName || "";
-        const dociURL = params.data.dociURL || "";
-
-        // 👉 If this row is SCORM, use a fixed GitHub ZIP link for now
-        if (docTypeSelect === "SCORM") {
-            const githubZipUrl = "https://rohannayak909.github.io/scrom2/scormcontent/index.html";
-            console.log("[SCORM] SCORM row, GitHub ZIP URL =", githubZipUrl);
-
-            return `
-                <a href="${githubZipUrl}" target="_blank" 
-                   style="text-decoration:none;font-weight:600;color:#0d6efd;">
-                    ${label || "Download SCORM ZIP"}
-                </a>
-                <br>
-                <span class="badge bg-info text-dark mt-1">SCORM Package (download from GitHub)</span>
-            `;
+        if (!url) {
+            return `<span style='color:gray;'>No File</span>`;
         }
 
-        // 👉 Non-SCORM behaves as before
-        if (!dociURL) {
-            console.warn("[SCORM] Non-SCORM but dociURL missing, showing plain text");
-            return `<span>${label || "No file uploaded"}</span>`;
-        }
-
-        console.log("[SCORM] Non-SCORM dociURL =", dociURL);
         return `
-            <a style="text-decoration:none" href="${dociURL}" target="_blank">
-                <b>${label}</b>
-            </a>
-        `;
+        <a href="javascript:void(0)"
+           style="font-weight:bold; color:#0d6efd; text-decoration:none;"
+           onclick="openScormModal('${url}')">
+           ${label}
+        </a>`;
     }
 }
+
 
 ,
 {
@@ -1367,6 +1348,19 @@ let employeeData = [];
 //}
 //courseId = '';
 //}
+function openScormModal(url) {
+    console.log("Launching SCORM from URL:", url);
+
+     document.getElementById("scormIframe").src = url;
+
+     let modal = new bootstrap.Modal(document.getElementById("scormLaunchModal"));
+    modal.show();
+}
+
+function closeScormModal() {
+    document.getElementById("scormIframe").src = "";  
+}
+
 function onSelectionChanged() {
  const selectedRows = window.gridApi.getSelectedRows();
  if (selectedRows.length === 0) {
@@ -2279,7 +2273,44 @@ function validateTrainingData() {
     // }
     return true;
 }
+function showLoader() {
+    $("#loaderOverlay")
+        .css("display", "flex")   
+        .hide()                  
+        .fadeIn();               
+
+    simulateProgress();
+}
+function hideLoader() {
+    updateLoader(100);
+    setTimeout(() => {
+        $("#loaderOverlay").fadeOut(() => {
+            updateLoader(0);  // Reset after hidden
+        });
+    }, 500);
+}
+
+
+function updateLoader(value) {
+    $("#loaderProgress").css("width", value + "%");
+    $("#loaderPercent").text(value + "%");
+}
+
+function simulateProgress() {
+    let progress = 10;
+    let interval = setInterval(() => {
+        progress += Math.floor(Math.random() * 10) + 5;  
+        if (progress >= 90) {
+            progress = 90;
+            clearInterval(interval);
+        }
+        updateLoader(progress);
+    }, 300);
+}
+
 function saveTraing() {
+	showLoader();
+    simulateProgress();
     // Ensure latest data is saved to savedData
     if ($("#editBtn").hasClass('d-none')) {
         $("#saveBtn").click();
@@ -2288,18 +2319,21 @@ function saveTraing() {
     }
     // Validate before proceeding
     if (!validateTrainingData()) {
+    	 hideLoader();
         return;
     }
     // Get the courseId
     let courseId = $("#courseId").val() || "";
     if (!courseId) {
         toastr.error("No course selected. Please select a course first.");
+        hideLoader();
         return;
     }
     // Get the JSON data text
     let categoryDataText = $("#jsonOutput").text().trim();
     if (!categoryDataText) {
         toastr.error("No training data to save.");
+        hideLoader();
         return;
     }
     try {
@@ -2348,10 +2382,12 @@ function saveTraing() {
         let finalParsed = JSON.parse(categoryDataText);
         if (!Array.isArray(finalParsed) || !finalParsed.every(item => item.id)) {
             toastr.error("Invalid training data format. Each item must have an 'id'.");
+            hideLoader();
             return;
         }
     } catch (e) {
         toastr.error("Invalid JSON data.");
+        hideLoader();
         return;
     }
     // Prepare JSON payload
@@ -2361,16 +2397,24 @@ function saveTraing() {
     };
     console.log("xxxx",payload);
     // Post to controller as JSON
-     $.ajax({
+    $.ajax({
         url: 'academic-course-training-save',
         type: 'POST',
         contentType: 'application/json',
         data: JSON.stringify(payload),
+
         success: function (response) {
-            toastr.success(response.message || "Training saved successfully!");
-            cancelTraing();
+            updateLoader(100);
+
+            setTimeout(() => {
+                hideLoader();
+                toastr.success(response.message || "Training saved successfully!");
+                cancelTraing();
+            }, 600);
         },
+
         error: function (xhr) {
+            hideLoader();
             toastr.error("Error saving training: " + (xhr.responseText || "Unknown error"));
         }
     });
@@ -3010,8 +3054,7 @@ function saveMultiFile(event) {
         x = [data[1]]; // Fixed: Set x as array with base64 directly
         const lastRowIndex = gridOptionsDoc.api.getDisplayedRowCount();
         let fileExt = (extension[1] || 'unknown').toLowerCase();
-        alert(fileName)
-        let selectedType = $('#docTypeSelect').val() || 'Normal';
+         let selectedType = $('#docTypeSelect').val() || 'Normal';
         let newRow = {
             slno : parseInt(lastRowIndex) + 1,
             docName : fileName, // Set docName to fileName for new uploads
@@ -3225,7 +3268,17 @@ console.log('uploadList',uploadList) */
  for (let pair of formData.entries()) {
      console.log(pair[0] + ':', pair[1]);
  }
- // ------------------- AJAX CALL -------------------
+ console.log("=== FormData content debug start ===");
+ for (let pair of formData.entries()) {
+     let key = pair[0];
+     let val = pair[1];
+     if (val instanceof File) {
+         console.log(key + " => File: name=" + val.name + ", size=" + val.size + ", type=" + val.type);
+     } else {
+         console.log(key + " => ", val);
+     }
+ }
+  console.log("=== FormData content debug end ==="); // ------------------- AJAX CALL -------------------
  $.ajax({
      url: 'academic-course-add',
      type: 'POST',
@@ -3234,7 +3287,7 @@ console.log('uploadList',uploadList) */
      contentType: false,
      success: function (response) {
          toastr.success(response.message || "Course saved successfully!");
-         getCourseDetails();
+          getCourseDetails();
          cancel();
      },
      error: function (xhr) {
@@ -3792,327 +3845,341 @@ function removeExistingDynamicTab() {
 													</div>
 												</div>
 											</div>
-											</div>
-											<div id="training" class="tab-pane fade p-2 h-100">
-												<div class="requisition-tbl d-flex flex-column h-100 gap-2">
-													<div class="">
-														<table class="table table-bordered mb-0" width="100%">
-															<tbody>
-																<tr valign="middle">
-																	<td width="80%"><strong id="programNameDisplay"></strong></td>
-																	<td>
-																		<div class="d-flex justify-content-end gap-2">
-																			<div class="ml-3">
-																				<button id="addtraining"
-																					class="btn btn-primary edit-btn" type="button"
-																					onclick="addtraining()">Add</button>
-																			</div>
-																			<div class="ml-3">
-																				<button id="editTraing"
-																					class="btn btn-primary edit-btn" type="button"
-																					onclick="editTraing()">Edit</button>
-																			</div>
-																			<!-- <div class="mr-3">
+										</div>
+										<div id="training" class="tab-pane fade p-2 h-100">
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+												<div class="">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<td width="80%"><strong id="programNameDisplay"></strong></td>
+																<td>
+																	<div class="d-flex justify-content-end gap-2">
+																		<div class="ml-3">
+																			<button id="addtraining"
+																				class="btn btn-primary edit-btn" type="button"
+																				onclick="addtraining()">Add</button>
+																		</div>
+																		<div class="ml-3">
+																			<button id="editTraing"
+																				class="btn btn-primary edit-btn" type="button"
+																				onclick="editTraing()">Edit</button>
+																		</div>
+																		<!-- <div class="mr-3">
 <button id="saveTraing" class="btn edit-btn d-none"
 onclick="saveTraing()" type="button">Save</button>
 </div>-->
-																			<div class="mr-3">
-																				<button id="cancelTraing"
+																		<div class="mr-3">
+																			<button id="cancelTraing"
+																				class="btn m-0 edit-btn d-none"
+																				onclick="cancelTraing()" type="button">Cancel</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="prev" class="btn m-0 edit-btn"
+																				onclick="prev(2)" type="button">Prev</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="next" class="btn edit-btn"
+																				onclick="next(2)" type="button">Next</button>
+																		</div>
+																	</div>
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+												<div class="card p-2">
+													<div class="row">
+														<div class="col-md-12">
+															<h5 class="mb-3">Course Category Type :</h5>
+															<div class="d-flex gap-4 align-items-center mb-3">
+																<!-- <div class="row g-3 flex-grow-1"></div> -->
+																<div>
+																	<button id="addCustomTraining" class="btn btn-primary"
+																		disabled data-bs-toggle="modal"
+																		data-bs-target="#customCategoryModal">
+																		<i class="fa fa-plus"></i> Add Custom
+																	</button>
+																</div>
+																<div class="row g-3" id="trainingCategoryContainer"></div>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<div id="quizMap" class="tab-pane fade hidden p-2 h-100">
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+												<div class="">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<td width="80%"><strong id="programNameDisplay"></strong></td>
+																<td>
+																	<div class="d-flex justify-content-end gap-2">
+																		<div class="ml-3">
+																			<button id="editQuiz"
+																				class="btn btn-primary edit-btn" type="button"
+																				onclick="editQuiz()">Edit</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="saveQuiz" class="btn edit-btn d-none"
+																				onclick="saveQuiz()" type="button">Save</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="cancelQuiz"
+																				class="btn m-0 edit-btn d-none"
+																				onclick="cancelQuiz()" type="button">Cancel</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="prev" class="btn m-0 edit-btn"
+																				onclick="prev(3)" type="button">Prev</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="next" class="btn edit-btn"
+																				onclick="next(3)" type="button">Next</button>
+																		</div>
+																	</div>
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+												<div class="card p-2">
+													<div class="row">
+														<div class="col-md-12">
+															<h5 class="mb-3">Quiz Mapping:</h5>
+															<div class="card m-2 p-2">
+																<div id="quizGrid" class="ag-theme-alpine"></div>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<div id="examination" class="tab-pane fade p-2 h-100">
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+												<div class="">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<td width="80%"><strong id="programNameDisplay"></strong></td>
+																<td>
+																	<div class="d-flex justify-content-end gap-2">
+																		<div class="mr-0">
+																			<button id="prev" class="btn m-0 edit-btn"
+																				onclick="prev(4)" type="button">Prev</button>
+																		</div>
+																		<div class="mr-0">
+																			<button id="assign" class="btn edit-btn"
+																				onclick="masterAssign()" type="button">Assign</button>
+																		</div>
+																	</div>
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+												<div class="card p-2">
+													<div class="row form-top" id="examination">
+														<div class="mb-3">
+															<div class="relative">
+																<label>All Instructor</label> <input type="text"
+																	id="instructorSearch"
+																	class="form-control w-full mt-2 pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+																	placeholder="Search instructors..."
+																	onkeyup="filterInstructors()">
+															</div>
+														</div>
+														<div
+															class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+															id="instructorCards">
+															<!-- Instructor cards will be dynamically inserted here -->
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<div id="trainingDynamicPane" class="tab-pane fade p-2">
+											<!-- TRAINING MAIN BLOCK LIVES HERE, ALWAYS -->
+											<div class="training-scroll-container"
+												style="height: calc(100vh - 220px); overflow-y: auto; padding-right: 10px;">
+												<div id="trainingMainBlock" class="container-fluid px-0">
+													<div class="row">
+														<div class="col-12">
+															<table class="table table-bordered mb-3" width="100%">
+																<tbody>
+																	<tr valign="middle">
+																		<td width="80%"><strong id="programNameDisplay"></strong></td>
+																		<td class="text-end">
+																			<div class="d-flex justify-content-end gap-2">
+																				<button id="saveTraing" class="btn edit-btn d-none"
+																					onclick="saveTraing()" type="button">Save</button>
+																				<button id="cancelTraingDynamic"
 																					class="btn m-0 edit-btn d-none"
 																					onclick="cancelTraing()" type="button">Cancel</button>
 																			</div>
-																			<div class="mr-3">
-																				<button id="prev" class="btn m-0 edit-btn"
-																					onclick="prev(2)" type="button">Prev</button>
-																			</div>
-																			<div class="mr-3">
-																				<button id="next" class="btn edit-btn"
-																					onclick="next(2)" type="button">Next</button>
-																			</div>
-																		</div>
-																	</td>
-																</tr>
-															</tbody>
-														</table>
+																		</td>
+																	</tr>
+																</tbody>
+															</table>
+														</div>
 													</div>
-													<div class="card p-2">
-														<div class="row">
-															<div class="col-md-12">
-																<h5 class="mb-3">Course Category Type :</h5>
-																<div class="d-flex gap-4 align-items-center mb-3">
-																	<!-- <div class="row g-3 flex-grow-1"></div> -->
-																	<div>
-																		<button id="addCustomTraining" class="btn btn-primary"
-																			disabled data-bs-toggle="modal"
-																			data-bs-target="#customCategoryModal">
-																			<i class="fa fa-plus"></i> Add Custom
-																		</button>
-																	</div>
-																	<div class="row g-3" id="trainingCategoryContainer"></div>
-																</div>
+													<!-- Save / Update buttons -->
+													<div class="row mb-3">
+														<div class="col-12 d-flex justify-content-end">
+															<button id="saveBtn"
+																class="btn btn-primary btn-sm me-2 d-none">Save</button>
+															<button id="editBtn"
+																class="btn btn-success btn-sm d-none">Update</button>
+														</div>
+													</div>
+													<!-- Notes + Price -->
+													<div class="col-md-12 mt-3" id="dynamicFields"
+														style="display: none;">
+														<div class="row g-3">
+															<div class="col-md-8">
+																<textarea id="notesField" class="form-control"
+																	placeholder="Enter details..."></textarea>
+															</div>
+															<div class="col-md-4">
+																<input type="number" id="priceField"
+																	class="form-control" placeholder="Price">
 															</div>
 														</div>
 													</div>
-												</div>
-											</div>
-											<div id="quizMap" class="tab-pane fade hidden p-2 h-100">
-												<div class="requisition-tbl d-flex flex-column h-100 gap-2">
-													<div class="">
-														<table class="table table-bordered mb-0" width="100%">
-															<tbody>
-																<tr valign="middle">
-																	<td width="80%"><strong id="programNameDisplay"></strong></td>
-																	<td>
-																		<div class="d-flex justify-content-end gap-2">
-																			<div class="ml-3">
-																				<button id="editQuiz"
-																					class="btn btn-primary edit-btn" type="button"
-																					onclick="editQuiz()">Edit</button>
-																			</div>
-																			<div class="mr-3">
-																				<button id="saveQuiz" class="btn edit-btn d-none"
-																					onclick="saveQuiz()" type="button">Save</button>
-																			</div>
-																			<div class="mr-3">
-																				<button id="cancelQuiz"
-																					class="btn m-0 edit-btn d-none"
-																					onclick="cancelQuiz()" type="button">Cancel</button>
-																			</div>
-																			<div class="mr-3">
-																				<button id="prev" class="btn m-0 edit-btn"
-																					onclick="prev(3)" type="button">Prev</button>
-																			</div>
-																			<div class="mr-3">
-																				<button id="next" class="btn edit-btn"
-																					onclick="next(3)" type="button">Next</button>
-																			</div>
-																		</div>
-																	</td>
-																</tr>
-															</tbody>
-														</table>
-													</div>
-													<div class="card p-2">
-														<div class="row">
-															<div class="col-md-12">
-																<h5 class="mb-3">Quiz Mapping:</h5>
-																<div class="card m-2 p-2">
-																	<div id="quizGrid" class="ag-theme-alpine"></div>
-																</div>
-															</div>
+													<!-- Bootcamp specific fields -->
+													<div class="col-md-12 mt-3" id="bootcampSpecificFields"
+														style="display: none;">
+														<h6 class="mb-2">Bootcamp Schedule Details:</h6>
+														<div id="bootcampSchedulesContainer">
+															<!-- schedule sets will be injected by JS -->
 														</div>
+														<button type="button" class="btn btn-primary mt-2"
+															id="addScheduleBtn">Add Another Schedule</button>
 													</div>
-												</div>
-											</div>
-											<div id="examination" class="tab-pane fade p-2 h-100">
-												<div class="requisition-tbl d-flex flex-column h-100 gap-2">
-													<div class="">
-														<table class="table table-bordered mb-0" width="100%">
-															<tbody>
-																<tr valign="middle">
-																	<td width="80%"><strong id="programNameDisplay"></strong></td>
-																	<td>
-																		<div class="d-flex justify-content-end gap-2">
-																			<div class="mr-0">
-																				<button id="prev" class="btn m-0 edit-btn"
-																					onclick="prev(4)" type="button">Prev</button>
-																			</div>
-																			<div class="mr-0">
-																				<button id="assign" class="btn edit-btn"
-																					onclick="masterAssign()" type="button">Assign</button>
-																			</div>
-																		</div>
-																	</td>
-																</tr>
-															</tbody>
-														</table>
-													</div>
-													<div class="card p-2">
-														<div class="row form-top" id="examination">
-															<div class="mb-3">
-																<div class="relative">
-																	<label>All Instructor</label> <input type="text"
-																		id="instructorSearch"
-																		class="form-control w-full mt-2 pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-																		placeholder="Search instructors..."
-																		onkeyup="filterInstructors()">
-																</div>
-															</div>
+													<!-- Documents section -->
+													<div class="row mt-4">
+														<div class="col-md-12">
 															<div
-																class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-																id="instructorCards">
-																<!-- Instructor cards will be dynamically inserted here -->
+																class="d-flex justify-content-between align-items-center">
+																<h5 class="sub-header-new m-0">Course Material :</h5>
+																<div class="d-flex gap-2">
+																	<span class="mandatory">*</span> <select
+																		id="docTypeSelect" class="form-select"
+																		style="width: auto; height: 38px;">
+																		<option value="">All</option>
+																		<option value="Normal">Normal</option>
+																		<option value="SCORM">SCORM</option>
+																	</select>
+																	<button id="docAddBtn"
+																		class="border-0 btn-transition btn btn-outline-primary"
+																		title="Add Doc" onClick="uploadDocOnClick()"
+																		data-bs-toggle="tooltip">
+																		<i class="fa fa-plus-square" aria-hidden="true"></i>
+																	</button>
+																	<button id="docDeleteBtn"
+																		class="border-0 btn-transition btn btn-outline-primary"
+																		title="Remove Doc" disabled
+																		onclick="deleteDocDetailsOnclick()"
+																		data-bs-toggle="tooltip">
+																		<i class="fa fa-trash"></i>
+																	</button>
+																</div>
+															</div>
+															<div class="controls" hidden>
+																<input type="file" class="document" id="uploadDoc_0"
+																	accept=".jpeg,.jpg,.png,.pdf" name="userImage"
+																	onchange="saveMultiFile(event)" />
+															</div>
+															<div class="row mt-2">
+																<div id="myDocumentGrid"
+																	style="width: 100%; height: 200px;"
+																	class="ag-theme-alpine"></div>
 															</div>
 														</div>
 													</div>
-												</div>
-											</div>
-											<div id="trainingDynamicPane" class="tab-pane fade p-2">
-												<!-- TRAINING MAIN BLOCK LIVES HERE, ALWAYS -->
-												<div class="training-scroll-container"
-													style="height: calc(100vh - 220px); overflow-y: auto; padding-right: 10px;">
-													<div id="trainingMainBlock" class="container-fluid px-0">
-														<div class="row">
-															<div class="col-12">
-																<table class="table table-bordered mb-3" width="100%">
-																	<tbody>
-																		<tr valign="middle">
-																			<td width="80%"><strong id="programNameDisplay"></strong></td>
-																			<td class="text-end">
-																				<div class="d-flex justify-content-end gap-2">
-																					<button id="saveTraing" class="btn edit-btn d-none"
-																						onclick="saveTraing()" type="button">Save</button>
-																					<button id="cancelTraingDynamic"
-																						class="btn m-0 edit-btn d-none"
-																						onclick="cancelTraing()" type="button">Cancel</button>
-																				</div>
-																			</td>
-																		</tr>
-																	</tbody>
-																</table>
-															</div>
-														</div>
-														<!-- Save / Update buttons -->
-														<div class="row mb-3">
-															<div class="col-12 d-flex justify-content-end">
-																<button id="saveBtn"
-																	class="btn btn-primary btn-sm me-2 d-none">Save</button>
-																<button id="editBtn"
-																	class="btn btn-success btn-sm d-none">Update</button>
-															</div>
-														</div>
-														<!-- Notes + Price -->
-														<div class="col-md-12 mt-3" id="dynamicFields"
-															style="display: none;">
-															<div class="row g-3">
-																<div class="col-md-8">
-																	<textarea id="notesField" class="form-control"
-																		placeholder="Enter details..."></textarea>
-																</div>
-																<div class="col-md-4">
-																	<input type="number" id="priceField"
-																		class="form-control" placeholder="Price">
-																</div>
-															</div>
-														</div>
-														<!-- Bootcamp specific fields -->
-														<div class="col-md-12 mt-3" id="bootcampSpecificFields"
-															style="display: none;">
-															<h6 class="mb-2">Bootcamp Schedule Details:</h6>
-															<div id="bootcampSchedulesContainer">
-																<!-- schedule sets will be injected by JS -->
-															</div>
-															<button type="button" class="btn btn-primary mt-2"
-																id="addScheduleBtn">Add Another Schedule</button>
-														</div>
-														<!-- Documents section -->
-														<div class="row mt-4">
-															<div class="col-md-12">
-																<div
-																	class="d-flex justify-content-between align-items-center">
-																	<h5 class="sub-header-new m-0">Course Material :</h5>
-																	<div class="d-flex gap-2">
-																		<span class="mandatory">*</span> <select
-																			id="docTypeSelect" class="form-select"
-																			style="width: auto; height: 38px;">
-																			<option value="">All</option>
-																			<option value="Normal">Normal</option>
-																			<option value="SCORM">SCORM</option>
-																		</select>
-																		<button id="docAddBtn"
-																			class="border-0 btn-transition btn btn-outline-primary"
-																			title="Add Doc" onClick="uploadDocOnClick()"
-																			data-bs-toggle="tooltip">
-																			<i class="fa fa-plus-square" aria-hidden="true"></i>
-																		</button>
-																		<button id="docDeleteBtn"
-																			class="border-0 btn-transition btn btn-outline-primary"
-																			title="Remove Doc" disabled
-																			onclick="deleteDocDetailsOnclick()"
-																			data-bs-toggle="tooltip">
-																			<i class="fa fa-trash"></i>
-																		</button>
-																	</div>
-																</div>
-																<div class="controls" hidden>
-																	<input type="file" class="document" id="uploadDoc_0"
-																		accept=".jpeg,.jpg,.png,.pdf" name="userImage"
-																		onchange="saveMultiFile(event)" />
-																</div>
-																<div class="row mt-2">
-																	<div id="myDocumentGrid"
-																		style="width: 100%; height: 200px;"
-																		class="ag-theme-alpine"></div>
-																</div>
-															</div>
-														</div>
-														<!-- Saved / JSON preview -->
-														<div class="col-md-12 mt-4">
-															<h6>Saved Selections:</h6>
-															<div id="resultContainer"></div>
-															<h6 class="mt-3">JSON Output (Content & Pricing as
-																separate keys):</h6>
-															<pre id="jsonOutput" class="bg-light p-2 rounded"></pre>
-														</div>
+													<!-- Saved / JSON preview -->
+													<div class="col-md-12 mt-4">
+														<h6>Saved Selections:</h6>
+														<div id="resultContainer"></div>
+														<h6 class="mt-3">JSON Output (Content & Pricing as
+															separate keys):</h6>
+														<pre id="jsonOutput" class="bg-light p-2 rounded"></pre>
 													</div>
 												</div>
 											</div>
-											<!-- <div id="dynamicTabContent"></div> -->
 										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-						<!-- Custom Category Modal -->
-						<div class="modal fade" id="customCategoryModal" tabindex="-1"
-							aria-labelledby="customCategoryModalLabel" aria-hidden="true">
-							<div class="modal-dialog">
-								<div class="modal-content">
-									<div class="modal-header">
-										<h5 class="modal-title" id="customCategoryModalLabel">Add
-											Custom Training Category</h5>
-										<button type="button" class="btn-close"
-											data-bs-dismiss="modal" aria-label="Close"></button>
-									</div>
-									<div class="modal-body">
-										<div class="mb-3">
-											<label for="customCategoryInput" class="form-label">Category
-												Name</label> <input type="text" class="form-control"
-												id="customCategoryInput"
-												placeholder="Enter custom category name">
-										</div>
-									</div>
-									<div class="modal-footer">
-										<button type="button" class="btn btn-secondary"
-											data-bs-dismiss="modal">Close</button>
-										<button type="button" class="btn btn-primary"
-											id="saveCustomCategory">Save</button>
+										<!-- <div id="dynamicTabContent"></div> -->
 									</div>
 								</div>
 							</div>
 						</div>
 					</div>
+					<!-- Custom Category Modal -->
+					<div class="modal fade" id="customCategoryModal" tabindex="-1"
+						aria-labelledby="customCategoryModalLabel" aria-hidden="true">
+						<div class="modal-dialog">
+							<div class="modal-content">
+								<div class="modal-header">
+									<h5 class="modal-title" id="customCategoryModalLabel">Add
+										Custom Training Category</h5>
+									<button type="button" class="btn-close" data-bs-dismiss="modal"
+										aria-label="Close"></button>
+								</div>
+								<div class="modal-body">
+									<div class="mb-3">
+										<label for="customCategoryInput" class="form-label">Category
+											Name</label> <input type="text" class="form-control"
+											id="customCategoryInput"
+											placeholder="Enter custom category name">
+									</div>
+								</div>
+								<div class="modal-footer">
+									<button type="button" class="btn btn-secondary"
+										data-bs-dismiss="modal">Close</button>
+									<button type="button" class="btn btn-primary"
+										id="saveCustomCategory">Save</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+
+
+			<div class="modal fade" id="scormLaunchModal" tabindex="-1"
+				aria-hidden="true">
+				<div
+					class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-xl-down">
+					<div class="modal-content">
+						<div class="modal-header py-2">
+							<h5 class="modal-title">SCORM Player</h5>
+							<button type="button" class="btn-close" data-bs-dismiss="modal"
+								aria-label="Close" onclick="closeScormModal()"></button>
+						</div>
+						<div class="modal-body p-0">
+							<iframe id="scormIframe" src=""
+								style="border: 0; width: 100%; height: 80vh;"></iframe>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div id="loaderOverlay"
+				style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: none; justify-content: center; align-items: center; z-index: 99999; flex-direction: column;">
+
+				<div
+					style="width: 180px; background: #222; height: 10px; border-radius: 10px; overflow: hidden; box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);">
+					<div id="loaderProgress"
+						style="height: 100%; width: 0%; background: #4caf50; transition: width 0.2s ease;"></div>
 				</div>
 
+				<div id="loaderPercent"
+					style="margin-top: 8px; font-size: 14px; color: #fff;">0%</div>
+			</div>
+		</div>
+	</div>
 
-
-                <div class="modal fade" id="scormLaunchModal" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-xl-down">
-                      <div class="modal-content">
-                        <div class="modal-header py-2">
-                          <h5 class="modal-title">SCORM Player</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                  aria-label="Close" onclick="closeScormModal()"></button>
-                        </div>
-                        <div class="modal-body p-0">
-                          <iframe id="scormIframe"
-                                  src=""
-                                  style="border:0;width:100%;height:80vh;"></iframe>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-  
 </body>
 </html>

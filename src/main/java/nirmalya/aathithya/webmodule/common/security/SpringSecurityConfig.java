@@ -82,7 +82,8 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
 		
-		http.cors().and().csrf().disable()
+		http.cors().and().csrf().disable().headers().frameOptions().disable()   // 🔥 REQUIRED FOR IFRAMES
+        .and()
 		.addFilterBefore(authenticationFilter(), UsernamePasswordAuthenticationFilter.class).authorizeRequests()
 				.antMatchers("/oauth/token").permitAll()
 				.antMatchers("/api-docs/**").permitAll()

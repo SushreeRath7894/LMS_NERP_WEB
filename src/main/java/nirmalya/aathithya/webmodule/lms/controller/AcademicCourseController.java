@@ -326,6 +326,7 @@ public class AcademicCourseController {
 	        @RequestParam("courseId") String courseId,
 	        @RequestParam("courseTittle") String courseTittle,
 	        @RequestParam("parentCategory") String parentCategory,
+	        @RequestParam("subcategory") String subcategory ,
 	        @RequestParam("duration") String duration,
 	        @RequestParam("price") String price,
 	        @RequestParam("startDate") String startDate,
@@ -358,6 +359,7 @@ public class AcademicCourseController {
 	        courseData.put("courseId", courseId);
 	        courseData.put("courseTittle", courseTittle);
 	        courseData.put("parentCategory", parentCategory);
+	        courseData.put("subcategory", subcategory);
 	        courseData.put("duration", duration);
 	        courseData.put("price", price);
 	        courseData.put("startDate", startDate);
@@ -459,7 +461,7 @@ public class AcademicCourseController {
 	        resp.setCode("Failed");
 	    }
  
-	    logger.info("Method : saveCourse ends");
+	    logger.info("Method : saveCourse ends"+resp);
 	    return resp;
 	}
 
@@ -762,165 +764,270 @@ public class AcademicCourseController {
 	 * 
 	 * logger.info("Method: saveTraining ends"); return resp; }
 	 */
+	private String extractBase64(Object fileObj) {
+	    try {
+	        String base64 = "";
+
+	        // Case 1: List
+	        if (fileObj instanceof List) {
+	            List list = (List) fileObj;
+	            if (!list.isEmpty()) {
+	                base64 = String.valueOf(list.get(0));
+	            }
+	        }
+
+	        // Case 2: String
+	        else if (fileObj instanceof String) {
+	            base64 = (String) fileObj;
+	        }
+
+	        // No valid data
+	        if (base64 == null || base64.trim().isEmpty()) {
+	            return null;
+	        }
+
+	        // Remove metadata: "data:image/png;base64,xxxxxx"
+	        if (base64.contains(",")) {
+	            return base64.substring(base64.indexOf(",") + 1);
+	        }
+
+	        return base64;
+
+	    } catch (Exception e) {
+	        logger.error("extractBase64() failed", e);
+	        return null;
+	    }
+	}
+	private String getSessionValue(HttpSession session, String key) {
+	    try {
+	        Object val = session.getAttribute(key);
+	        return val != null ? val.toString() : "";
+	    } catch (Exception e) {
+	        logger.error("Error getting session attribute: {}", key, e);
+	        return "";
+	    }
+	}
+
+	private String saveFile(byte[] bytes, String ext) {
+	    try {
+	        return saveAllMultiImages(bytes, ext); // Handles both ZIP and images
+	    } catch (Exception e) {
+	        logger.error("Error saving file with extension: " + ext, e);
+	        return null;
+	    }
+	}
+	private String extractZipAndGetLaunchUrl(String zipFileName, String courseId) {
+
+	    String baseExtractPath = env.getScormExtractPath(); 
+	    System.out.println("SCORM Base Path: " + baseExtractPath);
+
+ 	    if (!baseExtractPath.endsWith("/") && !baseExtractPath.endsWith("\\")) {
+	        baseExtractPath = baseExtractPath + "/";
+	    }
+
+	    String extractFolder = baseExtractPath + courseId + "/" + System.currentTimeMillis() + "/";
+	    System.out.println("Extract Folder Path: " + extractFolder);
+
+	    File destDir = new File(extractFolder);
+	    destDir.mkdirs();
+
+	    try (ZipInputStream zipIn = new ZipInputStream(
+	            new FileInputStream(env.getFileUploadDocumenttUrl() + zipFileName))) {
+
+	        ZipEntry entry;
+
+	        while ((entry = zipIn.getNextEntry()) != null) {
+
+	            File filePath = new File(destDir, entry.getName());
+
+	            if (entry.isDirectory()) {
+	                filePath.mkdirs();
+	            } else {
+	                filePath.getParentFile().mkdirs();
+	                Files.copy(zipIn, filePath.toPath(), StandardCopyOption.REPLACE_EXISTING);
+	            }
+
+	            zipIn.closeEntry();
+	        }
+
+ 	        File launchFile = findScormLaunchFile(destDir);
+	        if (launchFile != null) {
+
+ 	            String fullPath = launchFile.getAbsolutePath().replace("\\", "/");
+	            String normalizedBase = baseExtractPath.replace("\\", "/");
+
+ 	            if (!normalizedBase.endsWith("/")) {
+	                normalizedBase = normalizedBase + "/";
+	            }
+
+	            // Build relative path
+	            String relativePath = fullPath.replace(normalizedBase, "");
+
+	            String finalUrl = env.getBaseURL() + "scorm/" + relativePath;
+
+	            System.out.println("FINAL SCORM URL: " + finalUrl);
+
+	            return finalUrl;
+	        }
+
+	    } catch (Exception e) {
+	        logger.error("SCORM Extraction Failed", e);
+	    }
+
+	    return null;
+	}
+
+	private File findScormLaunchFile(File folder) {
+
+		String[] possibleFiles = { "index.html", "home.html", "main.html", "start.html", "launch.html", "story.html", "game.html", "player.html", "app.html", "portal.html", "dashboard.html", "landing.html", "default.html", "public/index.html", "dist/index.html", "build/index.html", "readme.html", "readme.txt", "instructions.html", "manual.html", "guide.html", "help.html", "play.html", "menu.html", "intro.html", "loading.html", "splash.html", "start.htm", "index.htm", "default.htm" };
+
+
+	    // Check files in current folder
+	    for (String name : possibleFiles) {
+	        File f = new File(folder, name);
+	        if (f.exists()) {
+	            return f;
+	        }
+	    }
+
+	    // Check subfolders (recursive)
+	    File[] files = folder.listFiles();
+	    if (files != null) {
+	        for (File f : files) {
+	            if (f.isDirectory()) {
+	                File found = findScormLaunchFile(f);
+	                if (found != null) return found;
+	            }
+	        }
+	    }
+
+	    return null;
+	}
+
+
+	private Map<String, Object> processDocumentFile(Map<String, Object> doc, String courseId) {
+
+	    String docTypeSelect = (String) doc.get("docTypeSelect"); // NORMAL or SCORM
+	    String ext = (String) doc.get("docType");
+	    Object fileObj = doc.get("documentFile");
+
+	    // -----------------------------------------
+	    // CASE 1: NEW FILE UPLOADED
+	    // -----------------------------------------
+	    if (fileObj != null) {
+
+	        String base64 = extractBase64(fileObj);
+	        if (base64 == null) return doc; // nothing to process
+
+	        byte[] bytes = Base64.getDecoder().decode(base64);
+
+	        // ZIP / SCORM handling
+	        if ("SCORM".equalsIgnoreCase(docTypeSelect) && "zip".equalsIgnoreCase(ext)) {
+
+	            String zipFileName = saveFile(bytes, "zip");
+	            doc.put("fileName", zipFileName);
+
+	            // Extract ZIP and get SCORM LAUNCH URL
+	            String launchUrl = extractZipAndGetLaunchUrl(zipFileName, courseId);
+	            doc.put("launchUrl", launchUrl);  // <-- FINAL URL FOR UI
+
+	            // For compatibility, remove old zip URL
+	            doc.put("docUrl", launchUrl);
+
+	        } 
+
+	        // Normal image / other files
+	        else {
+	            String savedName = saveFile(bytes, ext);
+	            doc.put("fileName", savedName);
+	            doc.put("docUrl", env.getBaseURL() + "document/image/" + savedName);
+	        }
+
+	        doc.remove("documentFile");
+	        return doc;
+	    }
+
+	    // -----------------------------------------
+	    // CASE 2: EXISTING FILE (NO NEW UPLOAD)
+	    // -----------------------------------------
+	    doc.put("fileName", doc.get("docView"));
+	    doc.put("docUrl", doc.get("dociURL"));
+
+	    if ("SCORM".equalsIgnoreCase(docTypeSelect)) {
+	        String preview = generateExtractionPreviewVideo((String) doc.get("extractedPath"));
+	        doc.put("previewVideoUrl", preview);
+	    }
+
+	    return doc;
+	}
 
 	
 	@SuppressWarnings("unchecked")
-    @PostMapping("academic-course-training-save")
-    public @ResponseBody JsonResponse<Object> saveTraining(HttpSession session, @RequestBody Map<String, Object> payload) {
-        logger.info("Method: saveTraining starts - Payload: {}", payload);
+	@PostMapping("academic-course-training-save")
+	public @ResponseBody JsonResponse<Object> saveTraining(
+	        HttpSession session,
+	        @RequestBody Map<String, Object> payload) {
 
-        JsonResponse<Object> resp = new JsonResponse<>();
-        String userId = "";
-        String orgName = "";
-        String orgDivision = "";
+	    logger.info("Method: saveTraining starts - Payload: {}", payload);
 
-        // Session values
-        try {
-            userId = (String) session.getAttribute("USER_ID");
-            orgName = (String) session.getAttribute("ORGANIZATION");
-            orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
-        } catch (Exception e) {
-            logger.error("Error retrieving session attributes", e);
-        }
+	    JsonResponse<Object> resp = new JsonResponse<>();
 
-        // ------------------------- PROCESS DOCUMENT FILES (ENHANCED FOR ZIP/SCORM) -------------------------
-        try {
-            String courseId = (String) payload.get("courseId");
-            String categoryDataText = (String) payload.get("categoryData");
+	    // ------------------------- SESSION DATA -------------------------
+	    String userId = getSessionValue(session, "USER_ID");
+	    String orgName = getSessionValue(session, "ORGANIZATION");
+	    String orgDivision = getSessionValue(session, "ORGANIZATION_DIVISION");
 
-            if (courseId != null && categoryDataText != null && !categoryDataText.trim().isEmpty()) {
+	    try {
+	        String courseId = (String) payload.get("courseId");
+	        String categoryDataText = (String) payload.get("categoryData");
 
-                ObjectMapper mapper = new ObjectMapper();
+	        if (courseId != null && categoryDataText != null && !categoryDataText.trim().isEmpty()) {
 
-                // Parse categoryData
-                List<Map<String, Object>> trainingData =
-                        mapper.readValue(categoryDataText, new TypeReference<List<Map<String, Object>>>() {});
+	            ObjectMapper mapper = new ObjectMapper();
 
-                for (Map<String, Object> item : trainingData) {
+	            // FIX for Java 8: must specify full type
+	            List<Map<String, Object>> trainingData =
+	                    mapper.readValue(categoryDataText, new TypeReference<List<Map<String, Object>>>() {});
 
-                    List<Map<String, Object>> documents = (List<Map<String, Object>>) item.get("documents");
+	            for (Map<String, Object> item : trainingData) {
 
-                    if (documents != null && !documents.isEmpty()) {
+	                List<Map<String, Object>> documents =
+	                        (List<Map<String, Object>>) item.get("documents");
 
-                        for (Map<String, Object> doc : documents) {
+	                if (documents == null) continue;
 
-                            Object documentFileObj = doc.get("documentFile");
+	                for (int i = 0; i < documents.size(); i++) {
+	                    Map<String, Object> updated = processDocumentFile(documents.get(i), courseId);
+	                    documents.set(i, updated);
+	                }
+	            }
 
-                            String docTypeSelect = (String) doc.get("docTypeSelect");
+	            payload.put("categoryData", mapper.writeValueAsString(trainingData));
+	        }
 
-                            // ------------------------- CASE 1: NEW FILE PRESENT -------------------------
-                            if (documentFileObj != null) {
 
-                                String base64Data = "";
+	    } catch (Exception e) {
+	        logger.error("Error processing training documents", e);
+	    }
 
-                                if (documentFileObj instanceof ArrayList) {
-                                    List<String> list = (List<String>) documentFileObj;
-                                    if (!list.isEmpty()) base64Data = list.get(0);
-                                } else if (documentFileObj instanceof String) {
-                                    base64Data = (String) documentFileObj;
-                                }
+	    // ------------------------- CALL HIS SERVICE -------------------------
+	    try {
+	        String hisUrlFull = env.getHisUrl()
+	                + "rest-academic-saveTraining?userId=" + userId
+	                + "&org=" + orgName
+	                + "&orgDiv=" + orgDivision;
 
-                                // New file given
-                                if (base64Data != null && !base64Data.trim().isEmpty()) {
+	        resp = restClient.postForObject(hisUrlFull, payload, JsonResponse.class);
 
-                                    base64Data = base64Data.replaceFirst("^data:[^;]+;base64,", "");
+	    } catch (Exception e) {
+	        logger.error("Error calling HIS service", e);
+	        resp.setMessage("Error saving training data");
+	    }
 
-                                    try {
-                                        byte[] bytes = decodeBase64(base64Data);
+	    logger.info("Method: saveTraining ends");
+	    return resp;
+	}
 
-                                        String ext = (String) doc.get("docType");
-                                        if (ext == null || ext.isEmpty()) ext = "bin";
-
-                                        // ------------------------- ZIP/SCORM HANDLING -------------------------
-                                        String zipExtractPath = null;
-                                        if ("SCORM".equalsIgnoreCase(docTypeSelect) && "zip".equalsIgnoreCase(ext)) {
-                                            // Save ZIP first
-                                            String zipFileName = saveZipFile(bytes, ext);
-                                            if (zipFileName != null) {
-                                                String zipUrl = env.getBaseURL()  + "document/image/" + zipFileName;
-                                                doc.put("fileName", zipFileName);
-                                                doc.put("docUrl", zipUrl);
-
-                                                // Extract ZIP for SCRUM/LMS data
-                                                zipExtractPath = extractZipAndPreparePreview(zipFileName, courseId, docTypeSelect);
-                                                if (zipExtractPath != null) {
-                                                    doc.put("extractedPath", zipExtractPath);
-                                                    // For preview video: Assume extracted ZIP has video files; pick first .mp4 or generate thumbnail/video preview
-                                                    String previewVideoUrl = generateExtractionPreviewVideo(zipExtractPath);
-                                                    if (previewVideoUrl != null) {
-                                                        doc.put("previewVideoUrl", previewVideoUrl);
-                                                    }
-                                                }
-                                            }
-                                        } else {
-                                            // Regular file save
-                                            String fileName = saveAllMultiImages(bytes, ext);
-                                            if (fileName != null) {
-                                                String fileURL = env.getBaseURL()  + "document/image/" + fileName;
-                                                doc.put("fileName", fileName);
-                                                doc.put("docUrl", fileURL);
-                                            }
-                                        }
-
-                                    } catch (Exception ex) {
-                                        logger.error("Error saving document", ex);
-                                    }
-                                }
-
-                                // Remove documentFile from JSON
-                                doc.remove("documentFile");
-                            }
-
-                            // ------------------------- CASE 2: OLD FILE (NO NEW UPLOAD) -------------------------
-                            else {
-                                logger.info("Existing document retained: {}", doc.get("docView"));
-
-                                // Ensure old keys remain
-                                doc.put("fileName", doc.get("docView"));
-                                doc.put("docUrl", doc.get("dociURL"));
-
-                                // If SCORM, check if extracted path exists
-                                if ("SCORM".equalsIgnoreCase((String) doc.get("docTypeSelect"))) {
-                                    String extractedPath = (String) doc.get("extractedPath");
-                                    if (extractedPath != null) {
-                                        String previewVideoUrl = generateExtractionPreviewVideo(extractedPath);
-                                        if (previewVideoUrl != null) {
-                                            doc.put("previewVideoUrl", previewVideoUrl);
-                                        }
-                                    }
-                                }
-
-                                // Clear 'documentFile' if present
-                                doc.remove("documentFile");
-                            }
-                        } // END LOOP documents
-                    }
-                } // END LOOP trainingData
-
-                // Replace cleaned data back into payload
-                payload.put("categoryData", mapper.writeValueAsString(trainingData));
-            }
-        } catch (Exception e) {
-            logger.error("Error processing training documents", e);
-        }
-
-        // ------------------------- FORWARD TO EXTERNAL HIS URL -------------------------
-        try {
-            String hisUrlFull = env.getHisUrl()
-                    + "rest-academic-saveTraining?userId=" + userId
-                    + "&org=" + orgName
-                    + "&orgDiv=" + orgDivision;
-
-            resp = restClient.postForObject(hisUrlFull, payload, JsonResponse.class);
-
-        } catch (Exception e) {
-            logger.error("Error calling HIS service", e);
-            resp.setMessage("Error saving training data");
-        }
-
-        logger.info("Method: saveTraining ends");
-        return resp;
-    }
 
     // Helper: Save ZIP file
     private String saveZipFile(byte[] bytes, String ext) {

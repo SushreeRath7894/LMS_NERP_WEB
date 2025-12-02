@@ -302,6 +302,9 @@ public class EnvironmentVaribles {
 	
 	@Value("${service.url.hotel}")
 	private String hotelUrl;
+	
+	@Value("${scrom.url.lms}")
+	private String scormExtractPath;
 
 
 	public EnvironmentVaribles() {
@@ -737,6 +740,16 @@ public class EnvironmentVaribles {
 	
 	public String getHotelUrl() {
 		return hotelUrl;
+	}
+
+
+	public String getScormExtractPath() {
+		return scormExtractPath;
+	}
+
+
+	public void setScormExtractPath(String scormExtractPath) {
+		this.scormExtractPath = scormExtractPath;
 	}
 	
 	
