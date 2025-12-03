@@ -350,22 +350,48 @@ let currentCategory = "";
 let isTrainingEditMode = false; // Global flag for training edit mode
 const predefinedCategories = ["Online Bootcamp", "Corporate Training", "Mock Tests", "eLearning + Exam Bundle", "Books"];
 function populateCheckboxes(categories, containerId = '#trainingCategoryContainer', disabled = false) {
-  const $container = $(containerId);
-  $container.empty();
-  categories.forEach(category => {
-    let safeId = category.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
-    let checkboxId = `cat_${safeId}`;
-    let checkHtml = `
-      <div class="col-md-4">
-        <div class="form-check">
-          <input class="form-check-input categoryCheck" type="checkbox" id="${checkboxId}" value="${category}" ${disabled ? 'disabled' : ''}>
-          <label class="form-check-label" for="${checkboxId}">${category}</label>
-        </div>
-      </div>
-    `;
-    $container.append(checkHtml);
-  });
+    const $container = $(containerId);
+    $container.empty();
+
+    categories.forEach(item => {
+
+        // Handle both string and object
+        let category = typeof item === "string" ? item : item.category;
+        let trainingRefId = typeof item === "string" ? "" : item.trainingRefId;
+
+        if (!category) return; // safety
+
+        let safeId = category.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+        let checkboxId = `cat_${safeId}`;
+
+        let checkHtml = `
+            <div class="col-md-12 d-flex align-items-center mb-2">
+              
+              <!-- Checkbox -->
+              <div class="form-check flex-grow-1">
+                <input class="form-check-input categoryCheck" 
+                       type="checkbox" 
+                       id="${checkboxId}" 
+                       value="${category}" 
+                       ${disabled ? 'disabled' : ''}>
+                <label class="form-check-label ms-1" for="${checkboxId}">
+                  ${category}
+                </label>
+              </div>
+
+              <!-- Delete Icon -->
+              <div class="delete-icon ms-2" style="cursor:pointer;"
+                   onclick="deleteTraining('${trainingRefId}')">
+                <i class="bi bi-trash text-danger"></i>
+              </div>
+
+            </div>
+        `;
+
+        $container.append(checkHtml);
+    });
 }
+
 // 👉 For now: static GitHub URL to your SCORM package
 // Later: change this to your real SCORM index.html (from your server or GitHub Pages)
 const STATIC_SCORM_URL = "https://github.com/RohanNayak909/scorm/raw/main/RuntimeMinimumCalls_SCORM20043rdEdition.zip";
@@ -514,6 +540,7 @@ $(document).on('click', '.remove-schedule', function() {
   }
 });
 $(document).ready(function () {
+
 $(document).on('shown.bs.tab', 'a[data-bs-toggle="pill"]', function (e) {
     if (CKEDITOR.instances.notesField && currentCategory) {
         setTimeout(() => {
@@ -564,6 +591,7 @@ function ensureEditorInitialized() {
             return;
         }
         let allCats = [...new Set([...predefinedCategories, ...Object.keys(savedData), customCat])];
+        console.log("All Category For Populate Check box------->",allCats);
         populateCheckboxes(allCats, '#trainingCategoryContainer', false);
         let safeId = customCat.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
         let newCheckId = `cat_${safeId}`;
@@ -739,7 +767,7 @@ function ensureEditorInitialized() {
      getCourseDetails();
      setQuizEditMode(false);
      originalSelectedQuizIds = [];
-     $("#courseForm :input").prop("disabled", true);
+     //$("#courseForm :input").prop("disabled", true);
      CKEDITOR.instances['courseDesc'].on('instanceReady', function () {
          this.setReadOnly(true);
      });
@@ -1951,36 +1979,43 @@ function editCourse() {
  editor.readOnly = false;
 // CKEDITOR.instances['courseDesc'].setReadOnly(false);
 }
-function saveFile() {
- var uFile = $("#uploadWarDoc_0")[0].files[0];
- var fileName = event.currentTarget.value;
- var lastIndex = fileName.lastIndexOf("\\");
- if (lastIndex >= 0) {
-     fileName = fileName.substring(lastIndex + 1);
- }
- var extension = fileName.split(".");
- var iURL = URL.createObjectURL(uFile);
- $("#uploadedWarrDiv_0").html("");
- let docIcon;
- if (extension[1] == "pdf") {
-     docIcon = '<i class="bi bi-file-pdf pdf"></i>';
- } else {
-     docIcon = '<i class="bi bi-image img-attach" ></i>';
- }
- $("#uploadedWarrDiv_0").html('<a href="' + iURL + '" target="_blank">' + docIcon + '</a>');
- $("#imageWarrName_0").html(fileName);
- $("#imageRemoveBtn_0").html('<i style="color: red; cursor: pointer;" class="bi bi-x-lg" onclick="clearFileUploadFields();">');
- var fileData = new FormData();
- fileData.append('file', uFile);
- fileData.append('path', 'none');
- $("#imageWarrName_0").removeAttr("onclick").attr("onclick", "openImage('" + window.btoa(iURL) + "')");
+function saveFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Set hidden field (optional)
+    $("#uploadHidden_0").val(file.name);
+
+    // Show preview icon
+    let ext = file.name.split('.').pop().toLowerCase();
+    let previewURL = URL.createObjectURL(file);
+
+    let icon = (ext === "pdf")
+        ? '<i class="bi bi-file-pdf pdf"></i>'
+        : '<i class="bi bi-image img-attach"></i>';
+
+    // Render preview
+    $("#uploadedWarrDiv_0").html(
+        `<a href="${previewURL}" target="_blank">${icon}</a>`
+    );
+
+    // Show file name
+    $("#imageWarrName_0").text(file.name);
+
+    // Remove button
+    $("#imageRemoveBtn_0").html(`
+        <i class="bi bi-x-lg" style="color:red; cursor:pointer"
+           onclick="clearFileUploadFields()"></i>
+    `);
 }
-/* function openImage(id) {
- window.open(window.atob(id), '_blank');
-} */
-function openImage(url) {
- window.open(decodeURIComponent(url), '_blank');
+function clearFileUploadFields() {
+    $("#uploadWarDoc_0").val("");          // clear file input
+    $("#uploadedWarrDiv_0").html("");      // clear preview
+    $("#imageWarrName_0").text("");        // clear filename
+    $("#imageRemoveBtn_0").html("");       // clear remove icon
+    $("#uploadHidden_0").val("");          // clear hidden value
 }
+
 function getAllEmployeeDetails(employeeList) {
  console.log("Employee List:", employeeList);
  const flatEmployeeList = (employeeList || []).flat().filter(emp => emp && emp.employeeId);
@@ -2567,8 +2602,11 @@ function getTrainingDetails(courseId) {
             if (Array.isArray(courseData)) {
                 courseData.forEach(item => {
                     const category = item.trainingCategory;
-                    if (!category) return;
-                    dynamicCategories.push(category);
+                     if (!category) return;
+                    dynamicCategories.push({
+                        category: category,
+                        trainingRefId: item.trainingRefId || null
+                    });
                     // docs
                     /* let documentFiles = [];
                     if (Array.isArray(item.documents) && item.documents.length > 0) {
@@ -3257,13 +3295,10 @@ console.log('uploadList',uploadList) */
  // Attach documents (grid data as JSON)
 /* formData.append("uploadList", JSON.stringify(uploadList)); */
  // Attach multiple files (from .wardocument inputs)
- $(".wardocument").each(function () {
-     if (this.files && this.files.length > 0) {
-         for (let i = 0; i < this.files.length; i++) {
-             formData.append("documents", this.files[i]); // <-- multiple documents
-         }
-     }
- });
+let fileInput = document.getElementById("uploadWarDoc_0");
+if (fileInput.files.length > 0) {
+    formData.append("documents", fileInput.files[0]);  // <-- Single file
+}
  // ------------------- DEBUG -------------------
  for (let pair of formData.entries()) {
      console.log(pair[0] + ':', pair[1]);
@@ -3287,7 +3322,7 @@ console.log('uploadList',uploadList) */
      contentType: false,
      success: function (response) {
          toastr.success(response.message || "Course saved successfully!");
-          getCourseDetails();
+           getCourseDetails();
          cancel();
      },
      error: function (xhr) {
@@ -3539,6 +3574,20 @@ function removeExistingDynamicTab() {
     $("#mainTabs .dynamic-tab").remove();
     $("#mainTabContent .dynamic-pane").remove();
 }
+function deleteTraining(trainingId){
+	 const selectedRows = window.gridApi.getSelectedRows();
+     let productId = selectedRows[0].courseId;
+	$.ajax({
+		url:'courses-delete-training?trainingId='+trainingId,
+		type:'GET',
+		success:function(response){
+			if(response.code == 'success'){
+		         toastr.success(response.message || "Training Deleted successfully!");
+		         getTrainingDetails(productId);
+			}
+		}
+	})
+ }
 </script>
 </head>
 <body>
@@ -4191,6 +4240,6 @@ onclick="saveTraing()" type="button">Save</button>
 			</div>
 		</div>
 	</div>
-
+   </div>
 </body>
 </html>
