@@ -389,6 +389,11 @@ function refreshDisplay() {
         } else {
             html += "None";
         }
+        if (data.bootcampSchedules && data.bootcampSchedules.length > 0) {
+            data.bootcampSchedules.forEach((sch, i) => {
+                html += `<br>&nbsp;&nbsp;Schedule ${i+1}: ${sch.startDate} to ${sch.endDate}, ${sch.fromTime}-${sch.toTime}, Status: ${sch.scheduleStatus ? 'Active' : 'Inactive'}`;
+            });
+        }
         html += "<hr>";
         jsonOutput[category] = data;
     });
@@ -467,7 +472,7 @@ $(document).on('click', '.remove-schedule', function() {
   }
 });
 $(document).ready(function () {
-	 
+
 $(document).on('shown.bs.tab', 'a[data-bs-toggle="pill"]', function (e) {
     if (CKEDITOR.instances.notesField && currentCategory) {
         setTimeout(() => {
@@ -548,13 +553,16 @@ function ensureEditorInitialized() {
              let fromTime = $(this).find('.bootcamp-from-time').val() || "";
              let toTime = $(this).find('.bootcamp-to-time').val() || "";
              let additionalInfo = $(this).find('.bootcamp-additional-info').val() || "";
-             if (startDate || endDate || fromTime || toTime) {
+             let isActive = $(this).find('.bootcamp-is-active').is(':checked');
+
+             if (startDate || endDate || fromTime || toTime || additionalInfo) {
                bootcampSchedules.push({
                  startDate,
                  endDate,
                  fromTime,
                  toTime,
-                 additionalInfo
+                 additionalInfo,
+                 isActive  // ✅ Add this field
                });
              }
            });
@@ -597,22 +605,25 @@ function ensureEditorInitialized() {
     // Collect bootcamp schedules if applicable
     let bootcampSchedules = [];
     if (currentCategory === "Online Bootcamp") {
-        $('#bootcampSchedulesContainer .schedule-set').each(function () {
-            let startDate = $(this).find('.bootcamp-start-date').val() || "";
-            let endDate = $(this).find('.bootcamp-end-date').val() || "";
-            let fromTime = $(this).find('.bootcamp-from-time').val() || "";
-            let toTime = $(this).find('.bootcamp-to-time').val() || "";
-            let additionalInfo = $(this).find('.bootcamp-additional-info').val() || "";
-            if (startDate || endDate || fromTime || toTime) {
-                bootcampSchedules.push({
-                    startDate,
-                    endDate,
-                    fromTime,
-                    toTime,
-                    additionalInfo
-                });
-            }
-        });
+      $('#bootcampSchedulesContainer .schedule-set').each(function() {
+        let startDate = $(this).find('.bootcamp-start-date').val() || "";
+        let endDate = $(this).find('.bootcamp-end-date').val() || "";
+        let fromTime = $(this).find('.bootcamp-from-time').val() || "";
+        let toTime = $(this).find('.bootcamp-to-time').val() || "";
+        let additionalInfo = $(this).find('.bootcamp-additional-info').val() || "";
+        let isActive = $(this).find('.bootcamp-is-active').is(':checked');
+
+        if (startDate || endDate || fromTime || toTime || additionalInfo) {
+          bootcampSchedules.push({
+            startDate,
+            endDate,
+            fromTime,
+            toTime,
+            additionalInfo,
+            isActive  // ✅ Add this field
+          });
+        }
+      });
     }
 
     // Collect documents
@@ -646,7 +657,7 @@ function ensureEditorInitialized() {
 
     // After update, stay in "Update" mode (or switch back to Save if you prefer)
     $("#editBtn").addClass('d-none');
-    $("#saveBtn").removeClass('d-none');
+    $("#saveBtn").addClass('d-none');
 });
      // ---------------- CANCEL ----------------
      $("#cancelTraing").on("click", function () {
@@ -711,8 +722,8 @@ function ensureEditorInitialized() {
      originalSelectedQuizIds = [];
      $("#courseForm :input").prop("disabled", true);
      CKEDITOR.instances['courseDesc'].on('instanceReady', function () {
-    	    this.setReadOnly(true);
-    	});
+         this.setReadOnly(true);
+     });
      // Disable training checkboxes and fields on load
      $(".categoryCheck").prop("disabled", true);
      $("#priceField").prop("disabled", true);
@@ -1170,6 +1181,7 @@ let employeeData = [];
 //}
 //courseId = '';
 //}
+let imagurl= '';
 function onSelectionChanged() {
  const selectedRows = window.gridApi.getSelectedRows();
  if (selectedRows.length === 0) {
@@ -1202,17 +1214,17 @@ docPreview.empty();
 $("#imageWarrName_0").text("");
 $("#imageRemoveBtn_0").html("");
 if (row.documentURL && row.documentURL.trim() !== "") {
- let url = row.documentURL.trim().replace(/ /g, '%20');
- let fileName = row.fileName || decodeURIComponent(url.split('/').pop().split('?')[0]);
+	imagurl = row.documentURL.trim().replace(/ /g, '%20');
+ let fileName = row.fileName || decodeURIComponent(imagurl.split('/').pop().split('?')[0]);
  const ext = fileName.split('.').pop().toLowerCase();
  let html = '';
  if (ext === 'pdf') {
-     html = `<a href="${url}" target="_blank" class="btn btn-primary btn-sm">View PDF</a>`;
+     html = `<a href="${imagurl}" target="_blank" class="btn btn-primary btn-sm">View PDF</a>`;
  } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
-     html = `<img src="${url}" alt="${fileName}"
+     html = `<img src="${imagurl}" alt="${fileName}"
                   style="max-width:60px; height:60px; object-fit:cover; border-radius:5px;
                          box-shadow:0 2px 4px rgba(0,0,0,0.1); cursor:pointer; border:1px solid #ddd;"
-                  onclick="window.open('${url}', '_blank')" />`;
+                  onclick="window.open('${imagurl}', '_blank')" />`;
  } else {
      html = `<i class="fa fa-file-o" style="font-size:40px; color:#777;"></i>`;
  }
@@ -1221,7 +1233,7 @@ if (row.documentURL && row.documentURL.trim() !== "") {
          <div>${html}</div>
          <div style="flex:1; min-width:0;">
              <span style="cursor:pointer; color:#337ab7; font-weight:bold;"
-                   onclick="window.open('${url}', '_blank')">
+                   onclick="window.open('${imagurl}', '_blank')">
                  ${fileName}
              </span>
          </div>
@@ -1237,6 +1249,8 @@ if (row.documentURL && row.documentURL.trim() !== "") {
  docPreview.html(
      '<div style="color:#999; font-size:13px; text-align:center; margin-top:8px;">No Document Available</div>'
  );
+ 
+ imagurl = '';
 }
  // --- AJAX CALLS ---
  editCourseDetails(row.courseId);
@@ -1245,42 +1259,50 @@ getTrainingDetails(row.courseId);
  getQuizDetails(row.courseId);
 }
 function addEmptyScheduleSet() {
-  const emptySetHtml = `
-    <div class="schedule-set mb-3">
-      <div class="row g-2">
-        <div class="col-md-12">
-          <label>Add Title</label>
-          <textarea class="form-control bootcamp-additional-info" rows="3" placeholder="Enter Title"></textarea>
-        </div>
-        <div class="col-md-3 form-group calendar_box">
-          <label>Start Date</label><span class="mandatory">*</span>
-          <div class="position-relative">
-            <input type="text" class="form-control bootcamp-start-date" onblur="removeValid(event)" readonly>
-            <i class="ti-calendar picker_calendar bootcamp-start-cal" ></i>
-          </div>
-        </div>
-        <div class="col-md-3 form-group calendar_box">
-          <label>End Date</label><span class="mandatory">*</span>
-          <div class="position-relative">
-            <input type="text" class="form-control bootcamp-end-date" onblur="removeValid(event)" readonly>
-            <i class="ti-calendar picker_calendar bootcamp-end-cal" ></i>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <label>From Time</label> <input type="time" class="form-control bootcamp-from-time">
-        </div>
-        <div class="col-md-3">
-          <label>To Time</label> <input type="time" class="form-control bootcamp-to-time">
-        </div>
-        <div class="col-md-12">
-          <button type="button" class="btn btn-danger btn-sm remove-schedule d-none">Remove Schedule</button>
-        </div>
-      </div>
-    </div>
-  `;
-  $('#bootcampSchedulesContainer').html(emptySetHtml);
-  initBootcampPickers();
-}
+	  const emptySetHtml = `
+	    <div class="schedule-set mb-3">
+	      <div class="row g-2">
+	        <div class="col-md-12">
+	          <label>Add Title</label>
+	          <textarea class="form-control bootcamp-additional-info" rows="3" placeholder="Enter Title"></textarea>
+	        </div>
+	        <div class="col-md-3 form-group calendar_box">
+	          <label>Start Date</label><span class="mandatory">*</span>
+	          <div class="position-relative">
+	            <input type="text" class="form-control bootcamp-start-date" onblur="removeValid(event)" readonly>
+	            <i class="ti-calendar picker_calendar bootcamp-start-cal"></i>
+	          </div>
+	        </div>
+	        <div class="col-md-3 form-group calendar_box">
+	          <label>End Date</label><span class="mandatory">*</span>
+	          <div class="position-relative">
+	            <input type="text" class="form-control bootcamp-end-date" onblur="removeValid(event)" readonly>
+	            <i class="ti-calendar picker_calendar bootcamp-end-cal"></i>
+	          </div>
+	        </div>
+	        <div class="col-md-2">
+	          <label>From Time</label>
+	          <input type="time" class="form-control bootcamp-from-time">
+	        </div>
+	        <div class="col-md-2">
+	          <label>To Time</label>
+	          <input type="time" class="form-control bootcamp-to-time">
+	        </div>
+	        <div class="col-md-2 d-flex align-items-end">
+	          <div class="form-check">
+	            <input class="form-check-input bootcamp-is-active" type="checkbox" checked>
+	            <label class="form-check-label">Active</label>
+	          </div>
+	        </div>
+	        <div class="col-md-12">
+	          <button type="button" class="btn btn-danger btn-sm remove-schedule d-none">Remove Schedule</button>
+	        </div>
+	      </div>
+	    </div>
+	  `;
+	  $('#bootcampSchedulesContainer').html(emptySetHtml);
+	  initBootcampPickers();
+	}
 function next(tab) {
  let nextTabHref = '';
  let nextTabId = '';
@@ -1595,98 +1617,88 @@ function getQuizDetails(courseId) {
  });
 }
 function editCourseDetails(courseId) {
-	 $.ajax({
-	     type: "GET",
-	     url: "academic-course-edit?Id=" + courseId,
-	     async: false,
-	     success: function (response) {
-	         if (response.code === "success") {
-	             const courseDetails = JSON.parse(response.body);
-	             if (courseDetails == null) {
-	                 // Handle null case
-	             } else {
-	                 console.log('dddddddddddd', courseDetails);
-	                 // Use direct object properties since courseDetails is an object, not an array
-	                 $("#courseId").val(courseDetails.courseId || "");
-	                 $("#courseTittle").val(courseDetails.courseTitle || ""); // Note: Response uses "courseTitle", not "courseTittle"
-	                 $("#price").val(courseDetails.price || ""); // Assuming "price" exists; add if missing in response
-	                 $("#startDate").val(courseDetails.startDate || "");
-	                 $("#endDate").val(courseDetails.endDate || "");
-	                 $("#patientStatus").val(courseDetails.status || ""); // Assuming this exists
-	                 $("#parentCategory").val(courseDetails.categoryId || '');
-	                 getsubcategoryList(courseDetails.categoryId, courseDetails.subcategoryId || '');
-	                 // FIXED: 'dec' is plain escaped HTML (not base64), so no atob needed - use directly
-	                 let decodedDesc = courseDetails.dec || courseDetails.courseDesc || "";
-	                 if (CKEDITOR.instances.courseDesc) {
-	                     CKEDITOR.instances.courseDesc.setData(decodedDesc);
-	                 } else {
-	                     console.error("CKEditor instance for 'courseDesc' not found.");
-	                 }
-	                 // Handle document preview
-	               if (courseDetails[0].documentURL == null || courseDetails[0].documentURL == '') {
-	                   $("#uploadedWarrDiv_0").html("");
-	                   $("#imageWarrName_0").html("");
-	                   $("#imageRemoveBtn_0").empty();
-	               } else {
-	                   $("#uploadedWarrDiv_0").html("");
-	                   var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + courseDetails[0].documentURL + "' title='" + courseDetails[0].fileName + "' target='_balnk'><i class='fa fa-file-o' style='color: blue'></i></a></div>";
-	                   $("#uploadedWarrDiv_0").html(LightImg);
-	                   $("#imageWarrName_0").html(courseDetails[0].fileName);
-	                  /* $("#imageRemoveBtn_0").html('<i style="color: red; cursor: pointer;" class="bi bi-x-lg" onclick="clearFileUploadFields();"></i>'); */
-	               }
-	                 $("#rate").val(courseDetails.rate || "");
-	                 $("#currencySymbol").val(courseDetails.currencySymbol || "");
-	                 $("#level").val(courseDetails.level || "");
-	                 $("#priceType").val(courseDetails.priceType || "B2C");
-	                 $("#customers").val(courseDetails.customers ? JSON.parse(courseDetails.customers) : "");
-	                 // Handle duration parsing
-	                 var duration = courseDetails.duration || "";
-	                 var hours = 0;
-	                 var minutes = 0;
-	                 if (duration) {
-	                     var parts = duration.split(" ");
-	                     for (var part of parts) {
-	                         if (part.endsWith("h")) {
-	                             hours = parseInt(part.replace("h", "")) || 0;
-	                         } else if (part.endsWith("m")) {
-	                             minutes = parseInt(part.replace("m", "")) || 0;
-	                         }
-	                     }
-	                 }
-	                 $("#durationHours").val(hours);
-	                 $("#durationMinutes").val(minutes);
-	                 togglePriceFields();
-	                 // Optional: Load training details if courseCategoryType exists
-	                /* if (courseDetails.courseCategoryType && Array.isArray(courseDetails.courseCategoryType)) {
-	                     getTrainingDetails(courseId); // Assuming this function exists to populate training tabs
-	                 } */
-	                 // Optional: Handle image if "image" field exists
-	                 if (courseDetails.image) {
-	                     // Set preview for course image if needed
-	                     console.log('Course Image URL:', courseDetails.image);
-	                 }
-	                 // Optional: Populate structured description fields if separate sections exist
-	                 if (courseDetails.courseOverview) {
-	                     // Assuming additional CKEditor instances for sections; adjust as needed
-	                     // e.g., if (CKEDITOR.instances.courseOverview) CKEDITOR.instances.courseOverview.setData(courseDetails.courseOverview);
-	                 }
-	                 if (courseDetails.targetGroup) {
-	                     // e.g., if (CKEDITOR.instances.targetGroup) CKEDITOR.instances.targetGroup.setData(courseDetails.targetGroup);
-	                 }
-	                 if (courseDetails.conceptsCovered) {
-	                     // e.g., if (CKEDITOR.instances.conceptsCovered) CKEDITOR.instances.conceptsCovered.setData(courseDetails.conceptsCovered);
-	                 }
-	                 if (courseDetails.examAndPrerequisite) {
-	                     // e.g., if (CKEDITOR.instances.examAndPrerequisite) CKEDITOR.instances.examAndPrerequisite.setData(courseDetails.examAndPrerequisite);
-	                 }
-	             }
-	         }
-	     },
-	     error: function (error) {
-	         console.error("Error fetching course details:", error);
-	     }
-	 });
-	}
+ $.ajax({
+     type: "GET",
+     url: "academic-course-edit?Id=" + courseId,
+     async: false,
+     success: function (response) {
+         if (response.code === "success") {
+             const courseDetails = JSON.parse(response.body);
+             if (courseDetails == null) {
+                 // Handle null case
+             } else {
+                 console.log('dddddddddddd', courseDetails);
+                 // Use direct object properties since courseDetails is an object, not an array
+                 $("#courseId").val(courseDetails.courseId || "");
+                 $("#courseTittle").val(courseDetails.courseTitle || ""); // Note: Response uses "courseTitle", not "courseTittle"
+                 $("#price").val(courseDetails.price || ""); // Assuming "price" exists; add if missing in response
+                 $("#startDate").val(courseDetails.startDate || "");
+                 $("#endDate").val(courseDetails.endDate || "");
+                 $("#patientStatus").val(courseDetails.status || ""); // Assuming this exists
+                 $("#parentCategory").val(courseDetails.categoryId || '');
+                 getsubcategoryList(courseDetails.categoryId, courseDetails.subcategoryId || '');
+                 // FIXED: 'dec' is plain escaped HTML (not base64), so no atob needed - use directly
+                 let decodedDesc = courseDetails.dec || courseDetails.courseDesc || "";
+                 if (CKEDITOR.instances.courseDesc) {
+                     CKEDITOR.instances.courseDesc.setData(decodedDesc);
+                 } else {
+                     console.error("CKEditor instance for 'courseDesc' not found.");
+                 }
+                 // Handle document preview
+              
+                 $("#rate").val(courseDetails.rate || "");
+                 $("#currencySymbol").val(courseDetails.currencySymbol || "");
+                 $("#level").val(courseDetails.level || "");
+                 $("#priceType").val(courseDetails.priceType || "B2C");
+                 $("#customers").val(courseDetails.customers ? JSON.parse(courseDetails.customers) : "");
+                 // Handle duration parsing
+                 var duration = courseDetails.duration || "";
+                 var hours = 0;
+                 var minutes = 0;
+                 if (duration) {
+                     var parts = duration.split(" ");
+                     for (var part of parts) {
+                         if (part.endsWith("h")) {
+                             hours = parseInt(part.replace("h", "")) || 0;
+                         } else if (part.endsWith("m")) {
+                             minutes = parseInt(part.replace("m", "")) || 0;
+                         }
+                     }
+                 }
+                 $("#durationHours").val(hours);
+                 $("#durationMinutes").val(minutes);
+                 togglePriceFields();
+                 // Optional: Load training details if courseCategoryType exists
+                /* if (courseDetails.courseCategoryType && Array.isArray(courseDetails.courseCategoryType)) {
+                     getTrainingDetails(courseId); // Assuming this function exists to populate training tabs
+                 } */
+                 // Optional: Handle image if "image" field exists
+                 if (courseDetails.image) {
+                     // Set preview for course image if needed
+                     console.log('Course Image URL:', courseDetails.image);
+                 }
+                 // Optional: Populate structured description fields if separate sections exist
+                 if (courseDetails.courseOverview) {
+                     // Assuming additional CKEditor instances for sections; adjust as needed
+                     // e.g., if (CKEDITOR.instances.courseOverview) CKEDITOR.instances.courseOverview.setData(courseDetails.courseOverview);
+                 }
+                 if (courseDetails.targetGroup) {
+                     // e.g., if (CKEDITOR.instances.targetGroup) CKEDITOR.instances.targetGroup.setData(courseDetails.targetGroup);
+                 }
+                 if (courseDetails.conceptsCovered) {
+                     // e.g., if (CKEDITOR.instances.conceptsCovered) CKEDITOR.instances.conceptsCovered.setData(courseDetails.conceptsCovered);
+                 }
+                 if (courseDetails.examAndPrerequisite) {
+                     // e.g., if (CKEDITOR.instances.examAndPrerequisite) CKEDITOR.instances.examAndPrerequisite.setData(courseDetails.examAndPrerequisite);
+                 }
+             }
+         }
+     },
+     error: function (error) {
+         console.error("Error fetching course details:", error);
+     }
+ });
+}
 function addApplication() {
  if (window.gridApi) {
      window.gridApi.deselectAll();
@@ -1749,7 +1761,7 @@ function editCourse() {
  $("#courseForm :input").prop("disabled", false);
  var editor = CKEDITOR.instances['courseDesc'];
  editor.setReadOnly(false);
- editor.readOnly = false; 
+ editor.readOnly = false;
 // CKEDITOR.instances['courseDesc'].setReadOnly(false);
 }
 function saveFile() {
@@ -2041,12 +2053,56 @@ function editTraing() {
     refreshDisplay(); // Refresh to show existing
 }
 
+function validateTrainingData() {
+    if (!currentCategory) {
+        toastr.error("No category selected.");
+        return false;
+    }
+    const data = savedData[currentCategory];
+    if (!data) {
+        toastr.error("No data available for " + currentCategory + ". Please fill in the details first.");
+        return false;
+    }
+    if (!data.content || data.content.trim() === '') {
+        toastr.error("Content is required for " + currentCategory);
+        CKEDITOR.instances.notesField.focus();
+        return false;
+    }
+   /* if (!data.pricing || parseFloat(data.pricing) <= 0) {
+        toastr.error("Valid price (greater than 0) is required for " + currentCategory);
+        $("#priceField").focus();
+        return false;
+    } */
+    if (currentCategory === "Online Bootcamp") {
+        const schedules = data.bootcampSchedules || [];
+        if (schedules.length === 0) {
+            toastr.error("At least one bootcamp schedule is required.");
+            return false;
+        }
+        const validSchedule = schedules.find(s => s.startDate && s.endDate && s.startDate.trim() !== '' && s.endDate.trim() !== '');
+        if (!validSchedule) {
+            toastr.error("Each bootcamp schedule requires start and end dates.");
+            return false;
+        }
+    }
+    // Documents are optional; add check if required
+    // if (data.documents && data.documents.length === 0) {
+    // toastr.error("At least one document is required for " + currentCategory);
+    // return false;
+    // }
+    return true;
+}
+
 function saveTraing() {
     // Ensure latest data is saved to savedData
     if ($("#editBtn").hasClass('d-none')) {
         $("#saveBtn").click();
     } else {
         $("#editBtn").click();
+    }
+    // Validate before proceeding
+    if (!validateTrainingData()) {
+        return;
     }
     // Get the courseId
     let courseId = $("#courseId").val() || "";
@@ -2119,7 +2175,7 @@ function saveTraing() {
     };
     console.log("xxxx",payload);
     // Post to controller as JSON
-    $.ajax({
+     $.ajax({
         url: 'academic-course-training-save',
         type: 'POST',
         contentType: 'application/json',
@@ -2307,13 +2363,16 @@ function getTrainingDetails(courseId) {
                     // bootcamp
                     let bootcampSchedules = [];
                     if (category === "Online Bootcamp" && Array.isArray(item.bootcampDetails)) {
-                        bootcampSchedules = item.bootcampDetails.map(d => ({
+                    	console.log(item.bootcampDetails)
+                    	bootcampSchedules = item.bootcampDetails.map(d => ({
                             startDate: d.startDate || "",
                             endDate: d.endDate || "",
                             fromTime: d.fromTime || "",
                             toTime: d.toTime || "",
-                            additionalInfo: d.title || ""
+                            additionalInfo: d.title || "",
+                            isActive: d.sheduleStatus === "true" // ✅ Correct key + boolean conversion
                         }));
+                    
                     }
 
                     savedData[category] = {
@@ -2445,52 +2504,53 @@ function loadTrainingCategory(category) {
         if (schedules.length === 0) {
             addEmptyScheduleSet();
         } else {
-            schedules.forEach((sch, index) => {
-                const html = `
-                    <div class="schedule-set mb-3">
-                        <div class="row g-2">
-                            <div class="col-md-12">
-                                <label>Add Title</label>
-                                <textarea class="form-control bootcamp-additional-info" rows="3">${sch.additionalInfo || ''}</textarea>
-                            </div>
-                            <div class="col-md-3 form-group calendar_box">
-                                <label>Start Date</label><span class="mandatory">*</span>
-                                <div class="position-relative">
-                                    <input type="text"
-                                           class="form-control bootcamp-start-date"
-                                           value="${sch.startDate || ''}" readonly>
-                                    <i class="ti-calendar picker_calendar bootcamp-start-cal"></i>
-                                </div>
-                            </div>
-                            <div class="col-md-3 form-group calendar_box">
-                                <label>End Date</label><span class="mandatory">*</span>
-                                <div class="position-relative">
-                                    <input type="text"
-                                           class="form-control bootcamp-end-date"
-                                           value="${sch.endDate || ''}" readonly>
-                                    <i class="ti-calendar picker_calendar bootcamp-end-cal"></i>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <label>From Time</label>
-                                <input type="time" class="form-control bootcamp-from-time"
-                                       value="${sch.fromTime || ''}">
-                            </div>
-                            <div class="col-md-3">
-                                <label>To Time</label>
-                                <input type="time" class="form-control bootcamp-to-time"
-                                       value="${sch.toTime || ''}">
-                            </div>
-                            <div class="col-md-12">
-                                <button type="button" class="btn btn-danger btn-sm remove-schedule ${index === 0 ? 'd-none' : ''}">
-                                    Remove Schedule
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                $("#bootcampSchedulesContainer").append(html);
-            });
+        	schedules.forEach((sch, index) => {
+        	    const isActive = sch.isActive !== false; // default true if missing
+        	    const html = `
+        	        <div class="schedule-set mb-3">
+        	            <div class="row g-2">
+        	                <div class="col-md-12">
+        	                    <label>Add Title</label>
+        	                    <textarea class="form-control bootcamp-additional-info" rows="3">${sch.additionalInfo || ''}</textarea>
+        	                </div>
+        	                <div class="col-md-3 form-group calendar_box">
+        	                    <label>Start Date</label><span class="mandatory">*</span>
+        	                    <div class="position-relative">
+        	                        <input type="text" class="form-control bootcamp-start-date" value="${sch.startDate || ''}" readonly>
+        	                        <i class="ti-calendar picker_calendar bootcamp-start-cal"></i>
+        	                    </div>
+        	                </div>
+        	                <div class="col-md-3 form-group calendar_box">
+        	                    <label>End Date</label><span class="mandatory">*</span>
+        	                    <div class="position-relative">
+        	                        <input type="text" class="form-control bootcamp-end-date" value="${sch.endDate || ''}" readonly>
+        	                        <i class="ti-calendar picker_calendar bootcamp-end-cal"></i>
+        	                    </div>
+        	                </div>
+        	                <div class="col-md-2">
+        	                    <label>From Time</label>
+        	                    <input type="time" class="form-control bootcamp-from-time" value="${sch.fromTime || ''}">
+        	                </div>
+        	                <div class="col-md-2">
+        	                    <label>To Time</label>
+        	                    <input type="time" class="form-control bootcamp-to-time" value="${sch.toTime || ''}">
+        	                </div>
+        	                <div class="col-md-2 d-flex align-items-end">
+        	                    <div class="form-check">
+        	                        <input class="form-check-input bootcamp-is-active" type="checkbox" ${isActive ? 'checked' : ''}>
+        	                        <label class="form-check-label">Active</label>
+        	                    </div>
+        	                </div>
+        	                <div class="col-md-12">
+        	                    <button type="button" class="btn btn-danger btn-sm remove-schedule ${index === 0 ? 'd-none' : ''}">
+        	                        Remove Schedule
+        	                    </button>
+        	                </div>
+        	            </div>
+        	        </div>
+        	    `;
+        	    $("#bootcampSchedulesContainer").append(html);
+        	});
         }
         initBootcampPickers();
     } else {
@@ -2543,15 +2603,14 @@ function handleCategoryLoad(editor) {
             $('#bootcampSchedulesContainer').empty();
 
             schedules.forEach((sch, index) => {
-
-                const setHtml = `
+                const isActive = sch.isActive !== false; // default true if missing
+                const html = `
                     <div class="schedule-set mb-3">
                         <div class="row g-2">
                             <div class="col-md-12">
                                 <label>Add Title</label>
                                 <textarea class="form-control bootcamp-additional-info" rows="3">${sch.additionalInfo || ''}</textarea>
                             </div>
-
                             <div class="col-md-3 form-group calendar_box">
                                 <label>Start Date</label><span class="mandatory">*</span>
                                 <div class="position-relative">
@@ -2559,7 +2618,6 @@ function handleCategoryLoad(editor) {
                                     <i class="ti-calendar picker_calendar bootcamp-start-cal"></i>
                                 </div>
                             </div>
-
                             <div class="col-md-3 form-group calendar_box">
                                 <label>End Date</label><span class="mandatory">*</span>
                                 <div class="position-relative">
@@ -2567,17 +2625,20 @@ function handleCategoryLoad(editor) {
                                     <i class="ti-calendar picker_calendar bootcamp-end-cal"></i>
                                 </div>
                             </div>
-
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label>From Time</label>
                                 <input type="time" class="form-control bootcamp-from-time" value="${sch.fromTime || ''}">
                             </div>
-
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label>To Time</label>
                                 <input type="time" class="form-control bootcamp-to-time" value="${sch.toTime || ''}">
                             </div>
-
+                            <div class="col-md-2 d-flex align-items-end">
+                                <div class="form-check">
+                                    <input class="form-check-input bootcamp-is-active" type="checkbox" ${isActive ? 'checked' : ''}>
+                                    <label class="form-check-label">Active</label>
+                                </div>
+                            </div>
                             <div class="col-md-12">
                                 <button type="button" class="btn btn-danger btn-sm remove-schedule ${index === 0 ? 'd-none' : ''}">
                                     Remove Schedule
@@ -2586,8 +2647,7 @@ function handleCategoryLoad(editor) {
                         </div>
                     </div>
                 `;
-
-                $('#bootcampSchedulesContainer').append(setHtml);
+                $("#bootcampSchedulesContainer").append(html);
             });
 
             if (schedules.length === 0) {
@@ -2914,6 +2974,9 @@ console.log(formData);
      }
  });
 }*/
+function encodeToBase64(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+}
 function masterSaveCourse() {
  gridOptionsDoc.api.stopEditing();
 /* // Collect documents from grid (Course Materials)
@@ -2959,8 +3022,9 @@ console.log('uploadList',uploadList) */
  let duration = (hours > 0 ? hours + "h" : "") + (minutes > 0 ? (hours > 0 ? " " : "") + minutes + "m" : "");
  if (!duration) duration = "0h";
  // Encode Course Description to Base64
- courseDescRaw = courseDescRaw.replace(/\n/g, '').replace(/\t/g, '');
- let courseDescEncoded = btoa(courseDescRaw);
+   courseDescRaw = courseDescRaw.replace(/\n/g, '').replace(/\t/g, '');
+    let courseDescEncoded = encodeToBase64(courseDescRaw);
+
  // ------------------- FORM DATA -------------------
  let formData = new FormData();
  formData.append("courseId", courseId);
@@ -2976,19 +3040,24 @@ console.log('uploadList',uploadList) */
  formData.append("rate", rate);
  formData.append("currencySymbol", currencySymbol);
  formData.append("level", level);
-//✅ Attach your category JSON here (now with content and pricing as separate keys in the JSON structure)
-//console.log($("#jsonOutput").text(),"sssssssss");
-// formData.append("categoryData", categoryDataText);
- // Attach documents (grid data as JSON)
-/* formData.append("uploadList", JSON.stringify(uploadList)); */
- // Attach multiple files (from .wardocument inputs)
- $(".wardocument").each(function () {
-     if (this.files && this.files.length > 0) {
-         for (let i = 0; i < this.files.length; i++) {
-             formData.append("documents", this.files[i]); // <-- multiple documents
-         }
-     }
- });
+
+ let oldImage = imagurl;
+let hasNewFile = false;
+
+$(".wardocument").each(function () {
+    if (this.files && this.files.length > 0) {
+        hasNewFile = true;
+        for (let i = 0; i < this.files.length; i++) {
+            formData.append("documents", this.files[i]);
+        }
+    }
+});
+
+// If no new file selected → send previous image
+if (!hasNewFile) {
+    formData.append("oldImage", oldImage);
+}
+
  // ------------------- DEBUG -------------------
  for (let pair of formData.entries()) {
      console.log(pair[0] + ':', pair[1]);
@@ -3598,329 +3667,326 @@ function removeExistingDynamicTab() {
 												</div>
 
 											</div>
-											</div>
-											<div id="training" class="tab-pane fade p-2 h-100">
-												<div class="requisition-tbl d-flex flex-column h-100 gap-2">
-													<div class="">
-														<table class="table table-bordered mb-0" width="100%">
-															<tbody>
-																<tr valign="middle">
-																	<td width="80%"><strong id="programNameDisplay"></strong></td>
-																	<td>
-																		<div class="d-flex justify-content-end gap-2">
-																			<div class="ml-3">
-																				<button id="addtraining"
-																					class="btn btn-primary edit-btn" type="button"
-																					onclick="addtraining()">Add</button>
-																			</div>
-																			<div class="ml-3">
-																				<button id="editTraing"
-																					class="btn btn-primary edit-btn" type="button"
-																					onclick="editTraing()">Edit</button>
-																			</div>
-																			<!-- <div class="mr-3">
+										</div>
+										<div id="training" class="tab-pane fade p-2 h-100">
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+												<div class="">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<td width="80%"><strong id="programNameDisplay"></strong></td>
+																<td>
+																	<div class="d-flex justify-content-end gap-2">
+																		<div class="ml-3">
+																			<button id="addtraining"
+																				class="btn btn-primary edit-btn" type="button"
+																				onclick="addtraining()">Add</button>
+																		</div>
+																		<div class="ml-3">
+																			<button id="editTraing"
+																				class="btn btn-primary edit-btn" type="button"
+																				onclick="editTraing()">Edit</button>
+																		</div>
+																		<!-- <div class="mr-3">
 <button id="saveTraing" class="btn edit-btn d-none"
 onclick="saveTraing()" type="button">Save</button>
 </div>-->
-																			<div class="mr-3">
-																				<button id="cancelTraing"
+																		<div class="mr-3">
+																			<button id="cancelTraing"
+																				class="btn m-0 edit-btn d-none"
+																				onclick="cancelTraing()" type="button">Cancel</button>
+																		</div>
+
+
+																		<div class="mr-3">
+																			<button id="prev" class="btn m-0 edit-btn"
+																				onclick="prev(2)" type="button">Prev</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="next" class="btn edit-btn"
+																				onclick="next(2)" type="button">Next</button>
+																		</div>
+																	</div>
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+												<div class="card p-2">
+													<div class="row">
+														<div class="col-md-12">
+															<h5 class="mb-3">Course Category Type :</h5>
+
+															<div class="d-flex gap-4 align-items-center mb-3">
+																<!-- <div class="row g-3 flex-grow-1"></div> -->
+																<div>
+																	<button id="addCustomTraining" class="btn btn-primary"
+																		disabled data-bs-toggle="modal"
+																		data-bs-target="#customCategoryModal">
+																		<i class="fa fa-plus"></i> Add Custom
+																	</button>
+																</div>
+																<div class="row g-3" id="trainingCategoryContainer"></div>
+															</div>
+
+
+														</div>
+													</div>
+												</div>
+											</div>
+
+										</div>
+
+										<div id="quizMap" class="tab-pane fade hidden p-2 h-100">
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+												<div class="">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<td width="80%"><strong id="programNameDisplay"></strong></td>
+																<td>
+																	<div class="d-flex justify-content-end gap-2">
+
+																		<div class="ml-3">
+																			<button id="editQuiz"
+																				class="btn btn-primary edit-btn" type="button"
+																				onclick="editQuiz()">Edit</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="saveQuiz" class="btn edit-btn d-none"
+																				onclick="saveQuiz()" type="button">Save</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="cancelQuiz"
+																				class="btn m-0 edit-btn d-none"
+																				onclick="cancelQuiz()" type="button">Cancel</button>
+																		</div>
+
+
+																		<div class="mr-3">
+																			<button id="prev" class="btn m-0 edit-btn"
+																				onclick="prev(3)" type="button">Prev</button>
+																		</div>
+																		<div class="mr-3">
+																			<button id="next" class="btn edit-btn"
+																				onclick="next(3)" type="button">Next</button>
+																		</div>
+																	</div>
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+												<div class="card p-2">
+													<div class="row">
+														<div class="col-md-12">
+															<h5 class="mb-3">Quiz Mapping:</h5>
+
+															<div class="card m-2 p-2">
+																<div id="quizGrid" class="ag-theme-alpine"></div>
+															</div>
+
+
+
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<div id="examination" class="tab-pane fade p-2 h-100">
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+												<div class="">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<td width="80%"><strong id="programNameDisplay"></strong></td>
+																<td>
+																	<div class="d-flex justify-content-end gap-2">
+																		<div class="mr-0">
+																			<button id="prev" class="btn m-0 edit-btn"
+																				onclick="prev(4)" type="button">Prev</button>
+																		</div>
+																		<div class="mr-0">
+																			<button id="assign" class="btn edit-btn"
+																				onclick="masterAssign()" type="button">Assign</button>
+																		</div>
+																	</div>
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+												<div class="card p-2">
+													<div class="row form-top" id="examination">
+														<div class="mb-3">
+															<div class="relative">
+																<label>All Instructor</label> <input type="text"
+																	id="instructorSearch"
+																	class="form-control w-full mt-2 pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+																	placeholder="Search instructors..."
+																	onkeyup="filterInstructors()">
+															</div>
+														</div>
+														<div
+															class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+															id="instructorCards">
+															<!-- Instructor cards will be dynamically inserted here -->
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<div id="trainingDynamicPane" class="tab-pane fade p-2">
+											<!-- TRAINING MAIN BLOCK LIVES HERE, ALWAYS -->
+											<div class="training-scroll-container"
+												style="height: calc(100vh - 220px); overflow-y: auto; padding-right: 10px;">
+												<div id="trainingMainBlock" class="container-fluid px-0">
+													<div class="row">
+														<div class="col-12">
+															<table class="table table-bordered mb-3" width="100%">
+																<tbody>
+																	<tr valign="middle">
+																		<td width="80%"><strong id="programNameDisplay"></strong></td>
+																		<td class="text-end">
+																			<div class="d-flex justify-content-end gap-2">
+																				<button id="saveTraing" class="btn edit-btn d-none"
+																					onclick="saveTraing()" type="button">Save</button>
+																				<button id="cancelTraingDynamic"
 																					class="btn m-0 edit-btn d-none"
 																					onclick="cancelTraing()" type="button">Cancel</button>
 																			</div>
-
-
-
-
-
-
-
-
-
-																			<div class="mr-3">
-																				<button id="prev" class="btn m-0 edit-btn"
-																					onclick="prev(2)" type="button">Prev</button>
-																			</div>
-																			<div class="mr-3">
-																				<button id="next" class="btn edit-btn"
-																					onclick="next(2)" type="button">Next</button>
-																			</div>
-																		</div>
-																	</td>
-																</tr>
-															</tbody>
-														</table>
+																		</td>
+																	</tr>
+																</tbody>
+															</table>
+														</div>
 													</div>
-													<div class="card p-2">
-														<div class="row">
-															<div class="col-md-12">
-																<h5 class="mb-3">Course Category Type :</h5>
 
-																<div class="d-flex gap-4 align-items-center mb-3">
-																	<!-- <div class="row g-3 flex-grow-1"></div> -->
-																	<div>
-																		<button id="addCustomTraining" class="btn btn-primary"
-																			disabled data-bs-toggle="modal"
-																			data-bs-target="#customCategoryModal">
-																			<i class="fa fa-plus"></i> Add Custom
-																		</button>
-																	</div>
-																	<div class="row g-3" id="trainingCategoryContainer"></div>
-																</div>
+													<!-- Save / Update buttons -->
+													<div class="row mb-3">
+														<div class="col-12 d-flex justify-content-end">
+															<button id="saveBtn"
+																class="btn btn-primary btn-sm me-2 d-none">Save</button>
+															<button id="editBtn"
+																class="btn btn-success btn-sm d-none">Update</button>
+														</div>
+													</div>
 
-
+													<!-- Notes + Price -->
+													<div class="col-md-12 mt-3" id="dynamicFields"
+														style="display: none;">
+														<div class="row g-3">
+															<div class="col-md-8">
+																<textarea id="notesField" class="form-control"
+																	placeholder="Enter details..."></textarea>
+															</div>
+															<div class="col-md-4">
+																<input type="number" id="priceField"
+																	class="form-control" placeholder="Price">
 															</div>
 														</div>
 													</div>
-												</div>
 
-											</div>
-
-											<div id="quizMap" class="tab-pane fade hidden p-2 h-100">
-												<div class="requisition-tbl d-flex flex-column h-100 gap-2">
-													<div class="">
-														<table class="table table-bordered mb-0" width="100%">
-															<tbody>
-																<tr valign="middle">
-																	<td width="80%"><strong id="programNameDisplay"></strong></td>
-																	<td>
-																		<div class="d-flex justify-content-end gap-2">
-
-																			<div class="ml-3">
-																				<button id="editQuiz"
-																					class="btn btn-primary edit-btn" type="button"
-																					onclick="editQuiz()">Edit</button>
-																			</div>
-																			<div class="mr-3">
-																				<button id="saveQuiz" class="btn edit-btn d-none"
-																					onclick="saveQuiz()" type="button">Save</button>
-																			</div>
-																			<div class="mr-3">
-																				<button id="cancelQuiz"
-																					class="btn m-0 edit-btn d-none"
-																					onclick="cancelQuiz()" type="button">Cancel</button>
-																			</div>
-
-
-																			<div class="mr-3">
-																				<button id="prev" class="btn m-0 edit-btn"
-																					onclick="prev(3)" type="button">Prev</button>
-																			</div>
-																			<div class="mr-3">
-																				<button id="next" class="btn edit-btn"
-																					onclick="next(3)" type="button">Next</button>
-																			</div>
-																		</div>
-																	</td>
-																</tr>
-															</tbody>
-														</table>
-													</div>
-													<div class="card p-2">
-														<div class="row">
-															<div class="col-md-12">
-																<h5 class="mb-3">Quiz Mapping:</h5>
-
-																<div class="card m-2 p-2">
-																	<div id="quizGrid" class="ag-theme-alpine"></div>
-																</div>
-
-
-
-															</div>
+													<!-- Bootcamp specific fields -->
+													<div class="col-md-12 mt-3" id="bootcampSpecificFields"
+														style="display: none;">
+														<h6 class="mb-2">Bootcamp Schedule Details:</h6>
+														<div id="bootcampSchedulesContainer">
+															<!-- schedule sets will be injected by JS -->
 														</div>
+														<button type="button" class="btn btn-primary mt-2"
+															id="addScheduleBtn">Add Another Schedule</button>
 													</div>
-												</div>
-											</div>
-											<div id="examination" class="tab-pane fade p-2 h-100">
-												<div class="requisition-tbl d-flex flex-column h-100 gap-2">
-													<div class="">
-														<table class="table table-bordered mb-0" width="100%">
-															<tbody>
-																<tr valign="middle">
-																	<td width="80%"><strong id="programNameDisplay"></strong></td>
-																	<td>
-																		<div class="d-flex justify-content-end gap-2">
-																			<div class="mr-0">
-																				<button id="prev" class="btn m-0 edit-btn"
-																					onclick="prev(4)" type="button">Prev</button>
-																			</div>
-																			<div class="mr-0">
-																				<button id="assign" class="btn edit-btn"
-																					onclick="masterAssign()" type="button">Assign</button>
-																			</div>
-																		</div>
-																	</td>
-																</tr>
-															</tbody>
-														</table>
-													</div>
-													<div class="card p-2">
-														<div class="row form-top" id="examination">
-															<div class="mb-3">
-																<div class="relative">
-																	<label>All Instructor</label> <input type="text"
-																		id="instructorSearch"
-																		class="form-control w-full mt-2 pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-																		placeholder="Search instructors..."
-																		onkeyup="filterInstructors()">
-																</div>
-															</div>
+
+													<!-- Documents section -->
+													<div class="row mt-4">
+														<div class="col-md-12">
 															<div
-																class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-																id="instructorCards">
-																<!-- Instructor cards will be dynamically inserted here -->
+																class="d-flex justify-content-between align-items-center">
+																<h5 class="sub-header-new m-0">Course Material :</h5>
+																<div class="d-flex gap-2">
+																	<span class="mandatory">*</span>
+																		<!-- <select id="docTypeSelect" class="form-select" style="width: auto; height: 38px;">
+																	    <option value="Normal">Normal</option>
+																	    <option value="SCOM">SCORM</option>
+																	</select> -->
+																	<button id="docAddBtn"
+																		class="border-0 btn-transition btn btn-outline-primary"
+																		title="Add Doc" onClick="uploadDocOnClick()"
+																		data-bs-toggle="tooltip">
+																		<i class="fa fa-plus-square" aria-hidden="true"></i>
+																	</button>
+																	<button id="docDeleteBtn"
+																		class="border-0 btn-transition btn btn-outline-primary"
+																		title="Remove Doc" disabled
+																		onclick="deleteDocDetailsOnclick()"
+																		data-bs-toggle="tooltip">
+																		<i class="fa fa-trash"></i>
+																	</button>
+																</div>
+															</div>
+															<div class="controls" hidden>
+																<input type="file" class="document" id="uploadDoc_0"
+																	accept=".jpeg,.jpg,.png,.pdf" name="userImage"
+																	onchange="saveMultiFile(event)" />
+															</div>
+															<div class="row mt-2">
+																<div id="myDocumentGrid"
+																	style="width: 100%; height: 200px;"
+																	class="ag-theme-alpine"></div>
 															</div>
 														</div>
 													</div>
-												</div>
-											</div>
-											<div id="trainingDynamicPane" class="tab-pane fade p-2">
-												<!-- TRAINING MAIN BLOCK LIVES HERE, ALWAYS -->
-												<div class="training-scroll-container"
-													style="height: calc(100vh - 220px); overflow-y: auto; padding-right: 10px;">
-													<div id="trainingMainBlock" class="container-fluid px-0">
-														<div class="row">
-															<div class="col-12">
-																<table class="table table-bordered mb-3" width="100%">
-																	<tbody>
-																		<tr valign="middle">
-																			<td width="80%"><strong id="programNameDisplay"></strong></td>
-																			<td class="text-end">
-																				<div class="d-flex justify-content-end gap-2">
-																					<button id="saveTraing" class="btn edit-btn d-none"
-																						onclick="saveTraing()" type="button">Save</button>
-																					<button id="cancelTraingDynamic"
-																						class="btn m-0 edit-btn d-none"
-																						onclick="cancelTraing()" type="button">Cancel</button>
-																				</div>
-																			</td>
-																		</tr>
-																	</tbody>
-																</table>
-															</div>
-														</div>
 
-														<!-- Save / Update buttons -->
-														<div class="row mb-3">
-															<div class="col-12 d-flex justify-content-end">
-																<button id="saveBtn"
-																	class="btn btn-primary btn-sm me-2 d-none">Save</button>
-																<button id="editBtn"
-																	class="btn btn-success btn-sm d-none">Update</button>
-															</div>
-														</div>
-
-														<!-- Notes + Price -->
-														<div class="col-md-12 mt-3" id="dynamicFields"
-															style="display: none;">
-															<div class="row g-3">
-																<div class="col-md-8">
-																	<textarea id="notesField" class="form-control"
-																		placeholder="Enter details..."></textarea>
-																</div>
-																<div class="col-md-4">
-																	<input type="number" id="priceField"
-																		class="form-control" placeholder="Price">
-																</div>
-															</div>
-														</div>
-
-														<!-- Bootcamp specific fields -->
-														<div class="col-md-12 mt-3" id="bootcampSpecificFields"
-															style="display: none;">
-															<h6 class="mb-2">Bootcamp Schedule Details:</h6>
-															<div id="bootcampSchedulesContainer">
-																<!-- schedule sets will be injected by JS -->
-															</div>
-															<button type="button" class="btn btn-primary mt-2"
-																id="addScheduleBtn">Add Another Schedule</button>
-														</div>
-
-														<!-- Documents section -->
-														<div class="row mt-4">
-															<div class="col-md-12">
-																<div
-																	class="d-flex justify-content-between align-items-center">
-																	<h5 class="sub-header-new m-0">Course Material :</h5>
-																	<div class="d-flex gap-2">
-																		<span class="mandatory">*</span>
-																		<button id="docAddBtn"
-																			class="border-0 btn-transition btn btn-outline-primary"
-																			title="Add Doc" onClick="uploadDocOnClick()"
-																			data-bs-toggle="tooltip">
-																			<i class="fa fa-plus-square" aria-hidden="true"></i>
-																		</button>
-																		<button id="docDeleteBtn"
-																			class="border-0 btn-transition btn btn-outline-primary"
-																			title="Remove Doc" disabled
-																			onclick="deleteDocDetailsOnclick()"
-																			data-bs-toggle="tooltip">
-																			<i class="fa fa-trash"></i>
-																		</button>
-																	</div>
-																</div>
-																<div class="controls" hidden>
-																	<input type="file" class="document" id="uploadDoc_0"
-																		accept=".jpeg,.jpg,.png,.pdf" name="userImage"
-																		onchange="saveMultiFile(event)" />
-																</div>
-																<div class="row mt-2">
-																	<div id="myDocumentGrid"
-																		style="width: 100%; height: 200px;"
-																		class="ag-theme-alpine"></div>
-																</div>
-															</div>
-														</div>
-
-														<!-- Saved / JSON preview -->
-														<div class="col-md-12 mt-4">
-															<h6>Saved Selections:</h6>
-															<div id="resultContainer"></div>
-															<h6 class="mt-3">JSON Output (Content & Pricing as
-																separate keys):</h6>
-															<pre id="jsonOutput" class="bg-light p-2 rounded"></pre>
-														</div>
+													<!-- Saved / JSON preview -->
+													<div class="col-md-12 mt-4">
+														<h6>Saved Selections:</h6>
+														<div id="resultContainer"></div>
+														<h6 class="mt-3">JSON Output (Content & Pricing as
+															separate keys):</h6>
+														<pre id="jsonOutput" class="bg-light p-2 rounded"></pre>
 													</div>
 												</div>
 											</div>
-
-											<!-- <div id="dynamicTabContent"></div> -->
 										</div>
+
+										<!-- <div id="dynamicTabContent"></div> -->
 									</div>
 								</div>
 							</div>
 						</div>
+					</div>
 
-						<!-- Custom Category Modal -->
-						<div class="modal fade" id="customCategoryModal" tabindex="-1"
-							aria-labelledby="customCategoryModalLabel" aria-hidden="true">
-							<div class="modal-dialog">
-								<div class="modal-content">
-									<div class="modal-header">
-										<h5 class="modal-title" id="customCategoryModalLabel">Add
-											Custom Training Category</h5>
-										<button type="button" class="btn-close"
-											data-bs-dismiss="modal" aria-label="Close"></button>
+					<!-- Custom Category Modal -->
+					<div class="modal fade" id="customCategoryModal" tabindex="-1"
+						aria-labelledby="customCategoryModalLabel" aria-hidden="true">
+						<div class="modal-dialog">
+							<div class="modal-content">
+								<div class="modal-header">
+									<h5 class="modal-title" id="customCategoryModalLabel">Add
+										Custom Training Category</h5>
+									<button type="button" class="btn-close" data-bs-dismiss="modal"
+										aria-label="Close"></button>
+								</div>
+								<div class="modal-body">
+									<div class="mb-3">
+										<label for="customCategoryInput" class="form-label">Category
+											Name</label> <input type="text" class="form-control"
+											id="customCategoryInput"
+											placeholder="Enter custom category name">
 									</div>
-									<div class="modal-body">
-										<div class="mb-3">
-											<label for="customCategoryInput" class="form-label">Category
-												Name</label> <input type="text" class="form-control"
-												id="customCategoryInput"
-												placeholder="Enter custom category name">
-										</div>
-									</div>
-									<div class="modal-footer">
-										<button type="button" class="btn btn-secondary"
-											data-bs-dismiss="modal">Close</button>
-										<button type="button" class="btn btn-primary"
-											id="saveCustomCategory">Save</button>
-									</div>
+								</div>
+								<div class="modal-footer">
+									<button type="button" class="btn btn-secondary"
+										data-bs-dismiss="modal">Close</button>
+									<button type="button" class="btn btn-primary"
+										id="saveCustomCategory">Save</button>
 								</div>
 							</div>
 						</div>
 					</div>
 				</div>
 			</div>
+		</div>
 </body>
 </html>
