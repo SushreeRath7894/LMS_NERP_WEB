@@ -1181,6 +1181,7 @@ let employeeData = [];
 //}
 //courseId = '';
 //}
+let imagurl= '';
 function onSelectionChanged() {
  const selectedRows = window.gridApi.getSelectedRows();
  if (selectedRows.length === 0) {
@@ -1213,17 +1214,17 @@ docPreview.empty();
 $("#imageWarrName_0").text("");
 $("#imageRemoveBtn_0").html("");
 if (row.documentURL && row.documentURL.trim() !== "") {
- let url = row.documentURL.trim().replace(/ /g, '%20');
- let fileName = row.fileName || decodeURIComponent(url.split('/').pop().split('?')[0]);
+	imagurl = row.documentURL.trim().replace(/ /g, '%20');
+ let fileName = row.fileName || decodeURIComponent(imagurl.split('/').pop().split('?')[0]);
  const ext = fileName.split('.').pop().toLowerCase();
  let html = '';
  if (ext === 'pdf') {
-     html = `<a href="${url}" target="_blank" class="btn btn-primary btn-sm">View PDF</a>`;
+     html = `<a href="${imagurl}" target="_blank" class="btn btn-primary btn-sm">View PDF</a>`;
  } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
-     html = `<img src="${url}" alt="${fileName}"
+     html = `<img src="${imagurl}" alt="${fileName}"
                   style="max-width:60px; height:60px; object-fit:cover; border-radius:5px;
                          box-shadow:0 2px 4px rgba(0,0,0,0.1); cursor:pointer; border:1px solid #ddd;"
-                  onclick="window.open('${url}', '_blank')" />`;
+                  onclick="window.open('${imagurl}', '_blank')" />`;
  } else {
      html = `<i class="fa fa-file-o" style="font-size:40px; color:#777;"></i>`;
  }
@@ -1232,7 +1233,7 @@ if (row.documentURL && row.documentURL.trim() !== "") {
          <div>${html}</div>
          <div style="flex:1; min-width:0;">
              <span style="cursor:pointer; color:#337ab7; font-weight:bold;"
-                   onclick="window.open('${url}', '_blank')">
+                   onclick="window.open('${imagurl}', '_blank')">
                  ${fileName}
              </span>
          </div>
@@ -1248,6 +1249,8 @@ if (row.documentURL && row.documentURL.trim() !== "") {
  docPreview.html(
      '<div style="color:#999; font-size:13px; text-align:center; margin-top:8px;">No Document Available</div>'
  );
+ 
+ imagurl = '';
 }
  // --- AJAX CALLS ---
  editCourseDetails(row.courseId);
@@ -1642,17 +1645,7 @@ function editCourseDetails(courseId) {
                      console.error("CKEditor instance for 'courseDesc' not found.");
                  }
                  // Handle document preview
-               if (courseDetails[0].documentURL == null || courseDetails[0].documentURL == '') {
-                   $("#uploadedWarrDiv_0").html("");
-                   $("#imageWarrName_0").html("");
-                   $("#imageRemoveBtn_0").empty();
-               } else {
-                   $("#uploadedWarrDiv_0").html("");
-                   var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + courseDetails[0].documentURL + "' title='" + courseDetails[0].fileName + "' target='_balnk'><i class='fa fa-file-o' style='color: blue'></i></a></div>";
-                   $("#uploadedWarrDiv_0").html(LightImg);
-                   $("#imageWarrName_0").html(courseDetails[0].fileName);
-                  /* $("#imageRemoveBtn_0").html('<i style="color: red; cursor: pointer;" class="bi bi-x-lg" onclick="clearFileUploadFields();"></i>'); */
-               }
+              
                  $("#rate").val(courseDetails.rate || "");
                  $("#currencySymbol").val(courseDetails.currencySymbol || "");
                  $("#level").val(courseDetails.level || "");
@@ -2981,6 +2974,9 @@ console.log(formData);
      }
  });
 }*/
+function encodeToBase64(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+}
 function masterSaveCourse() {
  gridOptionsDoc.api.stopEditing();
 /* // Collect documents from grid (Course Materials)
@@ -3026,8 +3022,9 @@ console.log('uploadList',uploadList) */
  let duration = (hours > 0 ? hours + "h" : "") + (minutes > 0 ? (hours > 0 ? " " : "") + minutes + "m" : "");
  if (!duration) duration = "0h";
  // Encode Course Description to Base64
- courseDescRaw = courseDescRaw.replace(/\n/g, '').replace(/\t/g, '');
- let courseDescEncoded = btoa(courseDescRaw);
+   courseDescRaw = courseDescRaw.replace(/\n/g, '').replace(/\t/g, '');
+    let courseDescEncoded = encodeToBase64(courseDescRaw);
+
  // ------------------- FORM DATA -------------------
  let formData = new FormData();
  formData.append("courseId", courseId);
@@ -3043,19 +3040,24 @@ console.log('uploadList',uploadList) */
  formData.append("rate", rate);
  formData.append("currencySymbol", currencySymbol);
  formData.append("level", level);
-//✅ Attach your category JSON here (now with content and pricing as separate keys in the JSON structure)
-//console.log($("#jsonOutput").text(),"sssssssss");
-// formData.append("categoryData", categoryDataText);
- // Attach documents (grid data as JSON)
-/* formData.append("uploadList", JSON.stringify(uploadList)); */
- // Attach multiple files (from .wardocument inputs)
- $(".wardocument").each(function () {
-     if (this.files && this.files.length > 0) {
-         for (let i = 0; i < this.files.length; i++) {
-             formData.append("documents", this.files[i]); // <-- multiple documents
-         }
-     }
- });
+
+ let oldImage = imagurl;
+let hasNewFile = false;
+
+$(".wardocument").each(function () {
+    if (this.files && this.files.length > 0) {
+        hasNewFile = true;
+        for (let i = 0; i < this.files.length; i++) {
+            formData.append("documents", this.files[i]);
+        }
+    }
+});
+
+// If no new file selected → send previous image
+if (!hasNewFile) {
+    formData.append("oldImage", oldImage);
+}
+
  // ------------------- DEBUG -------------------
  for (let pair of formData.entries()) {
      console.log(pair[0] + ':', pair[1]);
