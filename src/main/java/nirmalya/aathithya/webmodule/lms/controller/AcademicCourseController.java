@@ -817,7 +817,7 @@ public class AcademicCourseController {
 	    }
 	}
 	private String extractZipAndGetLaunchUrl(String zipFileName, String courseId) {
-
+       logger.info("extractZipAndGetLaunchUrl Start");
 	    String baseExtractPath = env.getScormExtractPath(); 
 	    System.out.println("SCORM Base Path: " + baseExtractPath);
 
@@ -869,11 +869,12 @@ public class AcademicCourseController {
 
 	            return finalUrl;
 	        }
+	        
 
 	    } catch (Exception e) {
 	        logger.error("SCORM Extraction Failed", e);
 	    }
-
+	    logger.info("extractZipAndGetLaunchUrl Ends");
 	    return null;
 	}
 
@@ -952,7 +953,7 @@ public class AcademicCourseController {
 	    // -----------------------------------------
 	    doc.put("fileName", doc.get("docView"));
 	    doc.put("docUrl", doc.get("dociURL"));
-
+        System.out.println("Get the extracted path------>"+(String) doc.get("extractedPath"));
 	    if ("SCORM".equalsIgnoreCase(docTypeSelect)) {
 	        String preview = generateExtractionPreviewVideo((String) doc.get("extractedPath"));
 	        doc.put("previewVideoUrl", preview);
@@ -1083,8 +1084,10 @@ public class AcademicCourseController {
     // Note: For real "extraction video", you could use FFmpeg to record screen of extraction, but that's external.
     // Here, assume pick first video from extracted.
     private String generateExtractionPreviewVideo(String extractPath) {
+    	System.out.println("Extracted Path as parameter----->"+extractPath);
         try {
             Path fullExtractPath = Paths.get(env.getFileUploadDocumenttUrl() + extractPath);
+            System.out.println("Full Extract Path------>"+fullExtractPath);
             // Find first .mp4 or .avi in extracted folder
             Optional<Path> videoFile = Files.walk(fullExtractPath)
                     .filter(p -> p.toString().toLowerCase().endsWith(".mp4") || p.toString().toLowerCase().endsWith(".avi"))
@@ -1407,7 +1410,39 @@ public class AcademicCourseController {
 		logger.info("Method : subcategory ends");
 		return resp;
 	}
-	
+	@SuppressWarnings("unchecked")
+	@GetMapping(value = {"courses-delete-training"})
+	public @ResponseBody JsonResponse<Object> deleteTraining(String trainingId, HttpSession session) {
+		logger.info("Method : deleteTraining starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+
+		String userId = "";
+		String orgName = "";
+		String orgDivision = "";
+		try {
+			userId = (String) session.getAttribute("USER_ID");
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		logger.info("Method : orgName starts" + orgName);
+		logger.info("Method : orgDivision starts" + orgDivision);
+		try {
+
+			resp = restClient.getForObject(
+					env.getHisUrl() + "rest-delete-training?org=" + orgName + "&orgDiv=" + orgDivision + "&trainingId=" + trainingId,
+					JsonResponse.class);
+			// res = restTemplate.getForObject(env.getPurchaseUrl() +
+			// "getBrandList?orgName=" + orgName + "&orgDivision=" +
+			// orgDivision,JsonResponse.class);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		logger.info("Method : deleteTraining ends");
+		return resp;
+	}
 	
 	// Fixed Web Controller Method (in AcademicCourseWebController or similar)
 	@SuppressWarnings("unchecked")
