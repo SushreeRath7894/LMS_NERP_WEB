@@ -886,30 +886,48 @@ public class AcademicCourseController {
 
 	private File findScormLaunchFile(File folder) {
 
-		String[] possibleFiles = { "index.html", "home.html", "main.html", "start.html", "launch.html", "story.html", "game.html", "player.html", "app.html", "portal.html", "dashboard.html", "landing.html", "default.html", "public/index.html", "dist/index.html", "build/index.html", "readme.html", "readme.txt", "instructions.html", "manual.html", "guide.html", "help.html", "play.html", "menu.html", "intro.html", "loading.html", "splash.html", "start.htm", "index.htm", "default.htm" };
+	    // 1. List of the MOST common SCORM launch files (ALL vendors)
+	    String[] commonLaunchFiles = {
+	        "index.html", "index.htm",
+	        "index_lms.html", "index_lms.htm",
+	        "index_scorm.html", "index_scorm.htm",
+	        "launch.html", "launch.htm",
+	        "presentation.html", "presentation.htm",
+	        "player.html", "player.htm",
+	        "story.html", "story.htm",
+	        "story_html5.html", "story_html5.htm",
+	        "start.html", "start.htm",
+	        "course.html", "course.htm",
+	        "default.html", "default.htm",
+	        "lms.html", "lms.htm"
+	    };
 
-
-	    // Check files in current folder
-	    for (String name : possibleFiles) {
+ 	    for (String name : commonLaunchFiles) {
 	        File f = new File(folder, name);
-	        if (f.exists()) {
-	            return f;
-	        }
+	        if (f.exists()) return f;
 	    }
 
-	    // Check subfolders (recursive)
-	    File[] files = folder.listFiles();
+ 	    File[] files = folder.listFiles();
 	    if (files != null) {
 	        for (File f : files) {
 	            if (f.isDirectory()) {
-	                File found = findScormLaunchFile(f);
-	                if (found != null) return found;
+	                File result = findScormLaunchFile(f);
+	                if (result != null) return result;
+	            }
+	        }
+	    }
+
+ 	    if (files != null) {
+	        for (File f : files) {
+	            if (f.isFile() && f.getName().toLowerCase().endsWith(".html")) {
+	                return f;
 	            }
 	        }
 	    }
 
 	    return null;
 	}
+
 
 
 	private Map<String, Object> processDocumentFile(Map<String, Object> doc, String courseId) {
@@ -940,7 +958,7 @@ public class AcademicCourseController {
 
 	            // For compatibility, remove old zip URL
 	            doc.put("docUrl", launchUrl);
-
+               System.out.println("Document Url of final------->"+launchUrl);
 	        } 
 
 	        // Normal image / other files
