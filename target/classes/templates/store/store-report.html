@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+
+<head>
+<meta charset="ISO-8859-1">
+
+<script type="text/javascript" charset="utf-8">
+	$(document).ready(function() {
+
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		var rowData = [];
+		gridOptions.api.setRowData(rowData);
+
+		agGrid.simpleHttpRequest({
+			url : "store-report-view?state=" + 'current'
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData = jsonData.viewReportData;
+			var len = allData.length;
+			$('#totalReq').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+		});
+
+		$("#currsec").addClass("active");
+		
+		
+		$(".searchBox").hover(function(){
+		    $(".searchInput").css({"width": "180px" , "padding": "0 6px" , "margin-right": "10px" , "border-bottom": "1px solid #d5d5d5"});
+		    }, function(){
+		    	var value =  $("#filterSl").val();
+		    	if (value == "" || value == null){
+		    		$(".searchInput").css({"width": "0px" , "margin-right": "0px" , "border" : "none"});
+		    	}else{
+		    		$(".searchInput").css({"width": "180px" , "padding": "0 6px" , "margin-right": "10px"});
+		    	}
+
+		  });
+
+	});
+
+	var colmnDefs = [ {
+		headerCheckboxSelection : true,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		width : 10,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		pinned: 'left'
+	}, {
+		
+		headerName : 'Zone',
+		field : "zone_name",
+		width : 150,
+		cellStyle : {
+			textAlign : 'center'
+		},
+	}, {
+		headerName : 'Rack',
+		field : "rack_name",
+		width : 150,
+		cellStyle : {
+			textAlign : 'center'
+		},
+	}, {
+		headerName : 'Bin',
+		field : "bin_name",
+		width : 150,
+		cellStyle : {
+			textAlign : 'center'
+		},
+	
+	}, {
+		headerName : 'Category',
+		field : "category_name",
+		width : 300,
+	}, {
+		headerName : 'Item',
+		field : "item_name",
+		width : 300,
+	}, {
+		headerName : 'Item Code',
+		field : "item_name",
+		width : 150,
+	}, {
+		headerName : 'Unit',
+		field : "unit",
+		width : 150,
+	}, {
+		headerName : 'Stock',
+		field : "bin_quantity",
+		width : 150,
+		cellStyle : {
+			textAlign : 'right'
+		},
+	
+	} ];
+
+	var gridOptions = {
+		columnDefs : colmnDefs,
+		rowSelection : 'multiple',
+		//onSelectionChanged : deleteDetails,
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 185,
+			height : 10
+		},
+
+	};
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+
+	function downloadDetails() {
+		var dataset = [];
+		gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+		gridOptions.api.exportDataAsCsv(dataset);
+	}
+
+	function ShowAgGrid(state) {
+		if (state == 'current') {
+			$('#hissec').removeClass('active');
+			$("#currsec").addClass("active");
+		} else {
+			$('#currsec').removeClass('active');
+			$('#hissec').addClass('active');
+		}
+		$("#myGrid").empty();
+
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		// var rowData = [];
+		gridOptions.api.setRowData();
+		agGrid.simpleHttpRequest({
+			url : 'store-report-view?state=' + state
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData = jsonData.viewReportData;
+			var len = allData.length;
+			$('#totalReq').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+		});
+	}
+
+	function filterSlNo() {
+		var slno = $("#filterSl").val();
+		
+		if(slno == "" || slno == null){
+			$("#messageParagraph").text("Enter Serial Number.");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			
+		}else{
+			$("#myGrid").empty();
+			
+			var gridDiv = document.querySelector('#myGrid');
+			new agGrid.Grid(gridDiv, gridOptions);
+			// var rowData = [];
+			gridOptions.api.setRowData();
+			agGrid.simpleHttpRequest({
+				url : "store-report-filter-view?slno=" + slno
+			}).then(function(data) {
+				var jsonData = JSON.parse(data.body);
+				var allData = jsonData.viewReportData;
+				var len = allData.length;
+				$('#totalReq').find('span').html(len);
+				gridOptions.api.setRowData(allData);
+			});
+			
+		}
+		
+		$("#filterSl").val('');
+	}
+	
+	function filterInput(){
+		var onKeyUpVal = $("#filterSl").val();
+		if((onKeyUpVal == "" || onKeyUpVal == null) && $(".searchInput").is(':hover')) {
+			$(".searchInput").css({"width": "180px" , "padding": "0 6px" , "margin-right": "10px" , "border-bottom": "1px solid #d5d5d5"});
+		}
+		
+	
+		if (onKeyUpVal == "" || onKeyUpVal == null){
+			if($(".searchInput").is(':hover')) {
+				$(".searchInput").css({"width": "180px" , "padding": "0 6px" , "margin-right": "10px" , "border-bottom": "1px solid #d5d5d5"});
+			}else if($(".searchBox").is(':hover')) {
+				$(".searchInput").css({"width": "180px" , "padding": "0 6px" , "margin-right": "10px" , "border-bottom": "1px solid #d5d5d5"});
+			}else{
+				$(".searchInput").css({"width": "0px" , "margin-right": "0px" , "border" : "none"});
+			}
+		}
+		
+	}
+	
+	 
+	
+	
+</script>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div id="main_content">
+							<div class="row mt-1" id="buttonClass">
+								<div class="btn-group col-md-6">
+									<button class="btn btn-primary " id="currsec" value='currsec'
+										onclick="ShowAgGrid('current')">Current</button>
+								</div>
+								<div class="btn-group col-md-6 mrg-top">
+									<button class="btn btn-primary " id="hissec" value='hissec'
+										onclick="ShowAgGrid('history')">History</button>
+								</div>
+							</div>
+							<br>
+							<div class="d-flex flex-wrap justify-content-between" id="tdiv">
+								<div class="btn-hs">
+									<div class="font-design" id="totalReq">
+										ITEM LIST(<span></span>)
+									</div>
+								</div>
+								<div id="searchRowDiv">
+									<div class="input-style">
+										<input type="text" placeholder="Search.." name="search"
+											class="searchboxinput" onkeyup="cancelBar()"
+											oninput="onQuickFilterChanged()" id="quickFilter"
+											autocomplete="off">
+										<div class="searchicon">
+											<a href="javascript:void(0)"><span
+												style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+												id="closeKey"
+												onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+												class="close_i"><i class="ti-close srchicon"></i></span></a><a
+												href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+										</div>
+									</div>
+								</div>
+								<div class= "button-right">
+								<div class="searchBox">
+
+										<input class="searchInput" type="search" name=""
+											placeholder="Search Serial No." id="filterSl" onkeyup="filterInput()" autofocus>
+											<button class="new-btn" id="filterBtn"
+										onclick="filterSlNo()"><i class="bi bi-filter"></i> Filter</button>
+										
+									</div>
+								<div class="buttonsec btn-hs" id="ttbtn">
+									<button class="download-btn" id="download"
+										onclick="downloadDetails()">Download</button>
+								</div>
+							</div>
+							</div>
+
+
+						</div>
+
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+					</div>
+				</div>
+
+
+			</div>
+		</div>
+	</div>
+	
+</body>
+
+</html>

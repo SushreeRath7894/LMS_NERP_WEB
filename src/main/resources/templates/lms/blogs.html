@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+
+<head>
+<style>
+.ag-theme-alpine {
+	height: calc(100vh - 100px);
+	width: 100%;
+}
+
+.cms-section {
+	background: white;
+	padding: 20px;
+	border-radius: 10px;
+	margin-bottom: 15px;
+}
+
+.form-title {
+	font-weight: 600;
+	margin-bottom: 15px;
+	font-size: 18px;
+}
+
+.btn-group-custom button {
+	margin-left: 8px;
+}
+
+.uploadicon-style {
+	width: 45px;
+	height: 45px;
+	border: 1px dashed #7a7a7a;
+	border-radius: 7px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	cursor: pointer;
+	font-size: 25px;
+	color: #ca0ff4;
+}
+</style>
+<script src="https://cdn.ckeditor.com/4.22.1/standard/ckeditor.js"></script>
+
+<script type="text/javascript">
+const gridOptions = {
+	    columnDefs: [
+	    	{ 
+	    	    headerCheckboxSelection: false,
+	    	    checkboxSelection: true,
+	    	    width: 40,
+	    	    pinned: "left"
+	    	},
+ 	        { headerName: "Content ID", field: "contentId", width: 150 },
+	        { headerName: "Title", field: "title", flex: 1 },
+	        { headerName: "Created On", field: "createdOn", width: 150 },
+ 	        { headerName: "Content Type", field: "contentType"},
+	        { headerName: "Category", field: "category"},
+	        { headerName: "Slug", field: "slug", hide: true },
+	        { headerName: "Meta Title", field: "metaTitle", hide: true },
+	        { headerName: "Meta Description", field: "metaDescription", hide: true },
+	        { headerName: "Meta Keywords", field: "metaKeywords", hide: true },
+	        { headerName: "Canonical URL", field: "canonicalUrl", hide: true },
+	        { headerName: "Og Image URL", field: "ogImageUrl", hide: true },
+	        { headerName: "Schema Json", field: "schemaJson", hide: true },
+	        { headerName: "Short Description", field: "shortDescription", hide: true },
+	        { headerName: "Full Description", field: "fullDescription", hide: true },
+	        { headerName: "Author", field: "author", hide: true },
+	        { headerName: "Upload Type", field: "uploadType", hide: true },
+	        { headerName: "Upload Doc", field: "uploadDoc", hide: true },
+	        { headerName: "Status", field: "status", hide: true },
+	        { headerName: "Published Date", field: "publishedDate", hide: true },
+	        { headerName: "Deleted Flag", field: "deletedFlag", hide: true },
+	        { headerName: "Updated By", field: "updatedBy", hide: true },
+	        { headerName: "Updated On", field: "updatedOn", hide: true },
+	        { headerName: "Created By", field: "createdBy", hide: true },
+
+ 	        { headerName: "TOD Org Name", field: "todOrgName", hide: true },
+	        { headerName: "TOD Org Division", field: "todOrgDivision", hide: true },
+	        { headerName: "TOD Org Site", field: "todOrgSite", hide: true },
+
+ 	        { headerName: "TCM Org Name", field: "tcmOrgName", hide: true },
+	        { headerName: "TCM Division Name", field: "tcmDivisionName", hide: true }
+	    ],
+
+	    rowData: [],
+	    pagination: true,
+	    paginationPageSize: 10,
+	    defaultColDef: {
+	        sortable: true,
+	        filter: true,
+	        resizable: true
+	    },
+	    onGridReady:function(params){
+	    	params.api.sizeColumnsToFit();
+	    },
+	    onSelectionChanged: rowSelect,
+	   };
+	   
+function rowSelect() {
+    const selectedRows = gridOptions.api.getSelectedRows();
+
+     if (selectedRows.length > 0){
+    	$('#cancelBtn').addClass('d-none');
+        $('#publishBtn').addClass('d-none');
+        $('#dltBtn').removeClass('d-none');
+        $('#addBtn').removeClass('d-none');
+        $('#editBtn').removeClass('d-none');
+    const data = selectedRows[0];
+
+    $("#contentId").val(data.contentId);
+    $("#title").val(data.title);
+    $("#author").val(data.author);
+    $("#contentType").val(data.contentType);
+    $("#category").val(data.category);
+    $("#slug").val(data.slug);
+    $("#metaDesc").val(data.metaDescription);
+    $("#metaKeywords").val(data.metaKeywords);
+    $("#canonicalUrl").val(data.canonicalUrl);
+    $("#shortDesc").val(data.shortDescription);
+    if (CKEDITOR.instances.fullDesc) {
+        CKEDITOR.instances.fullDesc.setData(data.fullDescription || "");
+    } else {
+        CKEDITOR.on("instanceReady", function () {
+            CKEDITOR.instances.fullDesc.setData(data.fullDescription || "");
+        });
+    }
+    $("#publishDate").val(data.publishedDate?.substring(0,10));
+    $("#site").val(data.todOrgSite);
+    $("#orgName").val(data.tcmOrgName);
+    $("#division").val(data.tcmDivisionName);
+
+     $("#statusCheck").prop("checked", data.status === 'a');
+
+     renderCMSFileFromBackend(data.uploadDoc);
+     disableCMSFields();
+    }else{
+    	$("#contentId").val("");
+        $("#contentType").val("blog");
+        $("#category").val("");
+        $("#title").val("");
+        $("#shortDesc").val("");
+        $("#author").val("");
+        $("#slug").val("");
+        $("#metaDesc").val("");
+        $("#metaKeywords").val("");
+        $("#canonicalUrl").val("");
+        $("#publishDate").val("");
+        $("#orgName").val("");
+        $("#division").val("");
+        $("#site").val(""); 
+        $("#statusCheck").prop("checked", true); 
+        if (CKEDITOR.instances.fullDesc) {
+            CKEDITOR.instances.fullDesc.setData("");
+        } else {
+            $("#fullDesc").val("");
+        } 
+        $("#cmsFileInput").val("");
+        $("#cmsFileInput").data("originalFile", ""); 
+        $("#cmsFileName").text("");
+        $("#cmsFilePreviewBtn").html(""); 
+        $('#publishBtn').removeClass('d-none');
+        $('#dltBtn').addClass('d-none');
+        $('#addBtn').addClass('d-none');
+    	$('#cancelBtn').removeClass('d-none');
+     }
+}
+
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const gridDiv = document.querySelector('#myGrid');
+        new agGrid.Grid(gridDiv, gridOptions);
+        getAllContentData();
+        $("#publishBtn").click(function () {
+
+            $.when(collectCMSFormData()).done(function (payload) {
+
+                console.log("Payload:", payload);
+
+                $.ajax({
+                    url: "blogs-add-content",
+                    method: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify(payload),
+                    success: function (res) {
+                        if (res.code === 'success') {
+                            toastr.success("Saved successfully!");
+                            getAllContentData();
+                        }
+                    },
+                    error: function () {
+                        toastr.error("Save failed!");
+                    }
+                });
+
+            });
+
+        });
+
+        
+        CKEDITOR.replace('fullDesc', {
+            height: 200,
+            toolbar: 'Full'
+        });
+        $('#cancelBtn').addClass('d-none');
+        $('#publishBtn').addClass('d-none');
+    });
+    
+    function renderCMSFileFromBackend(fileUrl) {
+
+        const fileName = fileUrl ? fileUrl.split("/").pop() : "";
+
+        if (!fileUrl || !fileName) {
+            clearCMSFile();
+            return;
+        }
+
+        // Set file name text
+        $("#cmsFileName").text(fileName);
+
+        // Render view + delete
+        $("#cmsFilePreviewBtn").html(`
+            <button class="btn btn-sm btn-primary mt-1"
+                    onclick="window.open('${fileUrl}', '_blank')">
+                View
+            </button>
+
+            <button class="btn btn-sm btn-danger mt-1 ms-2"
+                    onclick="clearCMSFile()">
+                <i class='ti-close'></i>
+            </button>
+        `);
+
+        // ⭐ save original filename internally
+        $("#cmsFileInput").data("originalFile", fileName);
+    }
+
+
+    function handleCMSFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // ⭐ New upload → remove old image reference
+        $("#cmsFileInput").data("originalFile", "");
+
+        const fileName = file.name;
+        const fileURL = URL.createObjectURL(file);
+
+        $("#cmsFileName").text(fileName);
+
+        $("#cmsFilePreviewBtn").html(`
+            <button class="btn btn-sm btn-primary mt-1"
+                    onclick="window.open('${fileURL}', '_blank')">
+                View
+            </button>
+
+            <button class="btn btn-sm btn-danger mt-1 ms-2"
+                    onclick="clearCMSFile()">
+                <i class='ti-close'></i>
+            </button>
+        `);
+    }
+
+    function clearCMSFile() {
+        $("#cmsFileInput").val("");                     
+        $("#cmsFileInput").data("originalFile", "");   
+        $("#cmsFileName").text("");                    
+        $("#cmsFilePreviewBtn").html("");             
+    }
+    function resetCMSForm() {
+        $("input, textarea").val("");
+        $("#statusCheck").prop("checked", false);
+
+        if (CKEDITOR.instances.fullDesc)
+            CKEDITOR.instances.fullDesc.setData("");
+
+        clearCMSFile();
+    }
+
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+
+            reader.readAsDataURL(file);
+        });
+    }
+    function collectCMSFormData() {
+
+        var deferred = $.Deferred();
+
+        var fileInput = $("#cmsFileInput")[0];
+        var originalFile = $("#cmsFileInput").data("originalFile");  // ⭐ IMPORTANT
+
+        var fileBase64 = "";
+        var fileName = "";
+
+        // Case 1: User uploaded a new file
+        if (fileInput.files.length > 0) {
+
+            var file = fileInput.files[0];
+            fileName = file.name;
+
+            $.when(fileToBase64(file)).done(function (base64Data) {
+
+                fileBase64 = base64Data;
+
+                var payload = buildPayload(fileName, fileBase64);
+                deferred.resolve(payload);
+
+            }).fail(function (error) {
+                console.error("Base64 convert error:", error);
+                deferred.reject(error);
+            });
+
+        } 
+        // Case 2: No new file → KEEP ORIGINAL FILE
+        else {
+
+            fileName = originalFile || "";  // ⭐ do NOT clear original image
+
+            var payload = buildPayload(fileName, "");  // NO base64
+            deferred.resolve(payload);
+        }
+
+        return deferred.promise();
+    }
+
+    function getAllContentData() {
+        $.ajax({
+            type: 'GET',
+            url: 'blogs-view-all-data',
+            success: function (response) {
+
+                if (response.code === 'success') {
+                    console.log("Body Of The Response----->", response.body);
+
+                     gridOptions.api.setRowData(response.body);
+                     setTimeout(() => {
+                    	    let firstRow = gridOptions.api.getDisplayedRowAtIndex(0);
+                    	    if (firstRow) firstRow.setSelected(true);
+                    	}, 200);
+                     gridOptions.api.sizeColumnsToFit();
+                }
+            },
+            error: function () {
+                toastr.error("Failed to load content data");
+            }
+        });
+    }
+    function buildPayload(fileName, fileBase64) {
+        return {
+            contentId: $("#contentId").val(),
+            contentType: $("#contentType").val(),
+            category: $("#category").val(),
+            title: $("#title").val(),
+            shortDescription: $("#shortDesc").val(),
+            fullDescription: CKEDITOR.instances.fullDesc.getData(),
+
+            author: $("#author").val(),
+            status: $("#statusCheck").is(":checked") ? "active" : "inactive",
+            publishDate: $("#publishDate").val(),
+
+            slug: $("#slug").val(),
+            metaDescription: $("#metaDesc").val(),
+            metaKeywords: $("#metaKeywords").val(),
+            canonicalUrl: $("#canonicalUrl").val(),
+
+            orgName: $("#orgName").val(),
+            division: $("#division").val(),
+            site: $("#site").val(),
+
+            fileName: fileName,       
+            fileBase64: fileBase64    
+        };
+    }
+    function addNewCMSContent() {
+    	enableCMSFields();
+         if (gridOptions.api) {
+            gridOptions.api.deselectAll();
+        } 
+        $("#contentId").val("");
+        $("#contentType").val("blog");
+        $("#category").val("");
+        $("#title").val("");
+        $("#shortDesc").val("");
+        $("#author").val("");
+        $("#slug").val("");
+        $("#metaDesc").val("");
+        $("#metaKeywords").val("");
+        $("#canonicalUrl").val("");
+        $("#publishDate").val("");
+        $("#orgName").val("");
+        $("#division").val("");
+        $("#site").val(""); 
+        $("#statusCheck").prop("checked", true); 
+        if (CKEDITOR.instances.fullDesc) {
+            CKEDITOR.instances.fullDesc.setData("");
+        } else {
+            $("#fullDesc").val("");
+        } 
+        $("#cmsFileInput").val("");
+        $("#cmsFileInput").data("originalFile", ""); 
+        $("#cmsFileName").text("");
+        $("#cmsFilePreviewBtn").html(""); 
+        $('#publishBtn').removeClass('d-none');
+        $('#dltBtn').addClass('d-none');
+        $('#addBtn').addClass('d-none');
+        $('#editBtn').addClass('d-none');
+        $('#cancelBtn').removeClass('d-none');
+     }
+function editCMSContent(){
+	$('#editBtn').addClass('d-none');
+	$('#dltBtn').addClass('d-none');
+	$('#addBtn').addClass('d-none');
+	$('#publishBtn').removeClass('d-none');
+	$('#cancelBtn').removeClass('d-none');
+	enableCMSFields();
+}
+function cancel(){
+	 if (gridOptions.api) {
+         gridOptions.api.deselectAll();
+     } 
+	setTimeout(() => {
+	    let firstRow = gridOptions.api.getDisplayedRowAtIndex(0);
+	    if (firstRow) firstRow.setSelected(true);
+	}, 200);	
+}
+function disableCMSFields() {
+
+    $("#contentType").prop("disabled", true);
+    $("#category").prop("disabled", true);
+    $("#title").prop("disabled", true);
+    $("#shortDesc").prop("disabled", true);
+    $("#author").prop("disabled", true);
+    $("#slug").prop("disabled", true);
+    $("#metaDesc").prop("disabled", true);
+    $("#metaKeywords").prop("disabled", true);
+    $("#canonicalUrl").prop("disabled", true);
+    $("#publishDate").prop("disabled", true);
+    $("#orgName").prop("disabled", true);
+    $("#division").prop("disabled", true);
+    $("#site").prop("disabled", true);
+    $("#statusCheck").prop("disabled", true);
+
+     if (CKEDITOR.instances.fullDesc) {
+        CKEDITOR.instances.fullDesc.setReadOnly(true);
+    }
+     $("#cmsFileInput").prop("disabled", true);
+
+    console.log("CMS fields disabled.");
+}
+function enableCMSFields() {
+
+    $("#contentType").prop("disabled", false);
+    $("#category").prop("disabled", false);
+    $("#title").prop("disabled", false);
+    $("#shortDesc").prop("disabled", false);
+    $("#author").prop("disabled", false);
+    $("#slug").prop("disabled", false);
+    $("#metaDesc").prop("disabled", false);
+    $("#metaKeywords").prop("disabled", false);
+    $("#canonicalUrl").prop("disabled", false);
+    $("#publishDate").prop("disabled", false);
+    $("#orgName").prop("disabled", false);
+    $("#division").prop("disabled", false);
+    $("#site").prop("disabled", false);
+    $("#statusCheck").prop("disabled", false);
+
+     if (CKEDITOR.instances.fullDesc) {
+        CKEDITOR.instances.fullDesc.setReadOnly(false);
+    }
+
+     $("#cmsFileInput").prop("disabled", false);
+
+    console.log("CMS fields enabled.");
+}
+
+</script>
+</head>
+
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec d-flex flex-column flex-lg-row">
+
+					<!-- LEFT PANEL -->
+					<div class="box-sec" id="collapseWidthR1">
+						<div class="out-box">
+							<div class="d-flex justify-content-between bdr-line p-2">
+								<div class="col-md-8 col-12">
+									<div class="d-flex search-sec">
+										<input class="form-control me-2" type="text"
+											placeholder="Search" id="quickFilter">
+										<button class="btn btn-primary" id="goBtn">Go</button>
+										&nbsp;
+										<button class="btn btn-secondary" id="resetBtn">Reset</button>
+									</div>
+								</div>
+
+								<button class="btn btn-primary max-btn" id="collapseButtonR1"
+									onclick="triggerExpansionR(1)">
+									<i class="fa-solid fa-maximize"></i>
+								</button>
+							</div>
+
+							<div class="card m-2 p-2">
+								<div id="myGrid" class="ag-theme-alpine"></div>
+							</div>
+						</div>
+					</div>
+
+					<!-- RIGHT PANEL -->
+					<div class="box-sec" id="collapseWidthL1">
+						<div class="out-box">
+
+							<!-- TOP HEADER -->
+							<div
+								class="d-flex justify-content-between flex-row-reverse align-items-center p-2 bdr-line">
+								<button class="btn btn-primary max-btn" id="collapseButtonL1"
+									type="button" onclick="triggerExpansionL(1)"
+									data-bs-toggle="tooltip" data-bs-placement="top" title="Expand">
+									<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+										class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+								</button>
+
+								<!-- TAB HEADER -->
+								<div class="d-flex gap-2">
+									<ul class="nav nav-pills newtab" role="tablist">
+										<li class="nav-item" role="presentation" id="courseDetails">
+											<a class="nav-link active" data-bs-toggle="pill"
+											href="#course-overview" aria-selected="true" role="tab">CMS
+												INFORMATION</a>
+										</li>
+									</ul>
+								</div>
+							</div>
+
+							<!-- TAB CONTENT -->
+							<div class="tab-content flex-fill">
+
+								<div id="course-overview" class="tab-pane active show p-2 h-100"
+									role="tabpanel">
+									<div class="requisition-tbl d-flex flex-column h-100">
+
+										<!-- BUTTON SECTION (unchanged) -->
+										<div class="mb-2">
+											<table class="table table-bordered mb-0" width="100%">
+												<tbody>
+													<tr valign="middle">
+														<td width="80%"><strong id="programNameDisplay"></strong>
+														</td>
+														<td>
+															<div class="d-flex justify-content-end">
+
+																<div class="ml-3">
+																	<button class="btn btn-primary edit-btn" id="addBtn" onclick="addNewCMSContent()"
+																		type="button">ADD</button>
+																</div>
+																<div class="ml-3">
+																	<button class="btn btn-primary edit-btn" id="editBtn" onclick="editCMSContent()"
+																		type="button">EDIT</button>
+																</div>
+																<div class="mr-2">
+																	<button class="btn btn-primary edit-btn" id="dltBtn"
+																		type="button">Delete</button>
+																</div>
+
+																<div class="mr-2">
+																	<button class="btn btn-primary edit-btn"
+																		id="nextTabBtn" type="button" style="display: none;">Next</button>
+																</div>
+
+																<div class="mr-2">
+																	<button class="btn btn-primary edit-btn" id="cancelBtn" onclick="cancel()"
+																		type="button">Cancel</button>
+																</div>
+																<!-- <div class="mr-2">
+																	<button class="btn btn-primary edit-btn"
+																		id="saveAsDraft" type="button">Save As Draft</button>
+																</div> -->
+
+																<div class="mr-2">
+																	<button class="btn btn-primary edit-btn"
+																		id="publishBtn" type="button">Save</button>
+																</div>
+
+															</div>
+														</td>
+													</tr>
+												</tbody>
+											</table>
+										</div>
+
+										<!-- CMS FORM SECTION -->
+										<div class="card p-3" id="cmsForm">
+
+											<!-- CONTENT INFORMATION -->
+											<div class="mb-4">
+												<h5>Content Information</h5>
+												<input type="hidden" id="contentId">
+												<div class="row">
+
+													<div class="col-md-6 mt-2">
+														<label>Content Type</label> <select class="form-select"
+															id="contentType">
+															<option value="blog">Blog</option>
+														</select>
+													</div>
+
+													<div class="col-md-6 mt-2">
+														<label>Category</label> <select class="form-select"
+															id="category">
+															<option value="">Select</option>
+															<option value="technology">Technology</option>
+															<option value="business">Business</option>
+															<option value="lifestyle">Lifestyle</option>
+															<option value="education">Education</option>
+															<option value="health">Health</option>
+															<option value="travel">Travel</option>
+															<option value="entertainment">Entertainment</option>
+															<option value="finance">Finance</option>
+															<option value="marketing">Marketing</option>
+															<option value="news">News</option>
+														</select>
+													</div>
+
+
+													<div class="col-md-6 mt-3">
+														<label>Title</label> <input type="text"
+															class="form-control" id="title">
+													</div>
+
+													<div class="col-md-6 mt-3">
+														<label>Short Description</label>
+														<textarea class="form-control" rows="3" id="shortDesc"></textarea>
+													</div>
+
+													<div class="col-md-12 mt-3">
+														<label>Full Description</label>
+														<textarea id="fullDesc"></textarea>
+													</div>
+
+
+													<div class="col-md-6 mt-3">
+														<label>Author</label> <input type="text"
+															class="form-control" id="author">
+													</div>
+
+													<div class="col-md-6 mt-3">
+														<label>Status</label><br> <input type="checkbox"
+															id="statusCheck" checked>
+													</div>
+
+													<div class="col-md-6 mt-3">
+														<label>Upload File</label>
+
+														<div class="d-flex align-items-center gap-3">
+
+															<!-- Upload Box -->
+															<div id="uploadBox" class="uploadicon-style"
+																onclick="document.getElementById('cmsFileInput').click();">
+																+</div>
+
+															<!-- Hidden Input -->
+															<input type="file" id="cmsFileInput"
+																accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx"
+																style="display: none;"
+																onchange="handleCMSFileUpload(event)">
+
+															<!-- File Info -->
+															<div>
+																<div id="cmsFileName" style="font-weight: 600;"></div>
+																<div id="cmsFilePreviewBtn"></div>
+															</div>
+
+														</div>
+													</div>
+
+
+													<div class="col-md-6 mt-3">
+														<label>Publishing Date</label> <input type="date"
+															class="form-control" id="publishDate">
+													</div>
+
+												</div>
+											</div>
+
+											<!-- SEO OPTIMIZATION -->
+											<div class="mb-4">
+												<h5>SEO Optimization</h5>
+
+												<div class="row">
+
+													<div class="col-md-6 mt-2">
+														<label>Slug</label> <input type="text"
+															class="form-control" id="slug">
+													</div>
+
+													<div class="col-md-6 mt-2">
+														<label>Meta Description</label> <input type="text"
+															class="form-control" id="metaDesc">
+													</div>
+
+													<div class="col-md-6 mt-3">
+														<label>Meta Keywords</label> <input type="text"
+															class="form-control" id="metaKeywords">
+													</div>
+
+													<div class="col-md-6 mt-3">
+														<label>Canonical URL</label> <input type="text"
+															class="form-control" id="canonicalUrl">
+													</div>
+												</div>
+											</div>
+
+											<!-- ORGANIZATION INFO -->
+											<div class="mb-3">
+												<h5>Organization Info</h5>
+
+												<div class="row">
+													<div class="col-md-6 mt-2">
+														<label>Org Name</label> <input type="text"
+															class="form-control" id="orgName">
+													</div>
+
+													<div class="col-md-6 mt-2">
+														<label>Division</label> <input type="text"
+															class="form-control" id="division">
+													</div>
+
+													<div class="col-md-12 mt-3">
+														<label>Site</label> <input type="text"
+															class="form-control" id="site">
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>

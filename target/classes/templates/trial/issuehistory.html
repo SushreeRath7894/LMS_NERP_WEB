@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+<!-- <link rel="stylesheet" href="../assets/css/extend/style-extend.css"> -->
+<title>Welcome To NERP</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+
+//Document Upload Starts
+
+$(document).ready(function(){	
+	
+	var temp;
+	
+		var dateFormat = localStorage.getItem("dateFormat");
+		
+		$("#fromDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#idDate').val($(this).val());
+		})
+
+		$('#idDate').blur(function() {
+			$("#fromDateCalendar").val($(this).val());
+		})
+		
+		var gridDiv = document.querySelector('#myGridVehicle');
+		new agGrid.Grid(gridDiv, gridOptionsVehicle);
+		
+		agGrid.simpleHttpRequest({
+			url : 'issue-history-view'
+			}).then(function(data) {
+				console.log("data is"+data);
+			gridOptionsVehicle.api.setRowData(data);
+			});
+		
+		
+		$("#fromDateCalendar").val("");
+		
+			$('#dlbutton').attr("disabled", true);
+			$("#cancelBtn").hide();
+			$("#addData").hide();
+			$("#savedetails").hide();
+			$("#myGridVehicle").show();
+			$('#dlbutton').attr("disabled", true);
+					
+	});
+	
+	
+		
+	function cancelBtn(){
+		
+	$("#profile").hide();
+	$("#newId").show();
+	$("#myGridVehicle").show();
+			
+	}
+	
+function addissue() {
+	
+	$("#issuergnumber").val("");
+	$("#issuergname").val("");
+	$("#ticketname").val("");
+	$("#vehiclename").val("");
+	$("#description").val("");
+	$("#phonenumber").val("");
+	$("#vendorname").val("");
+	$("#idDate").val("");
+	$("#fileUpload").val("");
+	
+	$("#myGridVehicle").hide();
+
+	$('#newId').hide();
+	$("#profile").show();
+	
+}
+	
+	function savedetails()
+	{
+		alert("Issue Register Successfully Added!");
+		
+		var veh={};
+		
+		veh.issuergnumber = $("#issuergnumber").val();
+		veh.issuergname = $("#issuergname").val();
+		veh.ticketname = $("#ticketname").val();
+		veh.vehiclename = $("#vehiclename").val();
+		veh.description = $("#description").val();
+		veh.vendorname = $("#vendorname").val();
+		veh.phonenumber = $("#phonenumber").val();
+		veh.fromDate= $("#idDate").val();
+		veh.docName = $("#fileUpload").val();
+		
+		$.ajax({
+			type : "POST",
+			url : "issue-history-add",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(veh),
+			success : function(response) {
+				if (response.message == "Success") {
+					agGrid.simpleHttpRequest({
+						url : 'issue-history-view'
+					}).then(function(data) {
+					
+						gridOptionsVehicle.api.setRowData(data);
+					});
+					cancelBtn(); 
+					
+				}
+			},
+			error : function(response) {
+				console.log(response);
+			}
+		})
+	}
+		
+		//Table For Vehicle Details Starts
+		var columnDefsVehicle = [
+				{
+					headerCheckboxSelection : true,
+					headerCheckboxSelectionFilteredOnly : true,
+					checkboxSelection : true,
+					width : 10,
+					sortable : false,
+					filter : false,
+					resizable : true
+					
+				},
+				{
+					headerName : "Issue Register No",
+					field : "issuergnumber",
+					width: 80,
+					 cellRenderer : function(params) {
+							return '<a id="" onclick=editdetails("' + params.data.issuergnumber
+									+ '") href="javascript:void(0)">'
+									+ params.data.issuergnumber + '</a>';
+						} 
+				}, {
+					headerName : "Issue Register Name",
+					field : "issuergname"
+				}, {
+					headerName : "Issue Description",
+					field : "description",
+				},{
+					headerName : "Ticket Name",
+					field : "ticketname",
+				},{
+					headerName : "Vehicle Name",
+					field : "vehiclename",
+				},
+				{
+					headerName : 'Phone Number',
+					field : "phonenumber"
+				},
+				{
+					headerName : 'Vendor Name',
+					field : "vendorname"
+				},
+				{
+					headerName : "Date",
+					field : "fromDate",
+				},
+				{
+					headerName : 'Document Name',
+					field : "docName",
+					cellRenderer : function(params) {
+						if(params.data.docName != null && params.data.docName != "") {
+							var url = window.btoa(params.data.docUrl);
+							return '<a id="" onclick=openFile("' + url
+							+ '") href="javascript:void(0)">'
+							+ params.data.docName + '</a>';
+						}
+						
+					} 
+				},
+				
+			
+		];
+		
+		function openFile(fileName) {
+			var url = window.atob(fileName);
+			window.location.href = url;
+		}
+		
+
+		var gridOptionsVehicle = {
+			columnDefs : columnDefsVehicle,
+			defaultColDef : {
+				sortable : true,
+				filter : true,
+				resizable : true,
+				width : 190,
+				height : 10
+			},
+			rowSelection : 'multiple',
+			onSelectionChanged : onSelectionChangedState
+		};
+		
+	
+	function deletefn()
+	{
+		var selectedRows = gridOptionsVehicle.api.getSelectedRows();
+		var id = selectedRows[0].issuergnumber;
+		
+		alert("Deleted Successfully!"); 
+		
+		$.ajax({
+			type : "POST",
+			url : "issue-history-delete?id=" + id,
+			success : function(response) {
+				if (response.message == "Success") {
+				//	location.reload();
+					agGrid.simpleHttpRequest({
+						//url : "view-salary-revision-view?userid="+userid,
+						url : 'issue-history-view'
+					}).then(function(data) {
+						gridOptionsVehicle.api.setRowData(data);
+					});
+					cancelBtn();
+				}
+			},
+			error : function(data) {
+				console.log(data);
+			}
+			
+		})
+		
+
+	}
+	
+	function onSelectionChangedState() {
+
+		var selectedRows = gridOptionsVehicle.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			
+			$('#dlbutton').attr("disabled", false);
+			$('#addissue').attr("disabled", true);
+		} else {
+			$('#dlbutton').attr("disabled", true);
+			$('#addissue').attr("disabled", false);
+		
+		}
+	}
+		
+	//For Search
+	function onQuickFilterChanged() {
+		gridOptionsVehicle.api.setQuickFilter(document
+				.getElementById('quickFilter').value);
+	}
+	
+	
+	function editdetails(id) {
+		
+		var temp="xyz";
+		var temp1="xyz";
+		var iURL="/document/issueHistory/"
+		
+		
+		addissue()
+		
+		$.ajax({
+			
+			type : "GET",
+			url : "issue-history-edit?id=" + id,
+			
+			success : function(response) {
+				if (response.message == "success") {
+					addissue()
+									
+					console.log("edit", response.body)
+					
+					$("#issuergnumber").val(response.body[0].issuergnumber);
+					$("#issuergname").val(response.body[0].issuergname);
+					$("#ticketname").val(response.body[0].ticketname);
+					$("#vehiclename").val(response.body[0].vehiclename);
+					$("#description").val(response.body[0].description); 
+					$("#phonenumber").val(response.body[0].phonenumber);
+					$("#vendorname").val(response.body[0].vendorname);
+					$("#idDate").val(response.body[0].fromDate);
+					$("#fromDateCalendar").val(response.body[0].fromDate);
+					
+					$("#userImage").val(response.body[0].docName);
+				
+					
+					var temp = response.body[0].docName;
+					console.log("temp=", temp);
+					
+					$("#imageName_0").html(temp);
+					
+					var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + temp + "' target='_balnk'><i class='fa fa-picture-o'></i></a></div>";
+
+					$("#uploadedBillDiv_").html(LightImg);
+					
+					$("#savedetails").show();
+					
+				} 
+			},
+			error : function(data) {
+				console.log(data)
+				
+				$("#issuergnumber").val("");
+				$("#issuergname").val("");
+				$("#ticketname").val("");
+				$("#vehiclename").val("");
+				$("#ticketname").val("");
+				$("#description").val("");
+				$("#idDate").val("");
+				$("#fileUpload").val("");
+				
+				
+			}
+					
+		});
+		
+	
+}
+	
+function saveFile() {
+
+		var uFile = $('#fileUpload')[0].files[0];
+		var fileName = $('#fileUpload').val();
+		var iURL = URL.createObjectURL(uFile);
+		var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-picture-o'></i></a></div>";
+		$("#uploadedBillDiv_").html(LightImg);
+		
+		var lastIndex = fileName.lastIndexOf("\\");
+		if (lastIndex >= 0) {
+			fileName = fileName.substring(lastIndex + 1);
+		}
+		
+		var iURL = URL.createObjectURL(uFile);
+
+		$('#imgLoc').attr('src', '');
+		$('#imgLoc').attr('src', iURL);
+  
+		var fileData = new FormData();
+		fileData.append('file', uFile);
+		fileData.append('path', 'none');
+		
+		console.log("uFile: ",uFile)
+		console.log("fileName: ",fileName)
+		console.log("iURL: ",iURL)
+		console.log("lastIndex: ",lastIndex)
+		console.log("fileData: ",fileData)
+
+		$.ajax({
+			type : "POST",
+			url : "issue-history-upload-file",
+			enctype : "multipart/form-data",
+			contentType : false,
+			data : fileData,
+			processData : false,
+			cache : false,
+			success : function(response) {
+
+			},
+			error : function(e) {
+
+			}
+		});
+	
+       $("#imageName_0").html(fileName);
+	}
+	
+	
+</script>
+
+</head>
+<body>
+	<div layout:fragment="content">
+		<div class="content-wrap">
+			<div class="container-fluid">
+				<div class="maincontent">
+					<div class="row">
+						<div class="maincontentsec">
+							<div class="content_padding">
+								<div id="newId">
+									<div class="row">
+										<div class="col-md-4  btn-hs">
+											<div class="font-design" id="totalEmp">Manage Issue
+												History</div>
+										</div>
+										<div class="col-md-4  btn-hs">
+											<div class="input-style">
+												<input type="text" placeholder="Search.." name="search"
+													class="searchboxinput" onkeyup="cancelBar()"
+													oninput="onQuickFilterChanged()" id="quickFilter">
+												<div class="searchicon">
+													<a href="javascript: void(0)"><span
+														style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+														id="closeKey"
+														onclick="gridOptionsVehicle.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+														class="close_i"><i class="ti-close srchicon"></i></span></a><a
+														href="javascript: void(0)"><i
+														class="ti-search srchicon"></i></a>
+												</div>
+											</div>
+
+										</div>
+
+										<div class="col-md-4 btn-hs" align="right">
+
+											<button class="btn3" id="dlbutton" onclick="deletefn()">Delete</button>
+											<button class="btn4" onclick="upload()">Upload</button>
+											<button class="btn4" onclick="downloadEmpDetails()">Download</button>
+											<button class="btn2" id="addissue" onclick="addissue()">New</button>
+
+										</div>
+
+									</div>
+
+									<div id="myGridVehicle" style="width: 100%; height: 500px;"
+										class="ag-theme-alpine"></div>
+								</div>
+
+
+								<div id="profile" class="collapse">
+									<div class="innerstickybg">
+										<div class="row">
+											<div class="col-md-6 btn-hs"></div>
+											<div class="col-md-12" align="right">
+												<button class="btn4" id="profilecancelbtn"
+													onclick="cancelBtn()">Cancel</button>
+												<button class="btn1" id="saveDetails" onclick="savedetails()">Save</button>
+											</div>
+										</div>
+									</div>
+									<div class="innercontent">
+									
+										<div class="row">
+										<input type="hidden" class="form-control" id="issuergnumber" autocomplete="off">
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Issue Register Name</label>
+													<div class="select">
+														<select class="form-control" id="issuergname">
+															<option value="">Select</option>
+															<option th:each="c,iter:${issuergList}"
+															th:value="${c.name}" th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+											
+										
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Ticket Name</label> <input type="text"
+														name="Ticket Name" value="" placeholder="Ticket Name"
+														class="form-control" id="ticketname">
+												</div>
+											</div>
+											
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Vendor Name</label>
+													<div class="select">
+														<select class="form-control" id="vendorname">
+															<option value="">Select</option>
+															<option th:each="c,iter:${vendorList}"
+															th:value="${c.name}" th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+											
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Vehicle Name</label>
+													<div class="select">
+														<select class="form-control" id="vehiclename">
+															<option value="">Select</option>
+															<option th:each="c,iter:${vehicleList}"
+															th:value="${c.name}" th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Description</label> <input type="textarea"
+														name="Description" value="" placeholder="Description"
+														class="form-control" id="description">
+												</div>
+											</div>
+											
+											
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Phone Number</label> <input type="text"
+														name="Phone Number" value="" placeholder="Phone Number"
+														class="form-control" id="phonenumber">
+												</div>
+											</div>
+
+
+											
+									<div class="col-md-4">
+									<div class="form-group calendar_box">
+										<label>Date</label> <input type="text" disabled id="idDate"
+											class="form-control" onblur="removeValid(event)"
+											th:attr="onkeyup=|formatDate('idDate','${session.DATEFORMAT_JS}')|">
+										<i class="ti-calendar picker_calendar" id="fromDateCalendar"></i>
+									</div>
+								</div>							
+								</div>  <p>
+								
+								
+								<div class="row">
+									<div class="col-md-6">
+										<table id="docTbl">
+											<thead>
+											<tr class="tr_clone">
+											<th width="380" class="green_type">Upload Document</th>
+																</tr>
+															</thead>
+											<tbody id="doctbodyData">
+
+											<td>
+											<div class="control-group position-r">
+											<label class="custom-file-upload" for="fileUpload"
+											 id="uploadFor_0"> <i id="imgLoc" class="ti-plus"></i>
+											<div id="uploadedBillDiv_" align="center" class="uploadedBillCls">
+											<div class="uploadicon position-l"></div>
+											</div>
+											</label>
+																		
+																		
+											<div class="controls">
+											<input type="file" id="fileUpload" name="userImage" accept="image/*" onchange="saveFile()" />
+											</div>
+											</div>
+											
+											 
+											<input type="hidden" id="uploadHidden_0" class="uploadHidCls">
+											
+											
+											<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div>
+										   <div id="imageName_0" class="userImage"></div>
+
+											</td>
+											</tbody>
+											</table>				
+								
+									</div>
+								</div>
+							</div>
+						</div> </div>
+						</div>
+					</div>
+				</div>
+
+			</div>
+		</div>
+	</div>
+	
+</body>
+</html>

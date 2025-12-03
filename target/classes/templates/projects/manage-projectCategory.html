@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<script>
+var allData ='';
+document.addEventListener('DOMContentLoaded', function() {
+
+	var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+	
+	var gridDiv1 = document.querySelector('#myGrid1');
+	new agGrid.Grid(gridDiv1, gridOptions1);
+	
+	gridOptions.api.setRowData();
+	gridOptions1.api.setRowData();
+	
+	$('#deleteCategory').attr("disabled", true);
+	$('#deleteSubCategory').attr("disabled", true);
+	$('#newSubCategory').attr("disabled", true);
+	agGrid.simpleHttpRequest({
+		url : "manage-category-view"
+	}).then(function(data) {
+		var jsonData = JSON.parse(data.body);
+		allData = jsonData.viewCaategoryData;
+		console.log(allData)
+		var len = allData.length;
+		$('#totalReqs').find('span').html(len);
+		gridOptions.api.setRowData(allData);
+		var firstRowNode = gridOptions.api.getDisplayedRowAtIndex(0); // Get the first row node
+		  if (firstRowNode) {
+		    firstRowNode.setSelected(true); // Set the row as selected
+		  }
+	}); 
+
+});
+
+function onQuickFilterChanged() {
+	gridOptions.api.setQuickFilter(document
+			.getElementById('quickFilter').value);
+	var totalRowCount = gridOptions.api.getModel().getRowCount();
+	$('#totalReqs').find('span').html(totalRowCount);
+}
+
+
+function onQuickFilterChanged1() {
+	gridOptions1.api.setQuickFilter(document
+			.getElementById('quickFilter1').value);
+	var totalRowCount = gridOptions1.api.getModel().getRowCount();
+	$('#totalReqss').find('span').html(totalRowCount);
+}
+
+var columnDefs = [
+	 {
+		headerCheckboxSelection: false,
+		headerCheckboxSelectionFilteredOnly: false,
+		checkboxSelection: true,
+		width: 10,
+		sortable: false,
+		filter: false,
+		resizable: true
+
+	}, 
+	{
+		headerName: 'Category Id',
+		width: 500,
+		field: "categoryId",
+	 cellRenderer : function(params) {
+					return '<a onclick=editCategory("'
+					+ params.data.categoryId
+					+ '") href="javascript:void(0)">'
+					+ params.data.categoryId + '</a>';
+		} 
+		
+	}, {
+		headerName: 'Category Name',
+		width: 800,
+		field: "categoryName",
+	},
+
+];
+var gridOptions = {
+		columnDefs: columnDefs,
+		defaultColDef: {
+			sortable: true,
+			filter: true,
+			resizable: true,
+			width: 200,
+			height: 20
+		},
+		rowSelection: 'single',
+		onSelectionChanged : onSelectionChangeData
+	};
+	
+	
+	
+var columnDefs1 = [
+	 {
+		headerCheckboxSelection: false,
+		headerCheckboxSelectionFilteredOnly: false,
+		checkboxSelection: true,
+		width: 10,
+		sortable: false,
+		filter: false,
+		resizable: true
+
+	}, 
+	{
+		headerName: 'Sub Category Id',
+		width: 500,
+		field: "subcategoryId",
+	 cellRenderer : function(params) {
+					return '<a onclick=editSubCategory("'
+					+ params.data.subcategoryId
+					+ '") href="javascript:void(0)">'
+					+ params.data.subcategoryId + '</a>';
+		} 
+		
+	}, {
+		headerName: 'Sub Category Name',
+		width: 800,
+		field: "subcategoryName",
+	},
+
+];	
+
+var gridOptions1 = {
+		columnDefs: columnDefs1,
+		defaultColDef: {
+			sortable: true,
+			filter: true,
+			resizable: true,
+			width: 200,
+			height: 20
+		},
+		rowSelection: 'single',
+		onSelectionChanged : rowSelect
+	};
+	
+function newCategory() {
+
+	document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:100px;";
+
+	document.getElementById("categoryDiv").style.width = "75%";
+	$("#categoryId").val("");
+	$("#categoryName").val("");
+	closeNav1();
+}
+
+function closeNav() {
+
+	document.getElementById("mySidenav").style.width = "0";
+	document.getElementById("categoryDiv").style.width = "100%";
+	$("#categoryId").val("");
+	$("#categoryName").val("");
+	
+}
+
+function saveCategory(){
+	obj = {};
+	obj.categoryId = $("#categoryId").val();
+	obj.categoryName = $("#categoryName").val();
+	
+	
+
+	var validation = true;
+
+	if (obj.categoryName == null || obj.categoryName == "") {
+	validation = validationUpdated("Category Name Required",
+		"categoryName");
+	}
+	
+	console.log(obj);
+	
+	
+	if (validation) {
+		$.ajax({
+		type : "POST",
+		url : "manage-category-save-category",
+		contentType : "application/json",
+		data : JSON.stringify(obj),
+		success : function(response) {
+			if (response.message == "Success") {
+
+				$("#messageParagraph").text("Data Saved Successfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				closeNav();
+				
+				agGrid.simpleHttpRequest({
+					url : "manage-category-view"
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					allData = jsonData.viewCaategoryData;
+					console.log(allData)
+					var len = allData.length;
+					$('#totalReqs').find('span').html(len);
+					gridOptions.api.setRowData(allData);
+					onQuickFilterChanged();
+					$('#deleteCategory').attr("disabled", true);
+					$('#newCategory').attr("disabled", false);
+					$('#newSubCategory').attr("disabled", true);
+				});  
+			}
+		},
+		error : function(data) {
+		} 
+	})
+}
+}
+var allDataa = "";
+var id ="";
+var id2 ="";
+function onSelectionChangeData(){
+		
+		var selected = gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		
+		selected.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+		 for (var i = 0; i < selected.length; i++) {
+			id = id  + selected[i].categoryId ;
+		}
+		id2 = id;
+		 
+			agGrid.simpleHttpRequest({
+				url : "manage-category-view-subcategory?cdId="+id,
+			}).then(function(data) {
+				var jsonData = JSON.parse(data.body);
+				allDataa = jsonData.viewsubCaategoryData;
+				console.log(allDataa)
+				if(allDataa == null){
+					$('#totalReqss').find('span').html(0);
+					gridOptions1.api.setRowData();
+				}else{
+					var len = allDataa.length;
+					$('#totalReqss').find('span').html(len);
+					gridOptions1.api.setRowData(allDataa);
+				}
+				
+			});  
+		
+		
+		if (rowCount > 0) {
+			$('#deleteCategory').attr('disabled', false);
+			$('#newSubCategory').attr("disabled", false);
+			$('#newCategory').attr("disabled", true);
+		} else {
+			$('#deleteCategory').attr('disabled', true);
+			$('#newSubCategory').attr("disabled", true);
+			$('#newCategory').attr("disabled", false);
+		} 
+		
+		id="";
+	
+}
+
+function editCategory(idd){
+//	$('#deleteCategory').attr("disabled", true);
+	newCategory();
+	var catnames = allData.filter(f => f.categoryId === idd);
+	var cId = catnames[0].categoryId;
+	var cName = catnames[0].categoryName;
+	
+	$("#categoryId").val(cId);
+	$("#categoryName").val(cName);
+	
+}
+
+
+function deleteCategory() {
+	$('#deleteCategoryModal').modal('show');
+}
+
+function cancelModalBtn() {
+	$('#deleteCategoryModal').modal('hide');
+
+}
+
+//FOR DELETE
+
+function deleteOnclick() {
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var id = selectedRows[0].categoryId;
+	$.ajax({
+		type : "POST",
+		url : "manage-category-deleteCategory?id=" + id,
+		success : function(response) {
+			if (response.message == "Success") {
+
+				$('#deleteCategoryModal').modal('hide');
+
+				$('#deleteCategory').attr("disabled", true);
+				agGrid.simpleHttpRequest({
+					url : "manage-category-view"
+				}).then(function(data) {
+					jsonData = JSON.parse(data.body);
+					allData = jsonData.viewCaategoryData;
+					console.log(allData)
+					var len = allData.length;
+					$('#totalReqs').find('span').html(len);
+					gridOptions.api.setRowData(allData);
+				onSelectionChangeData();
+				}); 
+				
+				agGrid.simpleHttpRequest({
+					url : "manage-category-view-subcategory?cdId="+id,
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					allDataa = jsonData.viewsubCaategoryData;
+					if(allDataa == null){
+						$('#totalReqss').find('span').html(0);
+						gridOptions1.api.setRowData();
+					}else{
+						console.log("alldataa"+allDataa)
+						var len = allDataa.length;
+						$('#totalReqss').find('span').html(len);
+						gridOptions1.api.setRowData(allDataa);
+					}
+				});
+			} else {
+
+			}
+		},
+		error : function(data) {
+			console.log(data)
+		}
+	})
+	
+}
+
+
+function newSubCategory() {
+	
+	document.getElementById("mySidenav1").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:400px;";
+
+	document.getElementById("subcategoryDiv").style.width = "75%";
+
+	$("#categoryIdspan").html(id2);
+	$("#categoryId").val("");
+	$("#categoryName").val("");
+	$("#subcategoryId").val("");
+	$("#subcategoryName").val("");
+	closeNav();
+}
+
+function closeNav1() {
+
+	document.getElementById("mySidenav1").style.width = "0";
+	document.getElementById("subcategoryDiv").style.width = "100%";
+	$("#categoryId").val("");
+	$("#categoryName").val("");
+	$("#subcategoryId").val("");
+	$("#subcategoryName").val("");
+	
+}
+
+function saveSubCategory(){
+	obj = {};
+	obj.categoryId = $("#categoryIdspan").html();
+	obj.subcategoryId = $("#subcategoryId").val();
+	obj.subcategoryName = $("#subcategoryName").val();
+	
+	
+
+	var validation = true;
+
+	if (obj.subcategoryName == null || obj.subcategoryName == "") {
+	validation = validationUpdated("Sub Category Name Required",
+		"subcategoryName");
+	}
+	
+	console.log(obj);
+	
+	
+	if (validation) {
+		$.ajax({
+		type : "POST",
+		url : "manage-category-save-subcategory",
+		contentType : "application/json",
+		data : JSON.stringify(obj),
+		success : function(response) {
+			if (response.message == "Success") {
+
+				$("#messageParagraph").text("Data Saved Successfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				closeNav1();
+				
+				 var cdId = $("#categoryIdspan").html();
+				agGrid.simpleHttpRequest({
+					url : "manage-category-view-subcategory?cdId="+cdId,
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					allDataa = jsonData.viewsubCaategoryData;
+					if(allDataa == null){
+						$('#totalReqss').find('span').html(0);
+						gridOptions1.api.setRowData();
+					}else{
+						console.log("alldataa"+allDataa)
+						var len = allDataa.length;
+						$('#totalReqss').find('span').html(len);
+						gridOptions1.api.setRowData(allDataa);
+						
+					}
+					onQuickFilterChanged1();
+					$('#deleteCategory').attr("disabled", false);
+					$('#deleteSubCategory').attr("disabled", true);
+					$('#newSubCategory').attr("disabled", false);
+				});  
+			}
+		},
+		error : function(data) {
+		} 
+	})
+}
+}
+
+
+function editSubCategory(sIdd){
+	//$('#deleteSubCategory').attr("disabled", true);
+	newSubCategory();
+	var catnames = allDataa.filter(f => f.subcategoryId === sIdd);
+	var cId = catnames[0].subcategoryId;
+	var cName = catnames[0].subcategoryName;
+	
+	$("#subcategoryId").val(cId);
+	$("#subcategoryName").val(cName);
+	
+}
+
+function rowSelect(){
+	
+	var selected = gridOptions1.api.getSelectedRows();
+	var rowCount = 0;
+	
+	selected.forEach(function(selectedRow, index) {
+		rowCount = rowCount + 1;
+	});
+	 for (var i = 0; i < selected.length; i++) {
+		id = id  + selected[i].subcategoryId ;
+	}
+	
+	if (rowCount > 0) {
+		$('#deleteSubCategory').attr('disabled', false);
+		$('#newSubCategory').attr("disabled", true);
+	} else {
+		$('#deleteSubCategory').attr('disabled', true);
+		$('#newSubCategory').attr("disabled", false);
+	} 
+	
+	id="";
+
+}
+
+function deleteSubCategory() {
+	$('#deleteSubCategoryModal').modal('show');
+}
+
+function cancelSubModalBtn() {
+	$('#deleteSubCategoryModal').modal('hide');
+
+}
+
+//FOR DELETE
+
+function deleteSubOnclick() {
+	var selectedRows = gridOptions1.api.getSelectedRows();
+	var sd = selectedRows[0].subcategoryId;
+	$.ajax({
+		type : "POST",
+		url : "manage-category-deleteSubCategory?id=" + sd,
+		success : function(response) {
+			if (response.message == "Success") {
+
+				$('#deleteSubCategoryModal').modal('hide');
+
+				$('#deleteSubCategory').attr("disabled", true);
+				$('#newSubCategory').attr("disabled", true);
+				
+				agGrid.simpleHttpRequest({
+					url : "manage-category-view-subcategory?cdId="+id2,
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					allDataa = jsonData.viewsubCaategoryData;
+					if(allDataa == null){
+						$('#totalReqss').find('span').html(0);
+						gridOptions1.api.setRowData();
+					}else{
+						console.log("alldataa"+allDataa)
+						var len = allDataa.length;
+						$('#totalReqss').find('span').html(len);
+						gridOptions1.api.setRowData(allDataa);
+					}
+				});  
+				onSelectionChangeData();
+			} else {
+
+			}
+		},
+		error : function(data) {
+			console.log(data)
+		}
+	})
+}
+
+</script>
+</head>
+
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="row" id="categoryDiv">
+							<div class="col-md-4 " id="totalReqs">
+								<h3>
+									Category(<span></span>)
+								</h3>
+							</div>
+
+							<div class="col-md-4 btn-hs" id="searchRowDiv1">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter1').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-4 buttonsec btn-hs" id="ttbtn">
+
+								<button class="new-btn" id="newCategory" onclick="newCategory()">NEW</button>
+								<button class="btn3" id="deleteCategory"
+									onclick="deleteCategory()">Delete</button>
+							</div>
+
+							<div id="myGrid" style="width: 100%; height: 250px;"
+								class="ag-theme-alpine"></div>
+
+						</div>
+
+
+
+						<div id="mySidenav" class="sidenav">
+							<div class="slidebox">
+								<div class="row">
+									<div class="col-md-10 edit"></div>
+									<div class="col-md-2">
+										<div class="arrow">
+											<a><i class="ti-arrow-right" onclick="closeNav()"></i></a>
+										</div>
+									</div>
+								</div>
+								<div style="clear: both;"></div>
+								<div class="chartbtnsec">
+									<div align="right">
+										<button class="btn3" onclick="closeNav()">CANCEL</button>
+										<button class="btn1" id="saveCategory"
+											onclick="saveCategory()">SAVE</button>
+
+									</div>
+
+								</div>
+								<div class="clearfix"></div>
+								<div class="row">
+
+									<!-- <div class="col-md-12">
+										<div class="form-group">
+											<span class="slide-span">Category Id:</span><span
+												id="categoryId" class="slide-span-text"></span>
+
+										</div>
+									</div> -->
+
+									<div class="col-lg-12">
+										<input type="hidden" id="categoryId">
+										<div class="col-lg-12">
+											<div class="form-group">
+												<label>Category Name</label> <input type="text"
+													class="form-control" autocomplete="off" id="categoryName"
+													onblur="removeValid(event)">
+											</div>
+										</div>
+
+									</div>
+
+
+
+								</div>
+							</div>
+						</div>
+						
+						<div class="row" id="subcategoryDiv">
+							<div class="col-md-4 " id="totalReqss">
+								<h3>
+									Sub Category(<span></span>)
+								</h3>
+							</div>
+
+							<div class="col-md-4 btn-hs" id="searchRowDiv1">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged1()" id="quickFilter1"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions1.api.setQuickFilter(null);$('#quickFilter1').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-4 buttonsec btn-hs" id="ttbtn">
+
+								<button class="new-btn" id="newSubCategory"
+									onclick="newSubCategory()">NEW</button>
+								<button class="btn3" id="deleteSubCategory"
+									onclick="deleteSubCategory()">Delete</button>
+							</div>
+
+							<div id="myGrid1" style="width: 100%; height: 250px;"
+								class="ag-theme-alpine"></div>
+
+						</div>
+						
+						
+						
+						<div id="mySidenav1" class="sidenav">
+							<div class="slidebox">
+								<div class="row">
+									<div class="col-md-10 edit"></div>
+									<div class="col-md-2">
+										<div class="arrow">
+											<a><i class="ti-arrow-right" onclick="closeNav1()"></i></a>
+										</div>
+									</div>
+								</div>
+								<div style="clear: both;"></div>
+								<div class="chartbtnsec">
+									<div align="right">
+										<button class="btn3" onclick="closeNav1()">CANCEL</button>
+										<button class="btn1" id="saveSubCategory"
+											onclick="saveSubCategory()">SAVE</button>
+
+									</div>
+
+								</div>
+								<div class="clearfix"></div>
+								<div class="row">
+
+									 <div class="col-md-12">
+										<div class="form-group">
+											<span class="slide-span">Category Id:</span><span
+												id="categoryIdspan" class="slide-span-text"></span>
+
+										</div>
+									</div>
+
+									<div class="col-lg-12">
+										<input type="hidden" id="subcategoryId">
+										<div class="col-lg-12">
+											<div class="form-group">
+												<label>Sub Category Name</label> <input type="text"
+													class="form-control" autocomplete="off" id="subcategoryName"
+													onblur="removeValid(event)">
+											</div>
+										</div>
+
+									</div>
+
+
+
+								</div>
+							</div>
+						</div>	
+
+					</div>
+				</div>
+				<div id="deleteCategoryModal" class="modal fade show"
+					aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column">
+								 <button type="button" class="close" data-dismiss="modal"
+									aria-hidden="true" onclick="cancelModalBtn()">
+									 <i class="ti-close modal-close"></i> 
+								</button>
+							</div>
+							<div class="modal-body">
+								<p>Do you really want to delete these records? This process
+									cannot be undone.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: -15px;">
+
+								<button type="button" class="btn4" id="modalCan"
+									data-bs-dismiss="modal">cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="deleteOnclick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				
+				<div id="deleteSubCategoryModal" class="modal fade show"
+					aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column">
+						<button type="button" class="close" data-dismiss="modal"
+									aria-hidden="true" onclick="cancelSubModalBtn()">
+									 <i class="ti-close modal-close"></i> 
+								</button>
+							</div>
+							<div class="modal-body">
+								<p>Do you really want to delete these records? This process
+									cannot be undone.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: -15px;">
+
+								<button type="button" class="btn4" id="modalCan"
+									data-bs-dismiss="modal">cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="deleteSubOnclick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				
+			</div>
+		</div>
+	</div>
+</body>
+</html>

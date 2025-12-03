@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<!-- <style>
+.ag-header-group-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: 100;
+	text-align: center;
+}
+
+.float-l {
+	float: right;
+}
+
+.float-l span {
+	color: #929292;
+	font-weight: 100;
+}
+
+.ag-header-group-cell-label {
+	justify-content: center !important;
+	text-align: center !important;
+}
+
+.ag-theme-alpine .ag-row .ag-cell-focus {
+	background: #0076ba !important;
+	color: #fff;
+}
+</style> -->
+
+<style>
+.ag-header-group-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: 100;
+	text-align: center;
+}
+
+.float-l {
+	float: right;
+}
+
+.float-l span {
+	color: #929292;
+	font-weight: 100;
+}
+
+.ag-header-group-cell-with-group:first-child {
+	border-top: 0px !important;
+	border-left: 0px !important;
+	border-bottom: 0px !important;
+}
+
+.ag-header-group-cell-label {
+	justify-content: center !important;
+	text-align: center !important;
+}
+
+.ag-theme-alpine .ag-root-wrapper {
+	border-left: 0px solid #e2e2e2 !important;
+	border-right: 1px solid #e2e2e2 !important;
+	border-bottom: 1px solid #e2e2e2 !important;
+	border-top: 0px solid #e2e2e2 !important;
+}
+
+.ag-pinned-left-cols-container {
+	border-left: 1px solid #e2e2e2 !important;
+}
+
+.ag-theme-alpine .ag-row .ag-cell-focus {
+	background: #0076ba !important;
+	color: #fff !important;
+}
+
+.ag-pinned-left-header>.ag-header-row-column-group {
+	border-left: 0px !important;
+	border-top: 0px !important;
+	border-bottom: 0px !important;
+	height: 100px !important;
+	position: absolute !important;
+	top: -2px !important;
+}
+
+.ag-header-container {
+	border-top: 1px solid #e2e2e2 !important;
+}
+</style>
+<script>
+
+$(document).ready(function(){
+	
+	/* alert($(window).height()) */
+	
+	$("#myGrid").find(".ag-header-expand-icon").remove();
+	
+	$.ajax({
+        type: "POST",
+        url: "manage-permissions-list",
+        dataType: "json",
+        contentType: "application/json",
+        data: "a", 
+        success: function(response) {
+            if (response.message == "success") {
+            	var columnDefs = [{
+            			headerName : '',
+            			/* pinned: 'left', */
+            			children : [{
+            				headerName : 'Role',
+            				field : 'roleName',
+            				pinned: 'left',
+            				width : 140
+            			}],
+            	}];
+            	for(var i = 0; i < response.body.length; i++) {
+            		var data = [];
+            		for(var j = 0; j < response.body[i].children.length; j++) {
+            			var newData = [];
+            			
+            			for(var k = 0; k < response.body[i].children[j].children.length; k++) {
+            				ob = {};
+            				ob.headerName = response.body[i].children[j].children[k].headerName;
+            				ob.columnGroupShow = 'closed';
+            				ob.field = response.body[i].children[j].children[k].field;
+            				ob.width = '150';
+            				a = {};
+            				
+            				a.textAlign = "center";
+            				ob.cellStyle = a;
+            				
+            				newData.push(ob);
+            			}
+            			
+            			obj = {};
+            			obj.headerName = response.body[i].children[j].headerName;
+            			obj.columnGroupShow = 'closed';
+            			obj.children = newData;
+            			
+            			data.push(obj)
+            		}
+            		columnDefs.push({headerName: response.body[i].headerName, children:data});
+            	}
+            	
+            	gridOptions.api.setColumnDefs(columnDefs);
+            }
+        }, error: function(data) {
+        	console.log(data);
+        }
+	});
+	
+	/* $(".ag-cell-focus").click(function(){
+		alert("Sagar")
+	}) */
+	
+})
+
+function openNav() { 
+	
+	$("#sliderRoleId").val("");
+	$("#sliderAvlFuncId").val("");
+	$("#spanHeadText").text("");
+	$("#permissionLevel").val("");
+	$("#dataFilter").val("");
+	
+	document.getElementById("mySidenav").style.cssText = "width: 350px; position: absolute; right:-50px; overflow: hidden; height:auto; top:115px;";
+	document.getElementById("myGrid").style.width = "72%";
+	document.getElementById("headerDiv").style.width = "72%";
+}
+
+function closeNav() {
+	
+	$("#sliderRoleId").val("");
+	$("#sliderAvlFuncId").val("");
+	$("#spanHeadText").text("");
+	$("#permissionLevel").val("");
+	$("#dataFilter").val("");
+	
+	document.getElementById("mySidenav").style.width = "0";
+	document.getElementById("myGrid").style.width = "100%";
+	document.getElementById("headerDiv").style.width = "100%";
+}
+
+
+	var gridOptions = {
+		defaultColDef : {
+			sortable : true,
+			resizable : true,
+			filter : true,
+		},
+		debug : true,
+		rowData : null,
+		enableRangeSelection: true,
+		  animateRows: true,
+		  onCellClicked: function(event) { showSideNav(event); },  /*  */
+	};
+$(document).ready(function(){
+	agGrid.simpleHttpRequest({
+		url : 'manage-permissions-get-listing',
+	}).then(function(data) {
+		console.log(data)
+		var len = data.length;
+	    $('#totalReq').find('span').html(len);
+	    
+	    var datas = [];
+	    
+		gridOptions.api.setRowData(data);
+		
+		gridOptions.api.forEachNode(function(rowNode, index) {
+			obj = {}; 
+	    	for(i = 0; i < rowNode.data.avlFuncList.length; i++) {
+	    		
+	    		obj['roleId'] = rowNode.data.roleId;
+	    		obj['roleName'] = rowNode.data.roleName;
+	    		
+	    		var levelCode = "";
+	    		levelCode = rowNode.data.avlFuncList[i].perLevelCode;
+	    		var dataFilterCode = "";
+	    		dataFilterCode = rowNode.data.avlFuncList[i].dataFilterCode;
+	    		
+	    		if(levelCode == null || levelCode == 'null' || levelCode == "") {
+	    			levelCode = "";
+	    		}
+	    		if(dataFilterCode == null || dataFilterCode == 'null' || dataFilterCode == "") {
+	    			dataFilterCode = "";
+	    		}
+	    		
+	    		if(levelCode != null && levelCode != "" && dataFilterCode != null && dataFilterCode != "") {
+	    			obj[rowNode.data.avlFuncList[i].avlFunction] = levelCode+" - " + dataFilterCode; 
+	    		} else if((levelCode != null && levelCode != "") && (dataFilterCode == null || dataFilterCode == "")) {
+	    			obj[rowNode.data.avlFuncList[i].avlFunction] = levelCode; 
+	    		} else if((levelCode == null || levelCode == "") && (dataFilterCode != null && dataFilterCode != "")) {
+	    			obj[rowNode.data.avlFuncList[i].avlFunction] = dataFilterCode; 
+	    		} else {
+	    			obj[rowNode.data.avlFuncList[i].avlFunction] = ""; 
+	    		}
+	    		
+	    	 }
+	    	
+	    	datas.push(obj); 
+	    });
+		
+		var d1 = [];
+		gridOptions.api.hideOverlay();
+		gridOptions.api.setRowData(datas); 
+	    
+	});
+	
+	$("#saveAvlFuncData").click(function(){
+		
+		obj = {};
+		
+		obj.roleId = $("#sliderRoleId").val();
+		obj.avlFunction = $("#sliderAvlFuncId").val();
+		obj.perLevel = $("#permissionLevel").val();
+		obj.dataFilter = $("#dataFilter").val();
+		
+		$('.loader').show();
+    	$("body").addClass("overlay");
+		
+		assignRoleAvlFunction(obj);
+	})
+	
+})	
+
+function assignRoleAvlFunction(dataset) {
+	console.log(dataset)
+	$.ajax({
+        type: "POST",
+        url: "manage-permissions-save-data",
+        dataType: "json",
+        contentType: "application/json",
+        data: JSON.stringify(dataset),
+        success: function(response) {
+            if (response.message == "Success") {
+            	
+            	closeNav();
+            	agGrid.simpleHttpRequest({
+            		url : 'manage-permissions-get-listing',
+            	}).then(function(data) {
+            		console.log(data)
+            		var len = data.length;
+            	    $('#totalReq').find('span').html(len);
+            	    
+            	    var datas = [];
+            	    
+            		gridOptions.api.setRowData(data);
+            		
+            		gridOptions.api.forEachNode(function(rowNode, index) {
+            			obj = {}; 
+            	    	for(i = 0; i < rowNode.data.avlFuncList.length; i++) {
+            	    		
+            	    		obj['roleId'] = rowNode.data.roleId;
+            	    		obj['roleName'] = rowNode.data.roleName;
+            	    		
+            	    		var levelCode = "";
+            	    		levelCode = rowNode.data.avlFuncList[i].perLevelCode;
+            	    		var dataFilterCode = "";
+            	    		dataFilterCode = rowNode.data.avlFuncList[i].dataFilterCode;
+            	    		
+            	    		if(levelCode == null || levelCode == 'null' || levelCode == "") {
+            	    			levelCode = "";
+            	    		}
+            	    		if(dataFilterCode == null || dataFilterCode == 'null' || dataFilterCode == "") {
+            	    			dataFilterCode = "";
+            	    		}
+            	    		
+            	    		if(levelCode != null && levelCode != "" && dataFilterCode != null && dataFilterCode != "") {
+            	    			obj[rowNode.data.avlFuncList[i].avlFunction] = levelCode+" - " + dataFilterCode; 
+            	    		} else if((levelCode != null && levelCode != "") && (dataFilterCode == null || dataFilterCode == "")) {
+            	    			obj[rowNode.data.avlFuncList[i].avlFunction] = levelCode; 
+            	    		} else if((levelCode == null || levelCode == "") && (dataFilterCode != null && dataFilterCode != "")) {
+            	    			obj[rowNode.data.avlFuncList[i].avlFunction] = dataFilterCode; 
+            	    		} else {
+            	    			obj[rowNode.data.avlFuncList[i].avlFunction] = ""; 
+            	    		}
+            	    		
+            	    	 }
+            	    	
+            	    	datas.push(obj); 
+            	    });
+            		
+            		var d1 = [];
+            		gridOptions.api.hideOverlay();
+            		gridOptions.api.setRowData(datas); 
+            	    
+            	});
+            	
+            	$('.loader').hide();
+            	$("body").removeClass("overlay");
+            	
+            	$("#messageParagraph").text("Role-Function Assigned Successfully");
+            	$("#msgOkModal").removeClass("btn3");
+            	$("#msgOkModal").addClass("btn1");
+            	$("#msgModal").modal('show');
+            }
+        }, error: function(data) {
+        	console.log(data)
+        	$('.loader').hide();
+        	$("body").removeClass("overlay");
+        }
+	});
+}
+
+
+document.addEventListener('DOMContentLoaded', function() {
+	var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+});
+
+function showSideNav(e) {
+	
+	var colIndex = e.event.target.attributes[3].value;
+	
+	if(colIndex != "1") {
+		$("#roleNameTxt").text(e.data.roleName);
+		openNav();
+		
+		$("#sliderRoleId").val(e.data.roleId);
+		$("#sliderAvlFuncId").val(e.colDef.field);
+		
+		obj = {};
+		
+		obj.key = e.data.roleId;
+		obj.name = e.colDef.field;
+		
+		$.ajax({
+	        type: "POST",
+	        url: "manage-permissions-edit",
+	        dataType: "json",
+	        contentType: "application/json",
+	        data: JSON.stringify(obj), 
+	        success: function(response) {
+	            if (response.message == "success") {
+	            	console.log(response.body)
+	            	
+	            	var txt = response.body.headingOne+" -> "+response.body.headingTwo+" -> "+response.body.headingThree;
+	            	$("#spanHeadText").text(txt);
+	            	$("#permissionLevel").val(response.body.perLevel);
+	            	$("#dataFilter").val(response.body.dataFilter);
+	            }
+	        }, error: function(data) {
+	        	console.log(data)
+	        	$("#spanHeadText").text("");
+            	$("#permissionLevel").val("");
+            	$("#dataFilter").val("");
+	        }
+		});
+		
+	} else {
+		$("#spanHeadText").text("");
+    	$("#permissionLevel").val("");
+    	$("#dataFilter").val("");
+	}
+	
+}
+
+function totalPermissionsCSV() {
+    var dataset = [];
+    gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+        dataset.push(rowNode.data);
+    });
+    gridOptions.api.exportDataAsCsv(dataset);
+}
+</script>
+</head>
+<body>
+	<div layout:fragment="content">
+		<div class="content-wrap">
+			<div class="container-fluid">
+				<div class="maincontent">
+					<div class="row">
+
+						<div class="maincontentsec">
+							<div class="content_padding">
+								<div id="newId">
+									<div class="row">
+										<div class="col-md-12 offset-md-3">
+											
+												<div class="float-l">
+													&nbsp; <span>V</span> <span>=</span> <span>View</span> <span>||</span> <span>E</span> <span>=</span>
+													<span>Edit</span> <span>||</span> <span>C</span> <span>=</span> <span>Create</span> <span>||</span>
+													<span>F</span> <span>=</span> <span>Full</span>
+												</div>
+												<div class="float-l">
+													<span>Permission Level: </span>
+												</div>
+											
+											
+											<div class="clearfix"></div>
+												<div class="float-l">
+													&nbsp; <span>P</span> <span>=</span> <span>Personal</span> <span>||</span> <span>M</span> <span>=</span>
+													<span>Manager</span> <span>||</span> <span>A</span> <span>=</span> <span>All</span>
+												</div>
+												<div class="float-l">
+													<span>Data Filters: </span>
+												</div>
+
+										</div>
+									</div>
+									<div class="row mrt-20" id="headerDiv">
+
+										<div class="col-md-8 btn-hs">
+											<div class="font-design" id="totalReq">
+												Role List (<span></span>)
+											</div>
+										</div>
+										<div class="col-md-4 butttonsec btn-hs" >
+											<button class="btn4">Upload</button>
+											<button class="btn4" onclick="totalPermissionsCSV();">Download</button>
+											<!-- <div class="buttongap"></div>
+											<button class="btn3" id="deleteBtn" onclick="deleteRoles();" >DELETE</button>
+											<button class="btn1" id="newBtn" onclick="roleSelect()">NEW</button> -->
+										</div>
+
+									</div>
+									<div id="myGrid" style="width: 100%; height: 500px;"
+										class="ag-theme-alpine"></div>
+									<div id="mySidenav" class="sidenav"
+										style="top: 138px !important;">
+										<div class="slidebox">
+											<div class="row">
+												<div class="col-md-9">
+													<div class="edit"  id="roleNameTxt">
+														Role Name
+													</div>
+												</div>
+												<div class="col-md-3">
+													<div class="arrow">
+														<a href="javascript:void(0)" class="closebtn"
+															onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+													</div>
+												</div>
+											</div>
+											<div class="chartbtnsec">
+												<div align="right">
+													<button class="btn4" onclick="closeNav()">CANCEL</button>
+													<button class="btn1" id="saveAvlFuncData">SAVE</button>
+												</div>
+											</div>
+											<div class="clearfix"></div>
+											<div class="row">
+												<div class="col-md-12">
+													<div class="form-group">
+														<input type="hidden" id="sliderRoleId"> 
+														<input type="hidden" id="sliderAvlFuncId">
+														<span class="md-color" style="font-size: 16px;" id="spanHeadText">Hrms -> Hire -> Requisition</span>
+													</div>
+												</div>
+												<div class="col-md-12">
+													<div class="form-group">
+														<label>Permission Level</label>
+														<div class="select">
+															<select id="permissionLevel">
+																<option value="">Select</option>
+																<option th:each="c,iter:${permissionLevelList}" th:value="${c.key}" th:text="${c.name}"></option>
+															</select>
+														</div>
+													</div>
+												</div>
+												<div class="col-md-12">
+													<div class="form-group">
+														<label>Data Filters</label>
+														<div class="select">
+															<select id="dataFilter">
+																<option value="">Select</option>
+																<option th:each="c,iter:${dataFilterList}" th:value="${c.key}" th:text="${c.name}"></option>
+															</select>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id="delete" class="modal fade show" aria-modal="true">
+			<div class="modal-dialog modal-confirm">
+				<div class="modal-content">
+					<div class="modal-header flex-column">
+						<button type="button" class="close" data-dismiss="modal"
+							aria-hidden="true" onclick="cancelModalBtn()">
+							<i class="ti-close modal-close"></i>
+						</button>
+					</div>
+					<div class="modal-body">
+						<p>Do you really want to delete these records? This process
+							cannot be undone.</p>
+					</div>
+					<div class="modal-footer justify-content-center"
+						style="margin-top: -30px;">
+						<button type="button" class="btn1" data-dismiss="modal"
+							onclick="cancelModalBtn();">Cancel</button>
+						<button type="button" class="btn3" id="deleteModalBtn">Delete</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

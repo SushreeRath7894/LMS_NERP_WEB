@@ -1,0 +1,4065 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+
+
+
+<head>
+
+
+<style type="text/css">
+
+/* ul#autocomplete-list1 li {
+	position: relative;
+	color: #fff;
+	padding-left: 6px;
+	background-color: #1f57a8;
+	border-bottom: solid 1px #6189c2;
+	padding-top: 5px;
+	padding-bottom: 5px;
+} */
+</style>
+<style>
+.disabledCalender {
+	pointer-events: none;
+	/* Prevents any mouse event */
+	opacity: 0.5;
+	/* Makes it appear disabled */
+}
+</style>
+<script>
+		$(document)
+			.ready(
+
+				function () {
+					$('#reference').select2({
+				        placeholder: "Select RFQ",
+				        allowClear: true          
+				    });
+					
+					$('#docTbl').on('click', '.rmv1', function () {
+						openDeleteConfirm();
+						var value = $(this).parent("div").attr("id");
+						$("#dltValue").val(value);
+					});
+					var gridDiv = document.querySelector('#myGrid');
+					new agGrid.Grid(gridDiv, gridOptions);
+
+
+
+					var gridDiv = document.querySelector('#item');
+					new agGrid.Grid(gridDiv, itemOptions);
+					
+					var gridDivDoc = document.querySelector('#myDocumentGrid');
+					new agGrid.Grid(gridDivDoc, gridOptionsDoc); 
+
+					
+					gridOptions.api.setRowData();
+					itemOptions.api.setRowData();
+					gridOptionsDoc.api.setRowData();
+					
+					view();
+					var dateFormat = localStorage.getItem("dateFormat");
+
+					$("#toDateCalendar").datetimepicker({
+						format: dateFormat,
+						closeOnDateSelect: true,
+						minDate: new Date(),
+						timepicker: false,
+					}).on("change", function () {
+						$('#qutValidDate').val($(this).val());
+					})
+
+					$('#qutValidDate').blur(function () {
+						$("#toDateCalendar").val($(this).val());
+					})
+
+					$("#toDateCalendarPo").datetimepicker({
+						format: dateFormat,
+						closeOnDateSelect: true,
+						timepicker: false,
+					}).on("change", function () {
+						$('#quotationDate').val($(this).val());
+					})
+
+					$('#quotationDate').blur(function () {
+						$("#toDateCalendarPo").val($(this).val());
+					})
+
+					$("#toDateCalendarDt").datetimepicker({
+						format: dateFormat,
+						closeOnDateSelect: true,
+						timepicker: false,
+					}).on("change", function () {
+						$('#poDate').val($(this).val());
+					})
+
+					$('#poDate').blur(function () {
+						$("#toDateCalendarDt").val($(this).val());
+					})
+
+					$("#igstTR").hide();
+
+					
+
+
+				});
+
+
+		function view() {
+			//quotationId
+			$(".loader").show();
+			agGrid.simpleHttpRequest({
+				url: "quotation-details-through-ajax"
+			}).then(function (data) {
+				$(".loader").hide();
+			
+				gridOptions.api.setRowData(data);
+				
+				if (data && data.length > 0) {
+					let rowId = data[0].quotationId;
+					gridOptions.api.getRowNode(rowId).setSelected(true);
+					disableField();
+				}else{
+					add();
+					$('#addQuotation').hide();
+					$('#cancelMainBtn').hide();
+					$('#saveMstrBtn').show();
+					$('#editMstrBtn').hide();
+					$('#deleteQuotation').hide();
+					$('#approveQuotation').hide();
+				}
+			});
+		}
+		/* 
+		
+		 Quotation 
+		
+		 */
+
+		var columnDefs = [
+			{
+				//headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly: true,
+				checkboxSelection: true,
+				width: 10,
+				sortable: false,
+				filter: false,
+				resizable: true
+
+			},
+			{
+				headerName: "Quotation Id",
+				field: "quotationId",
+				width: 130,
+				cellRenderer: function (params) {
+					return params.data.quotationId;
+				}
+			},
+			{
+
+				headerName: 'Quotation No',
+				field: "qutNo",
+				width: 140,
+				cellStyle: {
+					textAlign: 'center'
+				}
+
+			},
+
+			{
+				headerName: 'Vendor name',
+				field: "vendorName",
+				width: 150,
+			},
+			{
+
+				headerName: 'Quotation Date',
+				field: "updatedOn",
+				width: 150,
+			},
+			{
+				headerName: 'Reference',
+				field: "reference",
+				width: 140,
+				cellStyle: {
+					textAlign: 'center'
+				}
+			},
+
+			{
+
+				headerName: 'Payment Term',
+				field: "paymentTermId",
+				width: 150,
+				cellStyle: {
+					textAlign: 'center'
+				}
+			},
+			{
+
+				headerName: 'Payment Mode',
+				field: "paymentModeName",
+				width: 150,
+				cellStyle: {
+					textAlign: 'center'
+				}
+			},
+			{
+
+				headerName: 'Amount',
+				field: "grandTotal",
+				width: 130,
+				type: 'rightAligned',
+				cellRenderer: function (params) {
+					let paramVal = params.data.grandTotal;
+					if(paramVal){
+						paramVal = parseFloat(paramVal);
+					}else{
+						paramVal = 0;
+					}
+					return paramVal.toFixed(2);
+				}
+			},
+			, {
+
+				headerName: 'Quotation Status',
+				field: "qutStatus",
+				width: 180,
+				cellStyle: {
+					textAlign: 'center'
+				},
+				cellRenderer: function (params) {
+					if (params.data.qutStatus == "Generated") {
+						return '<div style="color:#008000">'
+							+ params.data.qutStatus + '</div>';
+					} else {
+						return '<div style="color:#a9a9a9">'
+							+ params.data.qutStatus + '</div>';
+					}
+				}
+			},
+			{
+				headerName: 'Expected Delivery Date',
+				field: "qutValidDate",
+				width: 210,
+				cellStyle: {
+					textAlign: 'center'
+				}
+			},
+			{
+				headerName: 'Approve Status',
+				field: "approveStatus",
+				width: 190,
+				cellStyle: {
+					textAlign: 'center'
+				},
+				cellRenderer: function (params) {
+					if (params.data.approveStatus == "Pending") {
+						return '<div style="color:#a9a9a9">Pending</div>';
+					} else {
+						return '<div style="color:#0642f5">Approved</div>';
+					}
+				}
+			},
+			{
+				headerName: 'Vendor Approve Status',
+				field: "vendorAproveSts",
+				width: 190,
+				hide: true,
+				cellStyle: {
+					textAlign: 'center'
+				},
+				cellRenderer: function (params) {
+					if (params.data.vendorAproveSts == "Pending") {
+						return '<div style="color:#a9a9a9">Pending</div>';
+					} else {
+						return '<div style="color:#0642f5">Approved</div>';
+					}
+				}
+			},
+
+
+			, {
+
+				headerName: 'Terms And Conditions',
+				field: "terms",
+				width: 200,
+				 cellRenderer: function(params) {
+		        	 return safeBase64Decode(params.value);
+		        }
+			}, {
+
+				headerName: 'Project',
+				field: "project",
+				width: 190,
+				hide: true
+			}
+			, {
+
+				headerName: 'Vendor Country',
+				field: "vcountry",
+				width: 155,
+				cellStyle: {
+					textAlign: 'center'
+				}
+			}
+			, {
+
+				headerName: 'Vendor State',
+				field: "vstate",
+				width: 150,
+				cellStyle: {
+					textAlign: 'center'
+				}
+			},
+			, {
+
+				headerName: 'Vendor City',
+				field: "vcity",
+				cellStyle: {
+					textAlign: 'center'
+				},
+				width: 150,
+			},
+			, {
+
+				headerName: 'Vendor Credit Limit',
+				field: "creditLimit",
+				width: 190,
+				cellStyle: {
+					textAlign: 'center'
+				},
+			hide: true
+			}, {
+
+				headerName: 'Vendor Notes',
+				field: "qutDescription",
+				width: 160,
+				 cellRenderer: function(params) {
+		        	 return safeBase64Decode(params.value);
+		        }
+			}
+		];
+
+		function poPdfDownload(id) {
+			window.open("/purchase/manage-purchase-order-pdf-downloads?invId="
+				+ window.btoa(id), '_blank');
+
+		}
+		
+		/* 
+		 *
+		 quotation item  
+		
+		 */
+
+		var itemDefs = [
+			{
+				headerCheckboxSelection: false,
+				headerCheckboxSelectionFilteredOnly: true,
+				checkboxSelection: true,
+				width: 10,
+				sortable: false,
+				filter: false,
+				resizable: true
+
+			},
+			{
+				headerName: "SlNo",
+				field: "slNo",
+				flex: 2,
+				cellRenderer: function (params) {
+					return '<b>'
+					+ params.data.slNo + '</b>';
+				}
+			}, {
+				headerName: 'SKU',
+				field: "sku",
+				flex: 2,
+
+			}, {
+				headerName: 'HSN Code',
+				field: "hsnCode",
+				flex: 2,
+			}, {
+
+				headerName: 'Item Name',
+				field: "itemName",
+				flex: 3,
+			}, {
+				headerName: 'Item Id',
+				field: "itemId",
+				width: 100,
+				hide: true,
+			}, {
+				headerName: 'Quantity',
+				field: "quantity",
+				type: 'rightAligned',
+				flex: 2,
+				cellRenderer: function (params) {
+					let paramVal = params.data.quantity;
+					if(paramVal){
+						paramVal = parseFloat(paramVal);
+					}else{
+						paramVal = 0;
+					}
+					return paramVal.toFixed(2);
+				}
+				//valueFormatter : currencyFormatter
+			}, {
+
+				headerName: 'Unit',
+				field: "unitName",
+				flex: 2,
+			}, {
+				headerName: 'Unit',
+				field: "unit",
+				hide: true,
+
+			}, {
+				headerName: 'Unit Price',
+				field: "unitPrice",
+				type: 'rightAligned',
+				flex: 2,
+				cellRenderer: function (params) {
+					let paramVal = params.data.unitPrice;
+					if(paramVal){
+						paramVal = parseFloat(paramVal);
+					}else{
+						paramVal = 0;
+					}
+					return paramVal.toFixed(2);
+				}
+				//	valueFormatter : currencyFormatter
+			}, {
+				headerName: 'Discount',
+				field: "discount",
+				type: 'rightAligned',
+				flex: 2,
+				cellRenderer: function (params) {
+					let discountType = params.data.discountType;
+					let discount = params.data.discount
+					let discountDisp = 0;
+					if(discount && discount != 'null'){
+						if(discountType == 0){
+							discountDisp = `${discount} %`;
+						}else if(discountType == 1){
+							discountDisp = `₹ ${discount}`;
+						}else{
+							discountDisp = `${discount}`;
+						}
+					}
+					
+					return discountDisp;
+				}
+				
+				//valueFormatter: currencyFormatter
+			},{
+				headerName: 'Discount Type',
+				field: "discountType",
+				hide: true
+			}, {
+				headerName: 'Amount',
+				field: "lineTotal",
+				type: 'rightAligned',
+				flex: 2,
+				cellRenderer: function (params) {
+					let paramVal = params.data.lineTotal;
+					if(paramVal){
+						paramVal = parseFloat(paramVal);
+					}else{
+						paramVal = 0;
+					}
+					return paramVal.toFixed(2);
+				}
+				//valueFormatter: params => params.data.lineTotal.toFixed(2),
+				//aggFunc : 'sum'
+			}, {
+				headerName: 'GST Rate',
+				field: "gstRate",
+				type: 'rightAligned',
+				width: 100,
+				hide: true,
+				valueFormatter: currencyFormatter
+			}, {
+				headerName: 'CGST',
+				field: "itemCgst",
+				type: 'rightAligned',
+				width: 70,
+				hide: true,
+				//valueFormatter : currencyFormatter
+			}, {
+				headerName: 'SGST',
+				field: "itemSgst",
+				type: 'rightAligned',
+				width: 70,
+				hide: true,
+				//valueFormatter : currencyFormatter
+			}, {
+				headerName: 'IGST',
+				field: "itemIgst",
+				type: 'rightAligned',
+				width: 70,
+				hide: true,
+				//valueFormatter : currencyFormatter
+			}, {
+				headerName: 'Taxable Amount',
+				field: "taxableAmt",
+				type: 'rightAligned',
+				width: 170,
+				hide: true,
+				//valueFormatter: params => params.data.taxableAmt.toFixed(2),
+			},];
+
+
+		var gridOptions = {
+			columnDefs: columnDefs,
+			rowSelection: 'single',
+
+			groupSelectsChildren: true,
+			suppressRowClickSelection: true,
+			suppressAggFuncInHeader: true,
+			defaultColDef: {
+				sortable: true,
+				filter: true,
+				resizable: true,
+				width: 251,
+				height: 10
+			},
+
+			onSelectionChanged: rowSelect,
+			getRowNodeId: function (data) {
+				return data.quotationId;
+			},
+		    pagination: true, 
+		    paginationPageSize: 15,
+		    paginationPageSizeSelector: [15, 30, 45],
+		    onPaginationChanged: function () {
+		        const currentPage = gridOptions.api.paginationGetCurrentPage() + 1;
+		    }
+		};
+
+		var itemOptions = {
+			columnDefs: itemDefs,
+			rowSelection: 'multiple',
+			groupSelectsChildren: true,
+			suppressRowClickSelection: true,
+			suppressAggFuncInHeader: true,
+			defaultColDef: {
+				sortable: true,
+				filter: true,
+				resizable: true,
+				width: 251,
+				height: 10
+			},
+			onSelectionChanged: rowSelectItem,
+			getRowNodeId: function (data) {
+				return data.slNo;
+			}
+		};
+		
+		
+		// Document Upload Grid Defination.
+		
+		 const columnDefsDoc = [
+				{
+					headerCheckboxSelection : false,
+					headerCheckboxSelectionFilteredOnly : true,
+					checkboxSelection : true,
+					cellEditorPopup: true,  
+					width : 10,
+					pinned: 'left',
+					sortable : false,
+					filter : false,
+					resizable : true
+				},
+				{
+					headerName : "Sl No",
+					field : "slno",
+					width : 70,
+					pinned: 'left',
+				},
+				{
+					headerName : "isEdit",
+					field : "isEditDoc",
+					width : 60,
+					pinned: 'left',
+					hide:true
+				},
+				{
+					headerName : 'Document Name',
+					field : "docName",
+					width : 230,
+					pinned: 'left',
+					editable: true,
+					cellStyle: { 
+			            color: '#333', 
+			            backgroundColor:  '#f5f5f5', 
+			            borderColor : '#cdcdcd !important'   
+			        },
+				},
+				{
+					headerName : 'Type',
+					field : "docType",
+					width : 80,
+					cellRenderer: function(params) {
+						if(params.value != null || params.value != ""){
+							
+						if (params.value == "jpg" || params.value == "png" || params.value == "jpeg"){
+							
+							return `<div style = "font-style: italic;"><i style="color: blue" class='bi bi-image'></i> ${params.value.toUpperCase()}</div>`;
+							
+						}else if(params.value == "pdf"){
+						
+							return `<div style = "font-style: italic;"><i style="color: red" class="bi bi-file-pdf"></i> ${params.value.toUpperCase()}</div>`;
+							
+						}else{
+							
+							return `<div><i style="color: blue" class='bi bi-image'> ${params.value.toUpperCase()}</i></div>`;
+							
+						}
+						
+						}else{
+							return "N/A"
+						}
+			            
+			        }
+				},
+				{
+					headerName : 'iURL',
+					field : "dociURL",
+					width : 100,
+					hide:true
+				},
+				{
+					headerName : 'docFile',
+					field : "documentFile",
+					width : 100,
+					hide:true
+				},
+				{
+					headerName : 'Document View',
+					field : "docView",
+					width : 300,
+					cellRenderer: function(params) {
+						const iURL = params.data.dociURL;
+			            return `<a style="text-decoration: none" href="${iURL}" target="_blank"><b>${params.value}</b></a>`;
+			        }
+				}
+			];
+			const gridOptionsDoc = {
+					columnDefs : columnDefsDoc,
+					rowSelection : 'multiple',
+					groupSelectsChildren : true,
+					suppressRowClickSelection : true,
+					suppressAggFuncInHeader : true,
+					defaultColDef : {
+						sortable : true,
+						filter : true,
+						resizable : true,
+						width : 190,
+						singleClickEdit : true,
+					},
+					onSelectionChanged : rowSelectDetailsDoc,
+				};
+			
+			function rowSelectDetailsDoc() {
+				
+				var selectedRows = gridOptionsDoc.api.getSelectedRows();
+				var rowCount = 0;
+				selectedRows.forEach(function(selectedRow, index) {
+					rowCount = rowCount + 1;
+				});
+
+
+				
+				if (rowCount > 0) {
+					$('#docAddBtn').attr("disabled", true);
+					$('#docDeleteBtn').attr("disabled", false);
+				} else {
+					$('#docAddBtn').attr("disabled", false);
+					$('#docDeleteBtn').attr("disabled", true);
+				}
+			}
+
+		
+		function add() {
+			enableField();
+			$("#gstDetls").hide();
+			$("#reset").hide();
+			$("#compare").hide();
+			$("#addre").hide();
+			$("#porder").hide();
+			$("#documentDetails").show();
+
+			$('#toDateCalendarDt').hide();
+			$('#delete1').attr("disabled", true);
+			$('#searchRowDiv').hide();
+			$('#approveQuotation').hide();
+			$('#delete').hide();
+			$('#hideTbl').hide();
+			$("#add").hide();
+			//$("#myGrid").hide();
+			$("#save").show();
+			$("#Cancel").show();
+			$("#addData").show();
+			$("#totalCandidate").hide();
+			$("#dwnld").hide();
+			$("#upld").hide();
+			$("#quoId").text("");
+			$(".quoNoClass").text("");
+			$(".vendorNameClass").text("");
+			$("#quotationhedId").html("");
+			$("#quotationId").val("");
+			$("#qutName").val("");
+			$("#quotationDate").val("");
+			$("#custId").val("");
+			$("#qutNo").val("");
+			$("#project").val("");
+			$("#custName").val("");
+			$("#reference").val("");
+			$('#reference').select2({}).trigger('select2:selecting');
+			$("#salesPerson").val("");
+			$("#dealName").val("");
+			$("#qutValidDate").val("");
+			$("#toDateCalendar").val("");
+			$("#qutDescription").val("");
+			$("#qutActive").val("");
+			$("#qutCreatedBy").val("");
+			$("#qutUpdatedOn").val("");
+			$("#subTotal").val("");
+			$("#grandTotal").val("");
+			$("#slNo").val("");
+			$("#sku").val("");
+			$("#itemId").val("");
+			$("#itemName").val("");
+			$("#quantity").val("");
+			$("#unitPrice").val("");
+			$("#discount").val("");
+			$("#gstRate").val("");
+			$("#lineTotal").val("");
+			$("#qIGST").val("");
+			$("#qCGST").val("");
+			$("#qSGST").val("");
+			$("#itemIgst").val();
+			$("#itemCgst").val();
+			$("#itemSgst").val();
+			$("#appoveStatus").val('');
+			$("#terms").val('');
+			$("#vendorName").val('');
+			$("#paymentTermId").val('');
+			$("#paymentModeId").val('');
+
+
+			$("#reference").empty();
+			var option = $("<option disabled selected></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#reference").append(option);
+			$('#reference').select2({}).trigger('select2:selecting');
+
+			itemOptions.api.setRowData();
+			gridOptionsDoc.api.setRowData([]);
+			
+			$("#newItem").show();
+			$("#delete1").show();
+			$('#delete1').attr("disabled", true);
+			$('#newItem').attr("disabled", false);
+			var date = (new Date()).toISOString().split('T')[0];
+			var newDate = changeDateFormat(date);
+			$("#quotationDate").val(newDate);
+			$.ajax({
+				type: "GET",
+				url: "quotation-details-get-insertedid",
+				success: function (response) {
+					if (response.message == "success") {
+
+						$("#qutId").text(response.body[0].key);
+					}
+				},
+				error: function (e) {
+				}
+			});
+			$("#doctbodyData").empty();
+			var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+				+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+				+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_"></div></td>'
+				+ '<td class="mb-flex"> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+				+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+				+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div><div id="dltImage_0" ></div><input type="hidden" id="editId_0></td>'
+				+ '</tr>';
+			$("#doctbodyData").append(tbl);
+		}
+
+		function changeDateFormat(inputDate) { // expects Y-m-d
+			var splitDate = inputDate.split('-');
+			if (splitDate.count == 0) {
+				return null;
+			}
+			var year = splitDate[0];
+			var month = splitDate[1];
+			var day = splitDate[2];
+
+			return day + '-' + month + '-' + year;
+		}
+		function Cancel() {
+
+			closeNav();
+			$("#reqTable").show();
+			$(".btn-hs").show();
+			$("#myGrid").show();
+			$("#addData").hide();
+			$("#compare").show();
+			$("#reset").show();
+
+
+			$('.formValidation').remove();
+			//	$("#qutId").html('');
+			$("#vendorName").val('');
+			$("#vendorId").val('');
+			$("#suggesstion-box1_").hide();
+			$("#custGSTNo").val('');
+			$("#qutValidDate").val('');
+			$("#reference").val('');
+			$('#reference').select2({}).trigger('select2:selecting');
+			$("#paymentTermId").val('');
+			$("#carrierId").val('');
+
+			$("#qutDescription").val('');
+			$("#organizationName").val('');
+			$("#customerName").val('');
+
+			$("#terms").val('');
+
+			$("#itemId").val('');
+			$("#itemName").val('');
+			$("#quantity").val('');
+			$("#unitPrice").val('');
+			$("#discount").val('');
+			$("#gstRate").val('');
+			$("#lineTotal").val('');
+			$("#tcsAmount").val('');
+			$("#tcsName").val('');
+			$("#subTotal").val('');
+			$("#qIGST").val('');
+			$("#qCGST").val('');
+			$("#qSGST").val('');
+			$("#grandTotal").val('');
+			$("#adjustment").val('');
+			$("#taxType").val('');
+			$("#itemIgst").val('');
+			$("#itemCgst").val('');
+			$("#itemSgst").val('');
+			$("#docnoid_").val('');
+			$("#searchRowDiv").show();
+
+			$("#delete").show();
+			$("#porder").show();
+			$('.formValidation').remove();
+			$("#add").show();
+			$("#myGrid").show();
+			$("#save").hide();
+			$("#Cancel").hide();
+			$("#addData").hide();
+			$('#hideTbl').show();
+			$("#totalCandidate").show();
+			$("#dwnld").show();
+			$("#upld").show();
+			$("#documentDetails").hide();
+			//checkEmpty();
+			itemOptions.api.setRowData();
+			$("#doctbodyData").empty();
+			$("#approveQuotation").show();
+			$('#delete').attr("disabled", true);
+			var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+				+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+				+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_"></div></td>'
+				+ '<td class="mb-flex"> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+				+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+				+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="custom-file-upload"></div> <input type="hidden" id="editId_0"> </td>'
+				+ '</tr>';
+			$("#doctbodyData").append(tbl);
+			$('#delete').attr("disabled", true);
+
+		}
+
+		function openNav() {
+
+			$("#sku").val("");
+			$("#itemName").val("");
+			$("#quantity").val("");
+			$("#unitPrice").val("");
+			$("#discount").val("0");
+			$("#discountType").val("0");
+			$("#gstRate").val("");
+			$("#lineTotal").val("");
+			$("#hsnCode").val("");
+			$("#unit").val("");
+			$("#disDiv").show();
+			$("#discountType").show();
+			$("#editProduct").val("");
+			var vendorValid = true;
+			if ($("#vendorName").val() == null || $("#vendorName").val() == "") {
+				vendorValid = false;
+			}
+			$("#save").hide();
+			if (vendorValid) {
+				 $("#childGridDiv").hide();
+				$("#itemDtlsDiv").removeClass("d-none");
+			} else {
+				toastr.error("First Choose Vendor Name.");
+			}
+
+			//$("#save").hide();
+		}
+
+		function closeNav() {
+			 $("#childGridDiv").show();
+			$("#itemDtlsDiv").addClass("d-none");
+			$('.formValidation').remove();
+			//$("#suggesstion-box_").hide();
+			itemOptions.api.deselectAll();
+			$("#sku").val('');
+			$("#itemId").val('');
+			$("#itemName").val('');
+			$("#quantity").val('');
+			$("#unitPrice").val('');
+			$("#discount").val('');
+			$("#gstRate").val('');
+			$("#lineTotal").val('');
+			$("#hsnCode").val('');
+			$("#unit").val('');
+			$("#editProduct").val(null);
+			
+		}
+
+		/* //quotation item  table add */
+
+		function saveTableData() {
+
+			var editProduct = $("#editProduct").val();
+			var item = {};
+			var data = 1;
+			var validation = true;
+
+			if ($('#itemId').val() == null || $('#itemId').val() == "") {
+				toastr.error("Item Name Required.");
+				return validation = false;
+			}
+			
+			if ($('#unit').val() == null || $('#unit').val() == "") {
+				toastr.error("Unit Required.");
+				return validation = false;
+			}
+			if ($('#quantity').val() == null || $('#quantity').val() == "") {
+				toastr.error("Quantity Required.");
+				return validation = false;
+			}
+			if ($('#unitPrice').val() == null || $('#unitPrice').val() == "") {
+				toastr.error("Unit Price Required.");
+				return validation = false;
+			}
+			if ($('#lineTotal').val() == null || $('#lineTotal').val() == "") {
+				toastr.error("Total Amount Required.");
+				return validation = false;
+			}
+
+			
+			if (validation) {
+				item.slNo = data;
+				itemOptions.api.forEachNode(function (rowNode, index) {
+					if (!editProduct) {
+						data = data + 1;
+						item.slNo = data;
+					}
+					else {
+						item.slNo = editProduct;
+					}
+
+				});
+
+				item.itemId = $('#itemId').val();
+				item.sku = $('#skuTemp').val();
+				item.itemName = $('#itemName').val();
+				item.itemId = $('#itemId').val();
+				item.hsnCode = $('#hsnCode').val();
+				item.unit = $('#unit').val();
+				item.unitName = $("#unit option:selected").text();
+				item.quantity = $('#quantity').val();
+				item.unitPrice = $('#unitPrice').val();
+				if($('#discount').val()!="" && $('#discount').val()!=null){
+					item.discount = $('#discount').val();
+				}else{
+					item.discount = 0.00;
+				}
+				
+				item.discountType = $('#discountType').val();
+				item.gstRate = $('#gstRate').val();
+				item.lineTotal = $('#lineTotal').val();
+				var taxType = $("#taxType").val();
+				if (taxType == 'true') {
+					item.itemCgst = (item.lineTotal * item.gstRate) / 200;
+					item.itemSgst = (item.lineTotal * item.gstRate) / 200;
+					item.itemIgst = 0;
+					item.taxableAmt = parseFloat(item.lineTotal) + item.itemCgst
+						+ item.itemSgst;
+				} else {
+					item.itemCgst = 0;
+					item.itemSgst = 0;
+					item.itemIgst = (item.lineTotal * item.gstRate) / 100;
+					item.taxableAmt = parseFloat(item.lineTotal) + item.itemIgst;
+				}
+
+				//item.slNo = data;
+				var quot = [];
+
+				if (editProduct) {
+					var rowNode = itemOptions.api.getRowNode(editProduct);
+					rowNode.setData(item);
+				} else {
+					itemOptions.api.forEachNode(function (rowNode, index) {
+						quot.push(rowNode.data);
+					});
+					quot.push(item)
+					itemOptions.api.setRowData(quot);
+					//calculation GST,IGST,SGST,CGST,SUBTOTAL,GRANDTOTAL
+					var sum = 0.0;
+					var gstRate = 0.0;
+					var qSGST = 0.0;
+					var qCGST = 0.0;
+					var qIGST = 0.0;
+					var itemIgst = 0.0;
+					var itemCgst = 0.0;
+					var itemSgst = 0.0;
+					var len = quot.length;
+					for (var i = 0; i < len; i++) {
+						sum = sum + parseFloat(quot[i].lineTotal);
+						if (taxType == 'false') {
+							quot[i].itemIgst = quot[i].lineTotal * quot[i].gstRate
+								/ 100;
+							qIGST = qIGST + quot[i].itemIgst;
+							grandTotal = sum + qIGST;
+						} else {
+							quot[i].itemCgst = quot[i].lineTotal * quot[i].gstRate
+								/ 200;
+							quot[i].itemSgst = quot[i].lineTotal * quot[i].gstRate
+								/ 200;
+
+							qCGST = qCGST + quot[i].itemCgst;
+							qSGST = qSGST + quot[i].itemSgst;
+							grandTotal = sum + qCGST + qSGST;
+						}
+					}
+					$("#subTotal").val(sum);
+					$("#qIGST").val(qIGST);
+					$("#qCGST").val(qCGST);
+					$("#qSGST").val(qSGST);
+					$("#grandTotal").val(grandTotal)
+
+				}
+				priceCalculation()
+				closeNav();
+				$("#sku").val('');
+				$("#itemId").val('');
+				$("#itemName").val('');
+				$("#quantity").val('');
+				$("#unitPrice").val('');
+				$("#discount").val('');
+				$("#gstRate").val('');
+				$("#lineTotal").val('');
+				$("#hsnCode").val('');
+				$("#unit").val('');
+
+				$("#editProduct").val(null);
+				$("#discountType").show();
+				$("#disDiv").show();
+
+			}
+
+		}
+
+		function priceCalculation() {
+			var grid = [];
+			itemOptions.api.forEachNode(function (rowNode, index) {
+
+				grid.push(rowNode.data);
+			});
+			var len = grid.length;
+			var val = 0;
+			var val2 = 0;
+			var val3 = 0;
+			var val4 = 0;
+
+			var taxType1 = $("#taxType").val();
+			for (i = 0; i < len; i++) {
+
+				if (taxType1 == 'true') {
+
+					val2 = parseFloat(val2) + parseFloat(grid[i].itemSgst);
+					val3 = parseFloat(val3) + parseFloat(grid[i].itemCgst);
+				} else {
+
+					val4 = parseFloat(val4) + parseFloat(grid[i].itemIgst);
+
+				}
+
+				val = parseFloat(val) + parseFloat(grid[i].lineTotal);
+
+			}
+
+
+			//tcsCalculation();
+			//calculateAdjustment();
+
+
+
+			$("#subTotal").val(val);
+			$("#qIGST").val(val4);
+			$("#qCGST").val(val3);
+			$("#qSGST").val(val2);
+			var gTotal = 0.0;
+
+
+			gTotal = parseFloat(val) + parseFloat(val2) + parseFloat(val3)
+				+ parseFloat(val4);
+
+			$("#grandTotal").val(gTotal.toFixed(2))
+			//$("#tcsAmount").val(tcsAmount.toFixed(2))
+
+		}
+
+		/* //Quotation  table add */
+
+		function save() {
+			
+			gridOptionsDoc.api.stopEditing();
+			if (validFormData() && validProductData()) {
+				$("#saveMstrBtn").attr('disabled', true);
+				var datas = [];
+				var imageValid = true;
+				var uploadList = [];
+				if (gridOptionsDoc.api.getDisplayedRowCount() > 0) {
+					 gridOptionsDoc.api.forEachNode(function(rowNode, indrx) {
+							
+								var objDoc = rowNode.data;		
+								uploadList.push(objDoc);
+						});
+					}
+				
+				setTimeout(function () {
+					var count = 0;
+					itemOptions.api.forEachNode(function (rowNode, indrx) {
+
+						var lineTotal = rowNode.data.lineTotal;
+
+						if (lineTotal == "undefined" || lineTotal == null || lineTotal == "") {
+							count++;
+						} else {
+
+							var obj = rowNode.data;
+							obj.quotationId = $("#quoId").text();
+							obj.vendorId = $("#vendorId").val();
+							obj.vendorName = $("#vendorName").val();
+							obj.reference = $("#reference").val();
+							obj.terms = safeBase64Encode($("#terms").val());
+							obj.paymentModeId = $('#paymentModeId').val();
+							obj.adjustment = $("#adjustment").val();
+							obj.tcs = $("#tcsId").val();
+							obj.tcsAmount = $("#tcsAmount").val();
+							obj.qutValidDate = $("#qutValidDate").val();
+							obj.qutDescription = safeBase64Encode($("#qutDescription").val());
+							obj.subTotal = $("#subTotal").val();
+							obj.grandTotal = $("#grandTotal").val();
+							obj.paymentTermId = $("#paymentTermId").val();
+							obj.qutNo = $("#qutNo").val();
+							obj.taxType = $('#taxType').val();
+							obj.qIGST = $('#qIGST').val();
+							obj.qCGST = $('#qCGST').val();
+							obj.qSGST = $('#qSGST').val();
+							obj.project = $("#project").val();
+							obj.projectName = $("#project").find('option:selected').text();
+							obj.taxType = $('#taxType').val();
+
+							obj.shippingDetails = $("input[name='checkbox']:checked")
+								.val();
+							obj.orgDetails = $('#organizationName').val();
+							obj.custDetails = $('#customerName').val();
+							obj.createdByType = "User";
+							obj.documentList = uploadList;
+
+							console.log('Object', obj)
+							datas.push(obj);
+						}
+					});
+					if (count > 0) {
+						toastr.error("Add Price First.");
+						$("#saveMstrBtn").attr('disabled', false);
+					}
+					else {
+						console.log('datas', datas);
+						saveAllQuotation(datas);
+					}
+					//saveAllQuotation(datas);
+
+				}, 1000)
+
+			}
+		}
+
+		function saveAllQuotation(datas) {
+			//window.location.reload();
+			$('.loader').show();
+			$("body").addClass("overlay");
+			$("#saveMstrBtn").attr('disabled', false);
+			$.ajax({
+				type: "POST",
+				url: "quotation-details-add",
+				contentType: "application/json",
+				data: JSON.stringify(datas),
+				success: function (response) {
+					if (response.code == "Success") {
+						$('.loader').hide();
+						$("body").removeClass("overlay");
+						console.log(response.message)
+						console.log('Data', JSON.stringify(datas))
+						
+						toastr.success("Data Saved Successfully.");
+						//Cancel();
+						view();
+						nextTab('basicInfLiId');
+					}
+					if (response.code == "QuotationExist") {
+						$('.loader').hide();
+						$("body").removeClass("overlay");
+						toastr.error("Quotation For this RFQ is already exist!!");
+						
+					}
+
+				},
+				error: function (datas) {
+					console.log(datas)
+				}
+			})
+
+		}
+
+
+		function validFormData() {
+			var allValid = true;
+			
+			 if ($('#vendorName').val() == null || $('#vendorName').val() == "") {
+					toastr.error("Vendor Name Required.");
+					nextTab('basicInfLiId');
+					return allValid = false;
+				}
+			 
+			 if ($('#qutValidDate').val() == null || $('#qutValidDate').val() == "") {
+					toastr.error("Expected Delivery Date Required.");
+					nextTab('basicInfLiId');
+					return allValid = false;
+				}
+
+		
+			return allValid;
+		}
+
+		function validProductData() {
+			var item = null;
+			itemOptions.api.forEachNode(function (rowNode, index) {
+				item = item + rowNode.data;
+			});
+			if (item) {
+				return true;
+			} else {
+				toastr.error("Please Add Item Details.");
+				nextTab('basicInfLiId');
+				return false;
+			}
+		}
+
+		/* 
+		Edit Quotation
+		 */
+		function editProduct() {
+			
+			let selectedData = itemOptions.api.getSelectedRows();
+			let slNo = selectedData[0].slNo;
+			var quotationId = $("#quotationhedId").html();
+			var rowNode = itemOptions.api.getRowNode(slNo);
+
+			//console.log(rowNode)
+			openNav();
+			$("#editProduct").val(slNo);
+			$("#sku").val(rowNode.data.sku);
+			$("#itemId").val(rowNode.data.itemId);
+			$("#itemIdTemp").val(rowNode.data.itemId);
+			$("#itemName").val(rowNode.data.itemName);
+			$("#hsnCode").val(rowNode.data.hsnCode);
+			$("#unit").val(rowNode.data.unit);
+			$("#quantity").val(parseFloat(rowNode.data.quantity).toFixed(2));
+			$("#unitPrice").val(parseFloat(rowNode.data.unitPrice).toFixed(2));
+			$("#gstRate").val(rowNode.data.gstRate);
+			$("#discount").val(rowNode.data.discount);
+			$("#discountType").val(rowNode.data.discountType);
+			$("#lineTotal").val(parseFloat(rowNode.data.lineTotal).toFixed(2));
+			$("#itemIgst").val(rowNode.data.itemIgst);
+			$("#itemCgst").val(rowNode.data.itemCgst);
+			$("#itemSgst").val(rowNode.data.itemSgst);
+			$("#skuTemp").val(rowNode.data.sku);
+
+		}
+
+		function editQuotation(id) {
+			Cancel();
+			$('.loader').show();
+			var data = id.split(",");
+			var quotationId = data[0];
+			var appoveStatus = data[1];
+			var vendorAproveSts = data[2];
+
+			$("#appoveStatus").val(appoveStatus);
+			$("#gstDetls").hide();
+			$('#delete1').attr("disabled", true);
+			$("#searchRowDiv").hide();
+			//$("#myGrid").hide();
+			$("#reqTable").hide();
+			$(".btn-hs").hide();
+			$("#addData").show();
+			$("#add").hide();
+			//$("#save").show();
+			$("#Cancel").show();
+			$("#totalCandidate").hide();
+			$("#dwnld").hide();
+			$("#upld").hide();
+			$("#addre").hide();
+			$("#documentDetails").show();
+			if (appoveStatus == 'Approved') {
+
+				$("#save").hide();
+				$("#delete1").hide();
+				$("#newItem").hide();
+
+			}
+			else {
+
+				$("#save").show();
+				$("#newItem").show();
+				$("#delete1").show();
+				$('#delete1').attr("disabled", true);
+				$('#newItem').attr("disabled", false);
+				if (vendorAproveSts == 'Approved') {
+					$("#save").hide();
+					$("#delete1").hide();
+					$("#newItem").hide();
+				}
+			}
+			//openNav();
+
+			agGrid
+				.simpleHttpRequest({
+					url: 'quotation-details-edit-new?id=' + quotationId
+				})
+				.then(
+					function (data) {
+						console.log(JSON.stringify(data));
+						$("#quoId").text(data[0].quotationId);
+						$(".quoNoClass").text(data[0].quotationId);
+						$("#qutationId").val(data[0].quotationId);
+						$("#qutId").val(data[0].quotationId);
+						$("#project").val(data[0].project);
+						$("#qutValidDate").val(data[0].qutValidDate);
+						//$("#reference").val(data[0].reference);
+						var ref = data[0].reference;
+						getReferenceList(data[0].vendorId, data[0].quotationId,ref);
+						
+						
+						$("#qutationId").val(data[0].poId);
+						$("#quotationDate").val(data[0].updatedOn);
+						$("#paymentTermId").val(data[0].paymentTermId);
+						$("#adjustment").val(data[0].adjustment);
+						$("#tcsName").val(data[0].tcs);
+						$("#tcsId").val(data[0].tcsId);
+						$("#tcsAmount").val(data[0].tcsAmount);
+						$("#paymentModeId").val(data[0].paymentModeId);
+						$("#terms").val(safeBase64Decode(data[0].terms));
+						$("#grandTotal").val(data[0].grandTotal);
+						$("#qSGST").val(data[0].qSGST);
+						$("#qCGST").val(data[0].qCGST);
+						$("#subTotal").val(data[0].subTotal);
+						$("#qutNo").val(data[0].qutNo);
+						$("#vendorId").val(data[0].vendorId);
+						$("#vendorName").val(data[0].vendorName);
+						$(".vendorNameClass").text(data[0].vendorName);
+						$("#qutValidDate").val(data[0].qutValidDate);
+						$("#toDateCalendar").val(data[0].qutValidDate);
+						$("#qutDescription").val(safeBase64Decode(data[0].qutDescription));
+						$("#taxType").val(data[0].taxType);
+						hideShowS();
+						$("#grandTotal").val(data[0].grandTotal);
+
+						if (data[0].shippingDetails == 1) {
+							$("#custDetails").prop('checked', true);
+							openModal(1);
+						} else {
+							$("#orgDetails").prop('checked', true);
+							openModal(0);
+						}
+						
+						$("#organizationName").val(data[0].orgDetails);
+						$("#cursomerName").val(data[0].custDetails);
+						$("#qIGST").val(data[0].qIGST);
+
+						itemOptions.api.setRowData(data);
+						
+						gridOptionsDoc.api.setRowData([]);
+						let documentData=data[0].documentList;
+						gridOptionsDoc.api.setRowData(documentData);
+						
+						/* $("#doctbodyData").empty();
+
+						
+						if (data[0].documentList != null
+							&& data[0].documentList != "") {
+
+							for (var i = 0; i < data[0].documentList.length; i++) {
+								//console.log(JSON.stringify(data));
+
+								//console.log('in for loop documentList========>>>>'+JSON.stringify(data[0].documentList[i].documnentName));
+
+								var tbl = '<tr>'
+									+ '<td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+									+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option>  </select> </div></td>'
+									+ '<td><div class="form-group"> <input type="text" value="' + data[0].documentList[i].documnentName + '" class="form-control docNoclss" id="docnoid_' + i + '"> </div></td>'
+									+ '<td><div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_' + i + '" id="uploadFor_' + i + '"> <i class="ti-pencil" id="clickImg_' + i + '"></i> </label></div>'
+									+ '<div class="d-flex" style="margin-top: 9px;">'
+									+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_'
+									+ i
+									+ '"name="userImage" onchange="saveMultiFile(event)" /> </div>'
+									+ ' <input type="hidden" id="uploadHidden_' + i + '" value="' + data[0].documentList[i].fileName + '" class="uploadHidCls">'
+									+ '<div id="uploadedBillDiv_' + i + '" align="center" class="uploadedBillCls"><div class="uploadicon position-l">'
+									+ data[0].documentList[i].action
+									+ '</div></div>'
+									+ '<div id="imageName_' + i + '" class="imageName">'
+									+ data[0].documentList[i].fileName
+									+ '</div>'
+									+ '<input type="hidden" id="editId_' + i + '" value="' + data[0].documentList[i].vendorRfqId + '">'
+									+ '<div id="dltImage_' + i + '" class="custom-file-delete"><i class="ti-close position-l rmv1" onclick="openDeleteConfirm()"></i></div></div> </td>'
+									+ '</tr>';
+
+								$("#doctbodyData").append(tbl);
+							}
+						} else {
+							var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+								+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+								+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_"></div></td>'
+								+ '<td class="mb-flex"> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+								+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+								+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div><div id="dltImage_0" ></div><input type="hidden" id="editId_0></td>'
+								+ '</tr>';
+							$("#doctbodyData").append(tbl);
+						} */
+
+					});
+			$('.loader').hide();
+		}
+
+		function check1(fieldId) {
+			var tempVal = $("#" + fieldId).val().replace(/[^0-9 ]/g, '');
+			$("#" + fieldId).val(tempVal);
+		}
+		
+
+		
+
+		function rowSelect() {
+			var selectedRows = gridOptions.api.getSelectedRows();
+			var rowCount = 0;
+			selectedRows.forEach(function (selectedRow, index) {
+				rowCount = rowCount + 1;
+			});
+			var selectedNodes = gridOptions.api.getSelectedNodes();
+			var selectedData = selectedNodes.map(node => node.data);
+			var quotationId = selectedData.map(node => node.quotationId);
+			var approveStatus = selectedData.map(node => node.approveStatus);
+			var vendorAproveSts = selectedData.map(node => node.vendorAproveSts);
+			var id = quotationId + ',' + approveStatus + ',' + vendorAproveSts;
+
+			if (rowCount == 0) {
+				add();
+				$('#addQuotation').hide();
+				$('#cancelMainBtn').show();
+				$('#saveMstrBtn').show();
+				$('#saveMstrBtn').show();
+				$('#editMstrBtn').hide();
+				$('#deleteQuotation').hide();
+			} else if (rowCount == 1) {
+				editQuotation(id);
+				$('#addQuotation').show();
+				$('#cancelMainBtn').hide();
+				$('#saveMstrBtn').hide();
+				if (approveStatus == 'Approved') {
+					$('#approveQuotation').hide();
+					//$('#saveMstrBtn').hide();
+					$('#editMstrBtn').hide();
+					$('#deleteQuotation').hide();
+				} else {
+					$('#approveQuotation').show();
+					//$('#saveMstrBtn').show();
+					$('#editMstrBtn').show();
+					$('#deleteQuotation').show();
+				}
+			}
+			
+		}
+
+		function rowSelectItem() {
+			var selectedRows = itemOptions.api.getSelectedRows();
+			var rowCount = 0;
+			selectedRows.forEach(function (selectedRow, index) {
+				rowCount = rowCount + 1;
+			});
+			 let rowCount1 = rowCount;
+			 if(rowCount1 == 0){
+				 $("#gridAddBtn").attr("disabled", false);
+			     $("#gridEditBtn").attr("disabled", true);
+			     $("#gridDeleteBtn").attr("disabled", true);
+			 }else{
+				 if(rowCount1 == 1){
+				    	$("#gridAddBtn").attr("disabled", true);
+				    	$("#gridEditBtn").attr("disabled", false);
+				    	$("#gridDeleteBtn").attr("disabled", false);
+				    }else{
+				    	$("#gridAddBtn").attr("disabled", true);
+				    	$("#gridEditBtn").attr("disabled", true);
+				    	$("#gridDeleteBtn").attr("disabled", false);
+				    } 
+			 }
+			 
+			    
+			if (rowCount > 0) {
+				$('#delete1').attr("disabled", false);
+				$('#newItem').attr("disabled", true);
+			} else {
+				$('#newItem').attr("disabled", false);
+				$('#delete1').attr("disabled", true);
+			}
+		}
+
+		function enterToSearch(event){
+			console.log("event.keyCode>>",event.keyCode);
+			if(event.keyCode == 13){
+				let filterData = $("#quickFilter").val();
+				if(filterData){
+					onQuickFilterChanged();
+				}
+			}
+			
+		}
+		function onQuickFilterChanged() {
+		    gridOptions.api
+		        .setQuickFilter(document.getElementById('quickFilter').value);
+		    gridOptions.api.getDisplayedRowAtIndex(0).setSelected(true);
+		}
+
+		function reset(){
+			let data = $("#quickFilter").val();
+			if(data!=null && data!=""){
+				$("#quickFilter").val('');
+				onQuickFilterChanged();
+			}
+		}
+		
+
+		function deleteProductOnclick() {
+			var selectedRows = itemOptions.api.getSelectedRows();
+			itemOptions.api.applyTransaction({
+				remove: selectedRows
+
+			});
+			cancelModalProductBtn();
+			//DELETE GST,SUBTOTAL,GRANDTOTAL,SGST,CGST,IGST
+			var sum = $("#subTotal").val();
+			var gstRate = $("#gstRate").val();
+			var qCGST = $("#qCGST").val();
+			var qSGST = $("#qSGST").val();
+			var qIGST = $("#qIGST").val();
+			var grandTotal = $("#grandTotal").val();
+			var itemIgst = $("#itemIgst").val();
+			var itemCgst = $("#itemCgst").val();
+			var itemSgst = $("#itemSgst").val();
+			var len = selectedRows.length;
+			for (var i = 0; i < len; i++) {
+
+				sum = sum - selectedRows[i].lineTotal;
+				var taxType = $("#taxType").val()
+				if (taxType == "true") {
+
+					selectedRows[i].itemIgst = selectedRows[i].lineTotal
+						* selectedRows[i].gstRate / 100;
+					qIGST = qIGST - selectedRows[i].itemIgst;
+					grandTotal = sum + qIGST;
+				} else {
+					selectedRows[i].itemCgst = selectedRows[i].lineTotal
+						* selectedRows[i].gstRate / 200;
+					selectedRows[i].itemSgst = selectedRows[i].lineTotal
+						* selectedRows[i].gstRate / 200;
+
+					qCGST = qCGST - selectedRows[i].itemCgst;
+					qSGST = qSGST - selectedRows[i].itemSgst;
+					grandTotal = sum + qCGST + qSGST;
+				}
+
+			}
+
+			$("#itemIgst").val(itemIgst);
+			$("#itemCgst").val(itemCgst);
+			$("#itemSgst").val(itemSgst);
+			$("#subTotal").val(sum);
+			$("#qIGST").val(qIGST);
+			$("#qCGST").val(qCGST);
+			$("#qSGST").val(qSGST);
+			$("#grandTotal").val(grandTotal)
+		}
+
+		/* Vendor AutoSearch */
+
+		function getVendorList() {
+			$('.loader').show();
+			var search = $("#vendorName").val();
+			$("#addre").hide();
+			var type = "Inventory";
+			if (search) {
+
+				$
+					.ajax({
+						type: "POST",
+						url: "quotation-details-get-vendor-list?type=" + type,
+						dataType: 'json',
+						contentType: 'application/json',
+						data: search,
+						success: function (response) {
+							if (response.message == "success") {
+								$('.loader').hide();
+								if (response.body.length != 0) {
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1" >';
+									for (var i = 0; i < response.body.length; i++) {
+										content += '<li style="margin-left:-30px; font-weight:100; font-size:12px;"  class="autocompletedata cp" onClick="selectAutocompleteValue1(\''
+											+ response.body[i].vendorId
+											+ '\',\''
+											+ response.body[i].vendorName
+											+ '\',\''
+											+ response.body[i].custGSTNo
+											+ '\',\''
+											+ response.body[i].taxType
+											+ '\')">'
+											+ response.body[i].vendorName
+											+ '</li>';
+									}
+									/* content += '<li style="margin-left:-30px;background-color:#082958;color:#fff;"  onclick="openModalForVendor();"><a class="addCust" href="#">Add New Vendor</a>'
+										+ '</li>'; */
+									content += '</ul>';
+									//console.log("content " + content)
+									$("#suggesstion-box1_").show();
+									$("#suggesstion-box1_").html(content);
+
+								} else {
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1">';
+									content += '<li style="margin-left:-30px; font-weight:100; font-size:14px; color:#ccc;     background-color: #0909e4;" onClick="selectAutocompleteValue()">'
+										+ "No Data Found" + '</li>';
+									/* content += '<li style="margin-left:-30px;"  onclick="openModalForVendor();"><a class="addCust" href="#">Add New Vendor</a>'
+										+ '</li>'; */
+									content += '</ul>';
+									$("#suggesstion-box1_").show();
+									$("#suggesstion-box1_").html(content);
+									$('.loader').hide();
+								}
+							}
+						},
+						error: function (data) {
+							console.log(data);
+							$('.loader').hide();
+						}
+					})
+			} else {
+				$("#suggesstion-box1_").hide();
+				$('.loader').hide();
+			}
+
+		}
+
+		function selectAutocompleteValue1(vendorId, vendorName, custGSTNo, taxType) {
+
+			if (vendorId) {
+
+				$("#vendorId").val(vendorId);
+
+				$("#vendorName").val(vendorName);
+				$("#custGSTNo").val(custGSTNo);
+				$("#taxType").val(taxType);
+				$("#search").val(vendorName);
+				$("#search").attr('data-procat', vendorId);
+				$("#suggesstion-box1_").hide();
+				$("#addre").hide();
+				hideShowS();
+				getReferenceList(vendorId, '', '');
+				//getAddressDetails(vendorId)
+
+
+			} else {
+
+				$("#vendorId").val("");
+
+				$("#vendorName").val("");
+				$("#custGSTNo").val("");
+				$("#taxType").val("");
+				$("#search").val("");
+				$("#search").attr('data-procat', "");
+				$("#suggesstion-box1_").hide();
+
+			}
+		}
+		function selectAutocompleteValue() {
+
+			$("#vendorId").val("");
+			$("#vendorName").val("");
+			$("#custGSTNo").val("");
+			$("#taxType").val("");
+			$("#search").val("");
+			$("#search").attr('data-procat', "");
+			$("#suggesstion-box1_").hide();
+
+		}
+
+		
+		
+		function getReferenceList(vendorId, quotId, rid) {
+
+			$('.loader').show();
+			if (vendorId) {
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				$.ajax({
+					type: "GET",
+					url: "quotation-details-getReferenceList?id=" + vendorId + '&quotId=' + quotId,
+					success: function (response) {
+						if (response.message == "success") {
+							$('.loader').hide();
+							$("#reference").empty();
+							var option = $("<option disabled selected></option>");
+							$(option).val(null);
+							$(option).html("Select");
+							$("#reference").append(option);
+							for (var i = 0; i < response.body.length; i++) {
+								var option = $("<option></option>");
+								$(option).val(response.body[i].key);
+								$(option).html(response.body[i].key);
+								$("#reference").append(option);
+							}
+							if (rid != "" || rid != null || rid != "null") {
+								$("#reference").val(rid);
+								$('#reference').select2({}).trigger('select2:selecting');
+							}
+						}
+					},
+					error: function (e) {
+						$('.loader').hide();
+					}
+				});
+			} else {
+				$("#reference").empty();
+				var option = $("<option disabled selected></option>");
+				$(option).val(null);
+				$("#reference").append(option);
+				$("#reference").empty();
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				$('.loader').hide();
+			}
+		}
+		
+
+
+		function getAddressDetails(vendorId) {
+			$('.loader').show();
+			//var Id=$("#custName").val();
+			$.ajax({
+				type: "GET",
+				url: "quotation-details-get-address?id=" + vendorId,
+
+				async: false,
+				success: function (response) {
+					if (response.message == "Success") {
+						$('.loader').hide();
+						console.log(response.body)
+						$("#con").html(response.body.country);
+						$("#bstate").html(response.body.states);
+						$("#bcity").html(response.body.city);
+						$("#bstreet1").html(response.body.street1);
+						$("#bstreet2").html(response.body.street2);
+						$("#bzipcode").html(response.body.zipCode);
+						$("#bphone").html(response.body.phone);
+						$("#bfax").html(response.body.fax);
+
+						$("#con1").html(response.body.country1);
+						$("#bstate1").html(response.body.states1);
+						$("#bcity1").html(response.body.city1);
+						$("#bstreet11").html(response.body.street11);
+						$("#bstreet21").html(response.body.street21);
+						$("#bzipcode1").html(response.body.zipCode1);
+						$("#bphone1").html(response.body.phone1);
+						$("#bfax1").html(response.body.fax1);
+
+					}
+				}
+			});
+		}
+
+
+		/* Item AutoSearch */
+
+		function getItemQutotationList() {
+			$('.loader').show();
+			var search = $("#itemName").val();
+			var type = "Inventory";
+			if (search) {
+				$
+					.ajax({
+						type: "POST",
+						url: "quotation-details-item-get-customer-list?type=" + type,
+						dataType: 'json',
+						contentType: 'application/json',
+						data: search,
+						success: function (response) {
+							if (response.message == "success") {
+								$('.loader').hide();
+								if (response.body.length != 0) {
+									$("#itemId").val("");
+									$("#gstRate").val("");
+									$("#sku").val("");
+									$("#brandName").val("");
+									$("#brandId").val("");
+									$("#hsnCode").val("");
+									$("#unit").val("");
+									$("#itemName").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1">';
+									for (var i = 0; i < response.body.length; i++) {
+										content += '<li style="margin-left:-30px; font-weight:100; font-size:14px; color:#ccc; background-color: #0909e4;"  class="autocompletedata cp" onClick="selectAutocompleteValueItem1(\''
+											+ response.body[i].sku
+											+ '\',\''
+											+ response.body[i].productId
+											+ '\',\''
+											+ window
+												.btoa(response.body[i].productNameDisp)
+											+ '\',\''
+											+ response.body[i].brandId
+											+ '\',\''
+											+ window
+												.btoa(response.body[i].brandName)
+											+ '\',\''
+											+ window
+												.btoa(response.body[i].hsnCode)
+											+ '\',\''
+											+ window
+												.btoa(response.body[i].unit)
+											+ '\',\''
+											+ window
+												.btoa(response.body[i].gstRate)
+											+ '\')">'
+											/* + response.body[i].sku
+											+ " - " */
+											+ response.body[i].productName
+											+ '</li>';
+									}
+									/* content += '<li style="margin-left:-30px;"  onclick="AddProduct();"><a class="addCustnew" href="#">Add Item</a>'
+										+ '</li>'; */
+									content += '</ul>';
+									$("#suggesstion-box_").show();
+									$("#suggesstion-box_").html(content);
+
+								}
+								else {
+									$("#itemName").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1">';
+									content += '<li style="margin-left:-30px;font-weight:100; font-size:14px; color:#ccc;     background-color: #0909e4;"li onClick="selectAutocompleteValueItem()">'
+										+ "No Data Found" + '</li>';
+									/* content += '<li style="margin-left:-30px;"  onclick="AddProduct();"><a class="addCustnew" href="#">Add Item</a>'
+										+ '</li>'; */
+									content += '</ul>';
+									$("#suggesstion-box_").show();
+									$("#suggesstion-box_").html(content);
+								}
+							}
+						},
+						error: function (data) {
+							console.log(data);
+							$('.loader').hide();
+						}
+					})
+			} else {
+				$('.loader').hide();
+				$("#itemId").val("");
+				$("#itemName").val("");
+				$("#gstRate").val("");
+				$("#sku").val("");
+				$("#brandName").val("");
+				$("#brandId").val("");
+				$("#hsnCode").val("");
+				$("#unit").val("");
+				$("#suggesstion-box_").hide();
+			}
+		}
+		
+		function selectAutocompleteValueItem1(sku, productId, productName, brandId,
+			brandName, hsnCode, unit, gstRate) {
+			if (sku) {
+				
+				const idTracker = new Set();
+		    	 
+		    	 itemOptions.api.forEachNode(node => {
+		    		 idTracker.add(node.data.sku);
+		         });
+		    	 
+		    	 if (idTracker.has(sku)){
+		    		 toastr.error("Item Already Present.");
+		    		 $("#itemId").val("");
+						$("#itemName").val("");
+						$("#gstRate").val("");
+						$("#sku").val("");
+						$("#brandName").val("");
+						$("#brandId").val("");
+						$("#hsnCode").val("");
+						$("#unit").val("");
+						$("#itemName").attr('data-procat', "");
+						$("#suggesstion-box_").hide();
+		    	 }else{
+		    		 $("#itemName").val(window.atob(productName));
+						$("#itemId").val(productId);
+						$("#brandName").val(window.atob(brandName));
+						$("#brandId").val(brandId);
+						$("#sku").val(sku);
+						$("#skuTemp").val(sku);
+						$("#hsnCode").val(window.atob(hsnCode));
+						$("#unit").val(window.atob(unit));
+						$("#gstRate").val(window.atob(gstRate));
+						$("#itemName").attr('data-procat', itemId);
+						$("#suggesstion-box_").hide();
+						hideShowS();
+		    	 }
+				
+			} else {
+				$("#itemId").val("");
+				$("#itemName").val("");
+				$("#gstRate").val("");
+				$("#sku").val("");
+				$("#brandName").val("");
+				$("#brandId").val("");
+				$("#hsnCode").val("");
+				$("#unit").val("");
+				$("#itemName").attr('data-procat', "");
+				$("#suggesstion-box_").hide();
+
+
+			}
+		}
+		function selectAutocompleteValueItem() {
+
+			$("#itemId").val("");
+
+			$("#gstRate").val("");
+			$("#sku").val("");
+			$("#itemName").val("");
+			$("#itemName").attr('data-procat', "");
+			$("#suggesstion-box_").hide();
+
+		}
+
+
+
+		function getProductByCategory() {
+
+			$("#select_product").empty();
+			var valor = "";
+			$('input.pc1-box[type=checkbox]').each(function () {
+				if (this.checked)
+					valor = valor + $(this).val() + ",";
+			});
+			if (valor) {
+				$('.loader').show();
+				$("#select_product").empty();
+				$
+					.ajax({
+						type: "POST",
+						url: "purchase-rfq-item-product-by-cat",
+						dataType: 'json',
+						contentType: 'application/json',
+						data: valor,
+						success: function (response) {
+							if (response.message == "success") {
+								$('.loader').hide();
+								$("#select_product").empty();
+								var content = '';
+								for (var i = 0; i < response.body.length; i++) {
+
+									content += '<div class="autocompletedata cp product-item" id="'
+										+ response.body[i].productId
+										+ "_"
+										+ response.body[i].sku
+										+ '" onClick=selectActive("'
+										+ response.body[i].productId
+										+ "_"
+										+ response.body[i].sku
+										+ '","'
+										+ response.body[i].sku
+										+ '","'
+										+ response.body[i].productId
+										+ '","'
+										+ window.btoa(response.body[i].productName)
+										+ '","'
+										+ window.btoa(response.body[i].brandId)
+										+ '","'
+										+ window.btoa(response.body[i].brandName)
+										+ '","'
+										+ window.btoa(response.body[i].productCatId)
+										+ '","'
+										+ window.btoa(response.body[i].productCatName)
+										+ '","'
+										+ window.btoa(response.body[i].hsnCode)
+										+ '","'
+										+ window.btoa(response.body[i].unit)
+										+ '")>'
+										/* + response.body[i].sku
+										+ " - "
+										+ response.body[i].brandName
+										+ " - " */
+										+ response.body[i].productName
+										+ '</div>';
+								}
+								content += '</ul>';
+								$("#select_product").show();
+								$("#select_product").append(content);
+
+								var itemId = $("#itemId").val();
+
+								var skuId = $("#sku").html();
+
+								if (itemId) {
+									$("#" + itemId + "_" + skuId).addClass(
+										'productActive');
+								}
+
+							}
+						},
+						error: function (data) {
+							$('.loader').hide();
+						}
+					})
+			} else {
+				$('.loader').hide();
+				$("#itemName").val(null);
+				$("#hsnCode").val(null);
+				$("#unit").val(null);
+				$("#itemId").val(null);
+				//	$("#sku").val(null);
+				$("#select_product").empty();
+			}
+		}
+
+		function selectActive(id, sku, productId, productName, brandId, brandName,
+			prodCatId, prodCatName, hsnCode, unit, gstRate) {
+			$('.autocompletedata ').removeClass('productActive');
+			$("#" + id).addClass('productActive');
+			$("#itemNameTemp").val(window.atob(productName));
+			$("#itemIdTemp").val(productId);
+			$("#itemId").val(productId);
+			$("#skuTemp").val(sku);
+			$("#sku").val(sku);
+			$("#unit").val(window.atob(unit));
+			$("#hsnCode").val(window.atob(hsnCode));
+			$("#brandName").val(window.atob(brandName));
+			$("#brandId").val(window.atob(brandId));
+			$("#gstRate").val(window.atob(gstRate));
+			$("#prodCatId").val(window.atob(prodCatId));
+			$("#prodCatName").val(window.atob(prodCatName));
+			$("#search").val(window.atob(productName))
+			$("#brandNameTemp").val(window.atob(brandName));
+			$("#brandIdTemp").val(window.atob(brandId));
+			$("#gstRateTemp").val(window.atob(gstRate));
+			$("#prodCatIdTemp").val(window.atob(prodCatId));
+			$("#prodCatNameTemp").val(window.atob(prodCatName));
+			$("#searchTemp").val(window.atob(productName))
+			$("#hsnCodeTemp").val(window.atob(hsnCode));
+			$("#unitTemp").val(window.atob(unit));
+
+		}
+
+		function discountChange() {
+			calculateLineTotal();
+		}
+		//calculate Amount=(quantity*unitPrice)-Discount
+		var totalLine;
+		function calculateLineTotal() {
+			var price = $("#unitPrice").val();
+			var quantity = $("#quantity").val();
+			var discount = $("#discount").val();
+			var discountType = $("#discountType").val();
+			if (discountType == '1') {
+				if (price && quantity) {
+					var mul = price * quantity;
+
+					if (discount > mul) {
+
+						$("#discount").val("0");
+						totalLine = mul - discount;
+						$("#lineTotal").val((mul).toFixed(2));
+					} else {
+						totalLine = mul - discount;
+						$("#lineTotal").val((totalLine).toFixed(2));
+					}
+
+				} else {
+					var mul = 0;
+					$("#lineTotal").val((mul).toFixed(2));
+
+				}
+			} else {
+				if (price && quantity) {
+					var mul = price * quantity;
+					if (discount > mul) {
+						if (discount <= 100) {
+							totalLine1 = (mul / 100) * discount;
+							totalLine = mul - totalLine1;
+							$("#lineTotal").val((totalLine).toFixed(2));
+
+						} else {
+							$("#discount").val("0");
+							totalLine1 = (mul / 100) * discount;
+							totalLine = mul - totalLine1;
+							$("#lineTotal").val((mul).toFixed(2));
+						}
+					} else {
+
+						if (discount <= 100) {
+
+							totalLine1 = (mul / 100) * discount;
+							totalLine = mul - totalLine1;
+							$("#lineTotal").val((totalLine).toFixed(2));
+
+						} else {
+
+							$("#discount").val("0");
+							totalLine1 = (mul / 100) * discount;
+							totalLine = mul - totalLine1;
+							$("#lineTotal").val((mul).toFixed(2));
+						}
+
+					}
+
+				} else {
+					var mul = 0;
+					$("#lineTotal").val((mul).toFixed(2));
+
+				}
+			}
+		}
+
+
+		var grandTotal1 = $("#grandTotal").val();
+		;
+		/* function calculateAdjustment() {
+			var adjustment = $("#adjustment").val();
+	
+			if (adjustment && grandTotal) {
+	
+				var add = parseFloat(adjustment) + parseFloat(grandTotal);
+	
+				$("#grandTotal").val((add).toFixed(3));
+	
+			} else {
+				var add = 0;
+	
+				$("#grandTotal").val((grandTotal).toFixed(3));
+	
+			}
+	
+		} */
+
+		function calculateAdjustment() {
+			//var adjustment = $("#adjustment").val();
+
+			if (/^\d+$/.test($("#adjustment").val())
+				|| $("#adjustment").val() == '-'
+				|| $("#adjustment").val() == ''
+				|| /^\-?\d+((\.|\,)\d+)?$/.test($("#adjustment").val())) {
+				var adjustment = $("#adjustment").val();
+			} else {
+				$("#adjustment").val(0);
+			}
+
+			var subTotal = $("#subTotal").val();
+			var qSGST = $("#qSGST").val();
+			var qCGST = $("#qCGST").val();
+			var qIGST = $("#qIGST").val();
+			var tcsAmount1 = $("#tcsAmount").val();
+			var tcsAmount = 0;
+			if (tcsAmount1 != '' && tcsAmount1 != null) {
+				tcsAmount = tcsAmount1;
+			}
+			var grandTotal = parseFloat(subTotal) + parseFloat(qSGST)
+				+ parseFloat(qCGST) + parseFloat(qIGST) + parseFloat(tcsAmount);
+
+			var add = 0;
+
+			if (/^\-?\d+((\.|\,)\d+)?$/.test(adjustment)) {
+
+				add = parseFloat(adjustment) + parseFloat(grandTotal);
+
+				$("#grandTotal").val((add).toFixed(2));
+
+			} else {
+
+				$("#grandTotal").val((grandTotal).toFixed(2));
+
+			}
+
+		}
+
+		function tcsCalculation() {
+
+			var adjustment = 0;
+			var adjustment1 = $("#adjustment").val();
+			if (adjustment1 != '' && adjustment1 != null) {
+				var adjustment = adjustment1;
+			}
+
+			var qSGST = $("#qSGST").val();
+			var qCGST = $("#qCGST").val();
+			var qIGST = $("#qIGST").val();
+
+			var tcsValue = $("#tcsValue").val();
+
+			var grandTotal2 = $("#subTotal").val();
+			var grandTotall = parseFloat(grandTotal2) + parseFloat(qSGST)
+				+ parseFloat(qCGST) + parseFloat(qIGST)
+				+ parseFloat(adjustment);
+
+			if (tcsValue != '') {
+
+				var tcs = (parseFloat(grandTotal2) * parseFloat(tcsValue)) / 100;
+
+				var add = parseFloat(tcs) + parseFloat(grandTotall);
+
+				$("#grandTotal").val(add.toFixed(2));
+				$("#tcsAmount").val(tcs.toFixed(2));
+
+			} else {
+				var add = 0;
+				$("#grandTotal").val(parseFloat(grandTotall).toFixed(2));
+
+			}
+
+		}
+		/* 	function tcsCalculation() {
+	
+		 var tcsValue = $("#tcsValue").val();
+		 var grandTotal2 = $("#subTotal").val();
+		 var grandTotall = $("#grandTotal").val();
+		
+	
+		 if (tcsValue) {
+		 //$("#grandTotal2").val("0");
+		 var tcs = (parseFloat(grandTotal2) * parseFloat(tcsValue)) / 100;
+	
+		 var add = parseFloat(tcs) + parseFloat(grandTotall);
+	
+		 $("#grandTotal").val((add).toFixed(3));
+		 $("#tcsAmount").val((tcs).toFixed(3));
+	
+		 } else {
+		 var add = 0;
+	
+		 $("#grandTotal").val((grandTotal).toFixed(3));
+	
+		 }
+	
+		 } */
+
+		
+		/*
+		image upload fn
+		 */
+
+		function saveFile() {
+
+			var uFile = $('#fileUpload')[0].files[0];
+			var fileName = $('#fileUpload').val();
+			console.log(uFile);
+			console.log(fileName);
+
+			var lastIndex = fileName.lastIndexOf("\\");
+			if (lastIndex >= 0) {
+				fileName = fileName.substring(lastIndex + 1);
+			}
+			var iURL = URL.createObjectURL(uFile);
+
+			$('#imgemp').attr('src', '');
+			$('#imgemp').attr('src', iURL);
+
+			var fileData = new FormData();
+			fileData.append('file', uFile);
+			fileData.append('path', 'none');
+
+			$.ajax({
+				type: "POST",
+				url: "quotation-details-upload-fileprofuct",
+				enctype: "multipart/form-data",
+				contentType: false,
+				data: fileData,
+				processData: false,
+				cache: false,
+				success: function (response) {
+
+				},
+				error: function (e) {
+
+				}
+			});
+
+		}
+		function showDisplay() {
+			var title = $('#companyName').val();
+
+			$('#vendorDisplayName').val(title);
+		}
+
+		function tcscancelBtn() {
+			$('#manageTCsModel').modal('hide');
+		}
+
+		function saveFile1(event) {
+			var uFile = $(uploadDoc_0)[0].files[0];
+			var fileName = event.currentTarget.value;
+			var lastIndex = fileName.lastIndexOf("\\");
+			if (lastIndex >= 0) {
+				fileName = fileName.substring(lastIndex + 1);
+			}
+			var extension = fileName.split(".");
+			var iURL = URL.createObjectURL(uFile);
+			$("#uploadedBillDiv_0").html("");
+
+			if (extension[1] == "jpg" || extension[1] == "png"
+				|| extension[1] == "jpeg") {
+				var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='bi bi-image' style='color: blue'></i></a></div>";
+			} else if (extension[1] == "pdf") {
+				var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='bi bi-filetype-pdf' style='color: red'></i></a></div>";
+			} else {
+				var LightImg = "<div class='uploadicon position-l'> </div>";
+			}
+			$("#uploadedBillDiv_0").html(LightImg);
+			$("#imageName_0").html(fileName);
+			var fileData = new FormData();
+			fileData.append('file', uFile);
+			fileData.append('path', 'none');
+			$.ajax({
+				type: "POST",
+				url: "quotation-details-upload-file1",
+				enctype: "multipart/form-data",
+				contentType: false,
+				data: fileData,
+				processData: false,
+				cache: false,
+				success: function (response) {
+				},
+				error: function (e) {
+
+				}
+			});
+		}
+		//TCS auto search
+
+		function getTCSList() {
+			var search = $("#tcsName").val();
+
+			if (search) {
+
+				$
+					.ajax({
+						type: "POST",
+						url: "manage-purchase-order-get-tcs-list",
+						dataType: 'json',
+						contentType: 'application/json',
+						data: search,
+						success: function (response) {
+							if (response.message == "success") {
+								console.log("response data"
+									+ JSON.stringify(response))
+								if (response.body.length != 0) {
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list3" >';
+									for (var i = 0; i < response.body.length; i++) {
+										content += '<li style="margin-left:-30px; font-weight:100; font-size:14px; color:#ccc;     background-color: #0909e4;" class="autocompletedata cp" onClick="selectAutocompleteValue3(\''
+											+ response.body[i].tcsId
+											+ '\',\''
+											+ response.body[i].taxName
+											+ '\',\''
+											+ response.body[i].rateId
+											+ '\',\''
+											+ response.body[i].taxType
+											+ '\')">'
+											+ response.body[i].taxName
+											+ '</li>';
+									}
+									content += '<li style="margin-left:-30px;"  onclick="AddTCS();"><a class="addCust" href="#">Manage TCS</a>'
+										+ '</li>';
+									content += '</ul>';
+									//console.log("content " + content)
+									$("#suggesstion-box3_").show();
+									$("#suggesstion-box3_").html(content);
+
+								} else {
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list3">';
+									content += '<li style="margin-left:-30px; font-weight:100; font-size:14px; color:#ccc;     background-color: #0909e4;" onClick="selectAutocompleteValuee1()">'
+										+ "No Data Found" + '</li>';
+									content += '<li style="margin-left:-30px;"  onclick="AddTCS();"><a class="addCust" href="#">Manage TCS</a>'
+										+ '</li>';
+									content += '</ul>';
+									$("#suggesstion-box3_").show();
+									$("#suggesstion-box3_").html(content);
+								}
+							}
+						},
+						error: function (data) {
+							console.log(data);
+						}
+					})
+			} else {
+				$("#suggesstion-box3_").hide();
+			}
+
+		}
+
+		function selectAutocompleteValuee1() {
+
+			$("#tcsId").val("");
+
+			$("#tcsName").val("");
+			$("#custGSTNoo1").val("");
+			$("#taxTypee1").val("");
+			$("#search").val("");
+			$("#search").attr('data-procat', "");
+			$("#suggesstion-box3_").hide();
+
+		}
+
+		function selectAutocompleteValue3(tcsId, taxName, rateId, taxType) {
+
+			$("#tcsId").val(tcsId);
+			$("#tcsName").val(taxName);
+			$("#tcsValue").val(rateId);
+			$("#taxTypee1").val(taxType);
+			$("#search").val(taxName);
+			$("#search").attr('data-procat', tcsId);
+			$("#suggesstion-box3_").hide();
+
+			//checkForDuplicate(key,counter);
+			tcsCalculation();
+			//tcsAmountCalculation();
+
+		}
+		function AddTCS() {
+
+			$('#manageTCsModel').modal('show');
+
+		}
+
+		function addtcsInfo1() {
+			$('.loader').show();
+			var obj = {};
+			var Id = $("#tcsId").val();
+
+			obj.salespersonId = $("#tcsId").val();
+			obj.collection = $("#collection").val();
+			obj.rateId = $("#rateId").val();
+			obj.taxName = $("#taxName").val();
+
+			$.ajax({
+				type: "POST",
+				url: "manage-purchase-order-add-tcs",
+				contentType: "application/json",
+				data: JSON.stringify(obj),
+				success: function (response) {
+					if (response.message == "Success") {
+						$('.loader').hide();
+						//getSalessPersonList();
+						$("#messageParagraph").text("Data Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+
+						//$("#myGrid").show();
+						//$("#salespersonDetails").hide();
+						$('#manageTCsModel').modal('hide');
+
+					}
+				},
+				error: function (data) {
+					$('.loader').hide();
+				}
+			})
+
+		}
+
+		function checkEmpty() {
+			var infofileName = true;
+			$(".formValidation").remove();
+			$('.docNoclss').each(function () {
+				if ($(this).val() == null || $(this).val() == "") {
+					infofileName = false;
+					validationModal("Document Name Required", $(this).attr('id'));
+				}
+			});
+
+			var mulDocInfo = true;
+			if (infofileName) {
+				$('#doctbodyData > tr').each(function () {
+					if ($(this).closest('tr').find('.imageName').text()) {
+						mulDocInfo = true;
+					} else {
+						mulDocInfo = false;
+						toastr.error("Please Choose a File."); 
+						return false;
+					}
+
+				});
+			}
+			if (infofileName && mulDocInfo) {
+				addMore1()
+			}
+		}
+
+		function saveMultiFile(event) {
+			var AssignItemQty = event.currentTarget.value;
+			var currentFldId = event.currentTarget.getAttribute('id');
+			var l = currentFldId.split("_");
+			var counter = l[1];
+			var currentFldId = "#" + currentFldId;
+
+			var uFile = $(currentFldId)[0].files[0];
+			var fileName = event.currentTarget.value;
+			var lastIndex = fileName.lastIndexOf("\\");
+			if (lastIndex >= 0) {
+				fileName = fileName.substring(lastIndex + 1);
+			}
+			var extension = fileName.split(".");
+
+			var iURL = URL.createObjectURL(uFile);
+			$("#uploadedBillDiv_" + counter).html("");
+			if (extension[1] != null && extension[1] != "") {
+				$("#uploadHidden_" + counter).val('');
+			}
+			/* if (extension[1] == "jpg" || extension[1] == "png"
+				|| extension[1] == "jpeg") {
+				var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='bi bi-image' style='font-size: 12px'></i></a></span>";
+			} else if (extension[1] == "pdf") {
+				var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-pdf-o'></i> </a></span>";
+			} else if (extension[1] == "xls" || extension[1] == "xlsx") {
+				var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-excel-o'></i></a></span>";
+			} else if (extension[1] == "doc" || extension[1] == "dox"
+				|| extension[1] == "docx") {
+				var LightImg = "<span class='uploadicon position-l'><a class='example-image-link' href='" + iURL + "' title='" + fileName + "' target='_balnk'><i class='fa fa-file-word-o'></i></a></span>";
+			} else {
+				var LightImg = "<span class='uploadicon position-l '> </div>";
+			} */
+			//var dltImg = "<i class='ti-close position-l rmv1' onclick='openDeleteConfirm()'></i>";
+			/* $("#uploadedBillDiv_" + counter).html(LightImg);
+			$("#imageName_" + counter).html(fileName);
+			$("#dltImage_" + counter).html(dltImg);
+			$("#dltImage_" + counter).addClass("custom-file-delete");
+
+			$("#clickImg_" + counter).removeClass("ti-plus");
+			$("#clickImg_" + counter).addClass("ti-pencil"); */
+			
+			var fileData = new FormData();
+			fileData.append('file', uFile);
+			fileData.append('path', 'none');
+			
+			var details = {};
+		    var data = [];
+		    var x = [];
+		    var reader = new FileReader();
+			reader.readAsDataURL(uFile);
+			var iURL = URL.createObjectURL(uFile);
+			reader.onload = function() {
+				data = reader.result.split(",");
+				x.push(data[1]);
+				//details.fileName=fileName;
+			};
+			
+			const lastRowIndex = gridOptionsDoc.api.getDisplayedRowCount();
+			//console.log("lastRowIndex>>>",lastRowIndex);
+			
+			 let newRow = {
+					 slno : parseInt(lastRowIndex) + parseInt(1),
+						docName : null,
+						isEditDoc : 0,
+						docType : extension[1],
+						dociURL : iURL,
+						documentFile : x,
+						docView : fileName
+				};
+			
+			 gridOptionsDoc.api.applyTransaction({
+				add : [ newRow ] 
+			 });
+
+		}
+		function addMore1() {
+
+			var lengthOfTableRow = $("#doctbodyData").children('tr').length;
+			var cloneHtml = $("#docTbl tbody tr:first").clone();
+
+			$("#docTbl tbody").append($("#docTbl tbody tr:first").clone());
+			$("#myTable tbody tr td:last").html("");
+			//var addMore = '<button type="button" class="btn btn-primary tr_clone_add" name="add" onclick="addMore1();"><span class="ti-plus"></span></button>&nbsp;'
+
+			$("#docTbl tbody tr:last").find(".documentclss").val("");
+			$("#docTbl tbody tr:last").find(".docNoclss").val("");
+			$("#docTbl tbody tr:last").find(".documentclssup").val("");
+			$("#docTbl tbody tr:last").find(".uploadedBillCls").empty();
+			$("#docTbl tbody tr:last").find(".uploadHidCls").empty();
+			$("#docTbl tbody tr:last").find(".uploadHidCls").val('');
+			$("#docTbl tbody tr:last").find(".imageName").empty();
+			var j = 0;
+			$("#docTbl > #doctbodyData > tr").each(function (i) {
+
+				var selectInput = $(this).find('select');
+				var textInput = $(this).find('input');
+				var fileInput = $(this).find('file');
+				var divInput = $(this).find('div');
+				var label = $(this).find('label');
+				var iInput = $(this).find('i');
+				selectInput.eq(0).attr('id', "docid_" + i);
+
+				textInput.eq(1).attr('id', "docnoid_" + i);
+				textInput.eq(2).attr('id', "uploadDoc_" + i);
+				label.eq(1).attr('for', "uploadDoc_" + i);
+				textInput.eq(3).attr('id', "uploadHidden_" + i);
+				divInput.eq(4).attr('id', "uploadedBillDiv_" + i);
+				divInput.eq(5).attr('id', "imageName_" + i);
+				divInput.eq(6).attr('id', "dltImage_" + i);
+				iInput.eq(0).attr('id', "clickImg_" + i);
+				j++;
+			})
+			$("#clickImg_" + (j - 1)).removeClass("ti-pencil");
+			$("#clickImg_" + (j - 1)).addClass("ti-plus");
+
+		}
+
+		function checkForDuplicateEntry(event) {
+			var document = event.currentTarget.value;
+			var currentFldId = event.currentTarget.getAttribute('id');
+			var l = currentFldId.split("_");
+			var counter = l[1];
+			var count = 0;
+			$(".docNoclss").each(function () {
+				if (document == $(this).val()) {
+					count++;
+				}
+			})
+			if (count >= 2) {
+				$("#messageParagraph").text("Document Name Already Entered");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+
+				return false;
+			} else {
+				return true;
+			}
+
+		}
+		function openDeleteConfirm() {
+			$("#dltValue").val("");
+			$('#deleteAttachment').modal('show');
+		}
+		//for closeing modal box for dlt ind product
+		function closeDeleteConfirm() {
+			$("#dltValue").val("");
+			$('#deleteAttachment').modal('hide');
+		}
+
+		function deletAttachmentRow() {
+			var lengthOfTableRow1 = 0;
+			$("#docTbl > #doctbodyData > tr").each(function () {
+				lengthOfTableRow1 = lengthOfTableRow1 + 1;
+			})
+			var id = $("#dltValue").val();
+			$("#" + id).closest('tr').remove();
+			closeDeleteConfirm();
+			if (lengthOfTableRow1 == 1) {
+				var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+					+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+					+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_"></div></td>'
+					+ '<td class="mb-flex"> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+					+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+					+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div><div id="dltImage_0"></div> </td>'
+					+ '</tr>';
+				$("#doctbodyData").append(tbl);
+			}
+		}
+
+		function downloadDetails() {
+			var dataset = [];
+			gridOptions.api.forEachNodeAfterFilterAndSort(function (rowNode, index) {
+				dataset.push(rowNode.data);
+			});
+			gridOptions.api.exportDataAsCsv(dataset);
+		}
+
+		function openModal(id) {
+			if (id == 0) {
+				$("#organatioModal").show();
+				$("#customerModal").hide();
+			} else if (id == 1) {
+				$("#customerModal").show();
+				$("#organatioModal").hide();
+			} else {
+				$("#customerModal").hide();
+				$("#organatioModal").hide();
+			}
+
+		}
+
+		/*
+		 * taxtype fn
+		 */
+		function hideShowS() {
+			var taxType1 = $("#taxType").val();
+			if (taxType1 == 'true') {
+				$('#igstTR').hide();
+				$('#cgstTR').show();
+				$('#sgstTR').show();
+			} else {
+				$('#igstTR').show();
+				$('#cgstTR').hide();
+				$('#sgstTR').hide();
+			}
+		}
+
+		
+
+
+		function purchaseOrder() {
+			var selectedRows = gridOptions.api.getSelectedRows();
+			var selectedRowsString = '';
+			selectedRows.forEach(function (selectedRow, index) {
+				if (index > 0) {
+					selectedRowsString += ',';
+				}
+				selectedRowsString += selectedRow.quotationId;
+
+			});
+			if (selectedRowsString) {
+				sessionStorage.setItem('activity', 'ACT0217');
+				agGrid.simpleHttpRequest({
+					url: 'quotation-details-edit-new?id=' + selectedRowsString
+
+				}).then(function (data) {
+					localStorage.setItem('ReqQuotationData', JSON.stringify(data));
+					itemOptions.api.setRowData(data);
+					//	return false;
+					window.location.href = "/purchase/manage-purchase-order"
+
+				});
+
+			} else {
+				$("#alert").modal('show');
+				document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+			}
+
+		}
+		function approveQuotation() {
+			$('#approvePQtn').modal('show');
+		}
+
+		function cancelApproveModalBtn() {
+			$('#approvePQtn').modal('hide');
+		}
+		function approveOnclick() {
+			/* var selectedRows = gridOptions.api.getSelectedRows();
+			var selectedRowsString = '';
+			selectedRows.forEach(function(selectedRow, index) {
+				if (index > 0) {
+					selectedRowsString += ',';
+				}
+				selectedRowsString += selectedRow.quotationId;
+			}); */
+			//var quotationId = selectedRowsString;
+			var quotationId = $("#quoId").text();
+
+			var approveStatus = 1;
+			$('#approvePQtn').modal('show');
+			$('.loader').show();
+
+			$.ajax({
+				type: "GET",
+				url: "quotation-details-approve-th-ajax?approveStatus=" + approveStatus + "&quotationId=" + quotationId,
+				async: false,
+				success: function (response) {
+					if (response.message == "Success") {
+						$('.loader').hide();
+						toastr.success("Quotation Approved Successfully.");
+						
+						view();
+
+					} else {
+						$('.loader').hide();
+						
+					}
+
+				},
+				error: function (data) {
+				}
+			});
+		}
+		function getRefItemDetails() {
+			var refId = $("#reference").val();
+			var taxType1 = $("#taxType").val();
+			agGrid.simpleHttpRequest({
+				url: 'quotation-details-getReferenceItemDetails?id=' + refId + "&taxType1=" + taxType1,
+			}).then(function (data) {
+				console.log(data)
+				itemOptions.api.setRowData(data);
+				if (refId == '' || refId == 'null' || refId == null) {
+					$('#qutValidDate').val('');
+					$('#project').val('');
+				}
+				else {
+					$('#qutValidDate').val(data[0].qutValidDate);
+					$('#project').val(data[0].project);
+				}
+				$('#qutValidDate').val(data[0].qutValidDate);
+				$('#project').val(data[0].project);
+				priceCalculation();
+
+			});
+
+		}
+		// gst no  validation
+
+		var GSTValid;
+		function ValidateGSTNumber() {
+			var gstNumber = $('#gstNo').val();
+			var expr = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+			if (gstNumber != "") {
+				if (expr.test(gstNumber)) {
+					$("#error5").hide();
+					GSTValid = true;
+					return true;
+				} else {
+
+					$("#error5").show();
+					$("#error5").html("Please enter  valid GST Number.");
+					GSTValid = false;
+					return false;
+				}
+			} else {
+
+				$('#gstNo').val("");
+				$("#error5").hide();
+				GSTValid = true;
+				return true;
+			}
+		}
+
+
+
+		function getGstData() {
+			var gstNo = $("#gstNumber").val();
+			if (gstNo.length == 15) {
+				$('.loader').show();
+				$
+					.ajax({
+						type: "GET",
+						url: "manage-vendor-getgstno?id=" + gstNo,
+						success: function (response) {
+							const obj = JSON.parse(response.body);
+							if (obj.error == false) {
+								$("#gstNumber").val(obj.data.gstin);
+								$("#vendorName").val(obj.data.lgnm);
+								$("#vendorDisplayName").val(obj.data.lgnm);
+								$("#city").val(obj.data.pradr.addr.loc);
+								$("#street1").val(
+									obj.data.pradr.addr.bno + ', '
+									+ obj.data.pradr.addr.bnm);
+								$("#street2").val(obj.data.pradr.addr.st);
+								$("#zipCode").val(obj.data.pradr.addr.pncd);
+								$('#country').val('cntry001');
+								getStateDataOnGST(obj.data.pradr.addr.stcd,
+									'cntry001');
+								$('#states').val();
+								$('.loader').hide();
+							} else {
+								$("#messageParagraph").text("Please Enter Valid GST No.");
+								$("#msgOkModal").removeClass("btn3");
+								$("#msgOkModal").addClass("btn1");
+								$("#msgModal").modal('show');
+
+								$("#gstNo").val('');
+								$('.loader').hide();
+							}
+						},
+						error: function (e) {
+
+						}
+					});
+			} else {
+
+				//$("#gstNumber").val('');
+
+			}
+		}
+		var pmailValid;
+		function pmailVal() {
+			var mail1 = $('#vendorEmail').val();
+			var mid = /^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$/;
+			var mail = mail1.toLowerCase();
+			$('#vendorEmail').val(mail);
+			if (mail != "") {
+				if (mid.test(mail)) {
+					$("#error3").hide();
+					pmailValid = true;
+
+					return true;
+				} else {
+					$("#error3").show();
+					$("#error3").html("Please enter a valid email id.");
+					pmailValid = false;
+					return false;
+				}
+
+			} else {
+				$("#error3").hide();
+				pmailValid = true;
+				return true;
+			}
+
+		}
+		var pmailValid;
+		function pmailValadd() {
+			var mail1 = $('#emailAdd').val();
+			var mid = /^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$/;
+			var mail = mail1.toLowerCase();
+			$('#emailAdd').val(mail);
+			if (mail != "") {
+				if (mid.test(mail)) {
+					$("#error6").hide();
+					pmailValid = true;
+
+					return true;
+				} else {
+					$("#error6").show();
+					$("#error6").html("Please enter a valid email id.");
+					pmailValid = false;
+					return false;
+				}
+
+			} else {
+				$("#error6").hide();
+				pmailValid = true;
+				return true;
+			}
+
+		}
+
+		var pancardValid;
+
+		function pancardVal() {
+			var pancard = $('#pan').val();
+
+			var pancardid = /([A-Z]){5}([0-9]){4}([A-Z]){1}$/;
+			var format = /[ `!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~]/;
+
+			if (pancard != '' && pancard.toUpperCase() === pancard
+				&& !format.test(pancard)) {
+				if (pancardid.test(pancard)) {
+					$("#error4").hide();
+					pancardValid = true;
+					return true;
+				} else {
+
+					$("#error4").show();
+					$("#error4").html("Please enter a valid pan card no.");
+					//  $('#panno').val("");
+					pancardValid = false;
+					return false;
+				}
+
+			} else {
+				$("#error4").hide();
+				$('#pan').val("");
+				pancardValid = false;
+				return false;
+
+			}
+
+		}
+
+		function getCategoryList() {
+			$('.loader').show();
+			$("body").addClass("overlay");
+			$("#productDiv").modal("show");
+			$.ajax({
+				type: "POST",
+				url: "quotation-details-get-total-list",
+				dataType: "json",
+				contentType: "application/json",
+				success: function (response) {
+					if (response.message == "Success") {
+						$("#costCeneterCBDiv").empty();
+						for (var i = 0; i < response.body.length; i++) {
+							var row = "";
+							if (response.body[i].categoryId == response.body[i].parentId) {
+								if (response.body[i].nodeCount > 0) {
+									row = '<tr data-node-id="' + response.body[i].categoryId + '" class="abc" id="' + response.body[i].categoryId + '">' +
+										'<td class="firstnode" id=lbl_' + response.body[i].categoryId + '>' + response.body[i].categoryName + '</td></tr>';
+								} else {
+
+									row = '<tr data-node-id="' + response.body[i].categoryId + '" class="abc" id="' + response.body[i].categoryId + '">' +
+										'<td class="firstnode" id=lbl_' + response.body[i].categoryId + '><input class="benefitChk pc1-box" type="checkbox" id="ccCheck_' + response.body[i].categoryId + '" value="' + response.body[i].categoryId +
+										'" name="' + response.body[i].categoryName + '" onchange=selectCheckBoxx("' + response.body[i].categoryId + '","' + response.body[i].catLevel + '")>' + response.body[i].categoryName + '</td></tr>';
+								}
+
+							} else {
+								if (response.body[i].nodeCount > 0) {
+									row = '<tr data-node-id="' + response.body[i].categoryId + '" data-node-pid="' + response.body[i].parentId + '" class="abc" id="' + response.body[i].categoryId + '">' +
+										'<td class="firstnode" id=lbl_' + response.body[i].categoryId + '>' + response.body[i].categoryName + '</td></tr>';
+								} else {
+
+									row = '<tr data-node-id="' + response.body[i].categoryId + '" data-node-pid="' + response.body[i].parentId + '" class="abc" id="' + response.body[i].categoryId + '">' +
+										'<td class="firstnode" id=lbl_' + response.body[i].categoryId + '><input class="benefitChk pc1-box" type="checkbox" id="ccCheck_' + response.body[i].categoryId + '" value="' + response.body[i].categoryId + '" name="' +
+										response.body[i].categoryName + '" onchange=selectCheckBoxx("' + response.body[i].categoryId + '","' + response.body[i].catLevel + '")>' + response.body[i].categoryName + '</td></tr>';
+								}
+							}
+							$("#costCeneterCBDiv").append(row);
+
+						}
+
+						var pcat = $("#prCategoryId").val();
+						$(".benefitChk pc1-box").prop("checked", false);
+						$("#ccCheck_" + pcat).prop("checked", false);
+
+						$('.loader').hide();
+						$("body").removeClass("overlay");
+
+						$('#basic').simpleTreeTable({
+							expander: $('#expander'),
+							collapser: $('#collapser'),
+							store: 'session',
+							storeKey: 'simple-tree-table-basic'
+						});
+					}
+				}, error: function (data) {
+					console.log(data)
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+					$("#productDiv").modal("show");
+				}
+			});
+		}
+		function selectCheckBoxx(id, lvl) {
+			if (id == 'PCAT000004') {
+				event.target.checked = false
+			} else {
+				$(".benefitChk").prop("checked", false);
+				$("#ccCheck_" + id).prop("checked", true);
+				$("#tempCategoryId").val(id);
+				$("#prLevelId").val(lvl);
+			}
+
+		}
+
+		function toDataUrl(url, callback) {
+			var xhr = new XMLHttpRequest();
+			xhr.onload = function () {
+				var reader = new FileReader();
+				reader.onloadend = function () {
+					callback(reader.result);
+				}
+				reader.readAsDataURL(xhr.response);
+			};
+			xhr.open('GET', url);
+			xhr.responseType = 'blob';
+			xhr.send();
+		}
+
+		var columnDefs3 = [
+			{
+				//headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly: true,
+				checkboxSelection: true,
+				width: 10,
+				sortable: false,
+				filter: false,
+				resizable: true
+
+			},
+			{
+				headerName: "Quotation Id",
+				field: "quoId",
+				width: 130,
+				cellRenderer: function (params) {
+					return '<a onclick=editQuotation("' + params.data.quoId
+						+ ',' + params.data.quoId
+						+ '") href="javascript:void(0)">'
+						+ params.data.quoId + '</a>';
+				}
+			},
+			{
+
+				headerName: 'Vendor Name',
+				field: "vndrName",
+				width: 140,
+				cellStyle: {
+					textAlign: 'center'
+				}
+
+			},
+
+			{
+				headerName: 'Amount',
+				field: "amount",
+				width: 150,
+			},
+			{
+
+				headerName: 'Expected Date',
+				field: "expectedDate",
+				width: 150,
+			},
+			{
+				headerName: 'Vendor Address',
+				field: "vndrAddress",
+				width: 140,
+				cellStyle: {
+					textAlign: 'center'
+				}
+			},
+
+
+			{
+				headerName: 'Payment Term',
+				field: "paymentTerm",
+				width: 210,
+
+			}
+
+		];
+		var columnDefs3 = [
+			{
+				//headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly: true,
+				checkboxSelection: true,
+				width: 10,
+				sortable: false,
+				filter: false,
+				resizable: true
+
+			},
+			{
+				headerName: "Quotation Id",
+				field: "quoId",
+				width: 130,
+				cellRenderer: function (params) {
+					return '<a onclick=editQuotation("' + params.data.quoId
+						+ ',' + params.data.quoId
+						+ '") href="javascript:void(0)">'
+						+ params.data.quoId + '</a>';
+				}
+			},
+			{
+
+				headerName: 'Vendor Name',
+				field: "vndrName",
+				width: 140,
+				cellStyle: {
+					textAlign: 'center'
+				}
+
+			},
+
+			{
+				headerName: 'Amount',
+				field: "amount",
+				width: 150,
+			},
+			{
+
+				headerName: 'Expected Date',
+				field: "expectedDate",
+				width: 150,
+			},
+			{
+				headerName: 'Vendor Address',
+				field: "vndrAddress",
+				width: 140,
+				cellStyle: {
+					textAlign: 'center'
+				}
+			},
+
+
+			{
+				headerName: 'Payment Term',
+				field: "paymentTerm",
+				width: 210,
+
+			}
+
+		];
+		function getRfqCode() {
+			var search = $("#requisitionName").val();
+			if (search) {
+				$
+					.ajax({
+						type: "GET",
+						url: "quotation-details-reqid?id=" + search,
+						success: function (response) {
+							if (response.message == "success") {
+								console.log("response data"
+									+ JSON.stringify(response))
+								if (response.body.length != 0) {
+									$("#supplierCode")
+										.css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1" style="margin-left:-40px; font-weight:100; font-size:14px; color:#ccc;">';
+									for (var i = 0; i < response.body.length; i++) {
+										content += '<li class="autocompletedata cp" onClick="selectAutocompleteValueItem1(\''
+											+ response.body[i].key
+											+ '\',\''
+											+ response.body[i].key
+											+ '\')">'
+											+ response.body[i].key
+											+ '</li>';
+									}
+									content += '</ul>';
+									console.log("content " + content)
+									$("#suggesstion-box_").show();
+									$("#suggesstion-box_").html(content);
+
+								} else {
+									$("#supplierCode")
+										.css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1">';
+									content += '<font-weight:100; font-size:14px; color:#ccc;     background-color: #0909e4;"li onClick="selectAutocompleteValueItem()">'
+										+ "No Data Found" + '</li>';
+									content += '</ul>';
+									$("#suggesstion-box_").show();
+									$("#suggesstion-box_").html(content);
+								}
+							}
+						},
+						error: function (data) {
+							console.log(data);
+						}
+					})
+			}
+		}
+		function getCompareData() {
+			var key = $("#requisitionName").val();
+			gridOptions.api.setRowData([]);
+			agGrid.simpleHttpRequest({
+				url: "quotation-details-compare?id=" + key,
+			}).then(function (data) {
+				$('#rfqCompare').modal('hide');
+				console.log(data);
+				var len = data.length;
+				$('#totalCandidate').find('span').html(len);
+				gridOptions.api.setRowData(data);
+			})
+		}
+		function comparePage() {
+
+			$('#rfqCompare').modal('show');
+		}
+
+		function formatToTwoDecimalPlaces(input) {
+			let value = input.value.replace(/[^0-9.]/g, '');
+			let parts = value.split('.');
+			if (parts.length > 2) {
+				parts = [parts[0], parts.slice(1).join('')];
+			}
+			if (parts[1]) {
+				parts[1] = parts[1].substring(0, 2);
+			}
+			input.value = parts.join('.');
+		}
+
+		function formatToThreeDecimalPlaces(input) {
+			let value = input.value.replace(/[^0-9.]/g, '');
+			let parts = value.split('.');
+			if (parts.length > 2) {
+				parts = [parts[0], parts.slice(1).join('')];
+			}
+			if (parts[1]) {
+				parts[1] = parts[1].substring(0, 3);
+			}
+			input.value = parts.join('.');
+		}
+
+		function checkNumeric(fieldId) {
+
+			var tempVal = $("#" + fieldId).val().replace(/[^0-9 ]/g, '');
+
+			const input = document.getElementById(fieldId);
+			const position = input.selectionStart;
+			if (tempVal.slice(-1) == ' ') {
+				$("#" + fieldId).empty();
+				tempVal = '';
+			}
+			$("#" + fieldId).val(tempVal);
+		}
+
+
+		function disableField() {
+			$('#vendorName').attr("disabled", true);
+			$('#qutNo').attr("disabled", true);
+			$('#quotationDate').attr("disabled", true);
+			$('#quotationDate').attr("disabled", true);
+			$('#toDateCalendar').addClass("disabledCalender");
+			$('#reference').attr("disabled", true);
+			$('#paymentTermId').attr("disabled", true);
+			$('#paymentModeId').attr("disabled", true);
+			$('#qutDescription').attr("disabled", true);
+			/* $('#itemName').attr("disabled", true);
+			$('#hsnCode').attr("disabled", true);
+			$('#unit').attr("disabled", true);
+			$('#quantity').attr("disabled", true);
+			$('#unitPrice').attr("disabled", true);
+			$('#discount').attr("disabled", true);
+			$('#discountType').attr("disabled", true);
+			$('#lineTotal').attr("disabled", true); */
+
+		}
+
+		function enableField() {
+			$('#vendorName').attr("disabled", false);
+			$('#qutNo').attr("disabled", false);
+			$('#quotationDate').attr("disabled", false);
+			$('#quotationDate').attr("disabled", false);
+			$('#toDateCalendar').removeClass("disabledCalender");
+			$('#reference').attr("disabled", false);
+			$('#paymentTermId').attr("disabled", false);
+			$('#paymentModeId').attr("disabled", false);
+			$('#qutDescription').attr("disabled", false);
+			/* $('#itemName').attr("disabled", false);
+			$('#hsnCode').attr("disabled", false);
+			$('#unit').attr("disabled", false);
+			$('#quantity').attr("disabled", false);
+			$('#unitPrice').attr("disabled", false);
+			$('#discount').attr("disabled", false);
+			$('#discountType').attr("disabled", false);
+			$('#lineTotal').attr("disabled", false); */
+
+		}
+
+		function nextTab(id) {
+			const tabElement = document.querySelector('#' + id + ' a');
+			const tab = new bootstrap.Tab(tabElement);
+			tab.show();
+		}
+		
+		function deleteDetailsOnclick() {
+			
+			Swal.fire({
+		        title: 'Are you sure?',
+		        text: 'Do you want to delete this?',
+		        icon: 'warning',
+		        showCancelButton: true,
+		        confirmButtonText: 'Yes, delete it!',
+		        cancelButtonText: 'No, keep it',
+		        confirmButtonColor: 'var(--mainColor)',
+		    }).then((result) => {
+		        if (result?.value) {
+		        	
+		        	var selectedRows = itemOptions.api.getSelectedRows();
+					itemOptions.api.applyTransaction({
+						remove : selectedRows
+					});
+		    		
+		        }else{
+		        	/* const selectedNodes = skuOptions.api.getSelectedNodes();
+		        	selectedNodes.forEach(node => node.setSelected(false)); */
+		        }
+		    });
+			
+			/* var selectedRows = itemOptions.api.getSelectedRows();
+			itemOptions.api.applyTransaction({
+				remove : selectedRows
+			});
+			 */
+
+			}
+		
+		function addNew(){
+			gridOptions.api.deselectAll();
+		}
+		
+		// delete Quotation
+
+		function deleteOnclick() {
+
+				var selectedRows = gridOptions.api.getSelectedRows();
+			 var id=selectedRows[0].quotationId;
+			 console.log("ID", id);
+			 
+			 Swal.fire({
+					title: 'Are you sure?',
+					text: 'Do You Want To Delete This?',
+					icon: 'warning',
+					showCancelButton: true,
+					confirmButtonText: 'Yes, delete it!',
+					cancelButtonText: 'No, keep it',
+					confirmButtonColor: 'var(--mainColor)',
+				}).then((result) => {
+					if (result?.value) {
+						$('.loader').show();
+						
+						$.ajax({
+							type : "POST",
+							url : "quotation-details-delete?id="+ id,
+							success : function(response) {
+							 if (response.message == "Success") {
+								 $('.loader').hide();
+								
+								 toastr.success("Data Deleted Successfully.");
+								 view();
+
+								} else {
+									$('.loader').hide();
+								}
+							},
+							error : function(data) {
+								console.log(data)
+								$('.loader').hide();}
+						});
+					}
+				});
+			 
+			}
+		
+		
+		function cancelMain(){
+			let selectedRows = gridOptions.api.getSelectedRows();
+			
+			let rowCount = 0;
+		    selectedRows.forEach(function(selectedRow, index) {
+		        rowCount = rowCount + 1;
+		    });
+		    
+		    if(rowCount == 0){
+		    	gridOptions.api.getDisplayedRowAtIndex(0).setSelected(true);
+		    }else{
+		    	
+		    	var selectedNodes = gridOptions.api.getSelectedNodes();
+		    	const selectedRowIndex = selectedNodes[0].rowIndex;
+		    	gridOptions.api.getDisplayedRowAtIndex(selectedRowIndex).setSelected(true);
+		    	rowSelect();
+		    }
+
+		}
+		
+		function editOnClick(){
+			enableField();
+			$('#addQuotation').hide();
+			$('#approveQuotation').hide();
+			$('#cancelMainBtn').show();
+			$('#saveMstrBtn').show();
+			$('#editMstrBtn').hide();
+			$('#deleteQuotation').hide();
+		}
+		
+		// Upload Grid Document.
+		
+		function uploadDocOnClick(){
+			$('#uploadDoc_0').click();
+		}
+		
+		// Document Delete
+
+		function deleteDocDetailsOnclick() {
+			var selectedRows = gridOptionsDoc.api.getSelectedRows();
+			gridOptionsDoc.api.applyTransaction({
+				remove : selectedRows
+			});
+			
+			// Reorder the serial numbers
+		    const allRowNodes = [];
+		    gridOptionsDoc.api.forEachNode((node) => {
+		        allRowNodes.push(node);
+		    });
+
+		    allRowNodes.forEach((node, index) => {
+		        node.data.slno = index + 1;
+		    });
+
+		    gridOptionsDoc.api.refreshCells({ force: true });
+			
+		}
+		
+		
+		function safeBase64Encode(text) {
+		    if (!text || text === "null") {
+		        return "";
+		    }
+		    
+		    return btoa(String.fromCharCode(...new TextEncoder().encode(text)));
+		}
+
+		function safeBase64Decode(base64) {
+		    if (!base64 || base64 === "null") {
+		        return ""; 
+		    }
+		    
+		    return new TextDecoder().decode(Uint8Array.from(atob(base64), c => c.charCodeAt(0)));
+		}
+	</script>
+</head>
+
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<!--Tabination 1 Start-->
+					<div id="tab1" class="tab-pane" role="tabpanel">
+						<div class="d-flex flex-column flex-lg-row">
+							<!--Left Sec Start-->
+							<div class="box-sec" id="collapseWidthR1">
+								<div class="out-box">
+									<div class="d-flex justify-content-between bdr-line p-2">
+
+										<div class="col-md-8 col-12">
+											<div class="d-flex search-sec position-relative">
+												<input class="form-control me-2" type="text"
+													onkeydown="enterToSearch(event)" placeholder="Search"
+													id="quickFilter" autocomplete="off">
+												<button class="btn btn-primary go-btn" type="button"
+													onclick="onQuickFilterChanged()">Go</button>
+												&nbsp;
+												<button class="btn go-btn w-auto" type="button"
+													onclick="reset()">Reset</button>
+											</div>
+										</div>
+										<div class="col-md-2 d-flex justify-content-end">
+											<button class="btn btn-primary max-btn" id="collapseButtonR1"
+												onclick="triggerExpansionR(1)" data-bs-toggle="tooltip"
+												data-bs-placement="top" title="Expand">
+												<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+													class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+											</button>
+										</div>
+
+									</div>
+									<div class="card-scroll m-2">
+										<input type="hidden" id="appoveStatus" /> <input
+												type="hidden" id="sessionId" th:value="${userId}" /> <input
+												type="hidden" id="sessionName" th:value="${userName}" /> <input
+												type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+												type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+												type="hidden" id="adRole" th:value="${adRole}" />
+
+											<div id="myGrid" style="height: 100vh; width: 100%;"
+												class="ag-theme-alpine"></div>
+									</div>
+								</div>
+							</div>
+							<!--Left Sec End-->
+
+							<!-- Right Section Start -->
+							<div class="box-sec" id="collapseWidthL1">
+								<div class="out-box">
+
+									<!-- Left aligned max-btn -->
+									<div
+										class="d-flex flex-row-reverse justify-content-between align-items-center p-2 bdr-line">
+										<button class="btn btn-primary max-btn" id="collapseButtonL1"
+											type="button" onclick="triggerExpansionL(1)"
+											data-bs-toggle="tooltip" data-bs-placement="top"
+											title="Expand">
+											<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+												class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+										</button>
+
+										<!-- Right aligned buttons -->
+										<div class="d-flex gap-2">
+											<ul class="nav nav-pills newtab" role="tablist" id="tabMenu">
+												<li class="nav-item" role="presentation" id="basicInfLiId"><a
+													class="nav-link active" data-bs-toggle="pill"
+													href="#basicinformation" aria-selected="true" role="tab">Basic
+														Information</a></li>
+												<!-- <li class="nav-item" role="presentation"
+													id="itemDetailsLiId"><a class="nav-link"
+													data-bs-toggle="pill" href="#itemdetails"
+													aria-selected="false" role="tab" tabindex="-1">Item/Service
+														Details</a></li> -->
+												<li class="nav-item" role="presentation" id="docAndTCLiId"><a
+													class="nav-link" data-bs-toggle="pill" href="#docandtac"
+													aria-selected="false" role="tab" tabindex="-1">Document's
+														& Other's </a></li>
+												<!-- <li class="nav-item" role="presentation" id="tAndcLiId"><a
+													class="nav-link" data-bs-toggle="pill"
+													href="#termsandconditions" aria-selected="false" role="tab"
+													tabindex="-1">Terms & Conditions </a></li> -->
+											</ul>
+										</div>
+									</div>
+									<!-- Tab Start -->
+									<!-- Start of Tab Content -->
+									<div class="tab-content flex-fill h-25" id="tabContent">
+										<div id="basicinformation" class="tab-pane active p-2 h-100"
+											role="tabpanel">
+											<div class="requisition-tbl d-flex flex-column h-100">
+												<div class="mb-2">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<div class='d-none'>
+																	<strong id="quoId"></strong>
+																</div>
+																<td width="50%" style="vertical-align: middle;"><span
+																	class="head-user-name vendorNameClass"></span></td>
+																<td>
+																	<div class="d-flex justify-content-end flxwrap">
+
+																		<div class="mr-2">
+																			<button class="btn btn-primary  edit-btn"
+																				id="addQuotation" type="button" onclick="addNew()">Add</button>
+																		</div>
+																		<div class="mr-2">
+																			<button class="btn btn-primary edit-btn"
+																				id="editMstrBtn" type="button"
+																				onclick="editOnClick()">Edit</button>
+																		</div>
+																		<div class="mr-2">
+																			<button onclick="deleteOnclick()"
+																				class="btn btn-primary  edit-btn"
+																				id="deleteQuotation">Delete</button>
+																		</div>
+																		<div class="mr-2">
+																			<button onclick="approveOnclick()"
+																				class="btn btn-primary  edit-btn"
+																				id="approveQuotation">Approve</button>
+																		</div>
+																		<div class="mr-2">
+																			<button class="btn btn-primary edit-btn"
+																				id="cancelMainBtn" type="button"
+																				onclick="cancelMain()">Cancel</button>
+																		</div>
+																		<div class="mr-2">
+																			<button class="btn btn-primary edit-btn"
+																				type="button" onclick="nextTab('docAndTCLiId')">Next</button>
+																		</div>
+																	</div>
+
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+												<div class="card p-2">
+													<div id="masterSectionDiv">
+														<div class="bdr-btn d-flex justify-content-between mb-2">
+															<div
+																style="text-align: right; color: red; font-weight: bold; font-size: 12px;">
+																Note: All fields marked with <span>*</span> are
+																mandatory.
+															</div>
+														</div>
+														<div class='row'>
+															<input type="hidden" id="poId">
+															<div class="col-md-8">
+																<div class="form-group">
+																	<div style="width: 100%;">
+																		<label>Vendor Name<span class="mandatory">*</span></label>
+																		<input type="text" id="vendorName"
+																			placeholder="Search Here.." class="form-control"
+																			onkeyup='getVendorList()'><input
+																			type="hidden" id="vendorId"> <input
+																			type="hidden" id="custGSTNo"> <input
+																			type="hidden" id="taxType">
+																	</div>
+																	<div id="suggesstion-box1_" class="sugg-cls"></div>
+
+																</div>
+															</div>
+															<div class="col-md-4">
+																<div class="form-group">
+																	<label>RFQ No</label>
+																	<div class="select">
+																		<select class="searchable-select" id="reference"
+																			onchange="getRefItemDetails()">
+																			<option value="" disabled selected>Select</option>
+
+																		</select>
+																	</div>
+																</div>
+															</div>
+															<!-- <div class="col-md-4">
+																<div class="form-group">
+																	<label>RFQ No</label>
+																	<div class="select">
+																		<select class="searchable-select" id="reference" onchange="getRefItemDetails()">
+																			<option value="">Select</option>
+																		</select>
+																	</div>
+																</div>
+															</div> -->
+															<input type="hidden" id="qutId" class="form-control"
+																readonly>
+															<div class="col-md-3">
+																<div class="form-group">
+																	<label>Quotation Number</label><input type="text"
+																		id="qutNo" class="form-control">
+																</div>
+															</div>
+
+															<input type="hidden" id="qutationId">
+
+															<div class="col-md-3">
+																<div class="form-group">
+																	<label>Quotation Date</label><input type="text"
+																		id="quotationDate" class="form-control" readonly>
+																</div>
+															</div>
+
+
+															<div class="col-md-3">
+																<div class="form-group calendar_box">
+																	<label>Expected Delivery Date<span
+																		class="mandatory">*</span></label> <input type="text"
+																		id="qutValidDate" class="form-control"
+																		autocomplete="off"
+																		th:attr="onkeyup=|formatDate('qutValidDate','${session.DATEFORMAT_JS}')|">
+																	<i class="ti-calendar picker_calendar"
+																		id="toDateCalendar"></i>
+																</div>
+															</div>
+
+
+
+															<div class="col-md-3">
+																<div class="form-group">
+																	<label>Payment Term(Days)</label> <input type="text"
+																		id="paymentTermId"
+																		onkeyup="checkNumeric('paymentTermId');"
+																		class="form-control">
+																</div>
+															</div>
+
+															<div class="col-md-3">
+																<div class="form-group">
+																	<label>Payment Mode</label>
+																	<div class="select">
+																		<select id="paymentModeId" onblur="removeValid(event)">
+																			<option value="">Select</option>
+																			<option th:each="c,iter:${PaymentModeList}"
+																				th:value="${c.key}" th:text="${c.name}"></option>
+																		</select>
+																	</div>
+																</div>
+
+															</div>
+
+
+															<div class="col-md-9">
+																<div class="form-group">
+																	<label>Vendor Notes</label>
+																	<textarea id="qutDescription" class="form-control"> </textarea>
+
+																</div>
+															</div>
+														</div>
+													</div>
+													<div class="mt-2">
+
+														<div id="childGridDiv">
+															<div class="d-flex justify-content-between mt-2">
+																<div class="row">
+																	<div class="col-md-12">
+																		<h5 class="sub-header-new">Item/Service Details</h5>
+																	</div>
+																</div>
+																<div class="row">
+																	<div class="col-md-12 cnt-sp-end" id="gridAllBtnDiv">
+																		<div class="d-flex gap-1 task-btn-sec">
+																			<button id="gridAddBtn"
+																				class="border-0 btn-transition btn btn-outline-primary br-m-btn-poc"
+																				title="Add" onclick="openNav()">
+																				<i class="fa fa-plus-square" aria-hidden="true"></i>
+																			</button>
+																			<button id="gridEditBtn"
+																				class="border-0 btn-transition btn btn-outline-primary br-dis-poc br-m-btn-poc"
+																				title="Edit" onclick="editProduct()" disabled>
+																				<i class="fa fa-pencil-square" aria-hidden="true"></i>
+																			</button>
+																			<button id="gridDeleteBtn"
+																				class="border-0 btn-transition btn btn-outline-primary br-dis-poc br-m-btn-poc"
+																				title="Delete" disabled
+																				onclick="deleteDetailsOnclick()">
+																				<i class="fa fa-trash"></i>
+																			</button>
+																		</div>
+																	</div>
+																</div>
+															</div>
+															<div class="col-md-12">
+																<div id="item" style="width: 100%; height: 200px;"
+																	class="ag-theme-alpine"></div>
+
+															</div>
+														</div>
+														<div id="itemDtlsDiv" class="d-none">
+															<div class="d-flex justify-content-between mt-2">
+																<div>
+																	<h5 class="sub-header-new">Add Item Details</h5>
+																</div>
+																<div>
+
+																	<div class="d-flex justify-content-end">
+																		<div class="mr-2">
+																			<button class="btn edit-btn" type="button"
+																				id="saveTableData" onclick="saveTableData()">Save</button>
+																		</div>
+																		<div class="mr-2">
+																			<button class="btn edit-btn" type="button"
+																				onclick="closeNav()">Cancel</button>
+																		</div>
+																	</div>
+																</div>
+															</div>
+															<div class="row" style="max-height: 14.38rem;">
+																<input type="hidden" id="skuTemp" />
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<div>
+																			<input type="hidden" id="editProduct"> <input
+																				type="hidden" id="itemId"> <label>Item
+																				Name<span class="mandatory">*</span>
+																			</label> <input type="text" id="itemName"
+																				class="form-control" autocomplete="off"
+																				onkeyup='getItemQutotationList()'
+																				onblur="removeValid(event)">
+																		</div>
+																		<div id="suggesstion-box_" class="sugg-cls"></div>
+																	</div>
+																</div>
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<div style="width: auto">
+																			<label>HSN Code </label> <input type="text"
+																				id="hsnCode" class="form-control"
+																				onkeyup='getItemQutotationList()'>
+																		</div>
+																		<div id="suggesstion-boxx_" class="sugg-cls"></div>
+																	</div>
+																</div>
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>Unit<span class="mandatory">*</span></label>
+																		<div class="select">
+																			<select id="unit" onblur="removeValid(event)"
+																				onkeyup='getItemQutotationList()'>
+																				<option value="">Select</option>
+																				<option th:each="c,iter:${unitList}"
+																					th:value="${c.key}" th:text="${c.name}"></option>
+																			</select>
+																		</div>
+																	</div>
+
+																</div>
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>Quantity<span class="mandatory">*</span></label>
+																		<input type="text" id="quantity" class="form-control"
+																			onkeyup="calculateLineTotal();getGSTRateCal()"
+																			oninput="formatToThreeDecimalPlaces(this)">
+																	</div>
+																</div>
+																<input type="hidden" id="unitTemp" /> <input
+																	type="hidden" id="gstRateTemp" /> <input type="hidden"
+																	id="gstRate" class="form-control"
+																	onkeyup="getGSTRateCal()">
+
+																<div class="col-md-4">
+																	<div class="form-group">
+																		<label>Unit Price<span class="mandatory">*</span></label><input
+																			type="text" id="unitPrice" class="form-control"
+																			onkeyup="calculateLineTotal();getGSTRateCal()"
+																			oninput="formatToTwoDecimalPlaces(this)">
+																	</div>
+																</div>
+
+																<input type="hidden" id="gstRate" class="form-control"
+																	onkeyup="getGSTRateCal()">
+
+																<div class="col-md-3 col-8">
+																	<div class="form-group">
+																		<label>Discount</label>
+																		<div class="d-flex">
+																			<input type="text" id="discount" class="form-control"
+																				onkeyup="calculateLineTotal();getGSTRateCal()"
+																				onchange="discountChange()">
+
+																		</div>
+
+																	</div>
+																</div>
+																<div class="col-md-1 col-4">
+																	<div class="form-group">
+																		<div class="select mt-4">
+																			<select id="discountType" class="form-control"
+																				onkeyup="calculateLineTotal();getGSTRateCal()"
+																				onchange="discountChange()">
+																				<option value="0" selected>%</option>
+																				<option value="1">₹</option>
+																			</select>
+																		</div>
+																	</div>
+																</div>
+																<div class="col-md-4">
+																	<div class="form-group mb-4">
+																		<label>Line Total<span class="mandatory">*</span></label>
+																		<input type="text" id="lineTotal" class="form-control"
+																			oninput="formatToTwoDecimalPlaces(this)">
+
+																	</div>
+																</div>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+
+										<div id="docandtac" class="tab-pane fade h-100 p-2"
+											role="tabpanel">
+											<div class="requisition-tbl d-flex flex-column h-100">
+												<div class="mb-2">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<!-- <td width="50%">Quotation ID: <strong class="quoNoClass"></strong></td> -->
+																<td width="50%" style="vertical-align: middle;"><span
+																	class="head-user-name vendorNameClass"></span></td>
+																<td>
+																	<div class="d-flex justify-content-end flxwrap">
+																		<div class="mr-2">
+																			<button class="btn btn-primary edit-btn"
+																				type="button" onclick="nextTab('basicInfLiId')">Prev</button>
+																		</div>
+																		<div class="mr-0">
+																			<button class="btn btn-primary edit-btn"
+																				id="saveMstrBtn" type="button" onclick="save()">Save</button>
+																		</div>
+																	</div>
+
+
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+												<div class="card p-2">
+													<!-- <div class="row">
+														<div class="col-md-12">
+															<h5 class="sub-header-new">Documents</h5>
+														</div>
+													</div> -->
+													<div class="row">
+														<div class="col-md-12">
+															<div class="d-flex justify-content-between">
+																<div>
+																	<h5 class="sub-header-new">Document Details :</h5>
+																</div>
+																<div class="row">
+																	<div class="col-md-12 cnt-sp-end">
+																		<div class="d-flex gap-1 task-btn-sec">
+																		
+																			<button id="docAddBtn"
+																				class="border-0 btn-transition btn btn-outline-primary"
+																				title="Add Doc" onClick="uploadDocOnClick()"
+																				data-bs-toggle="tooltip">
+																				<i class="fa fa-plus-square" aria-hidden="true"></i>
+																				
+																			</button>
+																			<button id="docDeleteBtn"
+																				class="border-0 btn-transition btn btn-outline-primary"
+																				title="Remove Doc" disabled
+																				onclick="deleteDocDetailsOnclick()"
+																				data-bs-toggle="tooltip">
+																				<i class="fa fa-trash"></i>
+																			</button>
+
+																		</div>
+																	</div>
+																</div>
+															</div>
+															<div class="controls" hidden>
+																<input type="file" class="document" id="uploadDoc_0"
+																	accept=".jpeg, .jpg, .png, .pdf" name="userImage"
+																	onchange="saveMultiFile(event)" />
+															</div>
+
+															<div class="row mt-2">
+																<div id="myDocumentGrid"
+																	style="width: 100%; height: 200px;"
+																	class="ag-theme-alpine"></div>
+															</div>
+														</div>
+													</div>
+
+													<div>
+														<div class="row">
+															<div class="col-md-12">
+																<h5 class="sub-header-new">Terms & Conditions:</h5>
+															</div>
+														</div>
+														<div class="form-group col-lg-12">
+															<!-- <label style="margin-bottom: 10px;">Terms &
+														Conditions</label> -->
+															<textarea id="terms" class="form-control"
+																style="height: 129px;"> </textarea>
+
+														</div>
+													</div>
+
+												</div>
+											</div>
+										</div>
+
+
+									</div>
+									<!-- end of Tab Content -->
+								</div>
+								<!-- Tab End -->
+							</div>
+							<!-- Right Section End -->
+						</div>
+					</div>
+					<!--Tabbination 1 End-->
+				</div>
+			</div>
+
+
+		</div>
+	</div>
+</body>
+
+</html>

@@ -1,0 +1,2783 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+.form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+}
+
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+
+.blueClsWT {
+	background: #0076ba;
+	color: #fff;
+}
+
+.blueCls {
+	background: #0076ba;
+	color: #fff;
+}
+
+.blueClsWT::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	padding-right: 7px;
+}
+
+.tptCls {
+	background: transparnt;
+}
+
+</style>
+<script type="text/javascript">
+	function openNav() {
+		document.getElementById("mySidenav").style.cssText = "width: 30%; position: absolute; right:-10px; overflow: hidden; height:auto;bottom:5px;";
+
+		document.getElementById("main").style.width = "70%";
+
+		$('#rfqCancelBtn').attr('disabled', true);
+		$('#savePo').attr('disabled', true);
+	}
+
+	function closeNav() {
+		
+		$("#sku").html('');
+		$("#skuEditId").html('');
+		$("#brandName").html('');
+		$("#brandId").val('');
+		$("#brandId").val('');
+		$("#prodCatId").val('');
+		$("#prodCatName").html('');
+		$("#itemName").html('');
+		//$("#locationId").val('');
+		$("#quantity").val('');
+		$("#unitPrice").val('');
+		$("#totalMaxAmount").val('');
+		$("#discount").val('');
+		$("#subTotal").val('');
+		$("#shipping").val('');
+		$("#tax").val('');
+		$("#maxValue").val('');
+		$("#total").val('');
+		$("#costCenterId").val(null);
+		$("#uom").val(null);
+		$("#locationId").val(null);
+		$("#search").val('');
+		$("#productEdit").val(null);
+		$('#rfqCancelBtn').attr('disabled', false);
+		$('#savePo').attr('disabled', false);
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main").style.width = "100%";
+		
+	}
+
+	var count1 = 0;
+	function allCheck1() {
+		count1++;
+
+		if (count1 == 1) {
+			$('.checkCls1').prop("checked", true);
+		} else {
+			count1 = 0;
+			$('.checkCls1').prop("checked", false);
+		}
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#searchBar').val() == null || $('#searchBar').val() == "") {
+			id.style.display = "none";
+		}
+	}
+</script>
+
+<script type="text/javascript">
+function closeModal(){
+	$("#myModal").modal("hide");
+}
+
+	$(document).ready(function() {
+		$("#productDltBtn").attr("disabled", true);
+		//changeOpt();
+
+		agGrid.simpleHttpRequest({
+			url : 'generate-po-get-po-list'
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalPo').find('span').html(len);
+			poOptions.api.setRowData(data);
+		});
+
+		var ld = localStorage.getItem('poData');
+		var data = JSON.parse(ld);
+		if (data) {
+			$("#poTable").hide();
+			$("#reqTable").hide();
+			$(".btn-hs").hide();
+			$("#demo").show();
+			$('#productDltBtn').attr('disabled', true);
+			$('#addProductBtn').attr('disabled', true);
+
+			$("#desc").val(data.desc);
+			$("#reqType").val(data.reqType);
+			$("#reqPrior").val(data.reqPrior);
+			$("#receiveDate").val(data.receiveDate);
+			$("#receiveDateCalendar").val(data.receiveDate);
+			$("#isHold").val(data.holdStatus);
+			$("#source").html(data.reqId);
+			$("#reqHeadId").html('');
+			$("#createdDate").empty();
+			$("#createdDate").append(data.createdOn);
+			$("#activeDate").empty();
+			$("#activeDate").append(data.activeDate);
+			$("#completeDate").empty();
+			$("#completeDate").html(data.completeDate);
+			$("#onHoldDate").empty();
+			$("#onHoldDate").html(data.onholdDate);
+			$("#vendorId").val(data.vendorId);
+			$("#totalMaxAmount").val(addCommas(data.maxTotal));
+			productOptions.api.setRowData(data.productList);
+
+			agGrid.simpleHttpRequest({
+				url : 'generate-po-activity-log?id=' + data.reqId
+			}).then(function(data) {
+				activityOptions.api.setRowData(data);
+			});
+
+			if (data.holdStatus == '1') {
+				$("#putOnHold").removeClass('holdCls');
+			} else if (data.holdStatus == '4') {
+				$("#putOnHold").addClass('holdCls');
+			}
+
+			//headerStatus();
+			localStorage.setItem('poData', null);
+		} else {
+			$("#source").html('New');
+		}
+
+		$("#statusDiv").hide();
+		$('#reqDltBtn').attr('disabled', true);
+		$('#reqCopyBtn').attr('disabled', true);
+		$('#reqAppvBtn').attr('disabled', true);
+		$('#rfqDistBtn').attr('disabled', true);
+
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+		$('.collapse').on('hide.bs.collapse', function() {
+			$(this).siblings('.panel-heading').removeClass('active');
+		});
+		$("#newBtn").click(function() {
+			$("#poTable").hide();
+			$("#reqTable").hide();
+			$(".btn-hs").hide();
+			$("#demo").show();
+		})
+
+		$("#rfqCancelBtn").click(function() {
+			$("#reqTable").show();
+			$(".btn-hs").show();
+			$("#poTable").show();
+			$("#totalPo").show();
+			$("#demo").hide();
+			agGrid.simpleHttpRequest({
+				url : 'generate-po-get-po-list'
+			}).then(function(data) {
+				var len = data.length;
+				$('#totalPo').find('span').html(len);
+				poOptions.api.setRowData(data);
+			});
+
+			$("#desc").val('');
+			$("#reqType").val('');
+			$("#reqPrior").val('');
+			$("#receiveDate").val('');
+			$("#receiveDateCalendar").val('');
+			$("#isHold").val('');
+			$("#source").html('');
+			$("#reqHeadId").html('');
+		 
+			
+			$("#createdDate").empty();
+			$("#createdDate").append('');
+			$("#activeDate").empty();
+			$("#activeDate").append('');
+			$("#completeDate").empty();
+			$("#completeDate").html('');
+			$("#onHoldDate").empty();
+			$("#onHoldDate").html('');
+			
+			$("#sku").html('');
+			$("#skuEditId").html('');
+			$("#brandId").html('');
+			$("#itemId").html('');
+			$("#itemName").html('');
+			$("#locationId").val(null);
+			$("#quantity").val('');
+			$("#unitPrice").val('');
+			$("#totalMaxAmount").val('');
+			$("#discount").val('');
+			$("#subTotal").val('');
+			$("#shipping").val('');
+			$("#tax").val('');
+			$("#maxValue").val('');
+			$("#total").val('');
+			$("#costCenterId").val(null);
+			$("#uom").val(null);
+			$("#search").val('');
+			$("#poId").val('');
+			$("#startDate").val('');
+			$("#startDateCalendar").val('');
+			$("#expireDate").val('');
+			$("#expireDateCalendar").val('');
+			$("#paymentTerm").val('');
+			$("#totalMaxAmount").val('');
+			$("#legalTerm").val('');
+			$("#legalTermDesc").val('');
+			$("#paymentTerm").val('');
+			$("#vendorId").val('');
+			$('#addProductBtn').attr('disabled', false);
+			$('#productDltBtn').attr('disabled', false);
+			headerStatus();
+		});
+
+		$("#quarter").click(function() {
+			$("#myTbl").hide();
+			$(".btn-hs").hide();
+			$("#demo").show();
+		})
+
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#receiveDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#receiveDate').val($(this).val());
+		})
+		
+		$('#receiveDate').blur(function(){
+			$("#receiveDateCalendar").val($(this).val());
+		})
+
+		$("#startDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#startDate').val($(this).val());
+		})
+		
+		$('#startDate').blur(function(){
+			$("#startDateCalendar").val($(this).val());
+		})
+
+		$("#expireDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#expireDate').val($(this).val());
+		})
+		
+		$('#expireDate').blur(function(){
+			$("#expireDateCalendar").val($(this).val());
+		})
+
+		$("#browseBtn").click(function() {
+			$("#myModal").modal('show');
+			getCategoryList();
+		})
+
+	});
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+</script>
+
+<script>
+	var columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				sortable : false,
+				filter : false,
+				resizable : true,
+				width : 20
+			},
+			{
+				headerName : "POId",
+				field : "poId",
+				cellRenderer : function(params) {
+					return '<a onclick=editPo("' + params.data.poId
+							+ '") href="javascript:void(0)">'
+							+ params.data.poId + '</a>';
+				}
+
+			}, {
+				headerName : "Source",
+				field : "reqId"
+			}, {
+				headerName : "Description",
+				field : "desc"
+			}, {
+				headerName : "Type",
+				field : "reqType"
+			}, {
+				headerName : "Priority",
+				field : "reqPrior"
+
+			}, {
+				headerName : "Location",
+				field : "location"
+
+			}, {
+				headerName : "locationId",
+				field : "locationId",
+				hide : "true"
+
+			}, {
+				headerName : "Cost Center",
+				field : "costCenter"
+
+			}, {
+				headerName : "costCenterId",
+				field : "costCenterId",
+				hide : "true"
+			}, {
+				headerName : "Name",
+				field : "itemName"
+
+			}, {
+				headerName : "itemId",
+				field : "itemId",
+				hide : "true"
+			}, {
+				headerName : "Vendor",
+				field : "vendorName"
+
+			}, {
+				headerName : "VendorName",
+				field : "vendorId",
+				hide : "true"
+			}, {
+				headerName : "Receive By Date",
+				field : "receiveDate",
+				cellStyle : {
+					textAlign : 'center'
+				}
+
+			}, {
+				headerName : "Start Date",
+				field : "startDate",
+				cellStyle : {
+					textAlign : 'center'
+				}
+
+			}, {
+				headerName : "Expire Date",
+				field : "expireDate",
+				cellStyle : {
+					textAlign : 'center'
+				}
+
+			}, {
+				headerName : "Max Amount",
+				field : "totalMaxAmount",
+				cellStyle : {
+					textAlign : 'right'
+				},
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "Payment Term",
+				field : "paymentTerm"
+
+			}, {
+				headerName : "Status",
+				field : "approveStatus",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : "Created By",
+				field : "createdBy"
+
+			}, {
+				headerName : "Created Date",
+				field : "createdOn",
+				 cellStyle : {
+					textAlign : 'center'
+				} 
+
+			} ];
+
+	// for product table
+
+	var productDefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				sortable : false,
+				filter : false,
+				resizable : true,
+				width : 20
+			},
+			{
+				headerName : "SKU",
+				field : "sku",
+				cellRenderer : function(params) {
+					return '<a onclick=editProduct("' + params.data.sku
+							+ '") href="javascript:void(0)">' + params.data.sku
+							+ '</a>';
+				}
+			}, {
+				headerName : "Name",
+				field : "itemName"
+
+			}, {
+				headerName : "itemId",
+				field : "itemId",
+				hide : "true"
+			}, {
+				headerName : "Brand",
+				field : "brand"
+			}, {
+				headerName : "Location",
+				field : "location"
+
+			}, {
+				headerName : "locationId",
+				field : "locationId",
+				hide : "true"
+
+			}, {
+				headerName : "Cost Center",
+				field : "costCenter"
+
+			}, {
+				headerName : "costCenterId",
+				field : "costCenterId",
+				hide : "true"
+			}, /* {
+								headerName : "Vendor",
+								field : "vendorName"
+
+							}, {
+								headerName : "vendorId",
+								field : "vendorId",
+								hide : "true"
+
+							},  */{
+				headerName : "Quantity",
+				field : "quantity",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "UOM",
+				field : "uom"
+
+			}, {
+				headerName : "uomId",
+				field : "uomId",
+				hide : "true"
+			}, {
+				headerName : "Unit Price",
+				field : "unitPrice",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "Discount",
+				field : "discount",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "Sub Total",
+				field : "subTotalPrice",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "Tax",
+				field : "tax",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "Shipping",
+				field : "shipping",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "Total",
+				field : "total",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "Max Value",
+				field : "maxValue",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			} ];
+
+	function checkboxSelection(params) {
+		return params.node.group === true;
+	}
+
+	var activityDefs = [ {
+		headerCheckboxSelection : true,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		sortable : false,
+		filter : false,
+		resizable : true,
+		width : 20
+	}, {
+		headerName : "Activity Name",
+		field : "operationName"
+	}, {
+		headerName : "User Name",
+		field : "operationBy"
+	}, {
+		headerName : "Created Date",
+		field : "operationOn",
+		cellStyle : {
+			textAlign : 'center'
+		}
+
+	} ];
+
+	// let the grid know which columns and what data to use product table
+	var activityOptions = {
+		columnDefs : activityDefs,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 353
+		}
+
+	};
+
+	// let the grid know which columns and what data to use activity table
+	var productOptions = {
+		columnDefs : productDefs,
+		rowSelection : 'multiple',
+		onSelectionChanged: onSelectionChangedproduct,
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 153
+		},
+		getRowNodeId : function(data) {
+			return data.sku;
+		}
+
+	};
+
+	function onSelectionChangedproduct(){
+		var selectedRows =productOptions.api.getSelectedRows();
+
+		var rowCount = 0;
+		selectedRows.forEach(function(i) {
+			rowCount = rowCount + 1;
+		});
+		if (rowCount > 0) {
+		        $('#productDltBtn').attr("disabled", false);
+		        $('#addProductBtn').attr("disabled", true);
+				
+		}else{
+			    $('#productDltBtn').attr("disabled", true);
+			    $('#addProductBtn').attr("disabled", false);
+			
+		}
+	}
+	function checkboxSelection(params) {
+		return params.node.group === true;
+	}
+
+	function checkbox(params) {
+		return params.node.group === true;
+	}
+
+	// let the grid know which columns and what data to use
+	var poOptions = {
+		columnDefs : columnDefs,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 153
+		},
+		onSelectionChanged : onSelectionChanged,
+
+	};
+
+	// setup the grid after the page has finished loading
+	document.addEventListener('DOMContentLoaded', function() {
+		var gridDiv = document.querySelector('#poTable');
+		new agGrid.Grid(gridDiv, poOptions);
+
+		var gridDiv = document.querySelector('#product');
+		new agGrid.Grid(gridDiv, productOptions);
+
+		var gridDiv = document.querySelector('#activity');
+		new agGrid.Grid(gridDiv, activityOptions);
+
+	});
+
+	function resetState() {
+		poOptions.columnApi.resetColumnState();
+
+	}
+
+	function onQuickFilterChanged() {
+		poOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function onSelectionChanged() {
+		var selectedRows = poOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			$('#reqDltBtn').attr('disabled', false);
+			$('#reqCopyBtn').attr('disabled', false);
+			$('#reqAppvBtn').attr('disabled', false);
+			$('#rfqDistBtn').attr('disabled', false);
+		} else {
+			$('#reqDltBtn').attr('disabled', true);
+			$('#reqCopyBtn').attr('disabled', true);
+			$('#reqAppvBtn').attr('disabled', true);
+			$('#rfqDistBtn').attr('disabled', true);
+		}
+
+	}
+	function switchPage() {
+		$('.formValidation').remove();
+		newPage();
+
+		if (!$("#source").html()) {
+			$("#source").html('New');
+		}
+		var selectedRows = poOptions.api.getSelectedRows();
+		var selectedRowsString = '';
+		selectedRows.forEach(function(selectedRow, index) {
+			if (index > 0) {
+				selectedRowsString += ',';
+			}
+			selectedRowsString += selectedRow.itemId;
+		});
+
+		// for product table
+		agGrid.simpleHttpRequest({
+			url : 'view-quatation-item-trough-ajax?id=' + selectedRowsString
+		}).then(function(data) {
+			productOptions.api.setRowData(data);
+		});
+
+		agGrid.simpleHttpRequest({
+			url : 'generate-po-activity-log?id=' + selectedRowsString
+		}).then(function(data) {
+			activityOptions.api.setRowData(data);
+		});
+
+	}
+	// for edit indivisual product
+	function editProduct(prodId) {
+
+		var rfqId = $("#reqHeadId").html();
+		var rowNode = productOptions.api.getRowNode(prodId);
+
+		$("#sku").html(prodId);
+		$("#skuEditId").html(prodId);
+		$("#brandId").val(rowNode.data.brand);
+		$("#brandName").html(rowNode.data.brandName);
+		$("#itemId").val(rowNode.data.itemId);
+		$("#itemName").html(rowNode.data.itemName);
+		$("#locationId").val(rowNode.data.locationId);
+		$("#productEdit").val(prodId);
+		$("#quantity").val(rowNode.data.quantity);
+		$("#uom").val(rowNode.data.uomId);
+		$("#costCenterId").val(rowNode.data.costCenterId);
+
+		$("#unitPrice").val(rowNode.data.unitPrice);
+		$("#discount").val(rowNode.data.discount);
+		$("#tax").val(rowNode.data.tax);
+		$("#shipping").val(rowNode.data.shipping);
+		$("#total").val(rowNode.data.total);
+		$("#maxValue").val(rowNode.data.maxValue);
+		$("#subTotal").val(rowNode.data.subTotalPrice);
+		$("#search").val(rowNode.data.itemName);
+		openNav();
+
+	}
+
+	function editPo(rfqId) {
+		$('.formValidation').remove();
+		newPage();
+		$("#poTable").hide();
+		$("#reqTable").hide();
+		$(".btn-hs").hide();
+		$("#demo").show();
+		$('.loader').show();
+		agGrid.simpleHttpRequest({
+			url : 'generate-po-item-trough-ajax?id=' + rfqId
+		}).then(function(data) {
+			$('.loader').hide();
+			$("#desc").val(data.desc);
+			$("#reqType").val(data.reqType);
+			$("#reqPrior").val(data.reqPrior);
+			$("#vendorId").val(data.vendorId);
+			$("#receiveDate").val(data.receiveDate);
+			$("#receiveDateCalendar").val(data.receiveDate);
+			$("#isHold").val(data.holdStatus);
+			$("#source").html(data.reqId);
+			$("#reqHeadId").html(data.poId);
+			$("#createdDate").empty();
+			$("#createdDate").append(data.createdOn);
+			$("#activeDate").empty();
+			$("#activeDate").append(data.approvedDate);
+			$("#completeDate").empty();
+			$("#completeDate").html(data.completeDate);
+			$("#onHoldDate").empty();
+			$("#onHoldDate").html(data.onholdDate);
+
+			$("#poId").val(data.poId);
+			$("#startDate").val(data.startDate);
+			$("#startDateCalendar").val(data.startDate);
+			$("#expireDate").val(data.expireDate);
+			$("#expireDateCalendar").val(data.expireDate);
+			$("#paymentTerm").val(data.poId);
+			$("#totalMaxAmount").val(addCommas(data.totalMaxAmount));
+			$("#legalTerm").val(data.legalTerm);
+			$("#legalTermDesc").val(data.legalTermDesc);
+			$("#paymentTerm").val(data.paymentTerm);
+
+			productOptions.api.setRowData(data.productList);
+
+			if (data.approveStatus == '1') {
+				$("#putOnHold").removeClass('holdCls');
+			} else if (data.approveStatus == '4') {
+				$("#putOnHold").addClass('holdCls');
+			}
+			//putOnHold();
+			headerStatus();
+		});
+
+		agGrid.simpleHttpRequest({
+			url : 'generate-po-activity-log?id=' + rfqId
+		}).then(function(data) {
+			activityOptions.api.setRowData(data);
+		});
+
+	}
+
+	function deleteFun() {
+		$('#delete').modal('show');
+	}
+	function deleteProduct() {
+		$('#deleteProduct').modal('show');
+	}
+	function deleteProductIndConfirm() {
+		$('#deleteProductInd').modal('show');
+	}
+
+	function cancelModalBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+		$('#deleteProduct').modal('hide');
+		$('#delete').modal('hide');
+		
+		
+	}
+	//for closeing modal box for dlt  product
+	function cancelModalProductBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+		$('#deleteProduct').modal('hide');
+	}
+	//for closeing modal box for dlt ind product
+	function cancelModalBtnDPI() {
+		$('#deleteProductInd').modal('hide');
+	}
+	//for approve requisition
+	function approve() {
+		var selectedRows = poOptions.api.getSelectedRows();
+		var selectedRowsString = '';
+		selectedRows.forEach(function(selectedRow, index) {
+			if (index > 0) {
+				selectedRowsString += ',';
+			}
+			selectedRowsString += selectedRow.poId;
+		});
+		if (selectedRowsString) {
+			var item = {};
+			item.moduleId = localStorage.getItem('module');
+			item.componentId = localStorage.getItem('function');
+			item.subComponentId = localStorage.getItem('activity');
+			item.poId = selectedRowsString;
+			$('.loader').show();
+			$.ajax({
+				type : "POST",
+				url : "generate-po-approve-th-ajax",
+				dataType : "json",
+				contentType : "application/json",
+				data : JSON.stringify(item),
+				success : function(response) {
+					$('.loader').hide();
+					if (response.message == "Success") {
+						agGrid.simpleHttpRequest({
+							url : 'generate-po-get-po-list'
+						}).then(function(data) {
+							var len = data.length;
+							$('#totalPo').find('span').html(len);
+							poOptions.api.setRowData(data);
+						});
+						$("#messageParagraph").text("Approved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+
+					    $('#reqDltBtn').attr('disabled', true);
+						$('#reqCopyBtn').attr('disabled', true);
+						$('#reqAppvBtn').attr('disabled', true);
+						$('#rfqDistBtn').attr('disabled', true); 
+					} else {
+						swal({
+							title : response.code,
+							text : response.message,
+							type : "warning"
+						})
+					}
+				},
+				error : function(data) {
+					console.log(data)
+				}
+			})
+
+		} else {
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+	}
+</script>
+<script type="text/javascript">
+	// for stock graph  report 
+	function stockReport() {
+		$('.loader').show();
+		var selectedRows = productOptions.api.getSelectedRows();
+		var selectedRowsString = '';
+		selectedRows.forEach(function(selectedRow, index) {
+			if (index > 0) {
+				selectedRowsString += ',';
+			}
+			selectedRowsString += selectedRow.itemId;
+		});
+
+		if (selectedRowsString) {
+
+			$('#lineGraph').modal('show');
+			$
+					.ajax({
+						type : "GET",
+						url : "/inventory/view-stock-daily-report?id="
+								+ selectedRowsString,
+						dataType : 'json',
+						data : selectedRowsString,
+						success : function(response) {
+							$('.loader').hide();
+							if (response.message == "success") {
+								$("#graphTable").empty();
+								lineGrapg(response.body.dataList,
+										response.body.dates, 'Stock');
+								var tableHeader = '<tr>';
+								for (var i = 0; i < response.body.dates.length; i++) {
+
+									tableHeader = tableHeader + '<td>'
+											+ response.body.dates[i] + '</td>';
+								}
+								tableHeader = tableHeader + '</tr>';
+								$("#graphTable").append(tableHeader);
+
+								for (var i = 0; i < response.body.dataList.length; i++) {
+									var tableBody = '<tr><td>'
+											+ response.body.dataList[i].name
+											+ '</td>';
+									for (var j = 0; j < response.body.dataList[i].data.length; j++) {
+										tableBody = tableBody
+												+ '<td>'
+												+ response.body.dataList[i].data[j]
+												+ '</td>';
+									}
+									tableBody = tableBody + '</tr>';
+									$("#graphTable").append(tableBody);
+								}
+
+							}
+						},
+						error : function(data) {
+							console.log(data);
+							$('.loader').hide();
+						}
+					})
+		} else {
+			swal("Please Select At least One Product.");
+		}
+
+	}
+	// get excel report
+	function getExcelReport() {
+		var selectedRows = productOptions.api.getSelectedRows();
+		var selectedRowsString = '';
+		selectedRows.forEach(function(selectedRow, index) {
+			if (index > 0) {
+				selectedRowsString += ',';
+			}
+			selectedRowsString += selectedRow.itemId;
+		});
+
+		window.location.href = "/inventory/view-stock-daily-report-excel?id="
+				+ selectedRowsString;
+	}
+</script>
+
+<script>
+	function saveTableData() {
+		var valid = validSideBarData();
+		if (valid) {
+			var item = {};
+			item.sku = $("#sku").html();
+			item.brand = $("#brandId").val();
+			item.brandName = $("#brandName").html();
+			item.itemId = $("#itemId").val();
+			item.itemName = $("#itemName").html();
+			item.locationId = $("#locationId").val();
+			item.location = $("#locationId").find('option:selected').text();
+			item.costCenterId = $("#costCenterId").val();
+			item.costCenter = $("#costCenterId").find('option:selected').text();
+			/*item.vendorId = $("#vendorId").val();
+			item.vendorName = $("#vendorId").find('option:selected').text(); */
+			item.quantity = removeCommas($("#quantity").val());
+			item.uomId = $("#uom").val();
+			item.uom = $("#uom").find('option:selected').text();
+			item.unitPrice = removeCommas($("#unitPrice").val());
+			item.discount = removeCommas($("#discount").val());
+			item.tax = removeCommas($("#tax").val());
+			item.shipping = removeCommas($("#shipping").val());
+			item.total = removeCommas($("#total").val());
+			item.shipping = removeCommas($("#shipping").val());
+			item.maxValue =removeCommas($("#maxValue").val());
+			item.subTotalPrice = removeCommas($("#subTotal").val());
+			var productEdit = $("#productEdit").val();
+			var datas = [];
+
+			if (productEdit) {
+				var rowNode = productOptions.api.getRowNode(productEdit);
+				rowNode.setData(item);
+			} else {
+				productOptions.api.forEachNode(function(rowNode, index) {
+					datas.push(rowNode.data);
+				});
+				datas.push(item)
+				productOptions.api.setRowData(datas);
+			}
+			var totalMaxValue = 0;
+			productOptions.api.forEachNode(function(rowNode, index) {
+
+				totalMaxValue += parseFloat(rowNode.data.maxValue);
+			});
+
+			closeNav();
+			$("#totalMaxAmount").val(addCommas(totalMaxValue));
+		}
+
+	}
+
+	function saveData() {
+
+		var allValid = true;
+		if (!validationUpdated("Description can't be Left Blank", 'desc'))
+			allValid = false;
+		if (!validationUpdated("Requisition Type can't be Left Blank",
+				'reqType'))
+			allValid = false;
+		if (!validationUpdated("Requisition Priority can't be Left Blank",
+				'reqPrior'))
+			allValid = false;
+		if (!validationUpdated("Receive Date can't be Left Blank",
+				'receiveDate'))
+			allValid = false;
+		if (allValid && validProductData()) {
+			$('.loader').show();
+			$("body").addClass("overlay");
+			var itemList = [];
+			productOptions.api.forEachNode(function(rowNode, index) {
+				itemList.push(rowNode.data);
+			});
+			var item = {};
+			item.desc = $("#desc").val();
+			item.reqType = $("#reqType").val();
+			item.reqPrior = $("#reqPrior").val();
+			item.receiveDate = $("#receiveDate").val();
+			item.holdStatus = $("#isHold").val();
+			item.reqId = $("#source").html();
+			item.poId = $("#poId").val();
+			item.startDate = $("#startDate").val();
+			item.expireDate = $("#expireDate").val();
+			item.vendorId = $("#vendorId").val();
+			item.paymentTerm = $("#paymentTerm").val();
+			item.totalMaxAmount = $("#totalMaxAmount").val().replace(/,/g, '');
+			item.legalTerm = $("#legalTerm").val();
+			item.legalTermDesc = $("#legalTermDesc").val();
+			item.moduleId = localStorage.getItem('module');
+			item.componentId = localStorage.getItem('function');
+			item.subComponentId = localStorage.getItem('activity');
+			item.productList = itemList
+			savePo(item);
+
+		}
+
+	}
+
+	function savePo(item) {
+		console.log(JSON.stringify(item))
+		$.ajax({
+			type : "POST",
+			url : "generate-po-save-th-ajax",
+			dataType : "json",
+			contentType : "application/json",
+			data : JSON.stringify(item),
+			success : function(response) {
+				$('.loader').hide();
+				$("body").removeClass("overlay");
+				if (response.message == "Success") {
+					returnPage();
+					agGrid.simpleHttpRequest({
+						url : 'generate-po-get-po-list'
+					}).then(function(data) {
+						var len = data.length;
+						$('#totalPo').find('span').html(len);
+						poOptions.api.setRowData(data);
+					});
+					$("#messageParagraph").text("Data Saved Successfully");
+					$("#msgOkModal").removeClass("btn3");
+					$("#msgOkModal").addClass("btn1");
+					$("#msgModal").modal('show');
+
+					$("#desc").val(response.body.desc);
+					$("#reqType").val(response.body.reqType);
+					$("#reqPrior").val(response.body.reqPrior);
+					$("#vendorId").val(response.body.vendorId);
+					$("#receiveDate").val(response.body.receiveDate);
+					$("#receiveDateCalendar").val(response.body.receiveDate);
+					$("#isHold").val(response.body.holdStatus);
+					$("#rfqId").val(response.body.rfqId);
+					$("#source").html(response.body.reqId);
+					$("#reqHeadId").html(response.body.poId);
+					$("#createdDate").empty();
+					$("#createdDate").append(response.body.createdOn);
+					$("#activeDate").empty();
+					$("#activeDate").append(response.body.activeDate);
+					$("#completeDate").empty();
+					$("#completeDate").html(response.body.completeDate);
+					$("#onHoldDate").empty();
+					$("#onHoldDate").html(response.body.onholdDate);
+					$("#poId").val(response.body.poId);
+					$("#startDate").val(response.body.startDate);
+					$("#startDateCalendar").val(response.body.startDate);
+					$("#expireDate").val(response.body.expireDate);
+					$("#expireDateCalendar").val(response.body.expireDate);
+					$("#paymentTerm").val(response.body.poId);
+					$("#totalMaxAmount").val(response.body.totalMaxAmount);
+					$("#legalTerm").val(response.body.legalTerm);
+					$("#legalTermDesc").val(response.body.legalTermDesc);
+					$("#paymentTerm").val(response.body.paymentTerm);
+					productOptions.api.setRowData(response.body.productList);
+
+					agGrid.simpleHttpRequest(
+							{
+								url : 'generate-po-activity-log?id='
+										+ response.body.poId
+							}).then(function(data) {
+						activityOptions.api.setRowData(data);
+					});
+					putOnHold();
+					headerStatus();
+				} else {
+
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+				}
+			},
+			error : function(data) {
+				console.log(data);
+				$('.loader').hide();
+				$("body").removeClass("overlay");
+			}
+		}) //ajax ends
+
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+
+	function getProductList() {
+		var search = $("#search").val();
+		if (search) {
+
+			$
+					.ajax({
+						type : "POST",
+						url : "view-quatation-get-product-list",
+						dataType : 'json',
+						contentType : 'application/json',
+						data : search,
+						success : function(response) {
+							if (response.message == "success") {
+
+								if (response.body.length != 0) {
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1" style="margin-left:-40px; font-weight:100; font-size:14px; color:#ccc;">';
+									for (var i = 0; i < response.body.length; i++) {
+										content += '<li class="autocompletedata cp" onClick="selectAutocompleteValue1(\''
+												+ response.body[i].itemId
+												+ '\',\''
+												+ response.body[i].itemName
+												+ '\',\''
+												+ response.body[i].sku
+												+ '\',\''
+												+ response.body[i].brandName
+												+ '\',\''
+												+ response.body[i].brand
+												+ '\',\''
+												+ response.body[i].itemCategoryId
+												+ '\',\''
+												+ response.body[i].itemCategoryName
+												+ '\')">'
+												+ response.body[i].itemName
+												+ '('
+												+ response.body[i].sku
+												+ ')'
+												+ '('
+												+ response.body[i].brandName
+												+ ')' + '</li>';
+									}
+									content += '</ul>';
+									$("#suggesstion-box1_").show();
+									$("#suggesstion-box1_").html(content);
+
+								} else {
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1">';
+									content += '<li onClick="selectAutocompleteValue()">'
+											+ "No Data Found" + '</li>';
+									content += '</ul>';
+									$("#suggesstion-box1_").show();
+									$("#suggesstion-box1_").html(content);
+								}
+							}
+						},
+						error : function(data) {
+							console.log(data);
+						}
+					})
+		}
+	}
+
+	function selectAutocompleteValue1(key, name, sku, brandName, brand,
+			prodcatId, prodCatName) {
+		if (key) {
+			$("#itemName").html(name);
+			$("#itemId").val(key);
+			$("#brandName").html(brandName);
+			$("#brandId").val(brand);
+			$("#prodCatId").val(prodcatId);
+			$("#prodCatName").val(prodCatName);
+			$("#sku").html(sku);
+			$("#search").val(name)
+			$("#search").attr('data-procat', key);
+			$("#suggesstion-box1_").hide();
+			//checkForDuplicate(key,counter);
+
+		} else {
+
+			$("#itemName").html("");
+			$("#itemId").val("");
+			$("#brandId").html("");
+			$("#brandId").val("");
+			$("#sku").html("");
+			$("#prodCatId").val('');
+			$("#prodCatName").val('');
+			$("#search").val("");
+			$("#search").attr('data-procat', "");
+			$("#suggesstion-box1_").hide();
+
+		}
+	}
+	function selectAutocompleteValue() {
+		$("#itemName").html("");
+		$("#itemId").val("");
+		$("#brandId").html("");
+		$("#sku").html("");
+		$("#search").val("");
+		$("#search").attr('data-procat', "");
+		$("#suggesstion-box1_").hide();
+
+	}
+	function putOnHold() {
+		var isHold = $("#isHold").val();
+		if (isHold == '1') {
+			$("#isHold").val('4');
+			$("#putOnHold").removeClass('holdCls');
+		} else if (isHold == '4') {
+			$("#isHold").val('1');
+			$("#putOnHold").addClass('holdCls');
+		}
+	}
+
+	function viewRFQ() {
+		sessionStorage.setItem('activity', 'ACT0021');
+		window.location.href = "/inventory/view-quatation";
+	}
+	function headerStatus() {
+
+		$("#statusDiv").show();
+
+		var createdDate = $("#createdDate").text();
+		var activeDate = $("#activeDate").text();
+		var completeDate = $("#completeDate").text();
+		var onholdDate = $("#onHoldDate").text();
+
+		if (createdDate) {
+			$('#createdDiv').addClass('green-box');
+			$('#createdDiv').removeClass('grey-box');
+		} else {
+			$('#createdDiv').removeClass('green-box');
+			$('#createdDiv').addClass('grey-box');
+		}
+		if (activeDate) {
+			$('#activeDiv').addClass('green-box');
+			$('#activeDiv').removeClass('grey-box');
+		} else {
+			$('#activeDiv').addClass('grey-box');
+			$('#activeDiv').removeClass('green-box');
+		}
+		if (completeDate) {
+			$('#completeDiv').addClass('green-box');
+			$('#completeDiv').removeClass('grey-box');
+			//$('#productDltBtn').attr('disabled', true);
+			//$('#addProductBtn').attr('disabled', true);
+		} else {
+			$('#completeDiv').removeClass('green-box');
+			$('#completeDiv').addClass('grey-box');
+		}
+		if (onholdDate) {
+			$('#onHoldDiv').addClass('green-box');
+			$('#onHoldDiv').removeClass('grey-box');
+		} else {
+			$('#onHoldDiv').removeClass('green-box');
+			$('#onHoldDiv').addClass('grey-box');
+		}
+	}
+	function clearSearchData() {
+		$("#search").val(null);
+		$("#sku").html('');
+		$("#brandName").html('');
+		$("#brandId").val('');
+		$("#itemId").html('');
+		$("#itemName").html('');
+	}
+
+	function getCategoryList() {
+		$("#productCategoryCBDiv").empty();
+		$
+				.ajax({
+					type : "POST",
+					url : "view-requisition-product-category-get-total-list",
+					dataType : "json",
+					contentType : "application/json",
+					success : function(response) {
+						if (response.message == "Success") {
+
+							if (response.body.length > 0) {
+
+								var c = 0;
+								$("#totalPCat").text(c);
+								for (var i = 0; i < response.body.length; i++) {
+
+									c = c + 1;
+
+									if (response.body[i].nodeCount > 0) {
+										var tbl = '<ul id="myUL_'+response.body[i].categoryId+'" data-field="1" class="level bg_white"><li id="li_'+response.body[i].categoryId+'"><span class="caret" value="0" id="spanA_'
+												+ response.body[i].categoryId
+												+ '" onclick=getRootLeafNodes("'
+												+ response.body[i].categoryId
+												+ '")></span> '
+												+ '<span id="lbl_'+response.body[i].categoryId+'" class="leveltxt" level="'+response.body[i].catLevel+'">'
+												+ response.body[i].categoryName
+												+ '</span> '
+												+ '<ul class="nested bg_white" id="ul_'+response.body[i].categoryId+'" data-field="0"></ul>'
+												+ '</li></ul>';
+									} else {
+										var tbl = '<ul id="myUL_'+response.body[i].categoryId+'" data-field="1" class="level bg_white"><li id="li_'+response.body[i].categoryId+'"><span class="caret" value="0" id="spanA_'
+												+ response.body[i].categoryId
+												+ '" onclick=getRootLeafNodes("'
+												+ response.body[i].categoryId
+												+ '")></span> '
+												+ '<div class="category"><input type="checkbox" id="cat_'
+												+ response.body[i].categoryId
+												+ '" class="pc1-box" value='
+												+ response.body[i].categoryId
+												+ ' onchange=selectCheckBox("'
+												+ response.body[i].categoryId
+												+ '","'
+												+ response.body[i].catLevel
+												+ '")></div><span id="lbl_'+response.body[i].categoryId+'" class="leveltxt" level="'+response.body[i].catLevel+'">'
+												+ response.body[i].categoryName
+												+ '</span> '
+												+ '<ul class="nested bg_white" id="ul_'+response.body[i].categoryId+'" data-field="0"></ul>'
+												+ '</li></ul>';
+									}
+
+									$("#productCategoryCBDiv").append(tbl);
+
+									getRootLeafNodes(response.body[i].categoryId);
+								}
+
+								var prCategoryId = $("#prodCatId").val();
+
+								$("#cat_" + prCategoryId).prop("checked", true);
+
+							}
+						} else {
+							swal({
+								title : response.code,
+								text : response.message,
+								type : "warning"
+							})
+						}
+					},
+					error : function(response) {
+						console.log(response);
+					}
+				})
+	}
+
+	function getRootLeafNodes(id) {
+
+		$("#ul_" + id).empty();
+
+		var value = $("#spanA_" + id).attr("value");
+		if (value == "0") {
+
+			$
+					.ajax({
+						type : "POST",
+						url : "view-requisition-product-category-get-category-list-by-id",
+						dataType : "json",
+						contentType : "application/json",
+						data : id,
+						success : function(response) {
+							if (response.message == "Success") {
+								if (response.body.length > 0) {
+									for (var i = 0; i < response.body.length; i++) {
+
+										if (response.body[i].nodeCount > 0) {
+											var tbl = '<li id="li_'+response.body[i].categoryId+'"><span class="caret" value="0" id="span_'
+													+ response.body[i].categoryId
+													+ '" onclick=getLeafNodes("'
+													+ response.body[i].categoryId
+													+ '")></span><span class="leveltxt" id="lbl_'+response.body[i].categoryId+'" level="'+response.body[i].catLevel+'"> '
+													+ response.body[i].categoryName
+													+ ' </span>'
+													+ '<ul class="nested bg_white" id="ul_'+response.body[i].categoryId+'" data-field="0"></ul>'
+													+ '</li>';
+										} else {
+											var tbl = '<li id="li_'+response.body[i].categoryId+'"><span class="caret" value="0" id="span_'
+													+ response.body[i].categoryId
+													+ '" onclick=getLeafNodes("'
+													+ response.body[i].categoryId
+													+ '")></span><div class="category"><input type="checkbox" id="cat_'
+													+ response.body[i].categoryId
+													+ '" class="pc1-box" value='
+													+ response.body[i].categoryId
+													+ '  onchange=selectCheckBox("'
+													+ response.body[i].categoryId
+													+ '","'
+													+ response.body[i].catLevel
+													+ '")></div><span class="leveltxt" id="lbl_'+response.body[i].categoryId+'" level="'+response.body[i].catLevel+'"> '
+													+ response.body[i].categoryName
+													+ ' </span>'
+													+ '<ul class="nested bg_white" id="ul_'+response.body[i].categoryId+'" data-field="0"></ul>'
+													+ '</li>';
+										}
+
+										$("#spanA_" + id).attr("value", "1");
+										$("#spanA_" + id)
+												.addClass("caret-down");
+										$("#ul_" + id).addClass("active");
+
+										$("#ul_" + id).append(tbl);
+
+										getLeafNodes(response.body[i].categoryId);
+									}
+
+									var prCategoryId = $("#prodCatId").val();
+
+									$("#cat_" + prCategoryId).prop("checked",
+											true);
+
+									//$("#ul_"+id).attr("data-field","1");
+								}
+							}
+
+						},
+						error : function(data) {
+							$("#spanA_" + id).attr("value", "0");
+							$("#spanA_" + id).removeClass("caret-down");
+							$("#ul_" + id).removeClass("active");
+							$("#ul_" + id).empty();
+						}
+					});
+		} else {
+			$("#spanA_" + id).attr("value", "0");
+			$("#spanA_" + id).removeClass("caret-down");
+			$("#ul_" + id).removeClass("active");
+			$("#ul_" + id).empty();
+		}
+	}
+
+	function getLeafNodes(id) {
+
+		$("#ul_" + id).empty();
+
+		var value = $("#span_" + id).attr("value");
+		if (value == "0") {
+
+			$
+					.ajax({
+						type : "POST",
+						url : "view-requisition-product-category-get-category-list-by-id",
+						dataType : "json",
+						contentType : "application/json",
+						data : id,
+						success : function(response) {
+							if (response.message == "Success") {
+								if (response.body.length > 0) {
+									for (var i = 0; i < response.body.length; i++) {
+
+										if (response.body[i].nodeCount > 0) {
+											var tbl = '<li id="li_'+response.body[i].categoryId+'"><span class="caret" value="0" id="span_'
+													+ response.body[i].categoryId
+													+ '" onclick=getLeafNodes("'
+													+ response.body[i].categoryId
+													+ '")></span><span class="leveltxt" id="lbl_'+response.body[i].categoryId+'" level="'+response.body[i].catLevel+'"> '
+													+ response.body[i].categoryName
+													+ ' </span>'
+													+ '<ul class="nested bg_white" id="ul_'+response.body[i].categoryId+'" data-field="0"></ul>'
+													+ '</li>';
+										} else {
+											var tbl = '<li id="li_'+response.body[i].categoryId+'"><span class="caret" value="0" id="span_'
+													+ response.body[i].categoryId
+													+ '" onclick=getLeafNodes("'
+													+ response.body[i].categoryId
+													+ '")></span><div class="category"><input type="checkbox" id="cat_'
+													+ response.body[i].categoryId
+													+ '" class="pc1-box" value='
+													+ response.body[i].categoryId
+													+ '  onchange=selectCheckBox("'
+													+ response.body[i].categoryId
+													+ '","'
+													+ response.body[i].catLevel
+													+ '")></div><span class="leveltxt" id="lbl_'+response.body[i].categoryId+'" level="'+response.body[i].catLevel+'"> '
+													+ response.body[i].categoryName
+													+ ' </span>'
+													+ '<ul class="nested bg_white" id="ul_'+response.body[i].categoryId+'" data-field="0"></ul>'
+													+ '</li>';
+										}
+
+										$("#span_" + id).attr("value", "1");
+										$("#span_" + id).addClass("caret-down");
+										$("#ul_" + id).addClass("active");
+										//var df = $("#ul_"+id).attr("data-field");
+										//if(df == 0) {
+										$("#ul_" + id).append(tbl);
+										//}
+										getLeafNodes(response.body[i].categoryId);
+									}
+
+									var prCategoryId = $("#prodCatId").val();
+									if (prCategoryId) {
+										$("#cat_" + prCategoryId).prop(
+												"checked", true);
+										getProductByCategory();
+									}
+								}
+							}
+
+						},
+						error : function(data) {
+							$("#span_" + id).attr("value", "0");
+							$("#span_" + id).removeClass("caret-down");
+							$("#ul_" + id).removeClass("active");
+							$("#ul_" + id).empty();
+							$("#ul_" + id).empty();
+						}
+					});
+		} else {
+			$("#span_" + id).attr("value", "0");
+			$("#span_" + id).removeClass("caret-down");
+			$("#ul_" + id).removeClass("active");
+			$("#ul_" + id).empty();
+		}
+	}
+
+	function selectCheckBox(id, lvl) {
+		getProductByCategory();
+
+		if (lvl == 'L1') {
+			var textDesc = $("#lbl_" + id).text();
+			$("#catDesc").text(textDesc);
+		} else {
+			var res = lvl.substring(1, 1000000);
+
+			var lastText = $("#lbl_" + id).text();
+			var textDesc = "";
+			for (i = res; i > 1; i--) {
+				var pUL = $("#lbl_" + id).parents("ul").attr("id");
+				pUL = pUL.substring(3, 10000000000000);
+				var newText = $("#lbl_" + pUL).text();
+				textDesc = newText + " > " + textDesc;
+				id = pUL;
+			}
+			textDesc = textDesc + lastText;
+			$("#catDesc").text(textDesc);
+		}
+	}
+
+	function getProductByCategory() {
+		var valor = "";
+		$('input.pc1-box[type=checkbox]').each(function() {
+			if (this.checked)
+				valor = valor + $(this).val() + ",";
+		});
+		if (valor) {
+			$("#select_product").empty();
+			$
+					.ajax({
+						type : "POST",
+						url : "view-requisition-get-product-by-cat",
+						dataType : 'json',
+						contentType : 'application/json',
+						data : valor,
+						success : function(response) {
+							if (response.message == "success") {
+								$("#select_product").empty();
+								var content = '';
+								for (var i = 0; i < response.body.length; i++) {
+
+									content += '<div class="autocompletedata cp product-item" id="'
+											+ response.body[i].productId
+											+ "_"
+											+ response.body[i].sku
+											+ '" onClick=selectActive("'
+											+ response.body[i].productId
+											+ "_"
+											+ response.body[i].sku
+											+ '","'
+											+ response.body[i].sku
+											+ '","'
+											+ response.body[i].productId
+											+ '","'
+											+ encodeURIComponent(response.body[i].productName)
+											+ '","'
+											+ response.body[i].brandId
+											+ '","'
+											+ response.body[i].brandName
+											+ '","'
+											+ response.body[i].productCatId
+											+ '","'
+											+ response.body[i].productCatName
+											+ '")>'
+											+ response.body[i].sku
+											+ " - "
+											+ response.body[i].brandName
+											+ " - "
+											+ response.body[i].productName
+											+ '</div>';
+								}
+								content += '</ul>';
+								$("#select_product").show();
+								$("#select_product").append(content);
+
+								var itemId = $("#itemId").val();
+								var skuId = $("#sku").html();
+
+								if (itemId) {
+									$("#" + itemId + "_" + skuId).addClass(
+											'productActive');
+								}
+
+							}
+						},
+						error : function(data) {
+
+						}
+					})
+		} else {
+			$("#select_product").empty();
+		}
+	}
+
+	function selectActive(id, sku, productId, productName, brandId, brandName,
+			prodCatId, prodCatName) {
+		var splitArray = productName.split('%20');
+		var finalString = "";
+		for (i = 0; i < splitArray.length; i++) {
+			finalString += splitArray[i] + " ";
+		}
+		$('.autocompletedata ').removeClass('productActive');
+		$("#" + id).addClass('productActive');
+		$("#itemNameTemp").val(finalString);
+		$("#itemIdTemp").val(productId);
+		$("#brandNameTemp").val(brandName);
+		$("#brandIdTemp").val(brandId);
+		$("#skuTemp").val(sku);
+		$("#prodCatIdTemp").val(prodCatId);
+		$("#prodCatNameTemp").val(prodCatName);
+		$("#searchTemp").val(productName)
+
+	}
+	function selectProductVal() {
+		$("#itemName").html($("#itemNameTemp").val());
+		$("#itemId").val($("#itemIdTemp").val());
+		$("#brandName").html($("#brandNameTemp").val());
+		$("#brandId").val($("#brandIdTemp").val());
+		$("#prodCatId").val($("#prodCatIdTemp").val());
+		$("#prodCatName").val($("#prodCatNameTemp").val());
+		$("#sku").html($("#skuTemp").val());
+		$("#search").val($("#itemNameTemp").val())
+		$("#select_product").html('');
+		$('#myModal').modal('hide');
+	}
+
+	// download function
+	function skuProductCSV() {
+		var dataset = [];
+		productOptions.api.forEachNodeAfterFilterAndSort(function(rowNode,
+				index) {
+			dataset.push(rowNode.data);
+		});
+		productOptions.api.exportDataAsCsv(dataset);
+	}
+	
+	// for purchase history function
+	
+	function rfqCSV() {
+		var dataset = [];
+		poOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+		poOptions.api.exportDataAsCsv(dataset);
+	}
+
+	function validFormData() {
+		var allValid = true;
+		if (!validationUpdated("Description can't be Left Blank", 'desc'))
+			allValid = false;
+		if (!validationUpdated("Requisition Type can't be Left Blank",
+				'reqType'))
+			allValid = false;
+		if (!validationUpdated("Requisition Priority can't be Left Blank",
+				'reqPrior'))
+			allValid = false;
+		if (!validationUpdated("Receive Date can't be Left Blank",
+				'receiveDate'))
+			allValid = false;
+		return allValid;
+	}
+	function validSideBarData() {
+		var allValid = true;
+
+		if (!validationUpdated("Item can't be Left Blank", 'itemId'))
+			allValid = false;
+		if (!validationUpdated("Location can't be Left Blank", 'locationId'))
+			allValid = false;
+		if (!validationUpdated("Cost Center can't be Left Blank",
+				'costCenterId'))
+			allValid = false;
+		if (!validationUpdated("Location can't be Left Blank", 'locationId'))
+			allValid = false;
+		if (!validationUpdated("Quantity can't be Left Blank", 'quantity'))
+			allValid = false;
+		if (!validationUpdated("UOM can't be Left Blank", 'uom'))
+			allValid = false;
+		if (!validationUpdated("Unit Price can't be Left Blank", 'unitPrice'))
+			allValid = false;
+		if (!validationUpdated("Discount can't be Left Blank", 'discount'))
+			allValid = false;
+		if (!validationUpdated("Tax can't be Left Blank", 'tax'))
+			allValid = false;
+		if (!validationUpdated("Shipping Price can't be Left Blank", 'shipping'))
+			allValid = false;
+		if (!validationUpdated("Total Price can't be Left Blank", 'total'))
+			allValid = false;
+		if (!validationUpdated("Max Value can't be Left Blank", 'maxValue'))
+			allValid = false;
+
+		if (!validationUpdated("Max Value can't be Left Blank", 'maxValue'))
+			allValid = false;
+		return allValid;
+
+	}
+	function validVenodData() {
+		var selectedRows = vendorOptions.api.getSelectedRows();
+		if (selectedRows) {
+			return true;
+		} else {
+			$("#messageParagraph").text("Please Select At Least One Vendor");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			return false;
+		}
+	}
+
+	function validProductData() {
+		var item = null;
+		productOptions.api.forEachNode(function(rowNode, index) {
+			item = item + rowNode.data;
+		});
+		if (item) {
+			return true;
+		} else {
+			$("#messageParagraph").text("Please Add At Least One Product");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			return false;
+		}
+	}
+
+	var txtLen = 0;
+	function textCount(event) {
+
+		var id = event.target.id;
+		var pId = $('#' + id).next().attr("id");
+		$('#' + pId + ' span').empty();
+		txtLen = $('#' + id).val().length;
+		$('#' + pId + ' span').append(txtLen);
+	}
+
+	/* function calcSubTotal() {
+		var quantity = 0;
+		var unitPrice = 0;
+		if ($("#quantity").val()) {
+			quantity = $("#quantity").val().replace(/,/g, '');
+		}
+		if ($("#unitPrice").val()) {
+			unitPrice = $("#unitPrice").val().replace(/,/g, '');
+		}
+
+		$("#subTotal").val(
+				numberWithCommas(parseFloat(quantity) * parseFloat(unitPrice)));
+		$("#quantity").val(numberWithCommas(quantity));
+		$("#unitPrice").val(numberWithCommas(unitPrice));
+		calcTotal();
+	}
+
+	function calcTotal() {
+
+		var subTotal = 0;
+		var tax = 0;
+		var shipping = 0;
+		var discount = 0;
+		if ($("#subTotal").val()) {
+			subTotal = $("#subTotal").val().replace(/,/g, '');
+		} else {
+			subTotal = 0;
+		}
+		if ($("#tax").val()) {
+			tax = $("#tax").val().replace(/,/g, '');
+		} else {
+			tax = 0;
+		}
+		if ($("#shipping").val()) {
+			shipping = $("#shipping").val().replace(/,/g, '');
+		} else {
+			shipping = 0;
+		}
+		if ($("#discount").val()) {
+			discount = $("#discount").val().replace(/,/g, '');
+		} else {
+			discount = 0;
+		}
+		$("#total").val(
+				numberWithCommas(parseFloat(subTotal) + parseFloat(tax)
+						+ parseFloat(shipping) - parseFloat(discount)));
+		$("#maxValue").val(
+				numberWithCommas(parseFloat(subTotal) + parseFloat(tax)
+						+ parseFloat(shipping) - parseFloat(discount)));
+		$("#tax").val(numberWithCommas(tax));
+		$("#shipping").val(numberWithCommas(shipping)); 
+		$("#discount").val(numberWithCommas(discount));
+	}
+	 */
+	 
+
+	// delete selected record from ag grid
+	function deleteProductOnclick() {
+		var selectedRows = productOptions.api.getSelectedRows();
+		productOptions.api.applyTransaction({
+			remove : selectedRows
+		});
+		cancelModalProductBtn();
+
+	}
+
+	function calcSubTotal() {
+		var quantity = 0;
+		var unitPrice = 0;
+		if ($("#quantity").val()) {
+			quantity = $("#quantity").val();
+		}
+		if ($("#unitPrice").val()) {
+			unitPrice = $("#unitPrice").val();
+		}
+
+		$("#subTotal").val(parseFloat(quantity) * parseFloat(unitPrice));
+		$("#quantity").val(quantity);
+		$("#unitPrice").val(unitPrice);
+		calcTotal();
+	}
+
+	function calcTotal() {
+
+		var subTotal = 0;
+		var tax = 0;
+		var shipping = 0;
+		var discount = 0;
+		if ($("#subTotal").val()) {
+			subTotal = $("#subTotal").val();
+		} else {
+			subTotal = 0;
+		}
+		if ($("#tax").val()) {
+			tax = $("#tax").val();
+		} else {
+			tax = 0;
+		}
+		if ($("#shipping").val()) {
+			shipping = $("#shipping").val();
+		} else {
+			shipping = 0;
+		}
+		if ($("#discount").val()) {
+			discount = $("#discount").val();
+		} else {
+			discount = 0;
+		}
+		$("#total").val(
+				parseFloat(subTotal) + parseFloat(tax) + parseFloat(shipping)
+						- parseFloat(discount));
+		$("#maxValue").val(
+				parseFloat(subTotal) + parseFloat(tax) + parseFloat(shipping)
+						- parseFloat(discount));
+		$("#tax").val(tax);
+		$("#shipping").val(shipping);
+		$("#discount").val(discount);
+	}
+
+	// delete requisition 
+	function deleteOnclick() {
+		var selectedRows = poOptions.api.getSelectedRows();
+		var selectedRowsString = '';
+		selectedRows.forEach(function(selectedRow, index) {
+			if (index > 0) {
+				selectedRowsString += ',';
+			}
+			selectedRowsString += selectedRow.poId;
+		});
+		if (selectedRowsString) {
+			var item = {};
+			item.moduleId = localStorage.getItem('module');
+			item.componentId = localStorage.getItem('function');
+			item.subComponentId = localStorage.getItem('activity');
+			item.poId = selectedRowsString;
+			$('.loader').show();
+			$("body").addClass("overlay");
+			$.ajax({
+				type : "POST",
+				url : "generate-po-delete-th-ajax",
+				dataType : "json",
+				contentType : "application/json",
+				data : JSON.stringify(item),
+				success : function(response) {
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+					$('#delete').modal('hide');
+					if (response.message == "Success") {
+						$('#reqDltBtn').attr('disabled', true);
+						agGrid.simpleHttpRequest({
+							url : 'generate-po-get-po-list'
+						}).then(function(data) {
+							var len = data.length;
+							$('#totalPo').find('span').html(len);
+							poOptions.api.setRowData(data);
+						});
+					} else {
+						swal({
+							title : response.code,
+							text : response.message,
+							type : "warning"
+						})
+					}
+				},
+				error : function(data) {
+					$('#delete').modal('hide');
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+				}
+			})
+		} else {
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+	}
+	
+	function activityCSV() {
+		var dataset = [];
+		activityOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+		activityOptions.api.exportDataAsCsv(dataset);
+	}
+	
+	function returnPage() {
+		$("#reqTable").show();
+		$("#total").show();
+		$("#totalPo").show();
+		$("#searchDiv").show();
+		$("#btndiv").show();
+		$("#poTable").show();
+		$("#mainPage").hide();
+		$("#accordionExample").hide();
+		$("#headingItem").hide();
+	}
+	
+	function newPage() {
+		$("#reqTable").hide();
+		$("#totalPo").hide();
+		$("#searchDiv").hide();
+		$("#btndiv").hide();
+		$("#poTable").hide();
+		$("#mainPage").show();
+		$("#accordionExample").show();
+		$("#headingItem").show();
+		headerStatus()
+	}
+</script>
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<!-- <div class="row margin_topbot">
+							<div class="btn-hs">
+								<div class="input-style row">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter">
+									<div class="searchicon">
+										<a href="#"><span style="display: none" id="closeKey"
+											onclick="poOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i">X</span></a><a href="#"><i
+											class="fa fa-search"></i></a>
+									</div>
+								</div>
+							</div>
+						</div> -->
+						<div class="row" id="reqTable">
+                          <div class="d-flex justify-content-between">
+							<div class="btn-hs" id="total">
+								<div class="font-design" id="totalPo">
+									PO LIST (<span></span>)
+								</div>
+							</div>
+							<div class="btn-hs" id="searchDiv">
+									<div class="input-style">
+										<input type="text" placeholder="Search.." name="search"
+											class="searchboxinput" onkeyup="cancelBar()"
+											oninput="onQuickFilterChanged()" id="quickFilter"
+											autocomplete="off">
+										<div class="searchicon">
+											<a href="javascript:void(0)"><span
+												style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+												id="closeKey"
+												onclick="poOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+												class="close_i"><i class="ti-close srchicon"></i></span></a><a
+												href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+										</div>
+									</div>
+
+								</div>
+							
+							<div class="buttonsec btn-hs" id="btndiv">
+
+								<button class="download-btn" onclick="rfqCSV()">DOWNLOAD</button>
+								<!-- <button class="upload-btn">UPLOAD</button> -->
+								<!-- <div class="buttongap"></div> -->
+								<button id="reqAppvBtn" class="approve-btn" onclick="approve()">APPROVE</button>
+								<!-- <div class="buttongap"></div> -->
+								<button class="delete-btn" id="reqDltBtn" onclick="deleteFun()">DELETE</button>
+								<button class="new-btn" id="newBtn" onclick="switchPage()">NEW</button>
+							</div>
+                          </div>
+						</div>
+						<div id="poTable" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innerstickybg" id="headingItem">
+								<div class="row">
+
+									<div class="col-md-3">
+										PO ID: <span id="reqHeadId"></span>
+									</div>
+									<div class="col-md-6">
+										<div id="statusDiv">
+											<div class="hr4"></div>
+											<div class="main-div">
+												<div class="section2">
+													<div id="createdDiv" class="green-box">
+														<div class="green-box-heading">CREATED</div>
+														<div class="date" id="createdDate"></div>
+													</div>
+												</div>
+												<div class="section3">
+													<div id="activeDiv" class="green-box">
+														<div class="green-box-heading">ACTIVE</div>
+														<div class="date" id="activeDate"></div>
+													</div>
+												</div>
+												<div class="section4">
+													<div id="completeDiv" class="grey-box">
+														<div class="green-box-heading">COMPLETE</div>
+														<div class="date" id="completeDate"></div>
+													</div>
+												</div>
+												<div class="section5">
+													<div id="onHoldDiv" class="grey-box">
+														<div class="green-box-heading">ONHOLD</div>
+														<div class="date" id="onHoldDate"></div>
+													</div>
+												</div>
+
+											</div>
+										</div>
+									</div>
+									<div class="col-md-3" align="right">
+										<button class="cancel-btn" id="rfqCancelBtn">Cancel</button>
+										<button class="approve-btn" id="savePo" onclick="saveData()">Save</button>
+									</div>
+								</div>
+
+							</div>
+							<div class="row innersticky_contentgap" id="mainPage">
+								<div class="col-md-12">
+									<label>Source: </label> <span id="source" class="source_text"></span>
+								</div>
+								<div class="col-md-6">
+									<div class="modal-inrheading">Description</div>
+									<div class="position-text">
+										<textarea rows="4" cols="100" id="desc"
+											onkeyup="textCount(event)"></textarea>
+										<div id="charNumSN" class="txtcounter" align="right">
+											<span>0</span> characters
+										</div>
+									</div>
+								</div>
+
+
+								<div class="col-md-6">
+									<div class="row">
+										<div class="col-md-6">
+											<div class="form-group">
+												<label>Type</label>
+												<div class="select">
+													<select id="reqType">
+														<option th:value=null>--Select--</option>
+														<option th:each="c:${requisitionTypeList}"
+															th:value='${c.key}' th:text="${c.name}"></option>
+													</select> <input type="hidden" id="poId" />
+												</div>
+											</div>
+										</div>
+
+										<div class="col-md-6">
+											<div class="form-group">
+												<label>Priority</label>
+												<div class="select">
+													<select id="reqPrior">
+														<option th:value=null>--Select--</option>
+														<option th:each="c:${requisitionPrioList}"
+															th:value='${c.key}' th:text="${c.name}"></option>
+													</select>
+												</div>
+											</div>
+										</div>
+
+									</div>
+									<div class="row">
+										<div class="col-md-6">
+											<div class="form-group calendar_box">
+												<label>Receive By Date</label> <input type="text"
+													id="receiveDate" class="form-control"
+													th:attr="onkeyup=|formatDate('receiveDate','${session.DATEFORMAT_JS}')|">
+												<i class="ti-calendar picker_calendar"
+													id="receiveDateCalendar"></i>
+											</div>
+										</div>
+
+										<div class="col-md-6">
+											<div class="form-group">
+												<button class="approve-btn putonhold" id="putOnHold"
+													onclick="putOnHold()">PUT ON HOLD</button>
+												<input type="hidden" value="1" id="isHold" />
+											</div>
+										</div>
+									</div>
+
+								</div >
+								<div class="row">
+								<div class="col-md-2">
+									<div class="form-group">
+										<label>Vendor</label>
+										<div class="select">
+											<select id="vendorId">
+												<option th:value=null>--Select--</option>
+												<option th:each="c:${vendorList}" th:value='${c.key}'
+													th:text="${c.name}"></option>
+											</select>
+										</div>
+
+									</div>
+								</div>
+								<div class="col-md-2 calendar_box">
+									<div class="form-group calendar_box">
+										<label>Start Date</label> <input type="text" id="startDate"
+											class="form-control" onblur="removeValid(event)" 
+											th:attr="onkeyup=|formatDate('startDate','${session.DATEFORMAT_JS}')|">
+										<i class="ti-calendar picker_calendar" id="startDateCalendar"></i>
+									</div>
+								</div>
+								<div class="col-md-2">
+									<div class="form-group calendar_box">
+										<label>Expire Date</label> <input type="text" id="expireDate"
+											class="form-control"
+											th:attr="onkeyup=|formatDate('expireDate','${session.DATEFORMAT_JS}')|">
+										<i class="ti-calendar picker_calendar" id="expireDateCalendar"></i>
+									</div>
+								</div>
+								<div class="col-md-3">
+									<div class="form-group">
+										<label>Payment Term</label>
+										<div class="select">
+											<select id="paymentTerm">
+												<option th:value=null>--Select--</option>
+												<option th:each="c:${paytermList}" th:value='${c.key}'
+													th:text="${c.name}"></option>
+											</select>
+										</div>
+									</div>
+								</div>
+								<div class="col-md-3">
+									<div class="form-group">
+										<label>Total Max Value</label> <input type="text"
+											id="totalMaxAmount" class="form-control" readonly>
+									</div>
+								</div>
+								</div>
+                            </div>
+							<div id="main">
+								<div class="accordion mt-4" id="accordionExample">
+
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingOne">
+											
+											<button class="accordion-button collapsed" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseOne"
+												aria-expanded="false" aria-controls="collapseOne">
+												Item List</button>
+
+										</h2>
+										<div id="collapseOne" class="accordion-collapse collapse"
+											aria-labelledby="headingOne"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+
+												<div id="mySidenav" class="sidenav">
+													<div class="slidebox">
+														<div class="row">
+															<div class="col-md-10">
+																<div class="edit">
+																	SKU:<span id="skuEditId"></span>
+																</div>
+															</div>
+															<div class="col-md-2">
+																<div class="arrow">
+																	<a href="javascript:void(0)" class="closebtn"
+																		onclick="closeNav()"><i class="ti-arrow-right"></i></a>
+																</div>
+															</div>
+														</div>
+														<div class="chartbtnsec">
+															<div align="right">
+																<button class="cancel-btn" onclick="closeNav()">CANCEL</button>
+													        <button class="approve-btn" onclick="saveTableData()">SAVE</button>
+															</div>
+														</div>
+														<div class="clearfix"></div>
+
+														<div class="row">
+												<div class="col-lg-8">
+													<div class="form-group">
+
+														<div class="inner_search">
+
+															<div class="input-style1 row">
+																<div class="autocomplete">
+																	<input id="search" type="text" name="search"
+																		class="inner_searchboxinput" placeholder="Search"
+																		onkeyup='getProductList()'>
+																</div>
+
+																<div class="searchicon1">
+																	<a href="javascript:void(0)"><span
+																		style="display: block; border-right: 1px solid rgb(204, 204, 204); padding-right: 5px;"
+																		id="closeKey" onclick="clearSearchData()"
+																		class="close_i"><i class="ti-close srchicon"></i></span></a><a
+																		href="javascript:void(0)" style="color: #ccc; margin-top: -5px;"><i
+																		class="ti-search srchicon"></i></a>
+
+																</div>
+
+															</div>
+														</div>
+
+														<div id="suggesstion-box1_" class="sugg-cls"></div>
+													</div>
+												</div>
+												<div class="col-lg-4">
+													<div class="form-group">
+														<button id="browseBtn" class="approve-btn">Browse</button>
+													</div>
+												</div>
+											</div>
+														<div class="row">
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>SKU</label> &nbsp; &nbsp; <span id="sku"
+																		class="fetchdata"></span>
+																</div>
+															</div>
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>Brand</label><input type="hidden" id="brandId" />
+																	<input type="hidden" id="prodCatId" /> <input
+																		type="hidden" id="prodCatName" /><span id="brandName"
+																		class="fetchdata"></span>
+																</div>
+															</div>
+														</div>
+
+														<div class="row">
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>Item Name</label><span id="itemName"
+																		class="fetchdata"></span><input type="hidden"
+																		id="itemId"> <input type="hidden"
+																		id="productEdit">
+
+																</div>
+															</div>
+
+														</div>
+
+														<div class="row">
+															<div class="col-md-6">
+																<div class="form-group">
+
+																	<label>Location</label>
+																	<div class="select">
+																		<select id="locationId">
+																			<option th:value=null>--Select--</option>
+																			<option th:each="c:${locationList}"
+																				th:value='${c.key}' th:text="${c.name}"></option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>Cost Center</label>
+																	<div class="select">
+																		<select id="costCenterId">
+																			<option th:value=null>--Select--</option>
+																			<option th:each="c:${costCenterList}"
+																				th:value='${c.key}' th:text="${c.name}"></option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+														</div>
+														<div class="row">
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>UOM</label>
+																	<div class="select">
+																		<select id="uom">
+																			<option th:value=null>--Select--</option>
+																			<option th:each="c:${uomList}" th:value='${c.key}'
+																				th:text="${c.name}"></option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>Quantity</label> <input type="text"
+																		class="form-control transparenttxtbox"
+																		id="quantity" onkeyup="calcSubTotal()" onblur="numberWithCommas(this.id)">
+                                                               </div>
+															</div>
+														</div>
+														<div class="row">
+								                            <div class="col-md-6">
+																<div class="form-group">
+																	<label>Unit Price</label> <input type="text"
+																		class="form-control transparenttxtbox"
+																		id="unitPrice" onkeyup="calcSubTotal()" onblur="numberWithCommas(this.id)">
+																</div>
+															</div>
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>Discount</label> <input
+																		type="text" class="form-control transparenttxtbox"
+																		id="discount"
+																		onkeyup="calcTotal()"
+																		onblur="numberWithCommas(this.id)">
+																</div>
+															</div>
+														</div>
+														<div class="row">
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>Sub Total</label> <input
+																		type="text" class="form-control transparenttxtbox"
+																		id="subTotal"
+																		onblur="numberWithCommas(this.id)">
+																</div>
+															</div>
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>Tax</label> <input
+																		type="text" class="form-control transparenttxtbox"
+																		id="tax" onkeyup="calcTotal()"
+																		onblur="numberWithCommas(this.id)">
+																</div>
+															</div>
+														</div>
+														<div class="row">
+															
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>Shipping</label> <input
+																		type="text" class="form-control transparenttxtbox"
+																		id="shipping" onkeyup="calcTotal()"
+																		onblur="numberWithCommas(this.id)">
+																</div>
+															</div>
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>Total</label> <input
+																		type="text" class="form-control transparenttxtbox"
+																		id="total"
+																		onblur="numberWithCommas(this.id)">
+																</div>
+															</div>
+														</div>
+														<div class="row">
+															<div class="col-md-6">
+																<div class="form-group">
+																	<label>Max Value</label> <input
+																		type="text" class="form-control transparenttxtbox"
+																		id="maxValue"
+																		onblur="numberWithCommas(this.id)">
+																</div>
+															</div>
+														
+														</div>
+														
+
+													</div>
+												</div>
+												<div class="row">
+													<div class="col-md-4 btn-hs1">
+														<div class="font-design"></div>
+													</div>
+													<div class="col-md-8 butttonsec">
+														<button class="download-btn" onclick="skuProductCSV()">Download</button>
+														
+														<!-- <button class="btn2 btn_extend" onclick="phRoeport()">Purchase History</button>
+														<button class="btn2 btn_extend" onclick="st=ckRoeport()">Stock History</button>-->														
+														<button class="delete-btn" id="productDltBtn"
+															onclick="deleteProduct()">DELETE</button>
+														<button class="new-btn" id="addProductBtn"
+															onclick="openNav()">NEW</button>
+													</div>
+												</div>
+
+												<div id="product" style="width: 100%; height: 100px;"
+													class="ag-theme-alpine"></div>
+														<div class="row">
+													<div class="col-md-3">
+														<div class="form-group">
+															<label>Legal Terms</label>
+															<div class="select">
+																<select id="legalTerm">
+																	<option th:value=null>--Select--</option>
+																	<option th:each="c:${legaltermList}"
+																		th:value='${c.key}' th:text="${c.name}"
+																		th:selected="${c.key==employeeEmployment}"></option>
+																</select>
+															</div>
+														</div>
+													</div>
+												</div>
+												<div class="row">
+													<div class="col-md-12">
+
+														<div class="position-text">
+															<textarea rows="4" cols="100" id="legalTermDesc"
+																onkeyup="textCount(event)"></textarea>
+															<div id="charNumSN" class="txtcounter" align="right">
+																<span>0</span> characters
+															</div>
+
+														</div>
+													</div>
+
+												</div>
+
+											</div>
+										</div>
+									</div>
+
+						
+
+
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingThree">
+											
+											<button class="accordion-button collapsed" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseThree"
+												aria-expanded="false" aria-controls="collapseThree">
+												Activities</button>
+
+										</h2>
+										<div id="collapseThree" class="accordion-collapse collapse"
+											aria-labelledby="headingThree"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+
+
+												<div class="row">
+													<div class="col-md-4 btn-hs1">
+														<div class="font-design"></div>
+													</div>
+													<div class="col-md-8 butttonsec">
+														<button class="download-btn" onclick="activityCSV()">Download</button>
+
+													</div>
+												</div>
+
+												<div id="activity" style="width: 100%; height: 100px;"
+													class="ag-theme-alpine"></div>
+
+											</div>
+										</div>
+									</div>
+                                  </div>
+							</div>
+							
+							
+							
+
+
+
+
+
+						</div>
+						<div class="modal fade" id="lineGraph">
+							<div class="modal-dialog modal-lg">
+								<div class="modal-content large-model">
+
+									<div align="right">
+										<button type="button" class="close" data-dismiss="modal">
+											<i class="ti-close" style="font-size: 14px;"></i>
+										</button>
+									</div>
+									<!-- Modal body -->
+									<div class="modal-body">
+										<div class="row" id="lineGraphDiv">
+											<div class="col-md-12">
+												<div id="chart" class="collapse show">
+													<div style="width: 90%; height: 280px; margin: 0 auto;">
+														<div id="container1" style="width: 100%; height: 280px;"></div>
+													</div>
+													<div style="width: 90%; height: auto; margin: 0 auto;">
+														<div class="row">
+															<div class="col-md-12">
+
+																<div align="right" class="pdficonsec">
+																	<i class="fa fa-file-pdf-o fa-2x pdf"
+																		onclick="downloadChartPdf()"></i> <i
+																		class="fa fa-file-excel-o fa-2x excel"
+																		onclick="getExcelReport()"></i>
+																</div>
+																<table id="graphTable" class="newtbl">
+																</table>
+															</div>
+
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+
+									</div>
+									<!-- Modal footer -->
+
+
+
+								</div>
+							</div>
+						</div>
+						<!-- delete modal start -->
+						<div id="delete" class="modal fade show" aria-modal="true">
+							<div class="modal-dialog modal-confirm">
+								<div class="modal-content">
+									<div class="modal-header flex-column">
+										<button type="button" class="close" data-dismiss="modal"
+											aria-hidden="true" onclick="cancelModalBtn()">
+											<i class="ti-close modal-close"></i>
+										</button>
+									</div>
+									<div class="modal-body">
+										<p>Do you really want to delete these records? This
+											process cannot be undone.</p>
+									</div>
+									<div class="modal-footer justify-content-center"
+										style="margin-top: -30px;">
+
+										<button type="button" class="cancel-btn" data-dismiss="modal"
+											onclick="cancelModalBtn();">Cancel</button>
+										<button type="button" class="delete-btn" onclick="deleteOnclick()">Delete</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- delete product modal start -->
+						<div id="deleteProduct" class="modal fade show" aria-modal="true">
+							<div class="modal-dialog modal-confirm">
+								<div class="modal-content">
+									<div class="modal-header flex-column">
+										<button type="button" class="close" data-dismiss="modal"
+											aria-hidden="true" onclick="cancelModalProductBtn()">
+											<i class="ti-close modal-close"></i>
+										</button>
+									</div>
+									<div class="modal-body">
+										<p>Do you really want to delete these records? This
+											process cannot be undone.</p>
+									</div>
+									<div class="modal-footer justify-content-center"
+										style="margin-top: -30px;">
+
+										<button type="button" class="cancel-btn" data-dismiss="modal"
+											onclick="cancelModalBtn();">Cancel</button>
+										<button type="button" class="delete-btn"
+											onclick="deleteProductOnclick()">Delete</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+
+						<!-- delete product modal start -->
+						<div id="deleteProductInd" class="modal fade show"
+							aria-modal="true">
+							<div class="modal-dialog modal-confirm">
+								<div class="modal-content">
+									<div class="modal-header flex-column">
+										<button type="button" class="close" data-dismiss="modal"
+											aria-hidden="true" onclick="cancelModalProductBtn()">
+											<i class="ti-close modal-close"></i>
+										</button>
+									</div>
+									<div class="modal-body">
+										<p>Do you really want to delete these records? This
+											process cannot be undone.</p>
+									</div>
+									<div class="modal-footer justify-content-center"
+										style="margin-top: -30px;">
+
+										<button type="button" class="cancel-btn" data-dismiss="modal"
+											onclick="cancelModalBtn();">Cancel</button>
+										<button type="button" class="delete-btn"
+											onclick="deleteProductInd()">Delete</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div class="modal fade" id="myModal">
+							<div class="modal-dialog modal-lg" style="margin-top: 130px;">
+								<div class="modal-content">
+
+									<!-- Modal Header -->
+									<div class="modal-header">
+										<h4 class="modal-title md-color">Select Product</h4>
+										<button type="button" class="close cp" data-dismiss="modal" onclick="closeModal()">&times;</button>
+									</div>
+
+									<!-- Modal body -->
+									<div class="modal-body modal-cat">
+										<div class="row">
+
+											<div class="col-md-6" df="0">
+												<div style="height: 300px; overflow-y: scroll;"
+													id="productCategoryCBDiv"></div>
+											</div>
+											<div class="col-md-6" id="productCategorySelectDiv" df="0"
+												style="border-left: 1px solid #ccc;">
+												<div style="height: 300px; overflow-y: scroll;">
+													<div class="productlist">Select Product</div>
+													<div id="select_product"></div>
+													<input type="hidden" id="itemNameTemp" /> <input
+														type="hidden" id="itemIdTemp" /> <input type="hidden"
+														id="brandNameTemp" /> <input type="hidden"
+														id="brandIdTemp" /> <input type="hidden" id="skuTemp" />
+													<input type="hidden" id="prodCatIdTemp" /> <input
+														type="hidden" id="prodCatNameTemp" />
+												</div>
+											</div>
+										</div>
+									</div>
+
+									<!-- Modal footer -->
+									<div class="modal-footer">
+										<div class="chartbtnsec">
+											<button class="approve-btn" onclick="selectProductVal()">SELECT</button>
+											<button class="cancel-btn" data-dismiss="modal" onclick="closeModal()">CANCEL</button>
+										</div>
+									</div>
+
+								</div>
+							</div>
+						</div>
+
+						<!-- alert modal start -->
+						<div id="alert" class="modal fade show" aria-modal="true">
+							<div class="modal-dialog modal-confirm">
+								<div class="modal-content">
+									<div class="modal-header flex-column">
+										<button type="button" class="close" data-dismiss="modal"
+											aria-hidden="true" onclick="cancelModalBtn()">
+											<i class="ti-close modal-close"></i>
+										</button>
+									</div>
+									<div class="modal-body">
+										<p id="textId"></p>
+									</div>
+									<div class="modal-footer justify-content-center">
+
+										<button type="button" class="cancel-btn" data-dismiss="modal"
+											onclick="cancelModalBtn();">Close</button>
+										<!-- <button type="button" class="btn3" onclick="deleteOnclick()">Delete</button> -->
+									</div>
+								</div>
+							</div>
+						</div>
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

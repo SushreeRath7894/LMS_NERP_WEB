@@ -1,0 +1,1744 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+
+
+<!-- <link rel="stylesheet"
+	href="../css/production-plan/rmpm-requisition.css">
+<link rel="stylesheet"
+	href="https://use.fontawesome.com/releases/v5.0.7/css/all.css"> -->
+
+<!-- <script src="../javaScript/his/productionPlan/materialIssue.js"></script>
+ -->
+<style type="text/css">
+.disabledCalender {
+	pointer-events: none; /* Prevents any mouse event */
+	opacity: 0.5; /* Makes it appear disabled */
+}
+</style>
+
+<script>
+$(document).ready(function() {
+	
+	
+	var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+
+	var gridDiv = document.querySelector('#product');
+	new agGrid.Grid(gridDiv, productOptions);
+
+	view();
+
+	var dateFormat = localStorage.getItem("dateFormat");
+	$("#receiveDateCalendar1").datetimepicker({
+		format: 'd-m-Y',
+		closeOnDateSelect: true,
+		timepicker: false,
+		datepicker: true,
+		scrollMonth: false,
+
+	}).on("change", function() {
+		$('#materialIssueDate').val($(this).val());
+	})
+	$('#materialIssueDate').blur(function() {
+		$("#receiveDateCalendar1").val($(this).val());
+	})
+
+	var dateFormat = localStorage.getItem("dateFormat");
+	$("#receiveDateCalendar2").datetimepicker({
+		format: 'd-m-Y',
+		closeOnDateSelect: true,
+		timepicker: false,
+		datepicker: true,
+		scrollMonth: false,
+
+	}).on("change", function() {
+		$('#receiveDate').val($(this).val());
+	})
+	$('#receiveDate').blur(function() {
+		$("#receiveDateCalendar2").val($(this).val());
+	});
+
+	disableAll();
+	$("#dltProductDetails").hide();
+	readOnlyField();
+
+	$("#ticket-editBtn").hide();
+	$("#approve-btn").hide();
+	$("#delete-btn").hide();
+
+	$(".max-btn").on("click", function() {
+		var parentCol = $(this).closest(".col-md-6, .col-md-12");
+
+		if (parentCol.hasClass("col-md-6")) {
+			parentCol.removeClass("col-md-6 pd-r pd-l").addClass("col-md-12");
+			parentCol.siblings(".col-md-6").hide().fadeOut(500);
+		} else {
+			parentCol.removeClass("col-md-12").addClass("col-md-6 pd-r pd-l");
+			parentCol.siblings(".col-md-6").show().fadeIn(500);
+		}
+	});
+
+
+	
+
+});
+
+function selectFirstRow() {
+
+	//Automatically Select And Call The Starting Data
+	setTimeout(function() {
+		var firstRowNode = gridOptions.api.getDisplayedRowAtIndex(0);
+		console.log("First Row Node:", firstRowNode);
+		if (firstRowNode) {
+			firstRowNode.setSelected(true); // Select the first row
+			var selectedRows = gridOptions.api.getSelectedRows();
+			if (selectedRows.length > 0) {
+				var id = selectedRows[0].slipNo;
+				var status = selectedRows[0].aprroveStatus;
+				editRequisition(id, status);
+				/*editTicket(id);*/
+			}
+		}
+	}, 100);
+}
+
+
+var columnDefs = [
+	{
+		//	headerCheckboxSelection : true,
+		headerCheckboxSelectionFilteredOnly: true,
+		checkboxSelection: true,
+		sortable: false,
+		filter: false,
+		resizable: true,
+		width: 20
+	},
+	{
+		headerName: "Issue Slip No",
+		field: "slipNo",
+		/* cellRenderer: function(params) {
+			return '<a onclick=editRequisition("' + params.data.slipNo + '","' + params.data.aprroveStatus
+				+ '") href="javascript:void(0)">'
+				+ params.data.slipNo + '</a>';
+		} */
+
+	}, {
+		headerName: "Requested Receiveing Date",
+		field: "receivingDate",
+		cellStyle: {
+			textAlign: 'center'
+		}
+
+	}, {
+		headerName: "Requested By",
+		field: "requestedBy",
+		cellStyle: {
+			textAlign: 'center'
+		}
+
+	},
+
+	{
+		headerName: "Purpose",
+		field: "desc",
+		width: 250,
+	}, {
+		headerName: "Status",
+		field: "aprroveStatus",
+		cellStyle: {
+			textAlign: 'center'
+		},
+		cellRenderer: function(params) {
+			if (params.data.aprroveStatus == "Pending") {
+				return '<div style="color:#a9a9a9">Pending</div>';
+			} else {
+				return '<div style="color:#0642f5">Approved</div>';
+			}
+		}
+	},
+	{
+		headerName: "Issued By",
+		field: "createdBy",
+		width: 250,
+		cellStyle: {
+			textAlign: 'center'
+		}
+
+	}, {
+		headerName: "Issued On Date",
+		field: "createdDate",
+		width: 180,
+		cellStyle: {
+			textAlign: 'center'
+		}
+
+	}];
+
+// for product table
+
+var productDefs = [
+	{
+		headerCheckboxSelection: false,
+		headerCheckboxSelectionFilteredOnly: true,
+		checkboxSelection: true,
+		sortable: false,
+		filter: false,
+		resizable: true,
+		width: 20
+	},
+	{
+		headerName: "SlNo",
+		field: "slNo",
+		width: 70,
+		/* cellRenderer: function(params) {
+			if (params.data.slNo) {
+				return '<a onclick=editProduct("' + params.data.slNo
+					+ '") href="javascript:void(0)">'
+					+ params.data.slNo + '</a>';
+			} else {
+				return '<a onclick=editProduct("' + params.data.slNo
+					+ '") href="javascript:void(0)">'
+					+ params.data.slNo + '</a>';
+			}
+		} */
+	},
+	{
+		headerName: "MATERIAL CODE",
+		field: "sku",
+		cellStyle: {
+			textAlign: 'center'
+		}
+	}, {
+		headerName: "HSN CODE",
+		field: "hsnCode",
+		cellStyle: {
+			textAlign: 'center'
+		}
+	},
+	{
+		headerName: "MATERIAL NAME",
+		field: "itemName",
+		width: 275,
+
+	}, {
+		headerName: "itemId",
+		field: "itemId",
+		hide: "true"
+	}, {
+		headerName: "Model/Size",
+		field: "model",
+		cellStyle: {
+			textAlign: 'center'
+		}
+
+	}, {
+		headerName: "Grn No",
+		field: "grnNo",
+		cellStyle: {
+			textAlign: 'center'
+		}
+
+	}, {
+		headerName: "Quantity Requested",
+		field: "quantity",
+		cellStyle: {
+			textAlign: 'center'
+		}
+
+	}, {
+		headerName: "Quantity Issued",
+		field: "quantityIssued",
+		cellStyle: {
+			textAlign: 'center'
+		}
+
+	}, {
+
+		headerName: 'Unit',
+		field: "unitName",
+		width: 175,
+		cellStyle: {
+			textAlign: 'center'
+		}
+	}, {
+		headerName: 'Unit',
+		field: "unit",
+		hide: true,
+
+	},];
+
+
+// let the grid know which columns and what data to use activity table
+var productOptions = {
+	columnDefs: productDefs,
+	rowSelection: 'multiple',
+	groupSelectsChildren: true,
+	suppressRowClickSelection: true,
+	suppressAggFuncInHeader: true,
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 153
+	},
+	onSelectionChanged: onSelectionChangedItem,
+	getRowNodeId: function(data) {
+		return data.slNo;
+	}
+
+};
+
+// let the grid know which columns and what data to use
+var gridOptions = {
+	columnDefs: columnDefs,
+	rowSelection: 'single',
+	groupSelectsChildren: true,
+	suppressRowClickSelection: true,
+	suppressAggFuncInHeader: true,
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 153
+	},
+	onSelectionChanged: onSelectionChanged,
+	 pagination: true, 
+	    paginationPageSize: 15,
+	    paginationPageSizeSelector: [15, 30, 45],
+	    onPaginationChanged: function () {
+	        const currentPage = gridOptions.api.paginationGetCurrentPage() + 1;
+	    }
+
+};
+
+
+
+
+
+function onSelectionChanged() {
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(selectedRow, index) {
+		rowCount = rowCount + 1;
+	});
+	var selectedNodes = gridOptions.api.getSelectedNodes();
+	var selectedData = selectedNodes.map(node => node.data);
+	var approveStatus = selectedData.map(node => node.aprroveStatus);
+	if (rowCount > 0) {
+		$("#add-btn").show();
+		$("#cancelMainBtn").hide();
+		$("#mstrSaveBtn").hide();
+		if (approveStatus == "Pending") {
+			$("#ticket-editBtn").show();
+			$("#delete-btn").show();
+			$("#approve-btn").show();
+		} else {
+			$("#ticket-editBtn").hide();
+			$("#delete-btn").hide();
+			$("#approve-btn").hide();
+		}
+		var id = selectedRows[0].slipNo;
+		var status = selectedRows[0].aprroveStatus;
+		editRequisition(id, status);
+	} else {
+		newMaterialIssueData();
+		$("#add-btn").hide();
+		$("#cancelMainBtn").show();
+		$("#mstrSaveBtn").show();
+		$("#ticket-editBtn").hide();
+		$("#approve-btn").hide();
+		$("#delete-btn").hide();
+	}
+
+}
+
+function onSelectionChangedItem() {
+	var selectedRows = productOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(selectedRow, index) {
+		rowCount = rowCount + 1;
+	});
+	var selectedNodes = productOptions.api.getSelectedNodes();
+	var selectedData = selectedNodes.map(node => node.data);
+	// var approveStatus= selectedData.map(node => node.approveStatus);
+	
+	let rowCount1 = rowCount;
+    if(rowCount1 == 0){
+    	
+    	$("#gridEditBtn").attr("disabled", true);
+    	$("#gridDeleteBtn").attr("disabled", true);
+    }else{
+    	if(rowCount1 == 1){
+        	
+        	$("#gridEditBtn").attr("disabled", false);
+        	$("#gridDeleteBtn").attr("disabled", false);
+        }else{
+        	
+        	$("#gridEditBtn").attr("disabled", true);
+        	$("#gridDeleteBtn").attr("disabled", false);
+        }
+    }
+    
+	if (rowCount > 0) {
+		$('#rfq').attr('disabled', false);
+		$('#addProduct').attr('disabled', true);
+		$('#dltProduct').attr('disabled', false);
+		$("#dltProductDetails").show();
+	} else {
+		$('#rfq').attr('disabled', true);
+		$('#addProduct').attr('disabled', false);
+		$('#dltProduct').attr('disabled', true);
+		$("#dltProductDetails").hide();
+	}
+
+}
+
+
+function view() {
+	$('.loader').show();
+	agGrid.simpleHttpRequest({
+		url: 'rmpm-materialIssue-view'
+	}).then(function(data) {
+		$('.loader').hide();
+		var jsonData = JSON.parse(data.body);
+		var allData = jsonData.view;
+		console.log("allData>>>", allData);
+		
+		window.gridOptions.api.setRowData(allData);
+
+		if (allData && allData.length > 0) {
+			window.gridOptions.api.forEachNode(function(node) {
+				if (node.rowIndex === 0) {
+					node.setSelected(true);
+				}
+			});
+		}else{
+			$("#cancelMainBtn").hide();
+			$("#add-btn").hide();
+			$("#mstrSaveBtn").show();
+			
+			disableFalseAll();
+			$("#rfqValue").val('');
+			$("#materialIssueDate").val('');
+			$("#receiveDate").val('');
+			//gridOptions.api.deselectAll();
+
+			productOptions.api.setRowData([]);
+			$("#quantityIssued").val('');
+
+
+			var currentDate = new Date();
+			var day = currentDate.getDate();
+			var month = currentDate.getMonth() + 1;
+			var year = currentDate.getFullYear();
+
+			var formattedDay = day < 10 ? "0" + day : day;
+			var formattedMonth = month < 10 ? "0" + month : month;
+			var formattedDate = formattedDay + "-" + formattedMonth + "-" + year;
+			$("#materialIssueDate").val(formattedDate);
+			//$("#receiveDate").val(allData[0].receiveDate);
+			$("#reqHeadId").html('');
+			$("#rfqValue").val('');
+			$("#desc").val('');
+			
+			
+		}
+		//gridOptions.api.setRowData(allData);
+		/* var totalRowCount = gridOptions.api.getModel().getRowCount();
+		$('#totalReq').find('span').html(totalRowCount); */
+	});
+}
+
+
+function editRequisition(id, aprroveStatus) {
+	console.log("id>>>>>>>>>>---", id);
+	//var data = id.split(",");
+	var reqId = id;
+	//var approveStatus = data[1];
+	$("#rfq").attr('disabled', true);
+
+	if (aprroveStatus == 'Pending') {
+		$("#save1").show();
+		$("#addProduct").show();
+		$("#dltProduct").show();
+		$("#dltProduct").attr('disabled', true);
+	}
+	else {
+		$("#dltProduct").hide();
+		$("#addProduct").hide();
+		$("#save1").hide();
+	}
+	$('.loader').show();
+	$("body").addClass("overlay");
+	agGrid.simpleHttpRequest({
+		url: 'rmpm-materialIssue-edit?id=' + reqId
+	}).then(function(data) {
+		var jsonData = JSON.parse(data.body);
+		var allData = jsonData.edit;
+		$("#materialIssueDate").val(allData[0].materialIssueDate);
+		$("#desc").val(allData[0].desc);
+		$("#receiveDate").val(allData[0].receivingDate);
+		$("#reqId").val(allData[0].reqId);
+		$("#reqHeadId").html(allData[0].slipNo);
+		$("#rfqValue").val(allData[0].reqId);
+
+		console.log("edit data-->", allData);
+
+
+		productOptions.api.setRowData(allData);
+		$("#doctbodyData").empty();
+
+		/* if (data[0].documentList != null
+				&& data[0].documentList != "") {
+			for (var i = 0; i < data[0].documentList.length; i++) {
+				var tbl = '<tr>'
+						+ '<td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+						+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option>  </select> </div></td>'
+						+ '<td><div class="form-group"> <input type="text" value="'+data[0].documentList[i].documnentName+'" class="form-control docNoclss" id="docnoid_'+i+'"> </div></td>'
+						+ '<td><div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_'+i+'" id="uploadFor_'+i+'"> <i class="ti-pencil" id="clickImg_'+i+'"></i> </label>'
+						+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_'
+						+ i
+						+ '"name="userImage" onchange="saveMultiFile(event)" /> </div>'
+						+ '</div> <input type="hidden" id="uploadHidden_'+i+'" value="'+data[0].documentList[i].fileName+'" class="uploadHidCls">'
+						+ '<div id="uploadedBillDiv_'+i+'" align="center" class="uploadedBillCls"><div class="uploadicon position-l">'
+						+ data[0].documentList[i].action
+						+ '</div></div>'
+						+ '<div id="imageName_'+i+'" class="imageName">'
+						+ data[0].documentList[i].fileName
+						+ '</div>'
+						+ '<input type="hidden" id="editId_'+i+'" value="'+ data[0].documentList[i].vendorRfqId+'">'
+						+ '<div id="dltImage_'+i+'" class="custom-file-delete"><i class="ti-close position-l rmv1" onclick="openDeleteConfirm()"></i></div> </td>'
+						+ '</tr>';
+
+				$("#doctbodyData").append(tbl);
+			}
+		} else {
+			var tbl = '<tr> <td style="display:none" align="center" class="pdb-24"><input class="checkCls" type="checkbox" id="check2"><label for="check2"></label></td>'
+					+ '<td style="display:none"><div class="form-group"> <select class="form-control documentclss" id="docid_0" onblur="removeValid(event);"> <option value="">Select</option> </select> </div></td>'
+					+ '<td><div class="form-group"> <input type="text" value="" class="form-control docNoclss" id="docnoid_"></div></td>'
+					+ '<td> <div class="control-group position-r"> <label class="custom-file-upload" for="uploadDoc_0" id="uploadFor_0"> <i class="ti-plus" id="clickImg_0"></i> </label>'
+					+ '<div class="controls"> <input type="file" class="document" id="uploadDoc_0" name="userImage" onchange="saveMultiFile(event)" /></div> </div> <input type="hidden" id="uploadHidden_0" class="uploadHidCls">'
+					+ '<div id="uploadedBillDiv_0" align="center" class="uploadedBillCls"></div> <div id="imageName_0" class="imageName"></div><div id="dltImage_0" ></div><input type="hidden" id="editId_0></td>'
+					+ '</tr>';
+			$("#doctbodyData").append(tbl);
+		} */
+
+		//putOnHold();
+		//headerStatus();
+		$('.loader').hide();
+		$("body").removeClass("overlay");
+	});
+
+
+}
+
+function getItemQutotationList() {
+	var search = $("#itemName").val();
+	if (search) {
+		$.ajax({
+			type: "POST",
+			url: "rmpm-requisition-item-get-list",
+			dataType: 'json',
+			contentType: 'application/json',
+			data: search,
+			success: function(response) {
+				if (response.message == "success") {
+					if (response.body.length != 0) {
+						$("#itemId").val("");
+						$("#gstRate").val("");
+						$("#sku").val("");
+						$("#brandName").val("");
+						$("#brandId").val("");
+						$("#hsnCode").val("");
+						$("#unit").val("");
+						$("#model").val("");
+						$("#itemName").css("background", "#FFF");
+						var content = '<ul id="autocomplete-list1" style="margin-left:-40px; font-weight:100; font-size:14px; color:#ccc;">';
+						for (var i = 0; i < response.body.length; i++) {
+							content += '<li class="autocompletedata cp" onClick="selectAutocompleteValueItem1(\''
+								+ response.body[i].sku
+								+ '\',\''
+								+ response.body[i].productId
+								+ '\',\''
+								+ window.btoa(response.body[i].productName)
+								+ '\',\''
+								+ response.body[i].brandId
+								+ '\',\''
+								+ window.btoa(response.body[i].brandName)
+								+ '\',\''
+								+ window.btoa(response.body[i].hsnCode)
+								+ '\',\''
+								+ window.btoa(response.body[i].unit)
+								+ '\',\''
+								+ window.btoa(response.body[i].gstRate)
+								+ '\',\''
+								+ window.btoa(response.body[i].model)
+								+ '\')">'
+								+ response.body[i].sku
+								+ " - "
+								+ response.body[i].productName
+								+ '</li>';
+						}
+						content += '</ul>';
+						$("#suggesstion-box_").show();
+						$("#suggesstion-box_").html(content);
+
+					} else {
+						$("#itemName").css("background", "#FFF");
+						var content = '<ul id="autocomplete-list1">';
+						content += '<font-weight:100; font-size:14px; color:#ccc;     background-color: #0909e4;"li onClick="selectAutocompleteValueItem()">'
+							+ "No Data Found" + '</li>';
+						content += '</ul>';
+						$("#suggesstion-box_").show();
+						$("#suggesstion-box_").html(content);
+					}
+				}
+			},
+			error: function(data) {
+				//console.log(data);
+			}
+		})
+	} else {
+		$("#itemId").val("");
+		$("#itemName").val("");
+		$("#gstRate").val("");
+		$("#sku").val("");
+		$("#brandName").val("");
+		$("#brandId").val("");
+		$("#hsnCode").val("");
+		$("#unit").val("");
+		$("#model").val("");
+		$("#suggesstion-box_").hide();
+	}
+}
+function selectAutocompleteValueItem1(sku, productId, productName, brandId, brandName,
+	hsnCode, unit, gstRate, model) {
+	if (sku) {
+		//$("#sku").val(sku);
+		$("#itemName").val(window.atob(productName));
+		$("#itemIdTemp").val(productId);
+		$("#brandName").val(window.atob(brandName));
+		$("#brandId").val(brandId);
+		$("#skuTemp").val(sku);
+		$("#sku").val(sku);
+		$("#hsnCode").val(window.atob(hsnCode));
+		$("#unit").val(window.atob(unit));
+		$("#gstRate").val(window.atob(gstRate));
+		$("#model").val(window.atob(model));
+		$("#itemName").attr('data-procat', itemId);
+		$("#suggesstion-box_").hide();
+		//hideShowS();
+	} else {
+
+		$("#sku").val("");
+		$("#itemId").val("");
+		$("#itemName").val("");
+		$("#gstRate").val("");
+		$("#brandName").val("");
+		$("#brandId").val("");
+		$("#hsnCode").val("");
+		$("#unit").val("");
+		$("#model").val("");
+		$("#itemName").attr('data-procat', "");
+		$("#suggesstion-box_").hide();
+
+	}
+}
+function selectAutocompleteValueItem() {
+
+	$("#itemId").val("");
+	$("#model").val("");
+	$("#gstRate").val("");
+	$("#sku").val("");
+	$("#itemName").val("");
+	$("#itemName").attr('data-procat', "");
+	$("#suggesstion-box_").hide();
+
+}
+
+function selectAutocompleteValueItem2() {
+
+	$("#itemId").val("");
+	$("#model").val("");
+	$("#gstRate").val("");
+	$("#sku").val("");
+	$("#itemName").val("");
+	$("#itemName").attr('data-procat', "");
+	$("#suggesstion-box2_").hide();
+
+}
+
+
+
+
+function getRfqDetails() {
+	var search = $("#rfqValue").val();
+	if (search) {
+		$.ajax({
+			type: "POST",
+			url: "rmpm-materialIssue-getRFQList",
+			dataType: 'json',
+			contentType: 'application/json',
+			data: search,
+			success: function(response) {
+				if (response.message == "success") {
+					if (response.body.length != 0) {
+						$("#itemId").val("");
+						$("#gstRate").val("");
+						$("#sku").val("");
+						$("#brandName").val("");
+						$("#brandId").val("");
+						$("#hsnCode").val("");
+						$("#unit").val("");
+						$("#model").val("");
+						$("#itemName").css("background", "#FFF");
+						var content = '<ul id="autocomplete-list1" style="margin-left:-40px; font-weight:100; font-size:14px; color:#ccc;">';
+						for (var i = 0; i < response.body.length; i++) {
+							content += '<li class="autocompletedata cp" onClick="selectAutocompleteValueItem2(\''
+								+ response.body[i].rfqId
+								+ '\',\''
+								+ response.body[i].productId
+								+ '\',\''
+								+ window.btoa(response.body[i].productName)
+								+ '\',\''
+								+ response.body[i].brandId
+								+ '\',\''
+								+ window.btoa(response.body[i].brandName)
+								+ '\',\''
+								+ window.btoa(response.body[i].hsnCode)
+								+ '\',\''
+								+ window.btoa(response.body[i].unit)
+								+ '\',\''
+								+ window.btoa(response.body[i].gstRate)
+								+ '\',\''
+								+ window.btoa(response.body[i].model)
+								+ '\')">'
+								+ response.body[i].rfqId
+								+ '</li>';
+						}
+						content += '</ul>';
+						$("#suggesstion-box2_").show();
+						$("#suggesstion-box2_").html(content);
+
+					} else {
+						$("#itemName").css("background", "#FFF");
+						var content = '<ul id="autocomplete-list1">';
+						content += '<font-weight:100; font-size:14px; color:#ccc;     background-color: #0909e4;"li onClick="selectAutocompleteValueItem2()">'
+							+ "No Data Found" + '</li>';
+						content += '</ul>';
+						$("#suggesstion-box2_").show();
+						$("#suggesstion-box2_").html(content);
+					}
+				}
+			},
+			error: function(data) {
+				//console.log(data);
+			}
+		})
+	} else {
+		$("#itemId").val("");
+		$("#itemName").val("");
+		$("#gstRate").val("");
+		$("#sku").val("");
+		$("#brandName").val("");
+		$("#brandId").val("");
+		$("#hsnCode").val("");
+		$("#unit").val("");
+		$("#model").val("");
+		$("#suggesstion-box_").hide();
+	}
+}
+function selectAutocompleteValueItem2(rfqId, productId, productName, brandId, brandName,
+	hsnCode, unit, gstRate, model) {
+	if (rfqId) {
+		//$("#sku").val(sku);
+		$("#rfqValue").val(rfqId);
+		$("#suggesstion-box2_").hide();
+		getItemDetails(rfqId);
+	} else {
+
+
+		$("#suggesstion-box2_").hide();
+
+	}
+}
+
+function getItemDetails(id) {
+	console.log("id>>>>>>>>>>---", id);
+	var reqId = id;
+	$('.loader').show();
+	$("body").addClass("overlay");
+	agGrid.simpleHttpRequest({
+		url: 'rmpm-materialIssue-getItemDetails?id=' + reqId
+	}).then(function(data) {
+		var jsonData = JSON.parse(data.body);
+		var allData = jsonData.edit;
+		console.log("AllData-->", allData);
+		/*const filteredData = allData.filter((element) => {
+			return element.quantityIssued !== element.quantity;
+		});*/
+
+		if (allData) {
+			productOptions.api.setRowData(allData);
+			$('.loader').hide();
+		}
+		else {
+			productOptions.api.setRowData([]);
+			$('.loader').hide();
+		}
+		$("body").removeClass("overlay");
+	});
+
+
+}
+
+function disableAll() {
+
+	$("#desc").prop("readonly", true);
+	$("#rfqValue").prop("readonly", true);
+	$("#receiveDateCalendar1").css("pointer-events", "none");
+	$("#receiveDateCalendar1").css("opacity", "0.5");
+	$("#receiveDateCalendar2").css("pointer-events", "none");
+	$("#receiveDateCalendar2").css("opacity", "0.5");
+	$("#unit").attr("disabled", true);
+}
+
+
+function getRowDataBySlNo(targetSlNo) {
+	let targetRowData = null;
+	console.log("targetSlNo-->", targetSlNo);
+
+	productOptions.api.forEachNode((node) => {
+		const currentSlNo = node.rowIndex + 1;
+		console.log("slno-->", currentSlNo);
+
+		if (currentSlNo === parseInt(targetSlNo)) {
+			targetRowData = node.data;
+			console.log("in if->", currentSlNo);
+		}
+	});
+
+	if (targetRowData) {
+		console.log("Data for SlNo", targetSlNo, ":", targetRowData);
+		return targetRowData;
+	} else {
+		return null;
+	}
+}
+
+function editProduct() {
+
+	let selectedData = productOptions.api.getSelectedRows();
+	let slNo = selectedData[0].slNo;
+	//var reqId = $("#reqHeadId").html();
+	var data = getRowDataBySlNo(slNo);
+	console.log("rowNode.data==", data)
+	
+openNav();
+		$("#editProduct").val(slNo);
+		$("#sku").val(data.sku);
+		//$("#skuEditId").val(prodId);
+		$("#itemId").val(data.itemId);
+		$("#hsnCode").val(data.hsnCode);
+		$("#itemName").val(data.itemName);
+		$("#model").val(data.model);
+		$("#editProduct").val(slNo);
+		$("#quantity").val(data.quantity);
+		$("#unit").val(data.unit);
+		$("#unitPrice").val(data.unitPrice);
+		$("#skuTemp").val(data.sku);
+		$("#lineTotal").val(data.lineTotal);
+		$("#itemIdTemp").val(data.itemId);
+		$("#quantityIssued").val(data.quantity);
+
+
+		//readonly for all the field
+		readOnlyField();
+
+	
+	//$("#unitName").val(rowNode.data.unitName);
+
+
+}
+
+function readOnlyField() {
+	$("#sku").prop("readonly", true);
+	$("#itemId").prop("readonly", true);
+	$("#itemName").prop("readonly", true);
+	$("#model").prop("readonly", true);
+	$("#quantity").prop("readonly", true);
+	$("#unit").prop("readonly", true);
+	$("#search").prop("readonly", true);
+	$("#hsnCode").prop("readonly", true);
+	$("#quantityIssued").prop("readonly", true);
+}
+
+function saveTableData() {
+	
+	var item = {};
+	var data = 1;
+	var validation = true;
+	var editProduct = $("#editProduct").val();
+	if ($('#itemName').val() == null || $('#itemName').val() == "") {
+		//validation = validationUpdated("Item Name Required", 'itemName');
+		toastr.error("Item Name Required.");
+		return validation = false;
+	}
+	if ($('#quantity').val() == null || $('#quantity').val() == "") {
+		//validation = validationUpdated("Quantity Required", 'quantity');
+		toastr.error("Quantity Required.");
+		return validation = false;
+	}
+	/*if ($('#grnNo').val() == null || $('#grnNo').val() == "") {
+		validation = validationUpdated("GRN No Required", 'grnNo');
+	}*/
+	if (validation) {
+		item.slNo = data;
+		productOptions.api.forEachNode(function(rowNode, index) {
+			if (!editProduct) {
+				data = data + 1;
+				item.slNo = data;
+			}
+			else {
+				item.slNo = editProduct;
+			}
+
+		});
+		item.itemId = $('#itemIdTemp').val();
+		item.sku = $('#skuTemp').val();
+		item.itemName = $('#itemName').val();
+		item.hsnCode = $('#hsnCode').val();
+		item.model = $("#model").val();
+		item.quantity = $("#quantity").val();
+		item.quantityIssued = $("#quantityIssued").val();
+		item.grnNo = $("#grnNo").val();
+		item.unit = $('#unit').val();
+		item.unitName = $("#unit option:selected").text();
+		var datas = [];
+
+		console.log("datas-->", datas);
+		if (editProduct) {
+			//console.log(editProduct)
+			productOptions.api.forEachNode((node) => {
+				var currentSlNo = node.rowIndex + 1;
+				if (currentSlNo == editProduct) {
+					node.setData(item);
+				}
+			});
+		} else {
+			productOptions.api.forEachNode(function(rowNode, index) {
+				datas.push(rowNode.data);
+			});
+			datas.push(item)
+
+			console.log("datas-->", datas);
+
+			productOptions.api.setRowData(datas);
+		}
+		closeNav();
+		console.log("datas-->", datas);
+	}
+
+}
+
+function openNav() {
+	$("#sku").val('');
+	$("#skuEditId").html('');
+	$("#itemId").val('');
+	$("#itemName").val('');
+	$("#model").val('');
+	$("#quantity").val('');
+	$("#unit").val('');
+	$("#search").val('');
+	$("#hsnCode").val('');
+	$("#grnNo").val('');
+	$("#quantityIssued").val('');
+	$("#editProduct").val(null);
+    
+    $("#childGridDiv").hide();
+	$("#itemDtlsDiv").removeClass("d-none");
+	
+   
+}
+
+function closeNav(){
+	
+	 $("#childGridDiv").show();
+	 $("#itemDtlsDiv").addClass("d-none");
+		
+	$("#sku").val('');
+	$("#skuEditId").html('');
+	$("#itemId").val('');
+	$("#itemName").val('');
+	$("#model").val('');
+	$("#quantity").val('');
+	$("#unit").val('');
+	$("#search").val('');
+	$("#hsnCode").val('');
+	$("#grnNo").val('');
+	$("#quantityIssued").val('');
+	$("#editProduct").val(null);
+}
+
+
+function disableFalseAll() {
+
+	$("#desc").prop("readonly", false);
+	$("#rfqValue").prop("readonly", false);
+	$("#receiveDateCalendar1").css("pointer-events", "all");
+	$("#receiveDateCalendar1").css("opacity", "1");
+	$("#receiveDateCalendar2").css("pointer-events", "all");
+	$("#receiveDateCalendar2").css("opacity", "1");
+	$("#unit").attr("disabled", false);
+}
+
+
+function editItems() {
+	disableFalseAll();
+	$("#add-btn").hide();
+	$("#cancelMainBtn").show();
+	$("#mstrSaveBtn").show();
+	$("#ticket-editBtn").hide();
+	$("#approve-btn").hide();
+	$("#delete-btn").hide();
+}
+
+function newMaterialIssueData() {
+	disableFalseAll();
+	$("#rfqValue").val('');
+	$("#materialIssueDate").val('');
+	$("#receiveDate").val('');
+	//gridOptions.api.deselectAll();
+
+	productOptions.api.setRowData([]);
+	$("#quantityIssued").val('');
+
+
+	var currentDate = new Date();
+	var day = currentDate.getDate();
+	var month = currentDate.getMonth() + 1;
+	var year = currentDate.getFullYear();
+
+	var formattedDay = day < 10 ? "0" + day : day;
+	var formattedMonth = month < 10 ? "0" + month : month;
+	var formattedDate = formattedDay + "-" + formattedMonth + "-" + year;
+	$("#materialIssueDate").val(formattedDate);
+	//$("#receiveDate").val(allData[0].receiveDate);
+	$("#reqHeadId").html('');
+	$("#rfqValue").val('');
+	$("#desc").val('');
+
+
+}
+
+
+function saveData() {
+	console.log("Okkk");
+	var item = {};
+	var validation = true;
+
+	/* if (item.receiveDate == null || item.receiveDate == "") {
+		validation = validationUpdated("Date Required", 'receiveDate');
+	} */
+
+	var totalRowCount1 = productOptions.api.getModel().getRowCount();
+
+	if (totalRowCount1 > 0) {
+		item.desc = $("#desc").val();
+		item.receiveDate = $("#receiveDate").val();
+		item.slipId = $("#reqHeadId").html();
+		item.reqId = $("#rfqValue").val();
+		item.materialIssueDate = $("#materialIssueDate").val();
+
+		var datas = [];
+		productOptions.api.forEachNode(function(rowNode, index) {
+			var item1 = rowNode.data;
+			datas.push(item1);
+
+		});
+		item.details = datas;
+		console.log("item>>>>", item);
+		console.log("datas>>>>", datas);
+		if (validation) {
+			saveAllRequisition(item);
+		}
+	} else {
+		$("#messageParagraph").text(
+			"Add Atlest One Row");
+		$("#msgOkModal").removeClass("btn3");
+		$("#msgOkModal").addClass("btn1");
+		$("#msgModal").modal('show');
+	}
+
+}
+function saveAllRequisition(datas) {
+	$('.loader').show();
+	$("body").addClass("overlay");
+	$.ajax({
+		type: "POST",
+		url: "rmpm-materialIssue-add",
+		contentType: "application/json",
+		data: JSON.stringify(datas),
+		success: function(response) {
+			if (response.code == "success") {
+				$('.loader').hide();
+				$("body").removeClass("overlay");
+				$("#messageParagraph").text("Data Saved Successfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				view();
+				//selectFirstRow();
+			}
+
+		},
+		error: function(datas) {
+			console.log(datas)
+		}
+	})
+
+}
+
+
+function deleteProduct(event) {
+	event.preventDefault();
+	var selectedRows = productOptions.api.getSelectedRows();
+	productOptions.api.applyTransaction({
+		remove: selectedRows
+	});
+
+}
+
+
+
+function approveOnclick() {
+
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var selectedRowsString = '';
+	selectedRows.forEach(function(selectedRow, index) {
+		if (index > 0) {
+			selectedRowsString += ',';
+		}
+		selectedRowsString += selectedRow.slipNo;
+	});
+	var reqId = selectedRowsString;
+
+	var approveStatus = 1;
+	//$('#approvePQtn').modal('show');
+	$('.loader').show();
+	$.ajax({
+		type: "GET",
+		url: "rmpm-materialIssue-approve?id=" + reqId,
+		async: false,
+		success: function(response) {
+			if (response.code == "success") {
+				$('.loader').hide();
+				$("#messageParagraph").text("Requisition Approved Successfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+
+				$('#approve-btn').hide();
+				$('#approvePQtn').modal('hide');
+				$("#total").show();
+				$("#totalCandidate").show();
+				$("#btndiv").show();
+
+				//$("#reqTable").show();
+				$('#dwnld').show();
+				$("#addData").hide();
+				$("#myGrid").show();
+				$("#searchRowDiv").show();
+				$("#reqTable").show();
+				view();
+				//selectFirstRow();
+
+			} else {
+				$('.loader').hide();
+				$('#approvePQtn').modal('show');
+			}
+
+		},
+		error: function(data) {
+		}
+	});
+}
+
+
+function approveRequisition() {
+	$('#approvePQtn').modal('show');
+}
+
+function cancelApproveModalBtn() {
+	$('#approvePQtn').modal('hide');
+}
+
+function deleteDetailsOnclick() {
+	
+	var selectedRows = productOptions.api.getSelectedRows();
+	productOptions.api.applyTransaction({
+		remove : selectedRows
+	});
+	
+
+	}
+	
+function enterToSearch(event){
+	console.log(event.keyCode);
+	if(event.keyCode == 13){
+		let filterData = $("#quickFilter").val();
+		if(filterData){
+			onQuickFilterChanged();
+		}
+	}
+	
+}
+function onQuickFilterChanged() {
+    gridOptions.api
+        .setQuickFilter(document.getElementById('quickFilter').value);
+    gridOptions.api.getDisplayedRowAtIndex(0).setSelected(true);
+}
+
+function reset(){
+	let data = $("#quickFilter").val('');
+	if(data!=null && data!=""){
+		$("#quickFilter").val('');
+		onQuickFilterChanged();
+	}
+}
+
+function cancelMain(){
+	let selectedRows = gridOptions.api.getSelectedRows();
+	
+	let rowCount = 0;
+    selectedRows.forEach(function(selectedRow, index) {
+        rowCount = rowCount + 1;
+    });
+    
+    if(rowCount == 0){
+    	gridOptions.api.getDisplayedRowAtIndex(0).setSelected(true);
+    }else{
+    	
+    	var selectedNodes = gridOptions.api.getSelectedNodes();
+    	const selectedRowIndex = selectedNodes[0].rowIndex;
+    	gridOptions.api.getDisplayedRowAtIndex(selectedRowIndex).setSelected(true);
+    	onSelectionChanged();
+    }
+
+}
+
+function addNew(){
+	gridOptions.api.deselectAll();
+}
+
+</script>
+
+
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<!-- 	<div class="row">
+						<div class="col-md-12">
+							Nav pills
+							<ul class="nav nav-pills mb-20" role="tablist">
+								<li class="nav-item wd-33"><a
+									class="nav-link active tab-ht" data-bs-toggle="pill"
+									href="#opd">OPD</a></li>
+								<li class="nav-item wd-33"><a class="nav-link tab-ht"
+									data-bs-toggle="pill" href="#requisition1"></a></li>
+								<li class="nav-item wd-33 tab-ht"><a
+									class="nav-link tab-ht" data-bs-toggle="pill"
+									href="#requisition2"></a></li>
+							</ul>
+						</div>
+					</div> -->
+
+
+
+					<!--Tabbination 1 Start-->
+					<div id="opd" class="tab-pane" role="tabpanel">
+						<div class="d-flex flex-column flex-lg-row">
+
+							<!--Left Sec Start-->
+							<div class="box-sec" id="collapseWidthR1">
+								<div class="out-box">
+									<div class="h-100  mb-20">
+										<div class="d-flex justify-content-between p-2 gap-3 bdr-line">
+											<div class="col-md-8 col-12">
+											<div class="d-flex search-sec position-relative">
+												<input class="form-control me-2" type="text"
+													onkeydown="enterToSearch(event)" placeholder="Search"
+													id="quickFilter" autocomplete="off">
+												<button class="btn btn-primary go-btn" type="button"
+													onclick="onQuickFilterChanged()">Go</button>
+												&nbsp;
+												<button class="btn go-btn w-auto" type="button"
+													onclick="reset()">Reset</button>
+											</div>
+										</div>
+											<div class="col-md-2 d-flex justify-content-end">
+												<button class="btn btn-primary max-btn"
+													id="collapseButtonR1" onclick="triggerExpansionR(1)"
+													data-bs-toggle="tooltip" data-bs-placement="top"
+													title="Expand">
+													<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+														class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+												</button>
+											</div>
+										</div>
+										<div class="card-scroll m-2">
+											<div class="requisition-tbl table-responsive">
+												<!-- <div class="">
+													<div class="font-design" id="totalReq">
+														REQUISITION LIST (<span></span>)
+													</div>
+												</div> -->
+
+												<div id="myGrid" style="width: 100%; height: 550px"
+													class="ag-theme-alpine"></div>
+											</div>
+										</div>
+
+									</div>
+								</div>
+
+							</div>
+
+							<!--Left Sec End-->
+							<!--Right Sec Start-->
+							<div class="box-sec" id="collapseWidthL1">
+								<div class="out-box" id="rightSideDiv">
+									<div
+										class="d-flex justify-content-between flex-row-reverse align-items-center p-2 bdr-line">
+										<button class="btn btn-primary max-btn" id="collapseButtonL1"
+											type="button" onclick="triggerExpansionL(1)"
+											data-bs-toggle="tooltip" data-bs-placement="top"
+											title="Expand">
+											<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+												class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+										</button>
+
+
+										<!--Right Inner Tab Start-->
+										<div class="d-flex gap-2">
+											<ul class="nav nav-pills newtab tablistUl" role="tablist">
+												<li class="nav-item wd-11"><a class="nav-link active"
+													data-bs-toggle="pill" href="#raiseTicket">Requisition
+														Information</a></li>
+												<!-- <li class="nav-item wd-11"><a class="nav-link"
+												data-bs-toggle="pill" id="itemDetailsLink"
+												href="#itemDetails" onclick="itemDetails();">Item/Service
+													Details</a></li> -->
+												<!-- <li class="nav-item wd-11"><a class="nav-link"
+												data-bs-toggle="pill" href="#RateUs"
+												onclick="feedbackRateFun()">Status and Tracking</a></li> -->
+											</ul>
+										</div>
+									</div>
+
+									<!-- Tab panes -->
+									<div class="tab-content flex-fill h-25">
+										<div id="raiseTicket" class="tab-pane active p-2 h-100">
+
+											<div class="requisition-tbl d-flex flex-column h-100">
+
+												<div class="mb-2">
+													<table class="table table-bordered mb-0" width="100%">
+														<tr valign="middle">
+															<td width="50%"><strong><div
+																		class="col-md-12 requisition_ids_text">
+																		<span id="reqHeadId"></span>
+																	</div></strong></td>
+															<!-- <td width="10%">Male</td>
+																<td width="10%">45</td> -->
+															<td>
+																<div class="d-flex justify-content-end flxwrap">
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn" type="button"
+																			id="add-btn" onclick="addNew()">Add</button>
+																	</div>
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn" type="button"
+																			id="ticket-editBtn" onclick="editItems()">Edit</button>
+																		<input type="hidden" class="form-control"
+																			id="editTktId">
+
+																	</div>
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn" type="button"
+																			id="approve-btn" onclick="approveOnclick()">Approve</button>
+
+																	</div>
+																	<div class="mr-0">
+																		<button class="btn btn-primary edit-btn operation-btn"
+																			type="button" id="delete-btn" onclick="deleteFun()">Delete</button>
+																		<input type="hidden" class="form-control"
+																			id="editTktId">
+
+																	</div>
+																	<div class="mr-2">
+																			<button class="btn btn-primary edit-btn"
+																				id="cancelMainBtn" type="button"
+																				onclick="cancelMain()">Cancel</button>
+																		</div>
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn" id="mstrSaveBtn"
+																			onclick="saveData()" type="button">Save</button>
+																	</div>
+																	
+																	
+																</div>
+
+															</td>
+														</tr>
+													</table>
+												</div>
+												<div class="card p-2">
+													<div class="bdr-btn d-flex justify-content-between mb-2">
+														<div
+															style="text-align: right; color: red; font-weight: bold; font-size: 12px;">
+															Note: All fields marked with <span>*</span> are
+															mandatory.
+														</div>
+													</div>
+													<div class="row my-2">
+														<div class="col-md-4">
+															<div class="form-group calendar_box">
+																<label>Search RFQ<span class="mandatory">*</span></label>
+																<input type="text" id="rfqValue"
+																	onblur="removeValid(event)" class="form-control"
+																	onkeyup='getRfqDetails()'>
+															</div>
+															<div id="suggesstion-box2_" class="sugg-cls"></div>
+														</div>
+														<div class="col-md-4">
+															<div class="form-group calendar_box">
+																<label style="font-size: 13px">Material Issue
+																	Date</label> <input type="text" id="materialIssueDate"
+																	autocomplete="off" class="form-control"
+																	onblur="removeValid(event)"
+																	th:attr="onkeyup=|formatDate('receiveDate','${session.DATEFORMAT_JS}')|"
+																	readonly> <i
+																	class="ti-calendar picker_calendar"
+																	id="receiveDateCalendar1"></i>
+															</div>
+														</div>
+
+														<div class="col-md-4">
+															<div class="form-group calendar_box">
+																<label style="font-size: 13px">Expected Receive
+																	Date</label> <input type="text" id="receiveDate"
+																	onchange="dateChange()" autocomplete="off"
+																	class="form-control" onblur="removeValid(event)"
+																	th:attr="onkeyup=|formatDate('receiveDate','${session.DATEFORMAT_JS}')|"
+																	readonly> <i
+																	class="ti-calendar picker_calendar"
+																	id="receiveDateCalendar2"></i>
+															</div>
+														</div>
+														<div class="col-md-12">
+															<div class="form-group">
+																<label>Purpose</label>
+																<textarea class="form-control" id="desc" rows='1'
+																	style="line-height: 27px !important;"></textarea>
+																<input type="hidden" id="reqId" />
+															</div>
+														</div>
+													</div>
+													<div class="mt-2">
+
+														<div id="childGridDiv">
+															<div class="d-flex justify-content-between mt-2">
+																<div class="row">
+																	<div class="col-md-12">
+																		<h5 class="sub-header-new">Item/Service Details</h5>
+																	</div>
+																</div>
+																<div class="row">
+																	<div class="col-md-12 cnt-sp-end" id="gridAllBtnDiv">
+																		<div class="d-flex gap-1 task-btn-sec">
+																			<!-- <button id="gridAddBtn"
+																				class="border-0 btn-transition btn btn-outline-primary br-m-btn-poc"
+																				title="Add" onclick="openNav()">
+																				<i class="fa fa-plus-square" aria-hidden="true"></i>
+																			</button> -->
+																			<button id="gridEditBtn"
+																				class="border-0 btn-transition btn btn-outline-primary br-dis-poc br-m-btn-poc"
+																				title="Edit" onclick="editProduct()" disabled>
+																				<i class="fa fa-pencil-square" aria-hidden="true"></i>
+																			</button>
+																			<button id="gridDeleteBtn"
+																				class="border-0 btn-transition btn btn-outline-primary br-dis-poc br-m-btn-poc"
+																				title="Delete" disabled
+																				onclick="deleteDetailsOnclick()">
+																				<i class="fa fa-trash"></i>
+																			</button>
+																		</div>
+																	</div>
+																</div>
+															</div>
+															<div class="col-md-12">
+																<div id="product" style="width: 100%; height: 250px;"
+																	class="ag-theme-alpine"></div>
+
+															</div>
+														</div>
+														<div id="itemDtlsDiv" class="d-none">
+															<div class="d-flex justify-content-between mt-2">
+																<div>
+																	<h5 class="sub-header-new">Add Item Details</h5>
+																</div>
+																<div>
+
+																	<div class="d-flex justify-content-end">
+																		<div class="mr-2">
+																			<button class="btn edit-btn" type="button"
+																				id="saveTableData" onclick="saveTableData()">Save</button>
+																		</div>
+																		<div class="mr-2">
+																			<button class="btn edit-btn" type="button"
+																				onclick="closeNav()">Cancel</button>
+																		</div>
+																	</div>
+																</div>
+															</div>
+															<div class="row">
+																<input type="hidden" id="editProduct">
+																<div class="col-md-6">
+																	<div class="form-group">
+																		<div class="autocomplete"
+																			style="width: 100% !important">
+																			<input type="hidden" id="itemId"> <label>Item
+																				Name<span class="mandatory">*</span>
+																			</label> <input type="text" id="itemName"
+																				onblur="removeValid(event)" class="form-control"
+																				onkeyup='getItemQutotationList()'> <input
+																				type="hidden" id="modelTemp" /> <input
+																				type="hidden" id="gstRateTemp" /> <input
+																				type="hidden" id="itemNameTemp" /> <input
+																				type="hidden" id="itemIdTemp" /> <input
+																				type="hidden" id="brandNameTemp" /> <input
+																				type="hidden" id="brandIdTemp" /> <input
+																				type="hidden" id="unitTemp" /><input type="hidden"
+																				id="skuTemp" /><input type="hidden"
+																				id="hsnCodeTemp" /> <input type="hidden"
+																				id="prodCatIdTemp" /> <input type="hidden"
+																				id="prodCatNameTemp" />
+																		</div>
+																		<div id="suggesstion-box_" class="sugg-cls"></div>
+																	</div>
+																</div>
+																<div class="col-md-3">
+																	<div class="form-group">
+																		<label>SKU<span class="mandatory">*</span></label> <input
+																			type="text" class="form-control transparenttxtbox"
+																			id="sku">
+																	</div>
+																</div>
+																<div class="col-md-3">
+																	<div class="form-group">
+																		<div style="width: auto">
+																			<label>HSN Code </label> <input type="text"
+																				id="hsnCode" onblur="removeValid(event)"
+																				class="form-control"
+																				onkeyup='getItemQutotationList()'>
+																		</div>
+																		<div id="suggesstion-boxx_" class="sugg-cls"></div>
+																	</div>
+																</div>
+																<div class="col-md-3">
+																	<div class="form-group">
+																		<label>Model/Size</label> <input type="text"
+																			class="form-control transparenttxtbox" id="model">
+																	</div>
+																</div>
+																<div class="col-md-3">
+																	<div class="form-group">
+																		<label>UNIT<span class="mandatory">*</span></label>
+																		<div class="select">
+																			<select id="unit">
+																				<option th:each="c:${unitList}" th:value='${c.key}'
+																					th:text="${c.name}"></option>
+																			</select>
+																		</div>
+
+																	</div>
+																</div>
+
+																<div class="col-md-3">
+																	<div class="form-group">
+																		<label>Quantity Requested</label> <input type="number"
+																			class="form-control transparenttxtbox" id="quantity"
+																			onblur="removeValid(event)">
+																	</div>
+																</div>
+
+																<div class="col-md-3">
+																	<div class="form-group">
+																		<label>Quantity Issued<span class="mandatory">*</span></label>
+																		<input type="number"
+																			class="form-control transparenttxtbox"
+																			id="quantityIssued" onblur="removeValid(event)">
+																	</div>
+																</div>
+																<div class="col-md-3" hidden>
+																	<div class="form-group">
+																		<label>GRN Number</label> <input type="text"
+																			class="form-control transparenttxtbox" id="grnNo"
+																			onblur="removeValid(event)">
+																	</div>
+																</div>
+															</div>
+														</div>
+
+
+													</div>
+													<!-- <div class="row">
+														<div id="product" style="width: 100%; height: 130px;"
+															class="ag-theme-alpine"></div>
+													</div> -->
+													<!-- <div class="d-flex justify-content-between mt-2">
+														<div>
+															<h5 class="sub-header-new">Add Issue Details</h5>
+														</div>
+														<div>
+
+															<div class="d-flex justify-content-end">
+																<button class="btn  edit-btn" id="saveDetails"
+																					onclick="saveTableData(event)">SAVE</button>
+																				<button class="btn edit-btn" id="dltProductDetails"
+																					onclick="deleteProduct(event)">DELETE</button>
+
+																<div class="mr-2">
+																	<button class="btn edit-btn" id="dltProductDetails"
+																		onclick="deleteProduct(event)">DELETE</button>
+																</div>
+																<div class="mr-2">
+																	<button class="btn  edit-btn" id="saveDetails"
+																		onclick="saveTableData(event)">SAVE</button>
+																</div>
+																<div class="mr-2">
+																	<button class="btn edit-btn" type="button"
+																		onclick="closeNav()">Reset</button>
+																</div>
+															</div>
+														</div>
+													</div> -->
+													<!-- <div class="row">
+														<input type="hidden" id="editProduct">
+														<div class="col-md-6">
+															<div class="form-group">
+																<div class="autocomplete" style="width: 100% !important">
+																	<input type="hidden" id="itemId"> <label>Item
+																		Name<span class="mandatory">*</span>
+																	</label> <input type="text" id="itemName"
+																		onblur="removeValid(event)" class="form-control"
+																		onkeyup='getItemQutotationList()'> <input
+																		type="hidden" id="modelTemp" /> <input type="hidden"
+																		id="gstRateTemp" /> <input type="hidden"
+																		id="itemNameTemp" /> <input type="hidden"
+																		id="itemIdTemp" /> <input type="hidden"
+																		id="brandNameTemp" /> <input type="hidden"
+																		id="brandIdTemp" /> <input type="hidden"
+																		id="unitTemp" /><input type="hidden" id="skuTemp" /><input
+																		type="hidden" id="hsnCodeTemp" /> <input
+																		type="hidden" id="prodCatIdTemp" /> <input
+																		type="hidden" id="prodCatNameTemp" />
+																</div>
+																<div id="suggesstion-box_" class="sugg-cls"></div>
+															</div>
+														</div>
+														<div class="col-md-3">
+															<div class="form-group">
+																<label>SKU<span class="mandatory">*</span></label> <input
+																	type="text" class="form-control transparenttxtbox"
+																	id="sku">
+															</div>
+														</div>
+														<div class="col-md-3">
+															<div class="form-group">
+																<div style="width: auto">
+																	<label>HSN Code </label> <input type="text"
+																		id="hsnCode" onblur="removeValid(event)"
+																		class="form-control" onkeyup='getItemQutotationList()'>
+																</div>
+																<div id="suggesstion-boxx_" class="sugg-cls"></div>
+															</div>
+														</div>
+														<div class="col-md-3">
+															<div class="form-group">
+																<label>Model/Size</label> <input type="text"
+																	class="form-control transparenttxtbox" id="model">
+															</div>
+														</div>
+														<div class="col-md-3">
+															<div class="form-group">
+																<label>UNIT<span class="mandatory">*</span></label>
+																<div class="select">
+																	<select id="unit">
+																		<option th:each="c:${unitList}" th:value='${c.key}'
+																			th:text="${c.name}"></option>
+																	</select>
+																</div>
+
+															</div>
+														</div>
+
+														<div class="col-md-3">
+															<div class="form-group">
+																<label>Quantity Requested</label> <input type="number"
+																	class="form-control transparenttxtbox" id="quantity"
+																	onblur="removeValid(event)">
+															</div>
+														</div>
+
+														<div class="col-md-3">
+															<div class="form-group">
+																<label>Quantity Issued<span class="mandatory">*</span></label>
+																<input type="number"
+																	class="form-control transparenttxtbox"
+																	id="quantityIssued" onblur="removeValid(event)">
+															</div>
+														</div>
+														<div class="col-md-3" hidden>
+															<div class="form-group">
+																<label>GRN Number</label> <input type="text"
+																	class="form-control transparenttxtbox" id="grnNo"
+																	onblur="removeValid(event)">
+															</div>
+														</div>
+													</div> -->
+												</div>
+
+											</div>
+										</div>
+
+
+										<div id="RateUs" class="tab-pane fade"></div>
+									</div>
+									<!--Right Sec End-->
+
+
+
+								</div>
+							</div>
+							<!--Tabbination 1 End-->
+
+						</div>
+
+
+					</div>
+
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

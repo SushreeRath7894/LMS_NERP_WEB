@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+/* .form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+} */
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+</style>
+
+<script type="text/javascript">
+
+	$(document).ready(function() {
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+
+		$('.loader').show();
+		gridOptions.api.setRowData("");
+		agGrid.simpleHttpRequest({
+			url : 'logbook-view'
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.logbook;
+			console.log(allData)
+			var len = allData.length;
+			$('#totalAsset').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+		});
+		$('.loader').hide();
+		
+		$('#reqDltBtn').attr('disabled', true);
+		$('#assignBtn').attr('disabled', true);
+		$('#approveBtn').attr('disabled', true);
+		$('#deleteChild').attr('disabled', true);
+		
+		
+		$("#newBtn").click(function() {
+
+		})
+
+		
+		 var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalendar").datetimepicker({
+			format : dateFormat,
+				closeOnDateSelect : true,
+				timepicker : false,
+				maxDate:0
+			}).on("change", function() {
+				$('#date').val($(this).val());
+			})
+
+			$('#date').blur(function() {
+				$("#fromDateCalendar").val($(this).val());
+			}) 
+		
+//
+$("#toDateCalendarTime").datetimepicker({
+		format: 'g:i A', // 12-hour format with AM/PM
+	    closeOnDateSelect: false,
+	    timepicker: true,
+	    datepicker: false,
+	    step: 1,
+	    formatTime: 'g:i A', // Format time to display AM/PM
+	    ampm: true // Enable AM/PM
+		
+	}).on("change", function() {
+		$('#fromtime').val($(this).val());
+	})
+
+	$('#fromtime').blur(function() {
+		$("#toDateCalendarTime").val($(this).val());
+	})
+//
+$("#toDateCalendarTime1").datetimepicker({
+		format: 'g:i A', // 12-hour format with AM/PM
+	    closeOnDateSelect: false,
+	    timepicker: true,
+	    datepicker: false,
+	    step: 1,
+	    formatTime: 'g:i A', // Format time to display AM/PM
+	    ampm: true // Enable AM/PM
+		
+	}).on("change", function() {
+		$('#totime').val($(this).val());
+	})
+
+	$('#totime').blur(function() {
+		$("#toDateCalendarTime1").val($(this).val());
+	})
+  
+	});
+	
+	
+	
+	/* -------------------search bar for mygrid----------------------- */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+		var totalRowCount = gridOptions.api.getModel().getRowCount();
+		$('#totalAsset').find('span').html(totalRowCount);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	var columnDefs = [
+		{
+			headerCheckboxSelection : false,
+			headerCheckboxSelectionFilteredOnly : false,
+			checkboxSelection : true,
+			width : 10,
+			sortable : false,
+			filter : false,
+			resizable : true,
+			pinned : 'left',
+
+		},
+		{
+			headerName : 'LogBook ID',
+			field : "logbookId",
+			pinned : 'left',
+			width :120,
+				cellRenderer : function(params) {
+				return '<a id="logbookId" onclick=editLogbook("'
+				+params.data.logbookId
+				+ '") href="javascript:void(0)"><i class="bi bi-pencil-square"></i> '
+				+ params.data.logbookId + '</a>';
+
+			}
+
+		},{
+			headerName : 'Date',
+			field : "date",
+			pinned : 'left',
+			width :100,
+			
+		}, {
+			headerName : 'From Time',
+			field : "ftime",
+			width :110,
+			
+		},{
+			headerName : 'To Time',
+			field : "ttime",
+			width :90,
+			
+		},{
+			headerName : 'Shift',
+			field : "shift",
+			width :90,
+			
+		},  {
+			headerName : 'DG-1 Hour',
+			field : "dghour1",
+			width :120,
+			
+		}, {
+			headerName : 'DG-1 Meter Reading',
+			field : "mtReading1",
+			width :135,
+			
+		}, {
+			headerName : 'DG-2 Hour',
+			field : "dghour2",
+			width :120,
+			
+		}, {
+			headerName : 'DG-2 Meter Reading',
+			field : "mtReading2",
+			width :135,
+			
+		},{
+			headerName : 'Stock In Barrel',
+			field : "stock",
+			width :120,
+			
+		},
+		{
+			headerName : 'Upload By',
+			field : "uploadby",
+			width :150,
+			
+		},{
+			headerName : 'Approve Status',
+			field : "approveStatus",
+			width :125,
+			cellStyle : {
+				textAlign : 'center'
+			},cellRenderer : function(params) {
+				if(params.data.approveStatus=="Approved"){
+					return '<div style="color:#0642f5">Approved</div>';
+				}else{
+					return '<div style="color:#a9a9a9">Pending</div>';
+				}
+				
+
+			}
+		}];
+
+// let the grid know which columns and what data to use
+var gridOptions = {
+	columnDefs : columnDefs,
+	rowSelection : 'single',
+	groupSelectsChildren : true,
+	suppressRowClickSelection : true,
+	suppressAggFuncInHeader : true,
+	defaultColDef : {
+		sortable : true,
+		filter : true,
+		resizable : true,
+		width : 170
+	},
+	onSelectionChanged : onSelectionChanged,
+};
+//function for row select parents
+var id = "";
+var apstatus = "";
+
+function onSelectionChanged() {
+	var selectedNodes = gridOptions.api.getSelectedNodes();
+	 var selectedData = selectedNodes.map(node => node.data);
+	 
+	 id= selectedData.map(node => node.logbookId);
+	 apstatus=selectedData.map(node => node.approveStatus);
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+
+	if (rowCount > 0) {
+			if(apstatus=="Approved"){
+			$('#newBtn').attr('disabled', true);
+			$('#reqDltBtn').attr("disabled", true);
+			$('#approveBtn').attr("disabled", true);
+			
+			
+		}else{
+			$('#approveBtn').attr("disabled", false);
+			$('#reqDltBtn').attr("disabled", false);
+			$('#newBtn').attr('disabled', true);
+		}
+	}else {
+		$('#reqDltBtn').attr("disabled", true);
+		$('#approveBtn').attr("disabled", true);
+		$('#newBtn').attr('disabled', false);
+	}
+}
+
+
+
+
+//parents new plan
+function newPlan() {
+	$('#newModal').modal('show');
+	$('.formValidation').remove();
+	$('#uomDiv').hide();
+	$('#minRangeDiv').hide();
+	$('#maxRangeDiv').hide();
+	$("#save").show();
+	$("#catid").prop('disabled', false);
+	$("#assetsubcat").prop('disabled', false);
+	$("#frequency").prop('disabled', false);
+	$("#assetsubcat").html('');
+	$("#logbookbox").html('');
+	$("#myGrid").show();
+	
+	$("#reqTable").hide();
+	$(".btn-hs").show();
+	$("#btndiv").hide();
+	$("#listdiv").hide();
+	$("#totalAsset").show();
+	$("#searchRowDiv").show();
+	$("#ttbtn").show();
+	//$("#demo").show();
+	$("#deleteChild").attr('disabled', true);
+	
+	$("#logbookId").val('');
+	 
+	$("#shift").val('');
+	$("#stock").val('');
+	$("#date").val('');
+	$("#dghour1").val('');
+	$("#dghour2").val('');
+	$("#mtReading1").val('');
+	$("#mtReading2").val('');
+	$("#remark").val('');
+	$("#fromtime").val('');
+	$("#totime").val('');
+	$("#assetemployee").val('');
+	function changeDateFormat(inputDate) {
+		var splitDate = inputDate.split('-');
+		if (splitDate.count == 0) {
+			return null;
+		}
+		var year = splitDate[0];
+		var month = splitDate[1];
+		var day = splitDate[2];
+
+		return day + '-' + month + '-' + year;
+	}
+	var date1 = (new Date()).toISOString().split('T')[0];
+	var newDate = changeDateFormat(date1);
+	$("#date").val(newDate);
+	
+}
+//function for cancel
+function cancel() {
+	$('#newModal').modal('hide');
+	gridOptions.api.setQuickFilter(null);
+	$('#quickFilter').val('');
+	document.getElementById('closeKey').style.display='none';
+	$('#totalAsset').find('span').html(gridOptions.api.getModel().getRowCount());
+	
+	$('.loader').show();
+	 $(".formValidation").remove();
+		$("#totalAsset").show();
+		$("#searchRowDiv").show();
+		$(".btn-hs").show();
+		$("#myGrid").show();
+		$("#demo").hide();
+		$("#reqDltBtn").attr('disabled', true);
+		$("#newBtn").attr('disabled', false);
+		$("#logbookId").val("");
+		agGrid.simpleHttpRequest({
+			url : 'logbook-view'
+		}).then(function(data) {
+			var jsonData = JSON.parse(data.body);
+			var allData=jsonData.logbook;
+			var len = allData.length;
+			$('#totalAsset').find('span').html(len);
+			gridOptions.api.setRowData(allData);
+			onSelectionChanged()
+		});
+		gridOptions.api.deselectAll();
+		$("#logbookId").val('');
+		$("#date").val('');
+		$("#shift").val('');
+		$("#stock").val('');
+		$("#powerCutTime").val('');
+		$("#dghour1").val('');
+		$("#dghour2").val('');
+		$("#mtReading1").val('');
+		$("#mtReading2").val('');
+		$("#remark").val('');
+		$("#fromtime").val('');
+		$("#totime").val('');
+		$('.loader').hide();
+	}
+
+//master save data
+function masterSaveData() {
+	$(".formValidation").remove();
+	var valid= true;
+	var datas = [];
+	var item = {};
+	
+	
+	item.logbookId = $("#logbookId").val();
+	item.date = $("#date").val();
+	item.shift = $("#shift").val();
+	//item.powerCutTime = $("#powerCutTime").val();
+	item.dghour1 = $("#dghour1").val();
+	item.mtReading1 = $("#mtReading1").val();
+	item.dghour2 = $("#dghour2").val();
+	item.mtReading2 = $("#mtReading2").val();
+	item.stock = $("#stock").val();
+	item.remark = $("#remark").val();
+	item.fromtime = $("#fromtime").val();
+	item.totime = $("#totime").val();
+	item.uploadBy = $("#assetemployee").val();
+	
+	
+	 if (item.shift == null || item.shift == "") {
+		valid = validationUpdated("Shift is Required", "shift");
+	 }
+	 if (item.date == null || item.date == "") {
+			valid = validationUpdated("Date is Required", "date");
+		 }
+	 
+	
+	if (valid) {
+		datas.push(item);
+		console.log("111111111111",datas);
+		savePlanDetails(datas);
+		}
+}
+
+function savePlanDetails(datas) {
+	$('.loader').show();
+	$.ajax({
+		type : "POST",
+		url : "logbook-add",
+		dataType : "json",
+		contentType : "application/json",
+		data : JSON.stringify(datas),
+		success : function(response) {
+			$('.loader').hide();
+			if (response.code == "success") {
+				cancel()
+				$("#messageParagraph").text(response.message);
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('.loader').hide();
+				agGrid.simpleHttpRequest({
+					url : 'logbook-view'
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.logbook;
+					var len = allData.length;
+					$('#totalAsset').find('span').html(len);
+					gridOptions.api.setRowData(allData);
+					onSelectionChanged()
+				});
+				
+			} else {
+				$('.loader').hide();
+				$("#messageParagraph").text("Something Went Wrong");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				
+			}
+		},
+		error : function(data) {
+			$('.loader').hide();
+		}
+	})
+
+}
+
+
+	//editing the qc master parent table
+	function editLogbook(logbookId) {
+		$('.loader').show();
+		agGrid.simpleHttpRequest(
+				{
+					url : 'logbook-edit?id='+ logbookId
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.logbook;
+					
+					$("#newModal").modal('show');
+					$("#myGrid").show();
+					
+					$("#logbookId").val(allData[0].logbookId);
+					$("#date").val(allData[0].date);
+					$("#shift").val(allData[0].shift);
+					//$("#powerCutTime").val(allData[0].powerCutTime);
+					$("#dghour1").val(allData[0].dghour1);
+					$("#mtReading1").val(allData[0].mtReading1);
+					$("#dghour2").val(allData[0].dghour2);
+					$("#mtReading2").val(allData[0].mtReading2);
+					$("#stock").val(allData[0].stock);
+					$("#logbookbox").html(allData[0].logbookId);
+					$("#remark").val(allData[0].remark);
+					$("#fromtime").val(allData[0].fromtime);
+					$("#totime").val(allData[0].totime);
+					$("#assetemployee").val(allData[0].uploadBy);
+					
+					console.log("RESPONSE::",allData)
+					 if(allData[0].approveStatus==1){
+						 	$("#catid").prop('disabled', true);
+							$("#assetsubcat").prop('disabled', true);
+							$("#frequency").prop('disabled', true);
+							$("#save").hide();
+					}else{
+						$("#catid").prop('disabled', false);
+						$("#assetsubcat").prop('disabled', false);
+						$("#frequency").prop('disabled', false);
+						$("#save").show();
+					} 
+					$("#tdiv").show();
+					$("#searchRowDiv").show();
+					$("#totalAsset").show();
+					$("#ttbtn").show(); 
+				});
+		$('.loader').hide();
+	}
+
+// function for delete qc  
+function deleteOnclick() {
+	
+		if (id) {
+			$('.loader').show();
+				$.ajax({
+		type : "POST",
+		url : "logbook-delete?id="+ id,
+		success : function(response) {
+		 if (response.code == "success") {
+			 cancel();
+				$("#messageParagraph").text("LogBook Deleted Successfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('#delete').modal('hide');
+				agGrid.simpleHttpRequest({
+					url : 'logbook-view'
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.logbook;
+					var len = allData.length;
+					$('#totalAsset').find('span').html(len);
+					gridOptions.api.setRowData(allData);
+					onSelectionChanged()
+				});
+				$('.loader').hide();
+			} else {
+				$("#messageParagraph").text("Something went to wrong!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('.loader').hide();
+			}
+		},
+		error : function(data) {
+		}
+	})
+		} else {
+			$('.loader').hide();
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+}
+
+//function for approve asset  
+function approveOnclick() {
+		if (id) {
+			$('.loader').show();
+				$.ajax({
+		type : "POST",
+		url : "logbook-approve?id="+ id,
+		success : function(response) {
+
+		 if (response.code == "success") {
+				$("#messageParagraph").text("LogBook Approved Successfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$('#approveModal').modal('hide');
+				agGrid.simpleHttpRequest({
+					url : 'logbook-view'
+				}).then(function(data) {
+					var jsonData = JSON.parse(data.body);
+					var allData=jsonData.logbook;
+					var len = allData.length;
+					$('#totalAsset').find('span').html(len);
+					gridOptions.api.setRowData(allData);
+					onSelectionChanged()
+				});
+				$('.loader').hide();
+			} else {
+				$('.loader').hide();
+				$("#messageParagraph").text("Something went to wrong!");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+			}
+		},
+		error : function(data) {
+
+		}
+	})
+		} else {
+			$('.loader').hide();
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+}
+
+	// delete selected record from child ag grid
+	function deleteDetailsOnclick() {
+		$('.modal').hide();
+		var selectedRows = activityOptions.api.getSelectedRows();
+		activityOptions.api.applyTransaction({
+			remove : selectedRows
+		});
+		cancelModalProductBtn();
+	}
+	//for closeing modal box for dlt  product
+	function cancelModalProductBtn() {
+		$("#deleteModalBtn").removeAttr("disabled");
+		$('#deleteDetails').modal('hide');
+	}
+
+	function deleteFun() {
+		$('#delete').modal('show');
+	}
+	function approveFun() {
+		$('#approveModal').modal('show');
+	}
+
+	
+	function cancelModalBtnDlt() {
+		$("#delete").modal("hide");
+		gridOptions.api.deselectAll();
+	}
+	function cancelModalBtnApr() {
+		$("#approveModal").modal("hide");
+		gridOptions.api.deselectAll();
+	}
+//function for download
+	function downloadDetails() {
+		var params = {
+			fileName: 'DG_logbook_list.csv', // Specify your custom filename here
+		};
+		gridOptions.api.exportDataAsCsv(params);
+	}
+
+	function cancelModalBtn() {
+		$('#myModal').modal('hide');
+
+	}
+
+
+//
+
+function checkNumeric(fieldId) {
+	
+	 var tempVal = $("#" + fieldId).val().replace(/[^0-9 ]/g, '');
+	    
+	    const input = document.getElementById(fieldId);
+	    const position = input.selectionStart;	
+	    if(tempVal.slice(-1) == ' '){
+	     	$("#" + fieldId).empty();
+	     	tempVal = '';
+	     } 
+	   $("#" + fieldId).val(tempVal);
+	}
+</script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="d-flex justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalAsset">
+									LogBook List(<span></span>)
+								</div>
+							</div>
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';$('#totalAsset').find('span').html(gridOptions.api.getModel().getRowCount());"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+								<button class="download-btn" id="download"
+									onclick="downloadDetails()">Download</button>
+								<button class="new-btn" id="approveBtn" onclick="approveFun()">APPROVE</button>
+								<button class="delete-btn" id="reqDltBtn" onclick="deleteFun()">DELETE</button>
+								<button class="new-btn" id="newBtn" onclick="newPlan()">NEW</button>
+							</div>
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" />
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innercontent">
+								
+								<div class="row innersticky_contentgap">
+									
+									
+								</div>
+
+							</div>
+						</div>
+					</div>
+
+
+					<!-- delete modal start -->
+					<div id="delete" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column"></div>
+								<div class="modal-body">
+									<p>Do you really want to delete this data? This process
+										cannot be undone.</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: 0px;">
+
+									<button type="button" class="cancel-btn"
+										data-bs-dismiss="modal" onclick="cancelModalBtnDlt();">Cancel</button>
+									<button type="button" class="delete-btn"
+										onclick="deleteOnclick()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+
+					<!-- approve modal start -->
+					<div id="approveModal" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column"></div>
+								<div class="modal-body">
+									<p>Do you want to approve this logbook? Once done you will
+										not be able to make further changes.</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: 0px;">
+
+									<button type="button" class="cancel-btn"
+										data-bs-dismiss="modal" onclick="cancelModalBtnApr();">Cancel</button>
+									<button type="button" class="new-btn"
+										onclick="approveOnclick()">Approve</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- delete product modal start -->
+					 <div class="modal fade" id="newModal" tabindex="-1" role="dialog"
+					aria-labelledby="exampleModalCenterTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+					<div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+						<div class="modal-content">
+							<div class="modal-header">
+								<div class="innerstickybg">
+									<div class="row">
+										<div class="col-md-6">
+											LogBook Id: <span id="logbookbox"></span>
+										</div>
+									</div>
+								</div>
+
+							</div>
+							<div class="modal-body">
+							
+								<div class="row">
+									<input type="hidden" id="logbookId">
+									<div class="col-md-4">
+										<div class="form-group calendar_box">
+											<label>Date</label> <input type="text" onChange="onChangeDate();"
+												id="date" autocomplete="off" class="form-control"
+												onblur="removeValid(event)"
+												th:attr="onkeyup=|formatDate('fromDate','${session.DATEFORMAT_JS}')|"
+												readonly> <i class="ti-calendar picker_calendar"
+												id="fromDateCalendar"></i>
+										</div>
+									</div>
+									<div class="col-md-4">
+										<div class="form-group calendar_box">
+											<label>From Time</label> <input type="text" id="fromtime"
+												class="form-control" onblur="removeValid(event)"
+												th:attr="onkeyup=|formatDate('time','${session.DATEFORMAT_JS}')|"
+												readonly> <i
+												class="ti-calendar picker_calendar"
+												id="toDateCalendarTime"></i>
+										</div>
+									</div>
+									<div class="col-md-4">
+										<div class="form-group calendar_box">
+											<label>To Time</label> <input type="text" id="totime"
+												class="form-control" onblur="removeValid(event)"
+												th:attr="onkeyup=|formatDate('time','${session.DATEFORMAT_JS}')|"
+												readonly> <i
+												class="ti-calendar picker_calendar"
+												id="toDateCalendarTime1"></i>
+										</div>
+									</div>
+									<div class="col-md-4">
+										<div class="form-group">
+											<label> Shift </label>
+											<div class="select">
+												<select id="shift">
+													<option value="">Select</option>
+													<option th:each="c:${shiftLists}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select> <span class="focus"></span>
+											</div>
+										</div>
+									</div>
+									<!-- <div class="col-md-4">
+										<div class="form-group">
+											<label>Powercut Time</label> <input type="text"
+												class="form-control " id="powerCutTime"
+												onblur="removeValid(event)">
+										</div>
+									</div> -->
+									<div class="col-md-4">
+									<div class="form-group">
+										<label>DG-1 Hour</label> <input type="text"
+											class="form-control " id="dghour1"
+											onblur="removeValid(event)">
+									</div>
+									</div>
+									
+									
+									<div class="col-md-4">
+									<div class="form-group">
+										<label>DG-1 Meter Reading</label> <input type="text"
+											class="form-control " id="mtReading1"
+											onblur="removeValid(event)">
+									</div>
+									</div>
+									<div class="col-md-3">
+									<div class="form-group">
+										<label>DG-2 Hour</label> <input type="text"
+											class="form-control " id="dghour2"
+											onblur="removeValid(event)">
+									</div>
+									</div>
+									<div class="col-md-3">
+									<div class="form-group">
+										<label>DG-2 Meter Reading</label> <input type="text"
+											class="form-control " id="mtReading2"
+											onblur="removeValid(event)">
+									</div>
+									</div>
+									<div class="col-md-3">
+									<div class="form-group">
+										<label>Stock(in barrel)</label> <input type="text"
+											class="form-control " id="stock"
+											onblur="removeValid(event)">
+									</div>
+									</div>
+									
+									<div class="col-md-3" >
+										<div class="form-group" id="emplist">
+											<label> Uploaded By </label>
+											<div class="select">
+												<select id="assetemployee">
+													<option value="">Select</option>
+													<option th:each="c:${empLists}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select> <span class="focus"></span>
+											</div>
+										</div>
+									</div>
+									
+									<div class="col-lg-12">
+										<div class="form-group">
+											<label>Remarks</label> <textarea type="text"
+												class="form-control transparenttxtbox" id="remark"
+												onblur="removeValid(event)"></textarea>
+										</div>
+									</div>
+									<input type="hidden" id="type">
+								</div>
+							</div>
+							
+							<div class="modal-footer">
+								<button class="cancel-btn" id="cancelBtn" onclick="cancel()">Cancel</button>
+											<button class="approve-btn" id="save"
+												onclick="masterSaveData()">Save</button>
+							</div>
+						</div>
+					</div>
+				</div>
+					
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

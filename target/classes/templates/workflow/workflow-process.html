@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="../javaScript/workflow/workflow-process.js"></script>
+<script src="../javaScript/workflow/flowchart.js"></script>
+<style type="text/css">
+.edit-css {
+	color: rgb(191, 5, 255);
+	text-decoration-line: none;
+}
+</style>
+<script id="code">
+	$(function() {
+		init();
+		makeSVG();
+		$('#sample').trigger('onload');
+	});
+	function init() {
+		if (window.goSamples)
+			goSamples(); // init for these samples -- you don't need to call this
+		var $ = go.GraphObject.make; // for conciseness in defining templates
+
+		myDiagram = $(go.Diagram, "myDiagramDiv", // must name or refer to the DIV HTML element
+		{
+			initialContentAlignment : go.Spot.Center,
+			allowDrop : true, // must be true to accept drops from the Palette
+			"LinkDrawn" : showLinkLabel, // this DiagramEvent listener is defined below
+			"LinkRelinked" : showLinkLabel,
+			"animationManager.duration" : 800, // slightly longer than default (600ms) animation
+			"undoManager.isEnabled" : true
+		// enable undo & redo
+		});
+
+		// when the document is modified, add a "*" to the title and enable the "Save" button
+		myDiagram.addDiagramListener("Modified", function(e) {
+			var button = document.getElementById("SaveButton");
+			if (button)
+				button.disabled = !myDiagram.isModified;
+			var idx = document.title.indexOf("*");
+			if (myDiagram.isModified) {
+				if (idx < 0)
+					document.title += "*";
+			} else {
+				if (idx >= 0)
+					document.title = document.title.substr(0, idx);
+			}
+		});
+
+		// helper definitions for node templates
+
+		function nodeStyle() {
+			return [
+					// The Node.location comes from the "loc" property of the node data,
+					// converted by the Point.parse static method.
+					// If the Node.location is changed, it updates the "loc" property of the node data,
+					// converting back using the Point.stringify static method.
+					new go.Binding("location", "loc", go.Point.parse)
+							.makeTwoWay(go.Point.stringify), {
+						// the Node.location is at the center of each node
+						locationSpot : go.Spot.Center,
+						//isShadowed: true,
+						//shadowColor: "#888",
+						// handle mouse enter/leave events to show/hide the ports
+						mouseEnter : function(e, obj) {
+							showPorts(obj.part, true);
+						},
+						mouseLeave : function(e, obj) {
+							showPorts(obj.part, false);
+						}
+					} ];
+		}
+
+		// Define a function for creating a "port" that is normally transparent.
+		// The "name" is used as the GraphObject.portId, the "spot" is used to control how links connect
+		// and where the port is positioned on the node, and the boolean "output" and "input" arguments
+		// control whether the user can draw links from or to the port.
+		function makePort(name, spot, output, input) {
+			// the port is basically just a small circle that has a white stroke when it is made visible
+			return $(go.Shape, "Circle", {
+				fill : "transparent",
+				stroke : null, // this is changed to "white" in the showPorts function
+				desiredSize : new go.Size(8, 8),
+				alignment : spot,
+				alignmentFocus : spot, // align the port on the main Shape
+				portId : name, // declare this object to be a "port"
+				fromSpot : spot,
+				toSpot : spot, // declare where links may connect at this port
+				fromLinkable : output,
+				toLinkable : input, // declare whether the user may draw links to/from here
+				cursor : "pointer" // show a different cursor to indicate potential link point
+			});
+		}
+
+		// define the Node templates for regular nodes
+
+		var lightText = 'whitesmoke';
+
+		myDiagram.nodeTemplateMap.add("", // Default category
+			    $(go.Node, "Spot", nodeStyle(),
+			        // The main object is a Panel that surrounds a TextBlock with a rectangular Shape
+			        $(go.Panel, "Auto", $(go.Shape, "Rectangle", {
+			            fill: "rgb(191, 5, 255)",
+			            stroke: null
+			        }, new go.Binding("figure", "figure")), 
+			        $(go.TextBlock, {
+			            font: "bold 11pt Helvetica, Arial, sans-serif",
+			            stroke: "whitesmoke",
+			            margin: 8,
+			            maxSize: new go.Size(160, NaN),
+			            wrap: go.TextBlock.WrapFit,
+			            editable: true
+			        }, new go.Binding("text").makeTwoWay())),
+
+			        // DELETE BUTTON (Cross Icon) - Visible on hover, positioned on the left side
+			        $(go.Panel, "Spot", {
+			            alignment: go.Spot.TopLeft, // Position in the top-left corner
+			            alignmentFocus: go.Spot.Center,
+			            visible: false // Initially hidden
+			        }, new go.Binding("visible", "", function(node) {
+			        	/* return node.diagram === myDiagram; */
+			            return node.diagram === myDiagram && node.isHighlighted; // Show when node is highlighted (hovered over)
+			        }).ofObject(), 
+			        $(go.Shape, "Circle", { // Circular background for delete button
+			            width: 20,
+			            height: 20,
+			            fill: "red", // Background color
+			            stroke: "white", // Border color
+			            strokeWidth: 2,
+			            cursor: "pointer"
+			        }), 
+			        $(go.TextBlock, "✖", { // Bold "X"
+			            font: "bold 12pt sans-serif",
+			            stroke: "white",
+			            alignment: go.Spot.Center, // Corrected alignment
+			            cursor: "pointer"
+			        }), {
+			            click: function(e, obj) {
+			                var node = obj.part;
+			                if (node !== null && node.diagram === myDiagram) { // Ensure it's in myDiagram
+			                    myDiagram.startTransaction("remove node");
+			                    myDiagram.remove(node);
+			                    myDiagram.commitTransaction("remove node");
+			                }
+			            }
+			        }),
+
+			        // MENU BUTTON (with dropdown) - Visible on hover, positioned on the right side
+			        $(go.Panel, "Spot", {
+			            alignment: go.Spot.TopRight, // Position in the top-right corner
+			            alignmentFocus: go.Spot.Center,
+			            visible: false // Initially hidden
+			        }, new go.Binding("visible", "", function(node) {
+			        	/* return node.diagram === myDiagram; */
+			            return node.diagram === myDiagram && node.isHighlighted; // Show when node is highlighted (hovered over)
+			        }).ofObject(), 
+			        $(go.Shape, "Circle", { // Circular background for the menu button
+			            width: 20,
+			            height: 20,
+			            fill: "blue", // Background color
+			            stroke: "white", // Border color
+			            strokeWidth: 2,
+			            cursor: "pointer"
+			        }), 
+			        $(go.TextBlock, "+", { // Menu icon (Hamburger)
+			            font: "bold 12pt sans-serif",
+			            stroke: "white",
+			            alignment: go.Spot.Center, // Corrected alignment
+			            cursor: "pointer"
+			        }), {
+			            click: function(e, obj) {
+			                var node = obj.part;
+			                if (node !== null && node.diagram === myDiagram) {
+			                    // Show or hide a dropdown menu (implement menu functionality)
+			                    alert('Menu button clicked for node: ' + node.data.text);
+			                    var dropdownMenu = node.findObject("DROP_MENU");
+			                    dropdownMenu.visible = !dropdownMenu.visible;
+			                    //myDiagram.invalidateLayout();
+			                    myDiagram.requestUpdate();
+			                }
+			            }
+			        }),
+			        
+			     // Dropdown Menu - Initially hidden
+			        $(go.Panel, "Vertical", {
+			            name: "DROP_MENU",
+			            visible: false, // Hidden by default
+			            alignment: go.Spot.TopRight, // Position near the menu button
+			            alignmentFocus: go.Spot.BottomRight
+			        },
+			        $(go.Shape, "Rectangle", { // Background for the dropdown
+			            fill: "white",
+			            stroke: "black",
+			            width: 120
+			        }),
+			        $(go.Panel, "Vertical", { // List of options
+			            margin: 5
+			        },
+			        $(go.TextBlock, {
+			            text: "Enable",
+			            cursor: "pointer",
+			            font: "bold 10pt sans-serif",
+			            margin: 5
+			        }, {
+			            click: function(e, obj) {
+			                var node = obj.part;
+			                alert("Enable option clicked for node: " + node.data.text);
+			                // Add your "Enable" functionality here
+			            }
+			        }),
+			        $(go.TextBlock, {
+			            text: "Disable",
+			            cursor: "pointer",
+			            font: "bold 10pt sans-serif",
+			            margin: 5
+			        }, {
+			            click: function(e, obj) {
+			                var node = obj.part;
+			                alert("Disable option clicked for node: " + node.data.text);
+			                // Add your "Disable" functionality here
+			            }
+			        }),
+			        $(go.TextBlock, {
+			            text: "Add Criteria",
+			            cursor: "pointer",
+			            font: "bold 10pt sans-serif",
+			            margin: 5
+			        }, {
+			            click: function(e, obj) {
+			                var node = obj.part;
+			                alert("Add Criteria option clicked for node: " + node.data.text);
+			                // Add your "Add Criteria" functionality here
+			            }
+			        }))),
+
+			        // Mouse hover event to show and hide both delete and menu buttons
+			        {
+			            mouseEnter: function(e, node) {
+			                node.isHighlighted = true; // Set flag to show both delete and menu buttons
+			            },
+			            mouseLeave: function(e, node) {
+			                node.isHighlighted = false; // Set flag to hide both delete and menu buttons
+			            }
+			        },
+
+			        // Four named ports, one on each side:
+			        makePort("T", go.Spot.Top, false, true), 
+			        makePort("L", go.Spot.Left, true, true), 
+			        makePort("R", go.Spot.Right, true, true),
+			        makePort("B", go.Spot.Bottom, true, false)
+			    )
+			);
+
+
+		myDiagram.nodeTemplateMap.add("Start", $(go.Node, "Spot", nodeStyle(),
+				$(go.Panel, "Auto", $(go.Shape, "Circle", {
+					minSize : new go.Size(40, 40),
+					fill : "#79C900",
+					stroke : null
+				}), $(go.TextBlock, "Start", {
+					font : "bold 11pt Helvetica, Arial, sans-serif",
+					stroke : lightText
+				}, new go.Binding("text"))),
+				// three named ports, one on each side except the top, all output only:
+				makePort("L", go.Spot.Left, true, false), makePort("R",
+						go.Spot.Right, true, false), makePort("B",
+						go.Spot.Bottom, true, false)));
+
+		myDiagram.nodeTemplateMap.add("Yellowish", $(go.Node, "Spot",
+				nodeStyle(), $(go.Panel, "Auto", $(go.Shape, "Rectangle", {
+					width : "20",
+					height : "5",
+					margin : 4,
+					fill : null
+				}), $(go.TextBlock, "Start", {
+					font : "bold 11pt Helvetica, Arial, sans-serif",
+					stroke : "black"
+				}, new go.Binding("text"))),
+				// three named ports, one on each side except the top, all output only:
+				makePort("L", go.Spot.Left, true, false), makePort("R",
+						go.Spot.Right, true, false), makePort("B",
+						go.Spot.Bottom, true, false)));
+
+		myDiagram.nodeTemplateMap.add("End", $(go.Node, "Spot", nodeStyle(), $(
+				go.Panel, "Auto", $(go.Shape, "Circle", {
+					minSize : new go.Size(40, 40),
+					fill : "#DC3C00",
+					stroke : null
+				}), $(go.TextBlock, "End", {
+					font : "bold 11pt Helvetica, Arial, sans-serif",
+					stroke : lightText
+				}, new go.Binding("text"))),
+		// three named ports, one on each side except the bottom, all input only:
+		makePort("T", go.Spot.Top, false, true), makePort("L", go.Spot.Left,
+				false, true), makePort("R", go.Spot.Right, false, true)));
+
+		myDiagram.nodeTemplateMap.add("Comment", $(go.Node, "Auto",
+				nodeStyle(), $(go.Shape, "File", {
+					fill : "#EFFAB4",
+					stroke : null
+				}), $(go.TextBlock, {
+					margin : 5,
+					maxSize : new go.Size(200, NaN),
+					wrap : go.TextBlock.WrapFit,
+					textAlign : "center",
+					editable : true,
+					font : "bold 12pt Helvetica, Arial, sans-serif",
+					stroke : '#454545'
+				}, new go.Binding("text").makeTwoWay())
+		// no ports, because no links are allowed to connect with a comment
+		));
+
+		// replace the default Link template in the linkTemplateMap
+		myDiagram.linkTemplate = $(go.Link, // the whole link panel
+		{
+			routing : go.Link.AvoidsNodes,
+			curve : go.Link.JumpOver,
+			corner : 5,
+			toShortLength : 4,
+			relinkableFrom : true,
+			relinkableTo : true,
+			reshapable : true,
+			resegmentable : true,
+			// mouse-overs subtly highlight links:
+			mouseEnter : function(e, link) {
+				link.findObject("HIGHLIGHT").stroke = "rgba(30,144,255,0.2)";
+			},
+			mouseLeave : function(e, link) {
+				link.findObject("HIGHLIGHT").stroke = "transparent";
+			}
+		}, new go.Binding("points").makeTwoWay(), $(go.Shape, // the highlight shape, normally transparent
+		{
+			isPanelMain : true,
+			strokeWidth : 8,
+			stroke : "transparent",
+			name : "HIGHLIGHT"
+		}), $(go.Shape, // the link path shape
+		{
+			isPanelMain : true,
+			stroke : "gray",
+			strokeWidth : 2
+		}), $(go.Shape, // the arrowhead
+		{
+			toArrow : "standard",
+			stroke : null,
+			fill : "gray"
+		}), $(go.Panel, "Auto", // the link label, normally not visible
+		{
+			visible : false,
+			name : "LABEL",
+			segmentIndex : 2,
+			segmentFraction : 0.5
+		}, new go.Binding("visible", "visible").makeTwoWay(), $(go.Shape,
+				"RoundedRectangle", // the label shape
+				{
+					fill : "#bf05ff",
+					stroke : null
+				}), $(go.TextBlock, "Yes", // the label
+		{
+			textAlign : "center",
+			font : "10pt helvetica, arial, sans-serif",
+			stroke : "#ffffff",
+			editable : true
+		}, new go.Binding("text").makeTwoWay())));
+
+		// Make link labels visible if coming out of a "conditional" node.
+		// This listener is called by the "LinkDrawn" and "LinkRelinked" DiagramEvents.
+		function showLinkLabel(e) {
+			var label = e.subject.findObject("LABEL");
+			if (label !== null)
+				label.visible = (e.subject.fromNode.data.figure === "Diamond");
+		}
+
+		// temporary links used by LinkingTool and RelinkingTool are also orthogonal:
+		myDiagram.toolManager.linkingTool.temporaryLink.routing = go.Link.Orthogonal;
+		myDiagram.toolManager.relinkingTool.temporaryLink.routing = go.Link.Orthogonal;
+
+		load(); // load an initial diagram from some JSON text
+
+		// initialize the Palette that is on the left side of the page
+		myPalette = $(go.Palette, "myPaletteDiv", // must name or refer to the DIV HTML element
+		{
+			"animationManager.duration" : 500, // slightly longer than default (600ms) animation
+			nodeTemplateMap : myDiagram.nodeTemplateMap, // share the templates used by myDiagram
+			layout : $(go.GridLayout, {
+				spacing : new go.Size(5, 5)
+			}),
+			model : new go.GraphLinksModel([ // specify the contents of the Palette
+			{
+				category : "Start",
+				text : "Start"
+			}, {
+				text : "Step"
+			}, {
+				text : "Action",
+				figure : "Diamond"
+			}, {
+				category : "End",
+				text : "End"
+			}, {
+				category : "Comment",
+				text : "Comment"
+			}, {
+				text : "Decision",
+				figure : "Decision"
+			}, {
+				text : "Process",
+				figure : "RoundedRectangle"
+			}, {
+				text : "Loop",
+				figure : "Ellipse"
+			}, {
+				text : "Fork",
+				figure : "Parallelogram"
+			}, {
+				text : "Join",
+				figure : "Rectangle"
+			}, {
+				text : "Database",
+				figure : "Cylinder"
+			}, {
+				text : "Manual Operation",
+				figure : "Diamond"
+			}, {
+				text : "Storage",
+				figure : "Trapezoid"
+			}, {
+				text : "Input/Output",
+				figure : "Parallelogram"
+			}, {
+				text : "Connector",
+				figure : "Line"
+			}, {
+				text : "Plan Execution",
+				figure : "Hexagon"
+			}, // New: Plan Execution module
+			{
+				text : "Parallel Execution",
+				figure : "Triangle"
+			}, // New: Parallel Execution
+			{
+				text : "Event",
+				figure : "Octagon"
+			}, // New: Event module
+			{
+				text : "Subprocess",
+				figure : "RoundedRectangle"
+			}, // New: Subprocess
+			{
+				text : "Conditional Branch",
+				figure : "Diamond"
+			}, // New: Conditional Branch
+			{
+				text : "Merge",
+				figure : "Rectangle"
+			}, // New: Merge
+			{
+				text : "Error Handling",
+				figure : "Pentagon"
+			}, // New: Error Handling module
+			{
+				text : "User Input",
+				figure : "Parallelogram"
+			}, // New: User Input
+			{
+				text : "System Operation",
+				figure : "Hexagon"
+			}, // New: System Operation
+			{
+				text : "Process Flow",
+				figure : "RoundedRectangle"
+			}, // New: Process Flow
+			{
+				text : "Termination",
+				figure : "Ellipse"
+			} // New: Termination module
+			])
+		});
+
+		// Add more templates as needed for other modules like Loop, Fork, Database, etc.
+
+		// The following code overrides GoJS focus to stop the browser from scrolling
+		// the page when either the Diagram or Palette are clicked or dragged onto.
+
+		function customFocus() {
+			var x = window.scrollX || window.pageXOffset;
+			var y = window.scrollY || window.pageYOffset;
+			go.Diagram.prototype.doFocus.call(this);
+			window.scrollTo(x, y);
+		}
+
+		myDiagram.doFocus = customFocus;
+		myPalette.doFocus = customFocus;
+
+	} // end init
+
+	// Make all ports on a node visible when the mouse is over the node
+	function showPorts(node, show) {
+		var diagram = node.diagram;
+		if (!diagram || diagram.isReadOnly || !diagram.allowLink)
+			return;
+		node.ports.each(function(port) {
+			port.stroke = (show ? "white" : null);
+		});
+	}
+
+	// Show the diagram's model in JSON format that the user may edit
+	function save() {
+		document.getElementById("mySavedModel").value = myDiagram.model
+				.toJson();
+		myDiagram.isModified = false;
+		console.log("Pkk::::",
+				document.getElementById("mySavedModel").value = myDiagram.model
+						.toJson())
+	    saveDiagramData(document.getElementById("mySavedModel").value = myDiagram.model
+				.toJson());
+	}
+	function load() {
+		myDiagram.model = go.Model.fromJson(document
+				.getElementById("mySavedModel").value);
+	}
+
+	// add an SVG rendering of the diagram at the end of this page
+	function makeSVG() {
+		var svg = myDiagram.makeSvg({
+			scale : 0.9
+		});
+		svg.style.margin = "45px 0px";
+		obj = document.getElementById("SVGArea");
+		obj.appendChild(svg);
+		if (obj.children.length > 0) {
+			obj.replaceChild(svg, obj.children[0]);
+		}
+	}
+</script>
+</head>
+
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<!--Tabination 1 Start-->
+					<div id="tab1" class="tab-pane" role="tabpanel">
+						<div class="d-flex flex-column flex-lg-row">
+							<!--Left Sec Start-->
+							<div class="box-sec" id="collapseWidthR1">
+								<div class="out-box">
+									<div class="d-flex justify-content-between bdr-line p-2">
+										<div class="col-md-8 col-12">
+											<form class="d-flex search-sec position-relative">
+												<input class="form-control me-2" type="text"
+													placeholder="Search">
+												<button class="btn btn-primary go-btn" type="button">Go</button>
+											</form>
+										</div>
+										<div class="col-md-2 d-flex justify-content-end">
+											<button class="btn btn-primary max-btn" id="collapseButtonR1"
+												onclick="triggerExpansionR(1)" data-bs-toggle="tooltip"
+												data-bs-placement="top" title="Expand">
+												<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+													class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+											</button>
+										</div>
+
+									</div>
+									<div class="card p-2 m-2">
+										<div id="myGrid" style="height: 500px;"
+											class="ag-theme-alpine w-100"></div>
+									</div>
+								</div>
+							</div>
+							<!--Left Sec End-->
+							<div id="snackbar" class="snackbar"></div>
+							<!--Right Sec Start-->
+
+							<div class="box-sec" id="collapseWidthL1">
+								<div class="out-box">
+
+									<!-- Left aligned max-btn -->
+									<div
+										class="d-flex flex-row-reverse justify-content-between align-items-center p-2 bdr-line">
+										<button class="btn btn-primary max-btn" id="collapseButtonL1"
+											type="button" onclick="triggerExpansionL(1)"
+											data-bs-toggle="tooltip" data-bs-placement="top"
+											title="Expand">
+											<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+												class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+										</button>
+
+										<!-- Right aligned buttons -->
+										<div class="d-flex gap-2">
+											<ul class="nav nav-pills newtab" role="tablist" id="tabMenu">
+												<li class="nav-item"><a class="nav-link active"
+													data-bs-toggle="pill" href="#processDetails">Process
+														Svg</a></li>
+												<li class="nav-item"><a class="nav-link"
+													data-bs-toggle="pill" href="#candidateProfile">Process</a></li>
+
+											</ul>
+										</div>
+									</div>
+									<!-- Tab Start -->
+									<div class="tab-content flex-fill h-25" id="tabContent">
+										<div id="processDetails" class="tab-pane active p-2 h-100">
+											<div class="requisition-tbl d-flex flex-column h-100">
+												<div class="mb-2">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<td width="80%"><strong></strong><span
+																	id="propertyId"></span></td>
+																<td>
+																	<div class="d-flex justify-content-end gap-1">
+																		<div class="mr-2">
+																			<button class="btn btn-primary edit-btn"
+																				type="button"
+																				onclick="nextBtnFunction('jobDetails')">Next</button>
+																		</div>
+																	</div>
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+												<div class="border p-2">
+													<!--Inner Start-->
+													<div class="demo">
+
+
+														<!-- <button onclick="makeSVG()">Render as SVG</button> -->
+														<div id="SVGArea"></div>
+
+													</div>
+													<!--End-->
+
+												</div>
+											</div>
+										</div>
+
+										<div id="candidateProfile" class="tab-pane p-2 h-100">
+											<div class="requisition-tbl d-flex flex-column h-100">
+												<div class="mb-2">
+													<table class="table table-bordered mb-0" width="100%">
+														<tbody>
+															<tr valign="middle">
+																<td width="80%"><strong></strong><span
+																	id="propertyId"></span></td>
+																<td>
+																	<div class="d-flex justify-content-end gap-1">
+																		<div class="mr-2">
+																			<button class="btn btn-primary edit-btn"
+																				type="button" id="SaveButton" onclick="save()">Save</button>
+																		</div>
+																		<div class="mr-2">
+																			<button class="btn btn-primary edit-btn"
+																				type="button"
+																				onclick="nextBtnFunction('jobDetails')">Next</button>
+																		</div>
+																	</div>
+																</td>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+												<div class="border p-2">
+													<!--Inner Start-->
+													<div id="demo">
+
+														<div id="sample">
+															<div style="width: 100%; white-space: nowrap;">
+																<span
+																	style="display: inline-block; vertical-align: top; width: 22%">
+																	<div id="myPaletteDiv"
+																		style="border: solid 1px black; height: 490px;"></div>
+																</span> <span
+																	style="display: inline-block; vertical-align: top; width: 78%">
+																	<div id="myDiagramDiv"
+																		style="border: solid 1px black; height: 490px;"></div>
+																</span>
+															</div>
+
+															<div class="d-none">
+																<!-- <button id="SaveButton" onclick="save()">Save</button> -->
+																<button onclick="load()">Load</button>
+																Diagram Model saved in JSON format:
+																<textarea id="mySavedModel"
+																	style="width: 100%; height: 300px">{ "class": "GraphLinksModel",
+  "pointsDigits": 0,
+  "nodeDataArray": [
+    {"key":-1,"category":"Start","loc":"-237 41","text":"Start"},
+    {"key":-2,"category":"End","loc":"277 696","text":"End"},
+    {"category":"Conditional","text":"Is data\ntree-like?","key":-14,"loc":"40 165"},
+    {"text":"Use a TreeModel","key":-5,"loc":"-100 230"},
+    {"text":"Use a GraphLinksModel","key":-6,"loc":"180 230"},
+    {"category":"Comment","text":"GraphLinksModel\nalso allows Groups","key":-7,"loc":"362 230"},
+    {"text":"Create DIV for Diagram","key":-8,"loc":"-64 41"},
+    {"text":"Create new Diagram associated with DIV","key":-9,"loc":"164 41"},
+    {"text":"Style node templates","key":-10,"loc":"40 617"},
+    {"text":"Add data to node/linkDataArray","key":-12,"loc":"180 320"},
+    {"text":"Add data to nodeDataArray, including parent","key":-13,"loc":"-100 320"},
+    {"text":"Style link templates","key":-15,"loc":"277 617"},
+    {"category":"Conditional","text":"Should nodes be auto-positioned?","key":-16,"loc":"40 460"},
+    {"text":"Choose a layout","key":-18,"loc":"-100 525"},
+    {"text":"Set location in node data and bind","key":-17,"loc":"180 525"}
+  ],
+  "linkDataArray": [
+    {"from":-1,"to":-8},
+    {"from":-8,"to":-9},
+    {"from":-5,"to":-13},
+    {"from":-6,"to":-12},
+    {"from":-15,"to":-2},
+    {"from":-14,"to":-5,"text":"Yes"},
+    {"from":-14,"to":-6,"text":"No"},
+    {"from":-9,"to":-14},
+    {"from":-13,"to":-16},
+    {"from":-12,"to":-16},
+    {"from":-16,"to":-18,"text":"Yes"},
+    {"from":-16,"to":-17,"text":"No"},
+    {"from":-18,"to":-10},
+    {"from":-17,"to":-10},
+    {"from":-10,"to":-15}
+  ]}
+      
+  </textarea>
+															</div>
+															<!-- <button onclick="makeSVG()">Render as SVG</button>
+															<div id="SVGArea"></div> -->
+														</div>
+													</div>
+													<!--End-->
+
+												</div>
+											</div>
+										</div>
+
+									</div>
+									<!-- end of Tab Content -->
+								</div>
+								<!-- Tab End -->
+							</div>
+							<!--Right Sec End-->
+						</div>
+					</div>
+					<!--Tabbination 1 End-->
+
+
+				</div>
+			</div>
+
+		</div>
+	</div>
+
+
+</body>
+
+</html>

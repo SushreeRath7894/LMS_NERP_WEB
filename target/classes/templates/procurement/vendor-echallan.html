@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+.form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+}
+
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+
+.blueClsWT {
+	background: #0076ba;
+	color: #fff;
+}
+
+.blueCls {
+	background: #0076ba;
+	color: #fff;
+}
+
+.blueClsWT::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	padding-right: 7px;
+}
+
+.tptCls {
+	background: transparnt;
+}
+.grn-btn {
+    background: #6ed8d3;
+    color: #FFF;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    border-radius: 30px;
+    padding: 4px 10px 4px 10px;
+    text-decoration: none;
+    font-family: roboto;
+}
+
+</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script type="text/javascript">
+	function vendorRelatedDataOnEditChange(locId, conId) {
+		var vendor = $("#vendorId").val();
+		$("#companyContactId").val(
+				$("#vendorId").find('option:selected').text());
+		$("#vendorLocId").empty();
+		$("#vendorLocId")
+				.append($("<option th:value=null>--Select--</option>"));
+		$("#vendorContactId").empty();
+		$("#vendorContactId").append(
+				$("<option th:value=null>--Select--</option>"));
+		if (vendor) {
+			$.ajax({
+				type : "POST",
+				url : "vendor-invoice-vendor-loc-change",
+				dataType : 'json',
+				contentType : 'application/json',
+				data : vendor,
+				success : function(response) {
+					if (response.message == "success") {
+
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#vendorLocId").append(option);
+
+						}
+						$("#vendorLocId").val(locId);
+					}
+				},
+				error : function(data) {
+
+				}
+			})
+
+			$.ajax({
+				type : "POST",
+				url : "vendor-invoice-vendor-contact-change",
+				dataType : 'json',
+				contentType : 'application/json',
+				data : vendor,
+				success : function(response) {
+					if (response.message == "success") {
+
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#vendorContactId").append(option);
+
+						}
+						$("#vendorContactId").val(conId);
+					}
+				},
+				error : function(data) {
+
+				}
+			})
+
+		} else {
+			$("#vendorLocId").empty();
+			$("#vendorLocId").append($("<option value>--Select--</option>"));
+			$("#vendorContactId").empty();
+			$("#vendorContactId")
+					.append($("<option value>--Select--</option>"));
+		}
+
+	}
+	
+	
+	function cancel(){
+		$("#myModal").modal("hide");
+	}
+
+
+	
+
+	var count1 = 0;
+	function allCheck1() {
+		count1++;
+
+		if (count1 == 1) {
+			$('.checkCls1').prop("checked", true);
+		} else {
+			count1 = 0;
+			$('.checkCls1').prop("checked", false);
+		}
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#searchBar').val() == null || $('#searchBar').val() == "") {
+			id.style.display = "none";
+		}
+	}
+</script>
+
+<script type="text/javascript">
+	$(document).ready(function() {
+		$("#productDltBtn").attr("disabled", true);
+		
+		
+		agGrid.simpleHttpRequest({
+			url : 'vendor-echallan-get-invoice-list'
+		}).then(function(data) {
+			var len = data.length;
+			$('#totalReq').find('span').html(len);
+			rfqOptions.api.setRowData(data);
+		});
+		
+
+		
+		var ld = localStorage.getItem('invData');
+		var data = JSON.parse(ld);
+		if (data) {
+			$("#challanTable").hide();
+			$("#reqTable").hide();
+			$(".btn-hs").hide();
+			$("#demo").show();
+			$('#productDltBtn').attr('disabled', true);
+			$('#addProductBtn').attr('disabled', true); 
+			$("#paymentTerm").val(data.paymentTerm);
+			$("#vendorId").val(data.vendorId);
+			$("#source").html(data.poId);
+			$("#invId").val(data.invId);
+			$("#paymentStatus").val(data.paymentStatus);
+			$("#companyContactId").val(data.vendorName);
+			$("#totalValue").val(data.totalMaxAmount); 
+			$("#createdDate").empty();
+			$("#createdDate").append(data.createdOn);
+			$("#activeDate").empty();
+			$("#activeDate").append(data.approvedDate);
+			$("#completeDate").empty();
+			$("#completeDate").html(data.completeDate);
+			$("#onHoldDate").empty();
+			$("#onHoldDate").html(data.onHoldDate);
+
+			productOptions.api.setRowData(data.productList);
+
+		
+			
+			localStorage.setItem('invData', null);
+		} else {
+			$("#source").html('New');
+			$('#productDltBtn').attr('disabled', false);
+			$('#addProductBtn').attr('disabled', false);
+		}
+
+		$("#statusDiv").hide();
+		$('#reqDltBtn').attr('disabled', true);
+		$('#createDN').attr('disabled', true);
+		$('#reqAppvBtn').attr('disabled', true);
+		$('#rfqDistBtn').attr('disabled', true);
+
+		$('.collapse').on('show.bs.collapse', function() {
+			$(this).siblings('.panel-heading').addClass('active');
+		});
+
+		$('.collapse').on('hide.bs.collapse', function() {
+			$(this).siblings('.panel-heading').removeClass('active');
+		});
+	
+		$("#invoiceCancelBtn").click(function() {
+			$("#reqTable").show();
+			$(".btn-hs").show();
+			$("#challanTable").show();
+			$("#totalReq").show();
+			
+			$("#demo").hide();
+			agGrid.simpleHttpRequest({
+				url : 'vendor-echallan-get-invoice-list'
+			}).then(function(data) {
+				var len = data.length;
+				$('#totalReq').find('span').html(len);
+				rfqOptions.api.setRowData(data);
+			});
+			$("#invNo").val('');
+			$("#invDate").val('');
+			$("#invDateCalendar").val("");
+			$("#paymentTerm").val(null);
+			$("#dueDate").val('');
+			$("#dueDateCalendar").val("");
+			$("#vendorId").val(null);
+			$("#vendorLocId").val(null);
+			$("#vendorContactId").val(null);
+			$("#paymentStatus").val(null);
+			$("#companyContactId").val('');
+			$("#totalValue").val('');
+			$("#paymentDueIn").val('');
+			$("#comments").val('');
+
+			$("#invId").val('');
+			$("#source").html('');
+			$("#reqHeadId").html('');
+			$("#createdDate").append('');
+			$("#activeDate").append('');
+			$("#completeDate").html('');
+			$("#onHoldDate").html('');
+			$("#sku").html('');
+			$("#skuEditId").html('');
+			$("#brandId").html('');
+			$("#itemId").html('');
+			$("#itemName").html('');
+			$("#locationId").val('');
+			$("#quantity").val('');
+			$("#uom").val('');
+
+			$("#unitPrice").val('');
+			$("#discount").val('');
+			$("#tax").val('');
+			$("#total").val('');
+			$("#shipping").val('');
+			$("#subTotal").val('');
+			$("#search").val('');
+			$("#search").val('');
+			
+
+		});
+
+		$("#quarter").click(function() {
+			$("#myTbl").hide();
+			$(".btn-hs").hide();
+			$("#demo").show();
+		})
+		
+		
+
+		
+		
+
+	});
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+</script>
+
+<script>
+	var columnDefs = [
+			
+			{
+				headerName : "Challan Id",
+				field : "invId",
+				cellRenderer : function(params) {
+					return '<a onclick=editInvoice("' + params.data.invId
+							+ '") href="javascript:void(0)">'
+							+ params.data.invId + '</a>';
+				}
+
+			}, {
+				headerName : "Challan Date",
+				field : "invDate",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : "Vendor",
+				field : "vendorId",
+					width : 230,
+			}, {
+				headerName : "Vendor Location",
+				field : "vendorLocId",
+					width : 270,
+			}, {
+				headerName : "Vendor Contacts",
+				field : "vendorContactId",
+				width : 230,
+			}, {
+				headerName : "Challan",
+				cellStyle : {
+					textAlign : 'center'
+				},
+				cellRenderer : function(params) {
+					var s = "";
+					s = ' <a href="#" class="grn-btn" onclick="challanPdfDownload(\''+params.data.invId+'\')"><i class="ti ti-download"></i> Challan </a>';
+					return s;
+				},
+				width: 200,
+				}];
+
+	// let the grid know which columns and what data to use
+	var rfqOptions = {
+		columnDefs : columnDefs,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 200
+		},
+		
+
+	};
+	// for product table
+   var productDefs = [
+			
+			{
+				headerName : "SKU",
+				field : "sku",
+				
+			}, {
+				headerName : "Name",
+				field : "itemName"
+
+			}, {
+				headerName : "itemId",
+				field : "itemId",
+				hide : "true"
+			}, {
+				headerName : "BrandId",
+				field : "brand",
+				hide : "true"
+			}, {
+				headerName : "Location",
+				field : "location"
+
+			}, {
+				headerName : "locationId",
+				field : "locationId",
+				hide : "true"
+
+			}, {
+				headerName : "Cost Center",
+				field : "costCenter"
+
+			}, {
+				headerName : "costCenterId",
+				field : "costCenterId",
+				hide : "true"
+
+			}, {
+				headerName : "Account",
+				field : "accountName"
+
+			}, {
+				headerName : "accountId",
+				field : "accountId",
+				hide : "true"
+
+			}, {
+				headerName : "Quantity",
+				field : "quantity",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "UOM",
+				field : "uom"
+
+			}, {
+				headerName : "uomId",
+				field : "uomId",
+				hide : "true"
+			}, {
+				headerName : "Unit Price",
+				field : "unitPrice",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "Discount",
+				field : "discount",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "Sub Total",
+				field : "subTotalPrice",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "Tax",
+				field : "tax",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "Shipping",
+				field : "shipping",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : "Total",
+				field : "total",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			} ];
+
+	
+	
+
+	// let the grid know which columns and what data to use activity table
+	var productOptions = {
+		columnDefs : productDefs,
+		rowSelection : 'multiple',
+		
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 153
+		},
+		getRowNodeId : function(data) {
+			return data.sku;
+		}
+
+	};
+	
+
+	// setup the grid after the page has finished loading
+	document.addEventListener('DOMContentLoaded', function() {
+		var gridDiv = document.querySelector('#challanTable');
+		new agGrid.Grid(gridDiv, rfqOptions);
+
+		var gridDiv = document.querySelector('#product');
+		new agGrid.Grid(gridDiv, productOptions);
+
+
+	});
+
+	function resetState() {
+		rfqOptions.columnApi.resetColumnState();
+
+	}
+
+	function onQuickFilterChanged() {
+		rfqOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+	
+	
+	
+
+	function editInvoice(rfqId) {
+		$('.formValidation').remove();
+		newPage();
+		$("#invoiceTable").hide();
+		$("#reqTable").hide();
+		$(".btn-hs").hide();
+		$("#demo").show();
+		$('.loader').show();
+		$("body").addClass("overlay");
+		agGrid
+				.simpleHttpRequest({
+					url : 'vendor-echallan-edit-trough-ajax?id=' + rfqId
+				})
+				.then(
+						function(data) {
+							$('.loader').hide();
+							$("body").removeClass("overlay");
+							$("#invNo").html(data.invId);
+							$("#invDate").val(data.invDate);
+							$("#invDateCalendar").val(data.invDate);
+							$("#paymentTerm").val(data.paymentTerm);
+							$("#dueDate").val(data.dueDate);
+							$("#dueDateCalendar").val(data.dueDate);
+							$("#vendorId").val(data.vendorId);
+							$("#source").html(data.poId);
+							$("#invId").val(data.invId);
+							$("#vendorLocId").val(data.vendorLocId);
+							$("#vendorContactId").val(data.vendorContactId);
+							$("#paymentStatus").val(data.paymentStatus);
+							$("#companyContactId").val(data.companyContactId);
+							$("#totalValue").val(addCommas(data.totalValue));
+							$("#paymentDueIn").val(data.paymentDueIn);
+							$("#comments").val(data.comments);
+							$("#reqHeadId").html(rfqId);
+							$("#createdDate").empty();
+							$("#createdDate").append(data.createdOn);
+							$("#activeDate").empty();
+							$("#activeDate").append(data.activeDate);
+							$("#completeDate").empty();
+							$("#completeDate").html(data.completeDate);
+							$("#onHoldDate").empty();
+							$("#onHoldDate").html(data.onHoldDate);
+							$("#isSaveByVendor").val(data.isSaveByVendor);
+							productOptions.api.setRowData(data.productList);
+							$("#doctbodyData").empty();
+							
+							
+
+							vendorRelatedDataOnEditChange(data.vendorLocId,
+									data.vendorContactId);
+							headerStatus();
+							if (data.isSaveByVendor) {
+								$('#invNo').attr('readonly', true);
+								$('#invDate').attr('readonly', true);
+								$('#comments').attr('readonly', true);
+								$("#paymentTerm").prop("disabled", true);
+								$("#vendorId").prop("disabled", true);
+								$("#vendorLocId").prop("disabled", true);
+								$("#vendorContactId").prop("disabled", true);
+								$('#productDltBtn').attr('disabled', true);
+								$('#addProductBtn').attr('disabled', true);
+							} else {
+								$('#invNo').attr('readonly', false);
+								$('#invDate').attr('readonly', false);
+								$('#comments').attr('readonly', false);
+								$("#paymentTerm").prop("disabled", false);
+								$("#vendorId").prop("disabled", false);
+								$("#vendorLocId").prop("disabled", false);
+								$("#vendorContactId").prop("disabled", false);
+								$('#productDltBtn').attr('disabled', false);
+								$('#addProductBtn').attr('disabled', false);
+							}
+							
+						});
+
+		
+	}
+	function onBtIncludeAthleteColumn(colDefsAthleteIncluded) {
+		productOptions.api.setColumnDefs(colDefsAthleteIncluded);
+	}
+	
+		
+</script>
+
+<script>
+	
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+
+
+	function selectAutocompleteValue1(key, name, sku, brandName, brand,
+			prodcatId, prodCatName) {
+
+		if (key) {
+			$("#itemName").html(name);
+			$("#itemId").val(key);
+			$("#brandName").html(brandName);
+			$("#brandId").val(brand);
+			$("#prodCatId").val(prodcatId);
+			$("#prodCatName").val(prodCatName);
+			$("#sku").html(sku);
+			$("#search").val(name)
+			$("#search").attr('data-procat', key);
+			$("#suggesstion-box1_").hide();
+			//checkForDuplicate(key,counter);
+
+		} else {
+
+			$("#itemName").html("");
+			$("#itemId").val("");
+			$("#brandId").html("");
+			$("#brandId").val("");
+			$("#sku").html("");
+			$("#prodCatId").val('');
+			$("#prodCatName").val('');
+			$("#search").val("");
+			$("#search").attr('data-procat', "");
+			$("#suggesstion-box1_").hide();
+
+		}
+	}
+	function selectAutocompleteValue() {
+		$("#itemName").html("");
+		$("#itemId").val("");
+		$("#brandId").html("");
+		$("#sku").html("");
+		$("#search").val("");
+		$("#search").attr('data-procat', "");
+		$("#suggesstion-box1_").hide();
+
+	}
+	function putOnHold() {
+		var isHold = $("#isHold").val();
+		if (isHold == '1') {
+			$("#isHold").val('4');
+			$("#putOnHold").removeClass('holdCls');
+		} else if (isHold == '4') {
+			$("#isHold").val('1');
+			$("#putOnHold").addClass('holdCls');
+		}
+	}
+
+	function headerStatus() {
+
+		$("#statusDiv").show();
+
+		var createdDate = $("#createdDate").text();
+		var activeDate = $("#activeDate").text();
+		var completeDate = $("#completeDate").text();
+		var onHoldDate = $("#onHoldDate").text();
+
+		if (createdDate) {
+			$('#createdDiv').addClass('green-box');
+			$('#createdDiv').removeClass('grey-box');
+		} else {
+			$('#createdDiv').removeClass('green-box');
+			$('#createdDiv').addClass('grey-box');
+		}
+		if (activeDate) {
+			$('#activeDiv').addClass('green-box');
+			$('#activeDiv').removeClass('grey-box');
+		} else {
+			$('#activeDiv').addClass('grey-box');
+			$('#activeDiv').removeClass('green-box');
+		}
+		if (completeDate) {
+			$('#completeDiv').addClass('green-box');
+			$('#completeDiv').removeClass('grey-box');
+			$('#productDltBtn').attr('disabled', true);
+			$('#addProductBtn').attr('disabled', true);
+			$('#addAttchmentBtn').attr('disabled', true);
+
+		
+
+			$('.poCls').attr('disabled', true);
+		} else {
+			$('#completeDiv').removeClass('green-box');
+			$('#completeDiv').addClass('grey-box');
+			$('#productDltBtn').attr('disabled', false);
+			$('#addProductBtn').attr('disabled', false);
+			$('#addAttchmentBtn').attr('disabled', false);
+			
+			$('.poCls').attr('disabled', false);
+		}
+		if (onHoldDate) {
+			$('#onHoldDiv').addClass('green-box');
+			$('#onHoldDiv').removeClass('grey-box');
+		} else {
+			$('#onHoldDiv').removeClass('green-box');
+			$('#onHoldDiv').addClass('grey-box');
+		}
+	}
+	function clearSearchData() {
+		$("#search").val(null);
+		$("#sku").html('');
+		$("#brandName").html('');
+		$("#brandId").val('');
+		$("#itemId").html('');
+		$("#itemName").html('');
+	}
+
+
+	// download function
+	function skuProductCSV() {
+		var dataset = [];
+		productOptions.api.forEachNodeAfterFilterAndSort(function(rowNode,
+				index) {
+			dataset.push(rowNode.data);
+		});
+		productOptions.api.exportDataAsCsv(dataset);
+	}
+
+	function rfqCSV() {
+		var dataset = [];
+		rfqOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+		rfqOptions.api.exportDataAsCsv(dataset);
+	}
+	
+
+	function validProductData() {
+		var item = null;
+		productOptions.api.forEachNode(function(rowNode, index) {
+			item = rowNode.data;
+			console.log("item");
+		});
+		console.log("productOptions " + item)
+		if (item) {
+			return true;
+		} else {
+			$("#messageParagraph").text("Please Add At Least One Product");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			return false;
+		}
+	}
+	
+function challanPdfDownload(invId) {
+		var organization = $("#sessionOrganization").val();
+		var orgDivision = $("#sessionOrgDivision").val();
+		window.open("/inventory/vendor-echallan-pdf-downloads?invId="
+				+ window.btoa(invId) + "&organization="
+				+ window.btoa(organization) + "&orgDivision="
+				+ window.btoa(orgDivision), '_blank');  
+	}
+
+
+	// for state change 
+	function vendorChange() {
+		var vendor = $("#vendorId").val();
+		$("#vendorLocId").empty();
+		$("#vendorLocId")
+				.append($("<option th:value=null>--Select--</option>"));
+		$("#vendorContactId").empty();
+		$("#vendorContactId").append(
+				$("<option th:value=null>--Select--</option>"));
+		if (vendor) {
+			$.ajax({
+				type : "POST",
+				url : "vendor-invoice-vendor-loc-change",
+				dataType : 'json',
+				contentType : 'application/json',
+				data : vendor,
+				success : function(response) {
+					if (response.message == "success") {
+
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#vendorLocId").append(option);
+
+						}
+					}
+				},
+				error : function(data) {
+
+				}
+			})
+
+			$.ajax({
+				type : "POST",
+				url : "vendor-invoice-vendor-contact-change",
+				dataType : 'json',
+				contentType : 'application/json',
+				data : vendor,
+				success : function(response) {
+					if (response.message == "success") { 
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#vendorContactId").append(option); 
+						}
+					}
+				},
+				error : function(data) {
+
+				}
+			})
+
+		} else {
+			$("#vendorLocId").empty();
+			$("#vendorLocId").append($("<option value>--Select--</option>"));
+			$("#vendorContactId").empty();
+			$("#vendorContactId")
+					.append($("<option value>--Select--</option>"));
+		}
+	}
+
+
+
+
+  
+	
+
+	
+		
+		
+	
+		function returnPage() {
+			$("#reqTable").show();
+			$("#totall").show();
+			$("#totalReq").show();
+			$("#searchDiv").show();
+			$("#btndiv").show();
+			$("#challanTable").show();
+			$("#mainPage").hide();
+			$("#accordionExample").hide();
+			$("#headingItem").hide();
+		}
+		
+		function newPage() {
+			$("#reqTable").hide();
+			$("#totalReq").hide();
+			$("#searchDiv").hide();
+			$("#btndiv").hide();
+			$("#challanTable").hide();
+			$("#mainPage").show();
+			$("#accordionExample").show();
+			$("#headingItem").show();
+			headerStatus()
+		}
+</script>
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="row" id="reqTable">
+                         <div class="d-flex justify-content-between">
+							<div class="btn-hs" id="totall">
+								<div class="font-design" id="totalReq">
+									CHALLAN LIST (<span></span>)
+								</div>
+							</div>
+								<div class="btn-hs" id="searchDiv">
+									<div class="input-style">
+										<input type="text" placeholder="Search.." name="search"
+											class="searchboxinput" onkeyup="cancelBar()"
+											oninput="onQuickFilterChanged()" id="quickFilter"
+											autocomplete="off">
+										<div class="searchicon">
+											<a href="javascript:void(0)"><span
+												style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+												id="closeKey"
+												onclick="rfqOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+												class="close_i"><i class="ti-close srchicon"></i></span></a><a
+												href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+										</div>
+									</div>
+
+								</div>
+							
+							<input type="hidden"
+										id="sessionOrganization" th:value="${organization}" /> <input
+										type="hidden" id="sessionOrgDivision"
+										th:value="${orgDivision}" />
+							
+							
+							
+							<div class="buttonsec btn-hs" id="btndiv">
+
+								<button class="download-btn" onclick="rfqCSV()">DOWNLOAD</button>
+							</div>
+                           </div>
+						</div>
+
+						<div id="challanTable" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+
+						<div class="collapse" id="demo">
+							<div class="innerstickybg" id="headingItem">
+								<div class="row">
+								<div class="col-md-6">
+									<label>Purchase Order No.: </label> <span id="source" class="source_text"></span>
+								</div>
+
+								
+									
+									<div class="col-md-6" align="right">
+										<button class="cancel-btn" id="invoiceCancelBtn">Cancel</button>
+										
+									</div>
+								</div>
+
+							</div>
+							
+							<div class="row innersticky_contentgap" id="mainPage">
+							
+								<div class="col-md-3">
+									<div class="form-group">
+										<label>Challan Id</label> 
+										<div  id="invNo"
+											class="form-control" readonly> 
+											</div>
+											<input type="hidden" id="invId" />
+										<input type="hidden" id="sessionVendId"
+											th:value="${session.VENDOR_ID}" />
+
+									</div>
+								</div>
+								<div class="col-md-3">
+									<div class="form-group calendar_box">
+										<label>Challan Date</label> <input type="text" id="invDate"
+											 class="form-control"/>
+										
+									</div>
+								</div>
+							
+
+								<div class="col-md-3">
+									<div class="form-group">
+										<label>Vendor</label>
+									 
+											<select id="vendorId" class="form-control fromtxt">
+												<option th:value=null>--Select--</option>
+												<option th:each="c:${vendorList}" th:value='${c.key}'
+													th:text="${c.name}"></option>
+											</select>
+									</div>
+								</div>
+
+								<div class="col-md-3">
+									<div class="form-group">
+										<label>Vendor Location</label>
+											<select id="vendorLocId" class="form-control fromtxt">
+												<option th:value=null>--Select--</option>
+												<option th:each="c:${locationlist}" th:value='${c.key}'
+													th:text="${c.name}"></option>
+											</select>
+									</div>
+								</div>
+
+								<div class="col-md-3">
+									<div class="form-group">
+										<label>Vendor Contact</label>
+											<select id="vendorContactId" class="form-control fromtxt">
+												<option th:value=null>--Select--</option>
+												<option th:each="c:${paytermList}" th:value='${c.key}'
+													th:text="${c.name}"></option>
+											</select>
+									</div>
+								</div>
+								<div class="col-md-3">
+									<div class="form-group">
+										<label>Total Value</label> <input type="text" id="totalValue"
+											class="form-control" readonly>
+									</div>
+								</div>
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Comments</label> <textarea id="comments">
+											</textarea>
+									</div>
+								</div>
+								
+								
+							</div>
+							<div id="main">
+								<div class="font-design" >Item Details</div>
+										<div class="row">
+													<div class="col-md-4 btn-hs1">
+														<div class="font-design"></div>
+													</div>
+													<div class="col-md-8 butttonsec">
+														<button class="download-btn" onclick="skuProductCSV()">Download</button>
+												</div>
+												</div>
+
+												<div id="product" style="width: 100%; height: 100px;"
+													class="ag-theme-alpine"></div>
+                                                    <!--  <label>Comments</label>
+												<textarea class="bigtxtarea" id="comments"
+													onkeyup="textCount(event)"></textarea>
+												<div id="charNumSN" class="txtcounter" align="right">
+													<span>0</span> characters
+												</div> -->
+										
+							</div>
+						</div>
+                       </div>
+					
+
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

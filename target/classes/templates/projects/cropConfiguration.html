@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+  <style>
+    .mt-0 {
+      margin-top: 0;
+    }
+    .mt-48 {
+      margin-top: 3rem;
+    }
+  </style>
+<script>
+var  jsonData = "";
+document.addEventListener('DOMContentLoaded', function() {
+
+	var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+	
+	var gridDiv1 = document.querySelector('#myGrid1');
+	new agGrid.Grid(gridDiv1, gridOptions1); 
+	
+	gridOptions.api.setRowData();
+	gridOptions1.api.setRowData();
+	
+	$('#deleteCrop').attr("disabled", true);
+	$('#deleteCropProcess').attr("disabled", true);
+	// $('#newCropProcess').attr("disabled", true);
+	agGrid.simpleHttpRequest({
+		url : "project-configuration-view"
+	}).then(function(data) {
+		jsonData = JSON.parse(data.body);
+		console.log(jsonData,'json')
+		var len = jsonData.length;
+		$('#totalReqs').find('span').html(len);
+		gridOptions.api.setRowData(jsonData);
+		var firstRowNode = gridOptions.api.getDisplayedRowAtIndex(0); // Get the first row node
+		  if (firstRowNode) {
+		    firstRowNode.setSelected(true); // Set the row as selected
+		  }
+		  cancelBar();
+	}); 
+
+});
+
+var columnDefs = [
+	 {
+		headerCheckboxSelection: false,
+		headerCheckboxSelectionFilteredOnly: false,
+		checkboxSelection: true,
+		width: 10,
+		sortable: false,
+		filter: false,
+		resizable: true
+
+	}, 
+	{
+		headerName: 'Project Configuration Id',
+		width: 250,
+		field: "cropId",
+	 cellRenderer : function(params) {
+					return '<a onclick=editCrop("'
+					+ params.data.cropId
+					+ '") href="javascript:void(0)">'
+					+ params.data.cropId + '</a>';
+		} 
+		
+	}, {
+		headerName: 'Configuration Name',
+		width: 350,
+		field: "cropName",
+	}, {
+		headerName: 'Description',
+		width: 350,
+		field: "cropDescription",
+	}, {
+		headerName: 'Status',
+		width: 350,
+		field: "cropStatus",
+	},
+
+];
+var gridOptions = {
+		columnDefs: columnDefs,
+		defaultColDef: {
+			sortable: true,
+			filter: true,
+			resizable: true,
+			width: 200,
+			height: 20
+		},
+		rowSelection: 'single',
+		onSelectionChanged : onSelectionChangeData
+	};
+	
+	
+	
+var columnDefs1 = [
+	 {
+		headerCheckboxSelection: false,
+		headerCheckboxSelectionFilteredOnly: false,
+		checkboxSelection: true,
+		width: 10,
+		sortable: false,
+		filter: false,
+		resizable: true
+
+	}, 
+	{
+		headerName: 'Project Process Id',
+		width: 200,
+		field: "cropProcessId",
+	    hide:true
+		
+	}, {
+		headerName: 'Process Name',
+		width: 200,
+		field: "cropNameSpan",
+		hide: true
+	}, {
+		headerName: 'Process Id',
+		width: 200,
+		field: "cropIdSpan",
+		hide : true
+	}, {
+		headerName: 'Activity Id',
+		width: 200,
+		field: "activityId",
+		hide: true
+	}, {
+		headerName: 'Activity Name',
+		width: 200,
+		field: "activityName",
+		 
+	/* cellRenderer : function(params) {
+		if(params.data.cropProcessId == null || params.data.cropProcessId == undefined) {
+			return '';
+		} else {
+	return '<a instrno="editCropProcess" onclick=editCropProcess("'
+			+ params.data.cropProcessId
+			+ '") href="javascript:void(0)">'
+			+ params.data.activityName + '</a>';
+		} },*/
+
+	}, {
+		headerName: 'Task Id',
+		width: 200,
+		field: "taskId",
+		hide: true
+	}, {
+		headerName: 'Task Name',
+		width: 200,
+		field: "taskName",
+		cellRenderer: function(params) {
+			return '<a instrno="editCropProcess" onclick=editCropProcess("'
+			+ params.data.cropProcessId
+			+ '") href="javascript:void(0)">'
+			+ params.data.taskName + '</a>';
+		}
+	}, {
+		headerName: 'Quantity',
+		width: 200,
+		field: "qty",
+	}, {
+		headerName: 'Description',
+		width: 200,
+		field: "cropProcessDescription",
+	}, {
+		headerName: 'Amount',
+		width: 200,
+		field: "amount",
+	}, {
+		headerName: 'Duration',
+		width: 200,
+		field: "duration",
+	},
+	{
+		headerName: 'unit',
+		width: 200,
+		field: "unitName",
+	},
+
+];	
+
+var gridOptions1 = {
+		columnDefs: columnDefs1,
+		defaultColDef: {
+			sortable: true,
+			filter: true,
+			resizable: true,
+			width: 200,
+			height: 20
+		},
+		rowSelection: 'single',
+		onSelectionChanged : rowSelect
+	};
+	
+function newCrop() {
+
+	document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:100px;";
+
+	document.getElementById("categoryDiv").style.width = "75%";
+	$("#cropId").val("");
+	$("#cropName").val("");
+	$("#cropDescription").val("");
+	$("#cropStatus").val("");
+	//closeNav1();
+}
+
+function closeNav() {
+	onSelectionChangeData()
+	document.getElementById("mySidenav").style.width = "0";
+	document.getElementById("categoryDiv").style.width = "100%";
+	$("#cropId").val("");
+	$("#cropName").val("");
+	$("#cropDescription").val("");
+	$("#cropStatus").val("");
+	
+}
+
+function saveCrop() {
+    obj = {};
+
+    var validation = true;
+
+    if (obj.cropName == null || obj.cropName == "") {
+        validation = validationUpdated("Crop Name Required",
+            "cropName");
+    }
+    if (obj.cropDescription == null || obj.cropDescription == "") {
+        validation = validationUpdated("Crop Desc Required",
+            "cropDescription");
+    }
+    
+    let cropId = $("#cropId").val();
+
+    obj.cropId = cropId;
+    obj.cropName = $("#cropName").val();
+    obj.cropDescription = $("#cropDescription").val();
+
+    var isChecked = $('#cropStatus').prop('checked');
+
+    let checkedValue = '0';
+    if (isChecked) {
+        checkedValue = '1';
+    } else {
+        checkedValue = '0';
+    }
+
+    obj.cropStatus = checkedValue;
+
+    if (validation) {
+        console.log(JSON.stringify(obj), 'objgg');
+        $.ajax({
+            type: "POST",
+            url: "project-configuration-save",
+            contentType: "application/json",
+            data: JSON.stringify(obj),
+            success: function(response) {
+                if (response.message == "Success") {
+
+                    $("#messageParagraph").text("Data Saved Successfully");
+                    $("#msgOkModal").removeClass("btn3");
+                    $("#msgOkModal").addClass("btn1");
+                    $("#msgModal").modal('show');
+                    closeNav();
+                    $('#deleteCrop').attr("disabled", true);
+                    agGrid.simpleHttpRequest({
+                        url: "project-configuration-view"
+                    }).then(function(data) {
+                        jsonData = JSON.parse(data.body);
+                        console.log(jsonData)
+                        var len = jsonData.length;
+                        $('#totalReqs').find('span').html(len);
+                        gridOptions.api.setRowData(jsonData);
+                        
+                        if(cropId == null || cropId == '' || cropId == undefined) {
+                        	let rowCount = gridOptions.api.getDisplayedRowCount();
+                            if (rowCount > 0) {
+                                var lastRowNode = gridOptions.api.getDisplayedRowAtIndex(rowCount - 1);
+                                gridOptions.api.selectNode(lastRowNode, true);
+                            }
+                        } else {
+                        	let rowIndex = jsonData.findIndex(item => item.cropId === cropId);
+                        	if (rowIndex > 0) {
+                                var lastRowNode = gridOptions.api.getDisplayedRowAtIndex(rowIndex);
+                                gridOptions.api.selectNode(lastRowNode, true);
+                            }
+                        }
+                        
+                        cancelBar();
+                    });
+                }
+            },
+            error: function(data) {}
+        })
+    }
+}
+var jsonDataa = "";
+var id ="";
+var id2 ="";
+function onSelectionChangeData() {
+    var selected = gridOptions.api.getSelectedRows();
+    var rowCount = selected.length;
+
+    $('#rowCountDisplay').text(rowCount); 
+
+    var id = "";  
+
+    for (var i = 0; i < selected.length; i++) {
+        id += selected[i].cropId;  
+    }
+    cropprocessView(id);
+
+    if (rowCount > 0) {
+        $('#deleteCrop').attr('disabled', false);
+        $('#newCropProcess').attr("disabled", false);
+        $('#newCrop').attr("disabled", true);
+    } else {
+        $('#deleteCrop').attr('disabled', true);
+        $('#newCropProcess').attr("disabled", true);
+        $('#newCrop').attr("disabled", false);
+    }
+
+    id = "";
+
+}
+
+
+function editCrop(idd){
+	$('#deleteCrop').attr("disabled", true);
+	$('#newCrop').attr("disabled", true);
+	newCrop();
+	console.log(jsonData)
+	var crpnames = jsonData.filter(f => f.cropId === idd);
+	var cId = crpnames[0].cropId;
+	var cName = crpnames[0].cropName;
+	var cDesc = crpnames[0].cropDescription;
+	var cSts = crpnames[0].cropStatus;
+	
+
+	if (cSts == 'ACTIVE') {
+		
+		$('#cropStatus').prop('checked', true);
+	} else {
+		$('#cropStatus').prop('checked', false);
+	}
+	
+	$("#cropId").val(cId);
+	$("#cropName").val(cName);
+	$("#cropDescription").val(cDesc);
+	
+}
+
+
+function deleteCrop() {
+	$('#deleteCropModal').modal('show');
+}
+
+function cancelModalBtn() {
+	$('#deleteCropModal').modal('hide');
+
+}
+
+//FOR DELETE
+
+function deleteOnclick() {
+	var selectedRows = gridOptions.api.getSelectedRows();
+	var id = selectedRows[0].cropId;
+	$.ajax({
+		type : "POST",
+		url : "project-configuration-deleteCrop?id=" + id,
+		success : function(response) {
+			if (response.message == "Success") {
+
+				$('#deleteCropModal').modal('hide');
+
+				$('#deleteCrop').attr("disabled", true);
+				agGrid.simpleHttpRequest({
+					url : "project-configuration-view"
+				}).then(function(data) {
+					jsonData = JSON.parse(data.body);
+					console.log(jsonData)
+					var len = jsonData.length;
+					$('#totalReqs').find('span').html(len);
+					gridOptions.api.setRowData(jsonData);
+				}); 
+
+			} else {
+
+			}
+		},
+		error : function(data) {
+			console.log(data)
+		}
+	})
+}
+
+
+function newCropProcess() {
+	
+	document.getElementById("mySidenav1").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:400px;";
+
+	document.getElementById("subcategoryDiv").style.width = "75%";
+	$('#activityId').attr("disabled", false);
+	$('#taskId').attr("disabled", false);
+	$("#cropIdspan").html(id2);
+	$("#cropProcessId").val("");
+	$("#activityId").val("");
+	$("#taskId").val("");
+	$("#qty").val("");
+	$("#cropProcessDescription").val("");
+	$("#amount").val("");
+	$("#duration").val("");
+	$("#unitId").val("");
+	closeNav();
+}
+
+function closeNav1() {
+
+	document.getElementById("mySidenav1").style.width = "0";
+	document.getElementById("subcategoryDiv").style.width = "100%";
+	$("#cropProcessId").val("");
+	$("#activityId").val("");
+	$("#taskId").val("");
+	$("#qty").val("");
+	$("#cropProcessDescription").val("");
+	$("#amount").val("");
+	$("#duration").val("");
+	$("#unitId").val("");
+	$('#deleteCropProcess').attr("disabled", true);
+	$('#newCropProcess').attr("disabled", false);
+	
+}
+
+function saveCropProcess(){
+	obj = {};
+	obj.cropId = $("#cropIdspan").html();
+	obj.cropProcessId = $("#cropProcessId").val();
+	obj.activityId = $("#activityId").val();
+	obj.taskId = $("#taskId").val();
+	obj.qty = $("#qty").val() || 0;
+	obj.cropProcessDescription = $("#cropProcessDescription").val();
+	obj.amount = $("#amount").val() || 0;
+	obj.duration = $("#duration").val() || 0;
+	obj.unit = $("#unitId").val();
+
+	var validation = true;
+
+	if (obj.activityId == null || obj.activityId == "") {
+	validation = validationUpdated("activity Name Required",
+		"activityId");
+	}
+	
+	if (obj.taskId == null || obj.taskId == "") {
+		validation = validationUpdated("task Name Required",
+			"taskId");
+		}
+	
+	/* if (obj.qty == null || obj.qty == "") {
+		validation = validationUpdated("Quantity Required",
+			"qty");
+		} */
+	
+	if (obj.cropProcessDescription == null || obj.cropProcessDescription == "") {
+		validation = validationUpdated("Description Required",
+			"cropProcessDescription");
+		}
+	/* 
+	if (obj.amount == null || obj.amount == "") {
+		validation = validationUpdated("amount Required",
+			"amount");
+		}
+	
+	if (obj.duration == null || obj.duration == "") {
+		validation = validationUpdated("duration Required",
+			"duration");
+		} */
+	
+	console.log(obj);
+	
+	
+	if (validation) {
+		$.ajax({
+		type : "POST",
+		url : "project-configuration-save-CropProcess",
+		contentType : "application/json",
+		data : JSON.stringify(obj),
+		success : function(response) {
+			if (response.message == "Success") {
+
+				$("#messageParagraph").text("Data Saved Successfully");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				closeNav1();
+				
+				$('#deleteCropProcess').attr("disabled", true);
+				$('#newCropProcess').attr("disabled", false);
+				 var cdId = $("#cropIdspan").html();
+				 cropprocessView(cdId)
+			}
+		},
+		error : function(data) {
+		} 
+	})
+}
+}
+
+function cropprocessView(ccid){
+	agGrid.simpleHttpRequest({
+		url : "project-configuration-process-view?id="+ccid,
+	}).then(function(data) {
+		jsonDataa = JSON.parse(data.body);
+		if(jsonDataa == null){
+			gridOptions1.api.setRowData();
+		}else{
+			var len = jsonDataa.length;
+			/* jsonDataa = jsonDataa.sort((e1, e2) =>
+			  e1.activityId.toLowerCase().localeCompare(e2.activityId.toLowerCase())
+			); */
+			 jsonDataa = jsonDataa.sort((a, b) => {
+				  if (a.catSlNo < b.catSlNo) return -1;
+				  if (a.catSlNo > b.catSlNo) return 1;
+				  
+				  if (a.slNo < b.slNo) return -1;
+				  if (a.slNo > b.slNo) return 1;
+				  
+				  return 0; 
+				});
+				let arr = [];
+					let dataset = [];
+					jsonDataa.forEach(e => {
+						if(!arr.includes(e.activityName)) {
+							arr.push(e.activityName);
+							/* let obj = {};
+							obj.activityName = e.activityName;
+							obj.taskName = ''; */
+						//	obj.amount = e.totalamount;
+							
+							dataset.push(e);
+						} else {
+							e.activityName = '';
+							dataset.push(e);
+						}
+					});
+					//dataset.push(new Object({"activityName":allData[0].activityName}))
+					console.log(dataset)
+					
+				$('#totalReqss').find('span').html(len);
+				gridOptions1.api.setRowData(dataset);
+		
+		
+		}
+	});
+}
+function editCropProcess(sIdd){
+	
+	newCropProcess();
+	var catnames = jsonDataa.filter(f => f.cropProcessId === sIdd);
+	console.log(catnames)
+	var cId = catnames[0].cropProcessId;
+	var cactivityId = catnames[0].activityId;
+	var ctaskId = catnames[0].taskId;
+	var cqty = catnames[0].qty;
+	var ccropProcessDescription = catnames[0].cropProcessDescription;
+	var camount = catnames[0].amount;
+	var cduration = catnames[0].duration;
+	var cunit = catnames[0].unit;
+	$("#cropProcessId").val(cId);
+	$("#activityId").val(cactivityId);
+	$("#taskId").val(ctaskId);
+	$("#qty").val(cqty);
+	$("#cropProcessDescription").val(ccropProcessDescription);
+	$("#amount").val(camount);
+	$("#duration").val(cduration);
+	$("#unitId").val(cunit);
+	getSubTaskDetails(cactivityId, ctaskId);
+	
+	$('#activityId').attr("disabled", true);
+	$('#taskId').attr("disabled", true);
+	$('#deleteCropProcess').attr("disabled", true);
+	
+	
+}
+
+function getSubTaskDetails(cactivityId, ctaskId) {
+	if (cactivityId) {
+		$.ajax({
+			type : "GET",
+			url : "project-configuration-SubCategoryList?id="+ cactivityId,
+			success : function(response) {
+				
+				if (response.message == "success") {
+					
+					$("#taskId").empty();
+					var option = $("<option></option>");
+					$(option).val(null);
+					$(option).html("Select");
+					$("#taskId").append(option);
+					for (var i = 0; i < response.body.length; i++) {
+						var option = $("<option></option>");
+						$(option).val(response.body[i].key);
+						$(option).html(response.body[i].name);
+						$("#taskId").append(option);
+					}
+					$("#taskId").val(ctaskId);
+				}
+			}
+		})
+	} else {
+	$("#item").empty();
+	$("#item").append("<option value=''>Select</option>");
+	}
+
+	}
+
+function onQuickFilterChanged() {
+	gridOptions.api.setQuickFilter(document.getElementById('quickFilter').value);
+	let len = gridOptions.api.getDisplayedRowCount();
+	$('#totalReqs').find('span').html(len);
+	let firstRowNode = gridOptions.api.getDisplayedRowAtIndex(0);
+	console.log(firstRowNode.data.cropId)
+	let id = firstRowNode.data.cropId;
+	
+}
+	
+function onQuickFilterChanged1() {
+	gridOptions1.api.setQuickFilter(document.getElementById('quickFilter1').value);
+	let len = gridOptions1.api.getDisplayedRowCount();
+	$('#totalReqss').find('span').html(len);
+}
+
+function cancelBar(){
+	gridOptions.api.setQuickFilter(null);
+	$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';
+}
+	
+function rowSelect(){
+	
+	var selected = gridOptions1.api.getSelectedRows();
+	var rowCount = 0;
+	
+	selected.forEach(function(selectedRow, index) {
+		rowCount = rowCount + 1;
+	});
+	 for (var i = 0; i < selected.length; i++) {
+		id = id  + selected[i].cropProcessId ;
+	}
+	
+	if (rowCount > 0) {
+		$('#deleteCropProcess').attr('disabled', false);
+		$('#newCropProcess').attr("disabled", true);
+	} else {
+		$('#deleteCropProcess').attr('disabled', true);
+		$('#newCropProcess').attr("disabled", false);
+	} 
+	
+	id="";
+
+}
+
+function subCat() {
+
+	var activityId = $("#activityId").val();
+
+	if (activityId) {
+	$.ajax({
+				type : "GET",
+				url : "project-configuration-SubCategoryList?id="+ activityId,
+				success : function(response) {
+					
+					if (response.message == "success") {
+						$("#taskId").empty();
+						var option = $("<option></option>");
+						$(option).val(null);
+						$(option).html("Select");
+						$("#taskId").append(option);
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#taskId").append(option);
+						}
+					}
+				}
+			})
+	}
+	};
+	
+	
+	
+
+
+function deleteCropProcess() {
+	$('#deleteCropProcessModal').modal('show');
+}
+
+function cancelSubModalBtn() {
+	$('#deleteCropProcessModal').modal('hide');
+
+}
+
+//FOR DELETE
+
+function deleteSubOnclick() {
+	var selectedRows = gridOptions1.api.getSelectedRows();
+	var sd = selectedRows[0].cropProcessId;
+	$.ajax({
+		type : "POST",
+		url : "project-configuration-deleteCropProcess?id=" + sd,
+		success : function(response) {
+			if (response.message == "Success") {
+
+				$('#deleteCropProcessModal').modal('hide');
+
+				$('#deleteCropProcess').attr("disabled", true);
+				$('#newCropProcess').attr("disabled", false);
+				cropprocessView(id2)
+			
+			} else {
+
+			}
+		},
+		error : function(data) {
+			console.log(data)
+		}
+	})
+}
+
+</script>
+<style>
+/* #subcategoryDiv {
+	margin-top: 10px;
+} */
+</style>
+</head>
+
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<div class="row" id="categoryDiv">
+							<div class="col-md-4 " id="totalReqs">
+								<h3>
+									Projects Configuration(<span></span>)
+								</h3>
+							</div>
+
+							<div class="col-md-4 btn-hs" id="searchRowDiv1">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" 
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="cancelBar()"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-4 buttonsec btn-hs" id="ttbtn">
+
+								<button class="new-btn" id="newCrop" onclick="newCrop()">NEW</button>
+								<button class="btn3" id="deleteCrop"
+									onclick="deleteCrop()">Delete</button>
+							</div>
+
+							<div id="myGrid" style="width: 100%; height: 250px;"
+								class="ag-theme-alpine"></div>
+
+						</div>
+
+
+
+						<div id="mySidenav" class="sidenav">
+							<div class="slidebox">
+								<div class="row">
+									<div class="col-md-10 edit"></div>
+									<div class="col-md-2">
+										<div class="arrow">
+											<a><i class="ti-arrow-right" onclick="closeNav()"></i></a>
+										</div>
+									</div>
+								</div>
+								<div style="clear: both;"></div>
+								<div class="chartbtnsec">
+									<div align="right">
+										<button class="btn3" onclick="closeNav()">CANCEL</button>
+										<button class="btn1" id="saveCrop"
+											onclick="saveCrop()">SAVE</button>
+
+									</div>
+
+								</div>
+								<div class="clearfix"></div>
+								<div class="row">
+
+
+									<div class="col-lg-12">
+										<input type="hidden" id="cropId">
+										<div class="col-lg-12">
+											<div class="form-group">
+												<label>Configuration Name</label> <input type="text"
+													class="form-control" autocomplete="off" id="cropName"
+													onblur="removeValid(event)">
+											</div>
+										</div>
+
+									</div>
+									
+									<div class="col-md-12">
+											<div class="form-group">
+												<label>Description</label>
+												<textarea name="Description" id="cropDescription"
+													class="form-control"></textarea>
+											</div>
+									</div>
+										
+									<div class="col-md-12">
+											<div class="form-group mt-0">
+												<input type="checkbox" class="loc-chb" name="isActive"
+													id="cropStatus" value="1"> <label
+													class="checkboxlbltxt">Active</label>
+											</div>
+										</div>
+
+
+
+								</div>
+							</div>
+						</div>
+						
+						 <div class="row mt-48" id="subcategoryDiv">
+							<div class="col-md-4 " id="totalReqss">
+								<h3>
+									Project Process (<span id="rowCountDisplay">0</span>)
+								</h3>
+							</div>
+
+							<div class="col-md-4 btn-hs" id="searchRowDiv1">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" 
+										oninput="onQuickFilterChanged1()" id="quickFilter1"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions1.api.setQuickFilter(null);$('#quickFilter1').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-4 buttonsec btn-hs" id="ttbtn">
+
+								<button class="new-btn" id="newCropProcess"
+									onclick="newCropProcess()">NEW</button>
+								<button class="btn3" id="deleteCropProcess"
+									onclick="deleteCropProcess()">Delete</button>
+							</div>
+
+							<div id="myGrid1" style="width: 100%; height: 250px;"
+								class="ag-theme-alpine"></div>
+
+						</div>
+						
+						 
+						
+						 <div id="mySidenav1" class="sidenav">
+							<div class="slidebox">
+								<div class="row">
+									<div class="col-md-10 edit"></div>
+									<div class="col-md-2">
+										<div class="arrow">
+											<a><i class="ti-arrow-right" onclick="closeNav1()"></i></a>
+										</div>
+									</div>
+								</div>
+								<div style="clear: both;"></div>
+								<div class="chartbtnsec">
+									<div align="right">
+										<button class="btn3" onclick="closeNav1()">CANCEL</button>
+										<button class="btn1" id="saveCropProcess"
+											onclick="saveCropProcess()">SAVE</button>
+
+									</div>
+
+								</div>
+								<div class="clearfix"></div>
+								<div class="row">
+
+									 <div class="col-md-12">
+										<div class="form-group">
+											<span class="slide-span">Process Id:</span><span
+												id="cropIdspan" class="slide-span-text"></span>
+
+										</div>
+									</div>
+									<input type = "hidden" id = "cropProcessId">
+									<div class="col-md-12">
+										<div class="form-group mb-10">
+											<label>Activity</label>
+
+											<div class="select">
+												<select class="" id="activityId" onchange="subCat()"
+													onblur="removeValid(event);">
+													<option th:value="NULL">Select</option>
+													<option th:each="c,iter:${budgetCategoryList}"
+														th:value="${c.key}" th:text="${c.name}"></option>
+												</select>
+											</div>
+										</div>
+									</div>
+
+									<div class="col-md-12">
+										<div class="form-group mb-10">
+											<label>Task</label>
+
+											<div class="select">
+												<select class="" id="taskId"
+													onblur="removeValid(event);">
+													<option th:each="c,iter:${budgetSubCategoryList}"
+														th:value="${c.key}" th:text="${c.name}"></option>
+												</select>
+											</div>
+										</div>
+									</div>
+									
+									
+									<div class="col-md-12">
+										<div class="form-group mb-10">
+											<label>Quantity</label> 
+											
+											<input type="text" id="qty"
+												class="form-control">
+										</div>
+									</div>
+									 <div class="col-md-6">
+										<div class="form-group mb-10">
+											<label>Unit</label> 
+											
+											<div class="select">
+												<select class="" id="unitId">
+													<option value="">Select</option>
+													<option th:each="c,iter:${unitList}"
+														th:value="${c.key}" th:text="${c.name}"></option>
+												</select>
+											</div>
+										</div>
+									</div>
+									
+									<div class="col-md-6">
+										<div class="form-group mb-10">
+											<label>Amount</label> <input type="text" id="amount"
+												class="form-control">
+										</div>
+									</div>
+
+									<div class="col-md-6">
+										<div class="form-group mb-10">
+											<label>Duration(Days)</label> <input type="text" id="duration"
+												class="form-control">
+										</div>
+									</div>
+									<div class="col-md-12">
+											<div class="form-group">
+												<label>Description</label>
+												<textarea name="Description" id="cropProcessDescription"
+													class="form-control"></textarea>
+											</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+					</div>
+				</div>
+				<div id="deleteCropModal" class="modal fade show"
+					aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column">
+								 <button type="button" class="close" data-dismiss="modal"
+									aria-hidden="true" onclick="cancelModalBtn()">
+									 <i class="ti-close modal-close"></i> 
+								</button>
+							</div>
+							<div class="modal-body">
+								<p>Do you really want to delete these records? This process
+									cannot be undone.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: -15px;">
+
+								<button type="button" class="btn4" id="modalCan"
+									data-bs-dismiss="modal">cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="deleteOnclick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				
+				 <div id="deleteCropProcessModal" class="modal fade show"
+					aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column">
+						<button type="button" class="close" data-dismiss="modal"
+									aria-hidden="true" onclick="cancelSubModalBtn()">
+									 <i class="ti-close modal-close"></i> 
+								</button>
+							</div>
+							<div class="modal-body">
+								<p>Do you really want to delete these records? This process
+									cannot be undone.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: -15px;">
+
+								<button type="button" class="btn4" id="modalCan"
+									data-bs-dismiss="modal">cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="deleteSubOnclick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div> 
+				
+			</div>
+		</div>
+	</div>
+</body>
+</html>

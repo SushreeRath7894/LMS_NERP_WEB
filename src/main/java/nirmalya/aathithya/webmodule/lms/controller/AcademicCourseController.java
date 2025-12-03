@@ -1,11 +1,15 @@
 package nirmalya.aathithya.webmodule.lms.controller;
 
+import static org.apache.tomcat.util.codec.binary.Base64.decodeBase64;
+
 import java.io.File;
+import java.io.FileInputStream;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -13,6 +17,17 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import javax.servlet.http.HttpServletRequest;
 
 import javax.servlet.http.HttpSession;
 
@@ -22,10 +37,12 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -268,28 +285,17 @@ public class AcademicCourseController {
 	// Assuming this is in a utility or service class, but for completeness, including it here.
 	// If it's in a separate class, autowire it accordingly.
 	// Note: This method is as provided, but ensure 'env' is autowired or accessible (e.g., @Autowired Environment env;)
-	public String saveAllMultiImages(byte[] imageBytes, String ext) {
-	    logger.info("Method : saveAllMultiImages starts");
-	    String imageName1 = null;
-	    try {
-	        if (imageBytes != null) {
-	            long nowTime = new Date().getTime();
-	            if (ext.contentEquals("jpeg")) {
-	                imageName1 = nowTime + ".jpg";
-	            } else {
-	                imageName1 = nowTime + "." + ext;
-	            }
-	        }
-	        Path path = Paths.get(env.getFileUploadDocumenttUrl() + imageName1);
-	        if (imageBytes != null) {
-	            Files.write(path, imageBytes);
-	        }
-	    } catch (Exception e) {
-	        e.printStackTrace();
-	    }
-	    logger.info("Method : saveAllMultiImages ends");
-	    return imageName1;
-	}
+	/*
+	 * public String saveAllMultiImages(byte[] imageBytes, String ext) {
+	 * logger.info("Method : saveAllMultiImages starts"); String imageName1 = null;
+	 * try { if (imageBytes != null) { long nowTime = new Date().getTime(); if
+	 * (ext.contentEquals("jpeg")) { imageName1 = nowTime + ".jpg"; } else {
+	 * imageName1 = nowTime + "." + ext; } } Path path =
+	 * Paths.get(env.getFileUploadDocumenttUrl() + imageName1); if (imageBytes !=
+	 * null) { Files.write(path, imageBytes); } } catch (Exception e) {
+	 * e.printStackTrace(); } logger.info("Method : saveAllMultiImages ends");
+	 * return imageName1; }
+	 */
 	
 	public String saveAllMultiImagesAll(byte[] imageBytes, String ext) {
 	    logger.info("Method : saveAllMultiImages starts");
@@ -320,6 +326,7 @@ public class AcademicCourseController {
 	        @RequestParam("courseId") String courseId,
 	        @RequestParam("courseTittle") String courseTittle,
 	        @RequestParam("parentCategory") String parentCategory,
+	        @RequestParam("subcategory") String subcategory ,
 	        @RequestParam("duration") String duration,
 	        @RequestParam("price") String price,
 	        @RequestParam("startDate") String startDate,
@@ -353,6 +360,7 @@ public class AcademicCourseController {
 	        courseData.put("courseId", courseId);
 	        courseData.put("courseTittle", courseTittle);
 	        courseData.put("parentCategory", parentCategory);
+	        courseData.put("subcategory", subcategory);
 	        courseData.put("duration", duration);
 	        courseData.put("price", price);
 	        courseData.put("startDate", startDate);
@@ -459,7 +467,7 @@ public class AcademicCourseController {
 	        resp.setCode("Failed");
 	    }
  
-	    logger.info("Method : saveCourse ends");
+	    logger.info("Method : saveCourse ends"+resp);
 	    return resp;
 	}
 
@@ -663,125 +671,518 @@ public class AcademicCourseController {
 	 */
 	
 	
-	@SuppressWarnings("unchecked")
-	@PostMapping("academic-course-training-save")
-	public @ResponseBody JsonResponse<Object> saveTraining(HttpSession session, @RequestBody Map<String, Object> payload) {
-	    logger.info("Method: saveTraining starts - Payload: {}"+payload);
-
-	    JsonResponse<Object> resp = new JsonResponse<Object>();
-	    String userId = "";
-	    String orgName = "";
-	    String orgDivision = "";
+	/*
+	 * @SuppressWarnings("unchecked")
+	 * 
+	 * @PostMapping("academic-course-training-save") public @ResponseBody
+	 * JsonResponse<Object> saveTraining(HttpSession session, @RequestBody
+	 * Map<String, Object> payload) {
+	 * 
+	 * logger.info("Method: saveTraining starts - Payload: {}", payload);
+	 * 
+	 * JsonResponse<Object> resp = new JsonResponse<Object>(); String userId = "";
+	 * String orgName = ""; String orgDivision = "";
+	 * 
+	 * // Session values try { userId = (String) session.getAttribute("USER_ID");
+	 * orgName = (String) session.getAttribute("ORGANIZATION"); orgDivision =
+	 * (String) session.getAttribute("ORGANIZATION_DIVISION"); } catch (Exception e)
+	 * { logger.error("Error retrieving session attributes", e); }
+	 * 
+	 * // ------------------------- PROCESS DOCUMENT FILES -------------------------
+	 * try {
+	 * 
+	 * String courseId = (String) payload.get("courseId"); String categoryDataText =
+	 * (String) payload.get("categoryData");
+	 * 
+	 * if (courseId != null && categoryDataText != null &&
+	 * !categoryDataText.trim().isEmpty()) {
+	 * 
+	 * ObjectMapper mapper = new ObjectMapper();
+	 * 
+	 * // Parse categoryData List<Map<String, Object>> trainingData =
+	 * mapper.readValue(categoryDataText, new TypeReference<List<Map<String,
+	 * Object>>>() {});
+	 * 
+	 * for (Map<String, Object> item : trainingData) {
+	 * 
+	 * List<Map<String, Object>> documents = (List<Map<String, Object>>)
+	 * item.get("documents");
+	 * 
+	 * if (documents != null && !documents.isEmpty()) {
+	 * 
+	 * for (Map<String, Object> doc : documents) {
+	 * 
+	 * Object documentFileObj = doc.get("documentFile");
+	 * 
+	 * // ------------------------- CASE 1: NEW FILE PRESENT
+	 * ------------------------- if (documentFileObj != null) {
+	 * 
+	 * String base64Data = "";
+	 * 
+	 * if (documentFileObj instanceof ArrayList) { List<String> list =
+	 * (List<String>) documentFileObj; if (!list.isEmpty()) base64Data =
+	 * list.get(0); } else if (documentFileObj instanceof String) { base64Data =
+	 * (String) documentFileObj; }
+	 * 
+	 * // New file given if (base64Data != null && !base64Data.trim().isEmpty()) {
+	 * 
+	 * base64Data = base64Data.replaceFirst("^data:[^;]+;base64,", "");
+	 * 
+	 * try { byte[] bytes = Base64.getDecoder().decode(base64Data);
+	 * 
+	 * String ext = (String) doc.get("docType"); if (ext == null || ext.isEmpty())
+	 * ext = "bin";
+	 * 
+	 * // Save file locally String fileName = saveAllMultiImages(bytes, ext);
+	 * 
+	 * if (fileName != null) { String fileURL = env.getBaseURL() + "document/image/"
+	 * + fileName;
+	 * 
+	 * doc.put("fileName", fileName); doc.put("docUrl", fileURL); }
+	 * 
+	 * } catch (Exception ex) { logger.error("Error saving document", ex); } }
+	 * 
+	 * // Remove documentFile from JSON doc.remove("documentFile"); }
+	 * 
+	 * // ------------------------- CASE 2: OLD FILE (NO NEW UPLOAD)
+	 * ------------------------- else {
+	 * logger.info("Existing document retained: {}", doc.get("docView"));
+	 * 
+	 * // Ensure old keys remain doc.put("fileName", doc.get("docView"));
+	 * doc.put("docUrl", doc.get("dociURL"));
+	 * 
+	 * // Clear 'documentFile' if present doc.remove("documentFile"); } } // END
+	 * LOOP documents } } // END LOOP trainingData
+	 * 
+	 * // Replace cleaned data back into payload payload.put("categoryData",
+	 * mapper.writeValueAsString(trainingData)); } } catch (Exception e) {
+	 * logger.error("Error processing training documents", e); }
+	 * 
+	 * // ------------------------- FORWARD TO EXTERNAL HIS URL
+	 * ------------------------- try { String hisUrl = env.getHisUrl() +
+	 * "rest-academic-saveTraining?userId=" + userId + "&org=" + orgName +
+	 * "&orgDiv=" + orgDivision;
+	 * 
+	 * resp = restClient.postForObject(hisUrl, payload, JsonResponse.class);
+	 * 
+	 * } catch (Exception e) { logger.error("Error calling HIS service", e);
+	 * resp.setMessage("Error saving training data"); }
+	 * 
+	 * logger.info("Method: saveTraining ends"); return resp; }
+	 */
+	private String extractBase64(Object fileObj) {
 	    try {
-	        userId = (String) session.getAttribute("USER_ID");
-	        orgName = (String) session.getAttribute("ORGANIZATION");
-	        orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+	        String base64 = "";
+
+	        // Case 1: List
+	        if (fileObj instanceof List) {
+	            List list = (List) fileObj;
+	            if (!list.isEmpty()) {
+	                base64 = String.valueOf(list.get(0));
+	            }
+	        }
+
+	        // Case 2: String
+	        else if (fileObj instanceof String) {
+	            base64 = (String) fileObj;
+	        }
+
+	        // No valid data
+	        if (base64 == null || base64.trim().isEmpty()) {
+	            return null;
+	        }
+
+	        // Remove metadata: "data:image/png;base64,xxxxxx"
+	        if (base64.contains(",")) {
+	            return base64.substring(base64.indexOf(",") + 1);
+	        }
+
+	        return base64;
+
 	    } catch (Exception e) {
-	        logger.error("Error retrieving session attributes", e);
+	        logger.error("extractBase64() failed", e);
+	        return null;
+	    }
+	}
+	private String getSessionValue(HttpSession session, String key) {
+	    try {
+	        Object val = session.getAttribute(key);
+	        return val != null ? val.toString() : "";
+	    } catch (Exception e) {
+	        logger.error("Error getting session attribute: {}", key, e);
+	        return "";
+	    }
+	}
+
+	private String saveFile(byte[] bytes, String ext) {
+	    try {
+	        return saveAllMultiImages(bytes, ext); // Handles both ZIP and images
+	    } catch (Exception e) {
+	        logger.error("Error saving file with extension: " + ext, e);
+	        return null;
+	    }
+	}
+	private String extractZipAndGetLaunchUrl(String zipFileName, String courseId) {
+       logger.info("extractZipAndGetLaunchUrl Start");
+	    String baseExtractPath = env.getScormExtractPath(); 
+	    System.out.println("SCORM Base Path: " + baseExtractPath);
+
+ 	    if (!baseExtractPath.endsWith("/") && !baseExtractPath.endsWith("\\")) {
+	        baseExtractPath = baseExtractPath + "/";
 	    }
 
-	    // Handle local file saving before forwarding to external service
+	    String extractFolder = baseExtractPath + courseId + "/" + System.currentTimeMillis() + "/";
+	    System.out.println("Extract Folder Path: " + extractFolder);
+
+	    File destDir = new File(extractFolder);
+	    destDir.mkdirs();
+
+	    try (ZipInputStream zipIn = new ZipInputStream(
+	            new FileInputStream(env.getFileUploadDocumenttUrl() + zipFileName))) {
+
+	        ZipEntry entry;
+
+	        while ((entry = zipIn.getNextEntry()) != null) {
+
+	            File filePath = new File(destDir, entry.getName());
+
+	            if (entry.isDirectory()) {
+	                filePath.mkdirs();
+	            } else {
+	                filePath.getParentFile().mkdirs();
+	                Files.copy(zipIn, filePath.toPath(), StandardCopyOption.REPLACE_EXISTING);
+	            }
+
+	            zipIn.closeEntry();
+	        }
+
+ 	        File launchFile = findScormLaunchFile(destDir);
+	        if (launchFile != null) {
+
+ 	            String fullPath = launchFile.getAbsolutePath().replace("\\", "/");
+	            String normalizedBase = baseExtractPath.replace("\\", "/");
+
+ 	            if (!normalizedBase.endsWith("/")) {
+	                normalizedBase = normalizedBase + "/";
+	            }
+
+	            // Build relative path
+	            String relativePath = fullPath.replace(normalizedBase, "");
+
+	            String finalUrl = env.getBaseURL() + "scorm/" + relativePath;
+
+	            System.out.println("FINAL SCORM URL: " + finalUrl);
+
+	            return finalUrl;
+	        }
+	        
+
+	    } catch (Exception e) {
+	        logger.error("SCORM Extraction Failed", e);
+	    }
+	    logger.info("extractZipAndGetLaunchUrl Ends");
+	    return null;
+	}
+
+	private File findScormLaunchFile(File folder) {
+
+		String[] possibleFiles = { "index.html", "home.html", "main.html", "start.html", "launch.html", "story.html", "game.html", "player.html", "app.html", "portal.html", "dashboard.html", "landing.html", "default.html", "public/index.html", "dist/index.html", "build/index.html", "readme.html", "readme.txt", "instructions.html", "manual.html", "guide.html", "help.html", "play.html", "menu.html", "intro.html", "loading.html", "splash.html", "start.htm", "index.htm", "default.htm" };
+
+
+	    // Check files in current folder
+	    for (String name : possibleFiles) {
+	        File f = new File(folder, name);
+	        if (f.exists()) {
+	            return f;
+	        }
+	    }
+
+	    // Check subfolders (recursive)
+	    File[] files = folder.listFiles();
+	    if (files != null) {
+	        for (File f : files) {
+	            if (f.isDirectory()) {
+	                File found = findScormLaunchFile(f);
+	                if (found != null) return found;
+	            }
+	        }
+	    }
+
+	    return null;
+	}
+
+
+	private Map<String, Object> processDocumentFile(Map<String, Object> doc, String courseId) {
+
+	    String docTypeSelect = (String) doc.get("docTypeSelect"); // NORMAL or SCORM
+	    String ext = (String) doc.get("docType");
+	    Object fileObj = doc.get("documentFile");
+
+	    // -----------------------------------------
+	    // CASE 1: NEW FILE UPLOADED
+	    // -----------------------------------------
+	    if (fileObj != null) {
+
+	        String base64 = extractBase64(fileObj);
+	        if (base64 == null) return doc; // nothing to process
+
+	        byte[] bytes = Base64.getDecoder().decode(base64);
+
+	        // ZIP / SCORM handling
+	        if ("SCORM".equalsIgnoreCase(docTypeSelect) && "zip".equalsIgnoreCase(ext)) {
+
+	            String zipFileName = saveFile(bytes, "zip");
+	            doc.put("fileName", zipFileName);
+
+	            // Extract ZIP and get SCORM LAUNCH URL
+	            String launchUrl = extractZipAndGetLaunchUrl(zipFileName, courseId);
+	            doc.put("launchUrl", launchUrl);  // <-- FINAL URL FOR UI
+
+	            // For compatibility, remove old zip URL
+	            doc.put("docUrl", launchUrl);
+
+	        } 
+
+	        // Normal image / other files
+	        else {
+	            String savedName = saveFile(bytes, ext);
+	            doc.put("fileName", savedName);
+	            doc.put("docUrl", env.getBaseURL() + "document/image/" + savedName);
+	        }
+
+	        doc.remove("documentFile");
+	        return doc;
+	    }
+
+	    // -----------------------------------------
+	    // CASE 2: EXISTING FILE (NO NEW UPLOAD)
+	    // -----------------------------------------
+	    doc.put("fileName", doc.get("docView"));
+	    doc.put("docUrl", doc.get("dociURL"));
+        System.out.println("Get the extracted path------>"+(String) doc.get("extractedPath"));
+	    if ("SCORM".equalsIgnoreCase(docTypeSelect)) {
+	        String preview = generateExtractionPreviewVideo((String) doc.get("extractedPath"));
+	        doc.put("previewVideoUrl", preview);
+	    }
+
+	    return doc;
+	}
+
+	
+	@SuppressWarnings("unchecked")
+	@PostMapping("academic-course-training-save")
+	public @ResponseBody JsonResponse<Object> saveTraining(
+	        HttpSession session,
+	        @RequestBody Map<String, Object> payload) {
+
+	    logger.info("Method: saveTraining starts - Payload: {}", payload);
+
+	    JsonResponse<Object> resp = new JsonResponse<>();
+
+	    // ------------------------- SESSION DATA -------------------------
+	    String userId = getSessionValue(session, "USER_ID");
+	    String orgName = getSessionValue(session, "ORGANIZATION");
+	    String orgDivision = getSessionValue(session, "ORGANIZATION_DIVISION");
+
 	    try {
 	        String courseId = (String) payload.get("courseId");
 	        String categoryDataText = (String) payload.get("categoryData");
 
 	        if (courseId != null && categoryDataText != null && !categoryDataText.trim().isEmpty()) {
-	            // Parse the categoryData JSON string
-	            ObjectMapper objectMapper = new ObjectMapper();
-	            List<Map<String, Object>> trainingData = objectMapper.readValue(
-	                categoryDataText, new TypeReference<List<Map<String, Object>>>() {});
 
-	            // Iterate over training items and process documents
+	            ObjectMapper mapper = new ObjectMapper();
+
+	            // FIX for Java 8: must specify full type
+	            List<Map<String, Object>> trainingData =
+	                    mapper.readValue(categoryDataText, new TypeReference<List<Map<String, Object>>>() {});
+
 	            for (Map<String, Object> item : trainingData) {
-	                @SuppressWarnings("unchecked")
-	                List<Map<String, Object>> documents = (List<Map<String, Object>>) item.get("documents");
-	                if (documents != null && !documents.isEmpty()) {
-	                    for (Map<String, Object> doc : documents) {
-	                        if (doc.containsKey("documentFile")) {
-	                            Object documentFileObj = doc.get("documentFile");
-	                            String base64Data = "";
-	                            // Handle both ArrayList and single String
-	                            if (documentFileObj instanceof ArrayList) {
-	                                @SuppressWarnings("unchecked")
-	                                ArrayList<String> documentFileList = (ArrayList<String>) documentFileObj;
-	                                if (!documentFileList.isEmpty()) {
-	                                    base64Data = documentFileList.get(0);
-	                                }
-	                            } else if (documentFileObj instanceof String) {
-	                                base64Data = (String) documentFileObj;
-	                            } else {
-	                                logger.warn("Unexpected documentFile type: " + documentFileObj.getClass().getName());
-	                                continue;
-	                            }
-	                            if (base64Data != null && !base64Data.trim().isEmpty()) {
-	                                // Remove common data URL prefixes for any type
-	                                base64Data = base64Data.replaceFirst("^data:[^;]+;base64,", "");
-	                                try {
-	                                    // Decode Base64
-	                                    byte[] bytes = Base64.getDecoder().decode(base64Data);
-	                                    // Determine file extension
-	                                    String ext = (String) doc.get("docType");
-	                                    if (ext == null || ext.isEmpty()) {
-	                                        ext = "bin"; // fallback for unknown types
-	                                    }
-	                                    // Save the file
-	                                    String fileName = saveAllMultiImages(bytes, ext);
-	                                    if (fileName != null) {
-	                                        String fileURL = env.getBaseURL() + "document/image/" + fileName;
-	                                        // Update the document entry with saved details
-	                                        doc.put("fileName", fileName);
-	                                        doc.put("docUrl", fileURL);
-	                                        // Optionally preserve or set docName from docView if needed
-	                                        String docName = (String) doc.getOrDefault("docView", doc.getOrDefault("docName", fileName));
-	                                        doc.put("docName", docName);
-	                                        // Remove the documentFile field to eliminate the bytearray/base64 data
-	                                        doc.remove("documentFile");
-	                                        logger.info("Document saved for course {}: {}", courseId, fileName);
-	                                    }
-	                                } catch (Exception decodeEx) {
-	                                    logger.error("Error decoding/saving document: {}", doc.get("docName"), decodeEx);
-	                                }
-	                            } else {
-	                                logger.info("Skipping empty documentFile for doc: {}", doc.get("docName"));
-	                                // Remove empty documentFile as well
-	                                doc.remove("documentFile");
-	                            }
-	                        } else {
-	                            // If no documentFile, ensure it's not present
-	                            if (doc.containsKey("documentFile")) {
-	                                doc.remove("documentFile");
-	                            }
-	                        }
-	                    }
+
+	                List<Map<String, Object>> documents =
+	                        (List<Map<String, Object>>) item.get("documents");
+
+	                if (documents == null) continue;
+
+	                for (int i = 0; i < documents.size(); i++) {
+	                    Map<String, Object> updated = processDocumentFile(documents.get(i), courseId);
+	                    documents.set(i, updated);
 	                }
-	                logger.info("Documents processed for training item in course {}: {} items checked", courseId, (documents != null ? documents.size() : 0));
 	            }
 
-	            // Re-stringify the updated categoryData (now without bytearray data)
-	            String updatedCategoryData = objectMapper.writeValueAsString(trainingData);
-	            payload.put("categoryData", updatedCategoryData);
+	            payload.put("categoryData", mapper.writeValueAsString(trainingData));
 	        }
-	    } catch (Exception parseEx) {
-	        logger.error("Error processing payload for file saving", parseEx);
-	        // Continue to forward, but log the issue - or return error if critical
+
+
+	    } catch (Exception e) {
+	        logger.error("Error processing training documents", e);
 	    }
 
-	    // Forward to external service (HIS URL)
+	    // ------------------------- CALL HIS SERVICE -------------------------
 	    try {
-	        String hisUrl = env.getHisUrl() + "rest-academic-saveTraining?userId=" + userId
-	                + "&org=" + orgName + "&orgDiv=" + orgDivision;
-	        // Assuming 'env' is injected @Autowired YourEnvConfig env;
-	        resp = restClient.postForObject(hisUrl, payload, JsonResponse.class);
-	        logger.info("External service response: {}", resp);
+	        String hisUrlFull = env.getHisUrl()
+	                + "rest-academic-saveTraining?userId=" + userId
+	                + "&org=" + orgName
+	                + "&orgDiv=" + orgDivision;
+
+	        resp = restClient.postForObject(hisUrlFull, payload, JsonResponse.class);
+
 	    } catch (Exception e) {
-	        logger.error("Error calling external service", e);
+	        logger.error("Error calling HIS service", e);
 	        resp.setMessage("Error saving training data");
 	    }
 
 	    logger.info("Method: saveTraining ends");
 	    return resp;
 	}
-	
+
+
+    // Helper: Save ZIP file
+    private String saveZipFile(byte[] bytes, String ext) {
+        try {
+            long now = new Date().getTime();
+            String fileName = now + "." + ext;
+            Path path = Paths.get(env.getFileUploadDocumenttUrl() + fileName);
+            Files.write(path, bytes);
+            return fileName;
+        } catch (Exception e) {
+            logger.error("Error saving ZIP", e);
+            return null;
+        }
+    }
+
+    // Helper: Extract ZIP to local folder and prepare for LMS SCRUM data
+    private String extractZipAndPreparePreview(String zipFileName, String courseId, String docType) {
+        try {
+            Path zipPath = Paths.get(env.getFileUploadDocumenttUrl() + zipFileName);
+            String extractDirName = courseId + "_" + docType + "_" + System.currentTimeMillis();
+            Path extractPath = Paths.get(env.getFileUploadDocumenttUrl() + "extracted/" + extractDirName);
+
+            // Create extracted directory if not exists
+            Files.createDirectories(extractPath);
+
+            // Extract ZIP
+            try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipPath.toFile()))) {
+                ZipEntry zipEntry = zis.getNextEntry();
+                while (zipEntry != null) {
+                    Path filePath = extractPath.resolve(zipEntry.getName());
+                    if (zipEntry.isDirectory()) {
+                        Files.createDirectories(filePath);
+                    } else {
+                        Files.createDirectories(filePath.getParent());
+                        Files.copy(zis, filePath, StandardCopyOption.REPLACE_EXISTING);
+                    }
+                    zipEntry = zis.getNextEntry();
+                }
+                zis.closeEntry();
+            }
+
+            // For LMS SCRUM: Optionally process extracted files (e.g., validate SCORM structure)
+            // e.g., check for imsmanifest.xml for SCORM
+
+            return "extracted/" + extractDirName; // Relative path for preview
+        } catch (Exception e) {
+            logger.error("Error extracting ZIP", e);
+            return null;
+        }
+    }
+
+    // Helper: Generate preview video (simple: if ZIP has MP4, return URL; else, placeholder)
+    // Note: For real "extraction video", you could use FFmpeg to record screen of extraction, but that's external.
+    // Here, assume pick first video from extracted.
+    private String generateExtractionPreviewVideo(String extractPath) {
+    	System.out.println("Extracted Path as parameter----->"+extractPath);
+        try {
+            Path fullExtractPath = Paths.get(env.getFileUploadDocumenttUrl() + extractPath);
+            System.out.println("Full Extract Path------>"+fullExtractPath);
+            // Find first .mp4 or .avi in extracted folder
+            Optional<Path> videoFile = Files.walk(fullExtractPath)
+                    .filter(p -> p.toString().toLowerCase().endsWith(".mp4") || p.toString().toLowerCase().endsWith(".avi"))
+                    .findFirst();
+
+            if (videoFile.isPresent()) {
+                String videoName = videoFile.get().getFileName().toString();
+                return env.getBaseURL()  + "document/image/" + videoName; // Serve via separate endpoint
+            } else {
+                // Placeholder: Generate a simple HTML video or return null
+                return null;
+            }
+        } catch (Exception e) {
+            logger.error("Error generating preview video", e);
+            return null;
+        }
+    }
+
+    // New endpoint: Serve extracted preview video
+    @GetMapping("document/image/{filename}")
+    public ResponseEntity<Resource> servePreviewVideo(@PathVariable String filename) {
+        try {
+            Path filePath = Paths.get(env.getFileUploadDocumenttUrl() + "extracted/" + filename); // Adjust path
+            Resource resource = new UrlResource(filePath.toUri());
+            if (resource.exists() && resource.isReadable()) {
+                return ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType("video/mp4"))
+                        .body(resource);
+            }
+        } catch (Exception e) {
+            logger.error("Error serving preview video", e);
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    // Existing saveAllMultiImages (unchanged)
+    public String saveAllMultiImages(byte[] imageBytes, String ext) {
+        logger.info("Method : saveAllMultiImages starts");
+
+        String imageName = null;
+
+        try {
+            if (imageBytes != null) {
+
+                long now = new Date().getTime();
+
+                if ("jpeg".equalsIgnoreCase(ext)) ext = "jpg";
+
+                imageName = now + "." + ext;
+
+                Path path = Paths.get(env.getFileUploadDocumenttUrl() + imageName);
+
+                Files.write(path, imageBytes);
+            }
+
+        } catch (Exception e) {
+            logger.error("Error saving file", e);
+        }
+
+        logger.info("Method : saveAllMultiImages ends");
+        return imageName;
+    }
+
+
+	// ------------------------- SAVE FILE FUNCTION -------------------------
+	/*
+	 * public String saveAllMultiImages(byte[] imageBytes, String ext) {
+	 * 
+	 * logger.info("Method : saveAllMultiImages starts");
+	 * 
+	 * String imageName = null;
+	 * 
+	 * try { if (imageBytes != null) {
+	 * 
+	 * long now = new Date().getTime();
+	 * 
+	 * if ("jpeg".equalsIgnoreCase(ext)) ext = "jpg";
+	 * 
+	 * imageName = now + "." + ext;
+	 * 
+	 * Path path = Paths.get(env.getFileUploadDocumenttUrl() + imageName);
+	 * 
+	 * Files.write(path, imageBytes); }
+	 * 
+	 * } catch (Exception e) { logger.error("Error saving file", e); }
+	 * 
+	 * logger.info("Method : saveAllMultiImages ends"); return imageName; }
+	 */
+
 	// view instructor
 	@SuppressWarnings("unchecked")
 	@GetMapping("get-all-instructor-list")
@@ -1015,7 +1416,39 @@ public class AcademicCourseController {
 		logger.info("Method : subcategory ends");
 		return resp;
 	}
-	
+	@SuppressWarnings("unchecked")
+	@GetMapping(value = {"courses-delete-training"})
+	public @ResponseBody JsonResponse<Object> deleteTraining(String trainingId, HttpSession session) {
+		logger.info("Method : deleteTraining starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+
+		String userId = "";
+		String orgName = "";
+		String orgDivision = "";
+		try {
+			userId = (String) session.getAttribute("USER_ID");
+			orgName = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		logger.info("Method : orgName starts" + orgName);
+		logger.info("Method : orgDivision starts" + orgDivision);
+		try {
+
+			resp = restClient.getForObject(
+					env.getHisUrl() + "rest-delete-training?org=" + orgName + "&orgDiv=" + orgDivision + "&trainingId=" + trainingId,
+					JsonResponse.class);
+			// res = restTemplate.getForObject(env.getPurchaseUrl() +
+			// "getBrandList?orgName=" + orgName + "&orgDivision=" +
+			// orgDivision,JsonResponse.class);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		logger.info("Method : deleteTraining ends");
+		return resp;
+	}
 	
 	// Fixed Web Controller Method (in AcademicCourseWebController or similar)
 	@SuppressWarnings("unchecked")
@@ -1109,5 +1542,128 @@ public class AcademicCourseController {
 	    logger.info("Method : saveQuizMappings ends");
 	    return resp;
 	}
+
+
+	// Serve SCORM content (HTML, JS, CSS, images...) from extracted ZIP
+@GetMapping("scorm-content/{zipFileName:.+}/**")
+public ResponseEntity<Resource> serveScormPackage(HttpServletRequest request,
+                                                 @PathVariable String zipFileName) {
+    logger.info("[SCORM] serveScormPackage called with zipFileName={}", zipFileName);
+
+    try {
+        String requestUri = request.getRequestURI();
+        logger.info("[SCORM] Incoming request URI = {}", requestUri);
+
+        String prefix = "/academic/scorm-content/" + zipFileName + "/";
+        int idx = requestUri.indexOf(prefix);
+        String relativePath = "";
+        if (idx != -1) {
+            relativePath = requestUri.substring(idx + prefix.length());
+        }
+        if (relativePath.isEmpty()) {
+            relativePath = "index.html";
+        }
+
+        logger.info("[SCORM] Computed relativePath within SCORM package = {}", relativePath);
+
+        Path uploadBase = Paths.get(env.getFileUploadDocumenttUrl());
+        logger.info("[SCORM] uploadBase = {}", uploadBase.toAbsolutePath());
+
+        // Folder: <uploadDir>/scorm/<zipBaseName>/
+        String baseName = zipFileName;
+        int dot = baseName.lastIndexOf('.');
+        if (dot != -1) {
+            baseName = baseName.substring(0, dot);
+        }
+
+        Path scormRoot = uploadBase.resolve("scorm").resolve(baseName);
+        logger.info("[SCORM] scormRoot directory = {}", scormRoot.toAbsolutePath());
+
+        // First request → unzip
+        if (!Files.exists(scormRoot)) {
+            Path zipPath = uploadBase.resolve(zipFileName);
+            logger.info("[SCORM] scormRoot does not exist, will unzip. zipPath = {}", zipPath.toAbsolutePath());
+
+            if (!Files.exists(zipPath)) {
+                logger.error("[SCORM] Zip file not found at {}", zipPath.toAbsolutePath());
+                return ResponseEntity.notFound().build();
+            }
+            unzipScorm(zipPath, scormRoot);
+        }
+
+        Path target = scormRoot.resolve(relativePath);
+        logger.info("[SCORM] Target SCORM asset path = {}", target.toAbsolutePath());
+
+        if (!Files.exists(target) || Files.isDirectory(target)) {
+            logger.error("[SCORM] Target asset not found or is a directory: {}", target.toAbsolutePath());
+            return ResponseEntity.notFound().build();
+        }
+
+        Resource resource = new UrlResource(target.toUri());
+        MediaType mediaType = resolveMediaType(target);
+
+        logger.info("[SCORM] Serving asset with mediaType={} from {}", mediaType, target.toAbsolutePath());
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .body(resource);
+
+    } catch (Exception e) {
+        logger.error("[SCORM] Error serving SCORM content", e);
+        return ResponseEntity.notFound().build();
+    }
+}
+
+private void unzipScorm(Path zipPath, Path destinationDir) throws Exception {
+    logger.info("[SCORM] unzipScorm started. zipPath={}, destinationDir={}",
+            zipPath.toAbsolutePath(), destinationDir.toAbsolutePath());
+
+    Files.createDirectories(destinationDir);
+
+    try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipPath.toFile()))) {
+        ZipEntry entry;
+        while ((entry = zis.getNextEntry()) != null) {
+            Path newPath = destinationDir.resolve(entry.getName());
+            logger.info("[SCORM] Extracting entry: {} => {}", entry.getName(), newPath.toAbsolutePath());
+
+            if (entry.isDirectory()) {
+                Files.createDirectories(newPath);
+            } else {
+                if (newPath.getParent() != null) {
+                    Files.createDirectories(newPath.getParent());
+                }
+                Files.copy(zis, newPath, StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
+    }
+
+    logger.info("[SCORM] unzipScorm completed for {}", zipPath.toAbsolutePath());
+}
+
+private MediaType resolveMediaType(Path file) {
+    String fileName = file.getFileName().toString().toLowerCase();
+    logger.info("[SCORM] resolveMediaType for file {}", fileName);
+
+    if (fileName.endsWith(".html") || fileName.endsWith(".htm")) {
+        return MediaType.TEXT_HTML;
+    } else if (fileName.endsWith(".js")) {
+        return new MediaType("application", "javascript");
+    } else if (fileName.endsWith(".css")) {
+        return new MediaType("text", "css");
+    } else if (fileName.endsWith(".png")) {
+        return MediaType.IMAGE_PNG;
+    } else if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
+        return MediaType.IMAGE_JPEG;
+    } else if (fileName.endsWith(".gif")) {
+        return MediaType.IMAGE_GIF;
+    } else if (fileName.endsWith(".json")) {
+        return MediaType.APPLICATION_JSON;
+    } else if (fileName.endsWith(".xml")) {
+        return MediaType.APPLICATION_XML;
+    }
+
+    logger.info("[SCORM] Defaulting mediaType to OCTET_STREAM for file {}", fileName);
+    return MediaType.APPLICATION_OCTET_STREAM;
+}
+
 
 }

@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+
+.totalHour {
+	border: 1px solid #ddd;
+	border-top: none;
+	border-left: none;
+	border-right: none;
+	border-radius: 2px;
+	padding: 10px;
+	font-size: 12px;
+	color: #333;
+	transition: border-color 0.3s ease-in-out;
+	width: 580px;
+	height: 23px;
+}
+
+.sugg-cls ul {
+	height: 150px;
+	overflow-x: scroll;
+	position: relative;
+}
+.flex-wrapsec{
+	position: relative;
+}
+@media screen and (max-width: 767px) {
+	.flex-wrapsec{
+		flex-wrap: wrap !important;
+	}
+}
+
+
+</style>
+
+<script type="text/javascript">
+	$(document).ready(function() {
+		var dateFormat = localStorage.getItem("dateFormat");
+		$("#fromDateCalender").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#filterFromDate').val($(this).val());
+		})
+
+		$('#filterFromDate').blur(function() {
+			$("#fromDateCalender").val($(this).val());
+		})
+
+		$("#toDateCalendar").datetimepicker({
+			format : dateFormat,
+			closeOnDateSelect : true,
+			timepicker : false,
+		}).on("change", function() {
+			$('#filterToDate').val($(this).val());
+		})
+
+		$('#filterToDate').blur(function() {
+			$("#toDateCalendar").val($(this).val());
+		})
+
+		var toDayDate = (new Date()).toISOString().split('T')[0];
+		var newDate = changeDateFormat(toDayDate);
+
+		$("#filterFromDate").val(newDate);
+		$("#filterToDate").val(newDate);
+
+		
+		var gridDiv = document.querySelector('#myGrid');
+		new agGrid.Grid(gridDiv, gridOptions);
+		gridOptions.api.setRowData()
+		$('.loader').show();
+		agGrid.simpleHttpRequest(
+				{
+					url : "weight-bridge-report-view?type=" + 'all'
+							+ "&fromdate=" + newDate + "&todate=" + newDate,
+				}).then(function(data) {
+					if(data == null || data == "" || data == "null"){
+						$('.loader').hide();
+					}else{
+					var jsonData = JSON.parse(data[0]);
+					gridOptions.api.setRowData();
+					var allData = jsonData.weighReport;
+					var len;
+					if (allData == "" || allData == null || allData == 'null') {
+						len = 0;
+					} else {
+						len = allData.length;
+					}
+					gridOptions.api.setRowData(allData);
+					$('#totalReq').find('span').html(len);
+					$('.loader').hide();
+					}
+			
+		})
+
+
+	});
+
+	/* -------------------search bar for mygrid------------------------ */
+
+	function onQuickFilterChanged() {
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	var columnDefs = [
+	/* {
+		headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly : true,
+		checkboxSelection : true,
+		cellEditorPopup: true,  
+		width : 10,
+		pinned: 'left',
+		sortable : false,
+		filter : false,
+		resizable : true
+	}, */
+	{
+		headerName : "Entry Id",
+		field : "entryId",
+		width : 150,
+		pinned : 'left',
+	}, {
+		headerName : "Vehicle No ",
+		field : "vehicleId",
+		width : 150,
+		pinned : 'left'
+	},{
+		headerName : "Entry Type",
+		field : "entryType",
+		width : 120,
+	},  {
+		headerName : "Entry Weight",
+		field : "weightCarry",
+		width : 150,
+	}, {
+		headerName : "Exit Weight",
+		field : "exitWeightCarry",
+		width : 150,
+	}, {
+		headerName : "Weight Difference",
+		field : "weightDifference",
+		width : 150,
+	}, {
+		headerName : "Driver Name",
+		field : "driverName",
+		width : 200,
+	}, {
+		headerName : "Driver Mobile",
+		field : "driverNo",
+		width : 150,
+	}, {
+		headerName : "Entry Date",
+		field : "entryDate",
+		cellStyle : {
+			textAlign : 'center'
+		},
+		width : 150,
+	}, {
+		headerName : "Entry Time",
+		field : "entryTime",
+		cellStyle : {
+			textAlign : 'center'
+		},
+		width : 150,
+	}, {
+		headerName : "Exit Date",
+		field : "exitDate",
+		width : 150,
+		cellStyle : {
+			textAlign : 'center'
+		},
+
+	}, {
+		headerName : "Exit Time",
+		field : "exitTime",
+		width : 150,
+		cellStyle : {
+			textAlign : 'center'
+		},
+
+	},{
+		headerName : "Slip Id",
+		field : "slipId",
+		width : 150,
+		cellStyle : {
+			textAlign : 'center'
+		},
+
+	},{
+		headerName : 'Download Slip',
+		field : "downloaddoc",
+		cellStyle : {
+			textAlign : 'center'
+		},cellRenderer : function(params) {
+			return '<a id="pcroId" onclick=weighSlipPdfDownload("'
+			+params.data.slipId
+			+ '") href="javascript:void(0)"><i class="bi bi-cloud-download">Download</i></a>';
+		}} ];
+	// let the grid know which columns and what data to use
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 190
+		},
+	//onSelectionChanged : onSelectionChanged,
+	};
+
+	function changeDateFormat(inputDate) { // expects Y-m-d
+		var splitDate = inputDate.split('-');
+		if (splitDate.count == 0) {
+			return null;
+		}
+		var year = splitDate[0];
+		var month = splitDate[1];
+		var day = splitDate[2];
+		return day + '-' + month + '-' + year;
+	}
+
+	//function for download
+	function downloadDetails() {
+		var dataset = [];
+		gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+			dataset.push(rowNode.data);
+		});
+		gridOptions.api.exportDataAsCsv(dataset);
+	}
+
+	function filter() {
+		var fromdatex = $("#filterFromDate").val();
+		var fd = fromdatex.split("-");
+		var todatex = $("#filterToDate").val();
+		var td = todatex.split("-");
+
+		if (fromdatex != '' && todatex != '') {
+			if (fd[2] == td[2]) {
+				if (fd[1] == td[1]) {
+					if (fd[0] <= td[0]) {
+						filterData();
+					} else {
+						setFromToDate();
+					}
+				} else if (fd[1] < td[1]) {
+					filterData();
+				} else {
+					setFromToDate();
+				}
+			} else if (fd[2] < td[2]) {
+				filterData();
+			} else {
+				setFromToDate();
+			}
+		}
+	}
+	function setFromToDate() {
+		$("#messageParagraph").text(
+				"Please choose to date greater than or equal to from date ");
+		$("#msgOkModal").removeClass("btn3");
+		$("#msgOkModal").addClass("btn1");
+		$("#msgModal").modal('show');
+		var date = (new Date()).toISOString().split('T')[0];
+		var newToDate = changeDateFormat(date);
+		var newFromDate = changeDateFormat(date);
+		$("#filterFromDate").val(newToDate);
+		$("#filterToDate").val(newToDate);
+
+		$("#fromDateCalender").val(newDate);
+		$("#toDateCalendar").val(newDate);
+	}
+
+	function filterData() {
+		var len;
+		//var secx = $("#sec").val();
+		var type = $("#type").val();
+		var fromDate = $("#filterFromDate").val();
+		var toDate = $("#filterToDate").val();
+
+		$('.loader').show();
+		agGrid.simpleHttpRequest(
+				{
+					url : "weight-bridge-report-view?type=" + type
+							+ "&fromdate=" + fromDate + "&todate=" + toDate,
+				}).then(function(data) {
+					if(data == null || data == "" || data == "null"){
+						$('.loader').hide();
+					}else{
+					var jsonData = JSON.parse(data[0]);
+					gridOptions.api.setRowData();
+					var allData = jsonData.weighReport;
+					var len;
+					if (allData == "" || allData == null || allData == 'null') {
+						len = 0;
+					} else {
+						len = allData.length;
+					}
+					gridOptions.api.setRowData(allData);
+					$('#totalReq').find('span').html(len);
+					$('.loader').hide();
+					}
+			
+		})
+	}
+	/* function weighSlipPdfDownload(id) {
+		window.open("/weight/weight-bridge-report-slip-pdf-downloads?dcId="+window.btoa(id), '_blank');  
+	} */
+	function weighSlipPdfDownload(id) {
+		window.open("/weight/view-slip-pdf-downloads?dcId="+window.btoa(id), '_blank');  
+	}
+</script>
+
+</head>
+<body>
+
+	<div layout:fragment="content" class="maincontent">
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+						<div class="d-flex flex-wrapsec justify-content-between" id="tdiv">
+							<div class="btn-hs">
+								<div class="font-design" id="totalReq">
+									Register List(<span></span>)
+								</div>
+							</div>
+
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+							<div class="button-right">
+								<div>
+
+									<div class="form-group d-flex">
+										<label style="margin: 5px 5px 0px 0px;">Type:</label>
+										<div class="select" style="margin-right: 15px;">
+											<select id="type" class="form-control"
+												onblur="removeValid(event)"
+												style="width: 170px; padding-left: 7px;">
+												<option value="all">All</option>
+												<option value="loading">Loading</option>
+												<option value="unloading">Unloading</option>
+												<option value="both">Loading & Unloading</option>
+
+											</select>
+										</div>
+									</div>
+								</div>
+								<div id="dateDiv1" class="d-flex form-group">
+									<label style="margin: 5px 8px 0px 0px;">From Dt:</label>
+									<div class="form-group calendar_box" id='fdate'
+										style="margin-right: 15px;">
+										<input type="text" id="filterFromDate" value=""
+											class="form-control" placeholder="from date.."
+											th:attr="onkeyup=|formatDate('filterFromDate','${session.DATEFORMAT_JS}')|"
+											readonly> <i class="ti-calendar picker_calendar"
+											id="fromDateCalender" style="top: 14px; right: 0px;"></i>
+									</div>
+								</div>
+								<div id="dateDiv2" class="d-flex form-group">
+									<label style="margin: 5px 8px 0px 0px;">To Dt:</label>
+									<div class="form-group calendar_box" id="tdate"
+										style="margin-right: 15px;">
+										<input type="text" id="filterToDate" value=""
+											class="form-control" placeholder="to date.."
+											th:attr="onkeyup=|formatDate('filterToDate','${session.DATEFORMAT_JS}')|"
+											readonly> <i class="ti-calendar picker_calendar"
+											id="toDateCalendar" style="top: 14px; right: 0px;"></i>
+									</div>
+								</div>
+
+								<div class="buttonsec btn-hs" id="ttbtn">
+									<button class="new-btn" id="filterBtn" onclick="filter()">
+										<i class="bi bi-search"></i> Search
+									</button>
+								</div>
+
+							</div>
+							<div class="buttonsec btn-hs" id="ttbtn">
+								<button class="download-btn" id="download"
+									onclick="downloadDetails()">Download</button>
+								<!-- <button class="delete-btn" id="reqDltBtn" onclick="deleteFun()">DELETE</button> -->
+								<!-- <button class="new-btn" id="assignBtn" onclick="approveFun()">APPROVE</button> -->
+								<!-- <button class="new-btn" id="weightBtn" onclick="addWeightModal()">Gate Out</button> -->
+								<!-- <button class="new-btn" id="newBtn" onclick="newPlan()">NEW</button> -->
+							</div>
+						</div>
+
+						<input type="hidden" id="sessionId" th:value="${userId}" /> <input
+							type="hidden" id="sessionName" th:value="${userName}" /> <input
+							type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+							type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+							type="hidden" id="adRole" th:value="${adRole}" /> <input
+							type="hidden" id="userId" th:value="${session.USER_ID}" /> <input
+							type="hidden" id="registerIdHidden">
+						<div id="myGrid" style="width: 100%; height: 500px;"
+							class="ag-theme-alpine"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,3600 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.btn-primarynew {
+	color: #fff !important;
+	background-color: #0d6efd;
+	border-color: #0d6efd;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+.form-group label {
+	font-size: 12px;
+	position: relative;
+}
+
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+
+.blueClsWT {
+	background: #0076ba;
+	color: #fff;
+}
+
+.blueCls {
+	background: #0076ba;
+	color: #fff;
+}
+
+.blueClsWT::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	padding-right: 7px;
+}
+
+.modal-body table td input[type=checkbox] {
+	width: 0px;
+	margin-right: 16px;
+	position: relative;
+	top: 0px;
+	float: none;
+}
+
+.firstnode {
+	color: #929292;
+	border-top: 1px solid transparent !important;
+	border-left: 1px solid transparent !important;
+	border-bottom: 1px solid transparent !important;
+	width: 320px;
+	font-size: 12px;
+	font-weight: 100;
+}
+
+.simple-tree-table-closed .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'FontAwesome';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+	transform: rotate(90deg);
+}
+
+.simple-tree-table-opened .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'FontAwesome';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+}
+
+.simple-tree-table-icon {
+	display: inline-block;
+	width: 1.5em;
+	line-height: 1.5em;
+	margin: 0.1em;
+	background-color: transparent;
+	text-align: center;
+	cursor: pointer;
+}
+
+.tptCls {
+	background: transparnt;
+}
+ 
+</style>
+<script>
+$(document).ready(function() {
+	$('#deliveryChallanDtls').attr("disabled", true);
+	$('#delete').attr("disabled", true); 
+	$('#shipment').attr("disabled", true);
+	$('#packDateDiv').hide();
+	
+	
+	var dateFormat = localStorage.getItem("dateFormat");								
+	$("#dateCalendar").datetimepicker({
+		format : dateFormat,
+		closeOnDateSelect : true,
+		timepicker : false,
+	}).on("change", function() {
+		$('#packDate').val($(this).val());
+	})
+	
+	$('#packDate').blur(function(){
+		$("#dateCalendar").val($(this).val());
+	})
+    $("#notess").hide();
+	//$("#internalNotes").hide();
+	var gridDiv = document.querySelector('#myGrid');
+	new agGrid.Grid(gridDiv, gridOptions);
+	gridOptions.api.setRowData();
+
+	var gridDiv = document.querySelector('#item');
+	new agGrid.Grid(gridDiv, itemOptions);
+	itemOptions.api.setRowData();
+ 	agGrid.simpleHttpRequest({
+		url : "view-packages-through-ajax"
+	}).then(function(data) {
+		console.log(data)
+		var len = data.length;
+		$('#totalCandidate').find('span').html(len);
+		gridOptions.api.setRowData(data);
+	});   
+	$("#Cancel").hide();
+	$("#addData").hide();
+	$("#save").hide();
+	$('#delete').attr("disabled", true);
+	$('#packedQut1').attr("disabled", true);
+
+	/*packages from sale page*/
+	var ld = localStorage.getItem('ReqPackagesData');
+	var data = JSON.parse(ld); 
+	if (data) {
+		$("#notess").show();
+        $('#hideTbl').hide();
+        $('#searchRowDiv').hide();
+        $('#delete').hide();
+		$("#add").hide();
+		$("#myGrid").hide();
+		$("#save").show();
+		$("#Cancel").show();
+		$("#addData").show();
+		$("#totalCandidate").hide();
+		$("#dwnld").hide();
+		$("#upld").hide();
+		$("#deliveryChallanDtls").hide();
+		$("#shipment").hide();
+		$("#poId").val(data[0].poId);
+		$("#salesOrderIdHid").val(data[0].salesOrder);
+		$("#taxType").val(data[0].taxType);
+		$("#custId").val(data[0].custId);
+		$("#custName").val(data[0].custName);
+		$("#custName").val(data[0].custName);
+		$("#internalNotes").val(data[0].internalNotes);
+		$("#poId").attr("disabled", true);
+		$("#custName").attr("disabled", true);
+		itemOptions.api.setRowData(data);
+		getAddressDetails(data[0].custId);
+		//getSalesOrder(data[0].custId,data[0].salesOrder);
+		console.log("dataset for challan-------",JSON.stringify(data[0]));
+		var date = (new Date()).toISOString().split('T')[0];
+		var newDate = changeDateFormat(date);
+		$("#deliveryChallanDate").val(newDate);
+		
+		 	$.ajax({type : "GET",
+				url : "view-packages-get-insertedid",
+						success : function(response) {
+							if (response.message == "success") {
+							//console.log("Response--------------"+JSON.stringify(response.body[0].name));
+							$("#packageSlip").val(response.body[0].key);
+							}
+						},
+						error : function(e) { 
+						}
+					});
+
+	
+			localStorage.setItem('ReqPackagesData', null);
+	} else {
+		$("#poId").val('New');
+  }
+});
+	var columnDefs = [
+			{
+				//headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+
+			},
+			{
+				headerName : "Package",
+				field : "salePackageId",
+				width : 150,
+				cellRenderer : function(params) {
+					return '<a onclick=editSalesPackage("'
+							+ params.data.salePackageId
+							+ '","'+params.data.poId+'","'+window.btoa(params.data.dchallanStatus)+'") href="javascript:void(0)">'
+							+ params.data.salePackageId + '</a>';
+				}
+			}, {
+				headerName : 'Package Date',
+				field : "qutUpdatedOn",
+					width : 150,
+			}, {
+				headerName : 'Po Id',
+				field : "poId",
+				width : 150,
+			}, { 
+				headerName : 'Challan',
+				field : "dchallanStatus",
+				width : 100,
+				cellRenderer : function(params) {
+					if (params.data.dchallanStatus =="Generated") { 
+						return '<div style="color:#0642f5">'+params.data.dchallanStatus+'</div>';
+					}  else {
+						return '<div style="color:#ff8242">'+params.data.dchallanStatus+'</div>';
+					}	
+				}
+			}, {  
+				headerName : 'Carrier',
+				field : "carrier",
+				width : 150,
+			}, {
+				  headerName : 'Tracking',
+				field : "tracking",
+				width : 150,
+			}, {  
+				headerName : 'Status',
+				field : "status",
+				width : 100,
+				cellRenderer : function(params) {
+					if (params.data.status =="Shipped") { 
+						return '<div style="color:#0642f5">'+params.data.status+'</div>';
+					}  else {
+						return '<div style="color:#ff8242">'+params.data.status+'</div>';
+					}	
+				}
+			}, {  
+				headerName : 'Shipment Date',
+				field : "shipmentDate",
+				width : 150,
+			}, {
+				  
+				headerName : 'Customer Name',
+				field : "custName",
+				width : 200,
+			}, {
+				
+				headerName : 'Quantity',
+				field : "quantity",
+				width : 100,
+			
+			} ];
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowSelection : 'single',
+
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 251,
+			height : 10
+		},
+		onSelectionChanged : rowSelect,
+	};
+
+	/*
+	 sales Item 
+	 */
+	var itemDefs = [
+			{
+				//headerCheckboxSelection : false,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+
+			},
+			{
+				headerName : "SlNo",
+				field : "slNo",
+				width : 70,
+			}, {
+				headerName : 'SKU',
+				field : "sku",
+				width : 90,
+			}, {
+				headerName : 'salesOrderId',
+				field : "salesOrderId",
+				hide : true,
+			}, {
+				headerName : 'HSN Code',
+				field : "hsnCode",
+				width : 110,
+			}, {
+
+				headerName : 'Item Name',
+				field : "itemName",
+				width : 200,
+			}, {
+
+				headerName : 'Item Id',
+				field : "itemId",
+				width : 175,
+				hide : true,
+			}, {
+				headerName : 'Total Quantity',
+				field : "quantity",
+				type : 'rightAligned',
+				width : 150,
+				valueFormatter : currencyFormatter
+			}, {
+				headerName : 'Unit',
+				field : "unitName",
+				width : 100,
+			},{
+				
+				headerName : 'Packed Quantity',
+				field : "packedQut",
+				type : 'rightAligned',
+				width : 160,
+				valueFormatter : currencyFormatter
+			}, 
+			{
+				headerName : 'Pending Quantity',
+				field : "pendingQut",
+				width : 170,
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+			}, 
+			{
+				headerName : 'Unit',
+				field : "unit",
+				hide : true,
+			},
+			{
+				headerName : 'packing Quantity',
+				field : "packingQut",
+				hide : true,
+			}, {
+				headerName : 'packType',
+				field : "packType",
+				hide : true,
+			}, {
+				headerName : 'packDate',
+				field : "packDate",
+				hide : true,
+			},{
+				headerName : 'packDesc',
+				field : "packDesc",
+				hide : true,
+			}, 
+			{
+				headerName : 'Packaging Quantity',
+				field : "packQut",
+				type : 'rightAligned',
+				width : 180,
+				valueFormatter : currencyFormatter
+			},
+			{
+
+				headerName : 'No. Of Item',
+				field : "noOfItem",
+				width : 150,
+			},{
+				headerName : 'Packaging Type',
+				field : "packType",
+				hide:true
+				
+			}, {
+				headerName : 'Packaging Type ',
+				field : "packName",
+				width : 150,
+			
+			}, {
+				headerName : 'Packaging Date ',
+				field : "packDate",
+				width : 150,
+			}, {
+				headerName : 'Description ',
+				field : "packDesc",
+				width : 150,
+			
+			} 
+
+			];
+
+
+	var itemOptions = {
+		columnDefs : itemDefs,
+		rowSelection : 'single',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 120,
+			height : 10
+		},
+		onSelectionChanged : rowSelectItem,
+		getRowNodeId : function(data) {
+			return data.slNo;
+		}
+	};
+
+
+	
+	function add() {
+		
+		$("#custName").val(null);
+		$("#poId").val(null);
+		$("#packageSlip").val(null);
+		$("#deliveryChallanDate").val(null);
+		$("#internalNotes").val('');
+		$("#notess").show();
+		$("#shipment").hide();
+		$("#searchRowDiv").hide();
+		$("#delete").hide();
+	    $('#hideTbl').hide();
+		$("#add").hide();
+		$("#myGrid").hide();
+		$("#save").show();
+		$("#Cancel").show();
+		$("#deliveryChallanDtls").hide();
+		$("#addData").show();
+		$("#totalCandidate").hide();
+		$("#dwnld").hide();
+		$("#upld").hide();
+		$("#addre").hide();
+	    $("#packageheadId").html('');
+		$("#itemId").val('');
+		$("#isalesOrderId").val('');
+		$("#itemName").val('');
+		$("#quantity").val('');
+	    $("#taxType").val('');
+	    $("#poId").val('');
+	    $("#custId").val();
+		$("#custName").val();
+		$('#delete1').attr("disabled", true);
+		$('#new1').attr("disabled", false);
+		$('#packedQut1').attr("disabled", true);
+		var date = (new Date()).toISOString().split('T')[0];
+		var newDate = changeDateFormat(date);
+		$("#deliveryChallanDate").val(newDate);
+		
+		
+    	$.ajax({type : "GET",
+						url : "view-packages-get-insertedid",
+								success : function(response) {
+									if (response.message == "success") {
+									//console.log("Response--------------"+JSON.stringify(response.body[0].name));
+									$("#packageSlip").val(response.body[0].key);
+									}
+								},
+								error : function(e) { 
+								}
+							});
+			
+			
+	}
+
+	function packedItem() {
+		var selectedRows = itemOptions.api.getSelectedRows();
+		var slNo = selectedRows[0].slNo;
+		var salesOrder = $("#packageheadId").html();
+		var rowNode = itemOptions.api.getRowNode(slNo);
+
+		console.log(rowNode)
+		openNav();
+		var date1 = (new Date()).toISOString().split('T')[0];
+		var newDate1 = changeDateFormat(date1);
+		$("#packDate").val(newDate1);
+		$("#editProduct").val(slNo);
+		$("#sku").val(rowNode.data.sku);
+		$("#itemId").val(rowNode.data.itemId);
+		$("#itemName").val(rowNode.data.itemName);
+		$("#hsnCode").val(rowNode.data.hsnCode);
+		$("#quantity").val(rowNode.data.quantity);
+		$("#packedQut").val(rowNode.data.packedQut);
+		$("#pendingQut").val(rowNode.data.pendingQut);
+		$("#packQut").val(rowNode.data.packQut);
+		$("#packingQut").val(rowNode.data.packQut);
+		$("#unit").val(rowNode.data.unit);
+		$("#unit").attr("disabled", true);
+	
+		$("#packType").val(rowNode.data.packType);
+		$("#noOfItem").val(rowNode.data.noOfItem);
+		$("#packDesc").val(rowNode.data.packDesc);
+		$("#isalesOrderId").val(rowNode.data.salesOrderId);
+
+
+	}
+	
+/* 	function addPackQut(){
+		var quantity=$("#packingQut").val();
+		 $("#packQut").val(quantity);
+	} */
+	function addPackQut(fieldId) {
+		 var pending=parseFloat($("#pendingQut").val());
+			var tempVal = $("#" + fieldId).val().replace(/[^0-9 ]/g, '');
+			if( tempVal <= pending)		
+			{
+				$("#" + fieldId).val(tempVal);
+				$("#packQut").val(tempVal);
+			}
+			else{
+				
+				$("#messageParagraph").text(
+				"Please add less than or same Packing Quantity as Pending Quantity");
+				$("#msgOkModal").removeClass("btn3");
+				$("#msgOkModal").addClass("btn1");
+				$("#msgModal").modal('show');
+				$("#" + fieldId).val(null);
+				$("#packQut").val(null);
+			}
+		
+		}
+	function saveTableData() {
+		var editProduct = $("#editProduct").val();
+		var item = {};
+		var data = 1;
+		var validation = true;
+
+		if (item.sku == null || item.sku == "") {
+			validation = validationUpdated("Stock Keeping Unit Required", 'sku');
+		}
+		if (item.itemName == null || item.itemName == "") {
+			validation = validationUpdated("Item Name Required", 'itemName');
+		}
+		if (item.quantity == null || item.quantity == "") {
+			validation = validationUpdated("Quantity Required", 'quantity');
+		}
+		if (item.unit == null || item.unit == "") {
+			validation = validationUpdated("Unit Required", 'unit');
+		}
+		if (item.packingQut == null || item.packingQut == "") {
+			validation = validationUpdated("packing Item Required", 'packingQut');
+		}
+		if (item.packType == null || item.packType == "") {
+			validation = validationUpdated("packing Type Required", 'packType');
+		}
+		  if (item.noOfItem == null || item.noOfItem == "") {
+				validation = validationUpdated("No Of Item Required", 'noOfItem');
+			}
+
+		if (validation) {
+			item.slNo = data;
+			itemOptions.api.forEachNode(function(rowNode, index) {
+			
+				if (!editProduct) {
+					data = data + 1;
+					item.slNo = data;
+				}
+				else{
+					item.slNo = editProduct;
+				}
+			});
+			item.itemId = $('#itemId').val();
+			item.sku = $('#sku').val();
+			item.salesOrderId = $('#isalesOrderId').val();
+			item.hsnCode = $('#hsnCode').val();
+			item.itemName = $('#itemName').val();
+			item.quantity = $('#quantity').val();
+			item.unit = $('#unit').val();
+			item.packedQut = $('#packedQut').val();
+			item.pendingQut = $('#pendingQut').val();
+			item.unitName = $("#unit option:selected").text();
+			item.noOfItem = $("#noOfItem").val();
+			item.packQut = $("#packQut").val();
+			item.packingQut = $("#packingQut").val();
+			//alert(item.packingQut)
+			item.packType = $("#packType").val();
+			if ($("#packType").val()!=""){
+				item.packName = $("#packType option:selected").text();
+			}
+			else{
+				item.packName = "";
+			}
+			
+			item.packDate = $("#packDate").val();
+			item.packDesc = $("#packDesc").val();
+			item.noOfItem = $('#noOfItem').val();
+	
+			//item.slNo = data;
+			var quot = [];
+
+			if (editProduct) {
+				//alert(JSON.stringify(item))
+				var rowNode = itemOptions.api.getRowNode(editProduct);
+				rowNode.setData(item);
+			} else {
+				itemOptions.api.forEachNode(function(rowNode, index) {
+					quot.push(rowNode.data);
+				});
+				quot.push(item)
+				itemOptions.api.setRowData(quot);
+			}
+
+			closeNav();
+			$("#sku").val('');
+			$("#itemId").val('');
+			$("#itemName").val('');
+			$("#quantity").val('');
+			$("#unit").val('');
+			$("#noOfItem").val('');
+			
+			$("#packedQut").val('');
+			$("#pendingQut").val('');
+			
+			$("#editProduct").val(null);
+		}
+
+	}
+		
+	function Cancel() {
+		localStorage.setItem('ReqPackagesData', null);
+		$("#reqTable").show();
+		$(".btn-hs").show();
+		$("#myGrid").show();
+		$("#addData").hide();
+		$("#notess").hide();
+	 	agGrid.simpleHttpRequest({
+			url : "view-packages-through-ajax"
+		}).then(function(data) {
+			console.log(data)
+			var len = data.length;
+			$('#totalCandidate').find('span').html(len);
+			gridOptions.api.setRowData(data);
+		});   
+		
+		$("#packageheadId").html('');
+		$("#itemId").val('');
+		$("#itemName").val('');
+		$("#quantity").val('');
+		$("#taxType").val('');
+ 
+        
+		$("#custName").val(null);
+		$("#poId").val(null);
+		$("#packageSlip").val(null);
+		$("#deliveryChallanDate").val(null);
+		$("#internalNotes").val(null);
+		//$("#item").empty();
+		$('.formValidation').remove();
+		$("#delete").show();
+		$("#add").show();
+		$("#myGrid").show();
+		$("#save").hide();
+		$("#Cancel").hide();
+		$("#addData").hide();
+		$('#hideTbl').show();
+		$("#totalCandidate").show();
+		$("#dwnld").show();
+		$("#upld").show();
+	    $('#delete').attr("disabled", true);
+	    $("#itemTableDetails").empty();
+	    $('#shipment').attr("disabled", true);
+	    $('#deliveryChallanDtls').attr("disabled", true);
+	    $("#searchRowDiv").show();
+	   
+		
+	}
+
+	
+
+
+	
+	function addPackagingQutDetails() {
+		obj = {};
+		obj.salePackageId = $("#salePackageId").val();
+		obj.poId = $("#poId").val();
+		obj.salesOrder = $("#salesOrderIdHid").val();
+		
+		obj.packItemName = $("#packItemName").val();
+		obj.packTotalQut = $("#packTotalQut").val();
+		obj.packUnit = $("#packUnit").val();
+		obj.noOfItem = $("#noOfItem").val();
+		obj.packingQut = $("#packingQut").val();
+		
+		obj.packType = $("#packType").val();
+		obj.packDate = $("#packDate").val();
+		obj.packDesc = $("#packDesc").val();
+		
+  
+		var validation = true;
+
+	/* 	if (obj.packingQut == null || obj.packingQut == "") {
+			validation = validationUpdated("Quantity Required", "packingQut");
+		}
+		if (obj.packType == null || obj.packType == "") {
+			validation = validationUpdated("Type Required", "packType");
+		}
+		if (obj.packDate == null || obj.packDate == "") {
+			validation = validationUpdated("Date Required", "packDate");
+		}
+		if (obj.packDesc == null || obj.packDesc == "") {
+			validation = validationUpdated("Desc Required", "packDesc");
+		} */
+		if (validation) {
+			console.log(obj)
+			//$('.loader').show();
+			$.ajax({
+				type : "POST",
+				url : "view-packages-packedQutdetails-save",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "Success") {
+
+						$("#messageParagraph").text(
+						"Data Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						
+						$("#packModal").modal('hide');
+						getPackedQuantity();
+						
+					}else{
+						$("#messageParagraph").text(
+						"Something went to wrong");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+						//$('.loader').hide();
+					}
+				},
+				error : function(data) {
+				}
+			})
+		}
+	}
+	
+	function getPackedQuantity(){
+		
+	}
+	function deleteItem() {
+		var selectedRows = itemOptions.api.getSelectedRows();
+		itemOptions.api.applyTransaction({
+			remove : selectedRows
+		});
+
+	}
+	
+	/*
+	 * taxtype fn
+	 */
+	function hideShowS() {
+		var taxType = $("#taxType").val();
+		if (taxType == "true") {
+			$('#igstTR').show();
+			$('#cgstTR').hide();
+			$('#sgstTR').hide();
+
+		} else {
+			$('#igstTR').hide();
+			$('#cgstTR').show();
+			$('#sgstTR').show();
+
+		}
+
+	}
+	function save() {
+		if (validProductData() && validFormData()) {
+			var datas = [];
+			if (itemOptions.api.getDisplayedRowCount() > 0) {
+				itemOptions.api.forEachNode(function(rowNode, indrx) {
+
+					var obj = rowNode.data;
+					obj.salePackageId = $("#salesPackageId").val();
+					obj.salePackageId = $("#packageheadId").html();
+					obj.poId = $("#poId").val();
+					obj.salesOrder = $("#salesOrderIdHid").val();
+					obj.packageSlip = $("#packageSlip").val();
+					obj.internalNotes = $("#internalNotes").val();
+					obj.custId=$('#custId').val();
+					obj.custName=$('#custName').val();
+					obj.qutActive = $("#qutActive:checkbox:checked").val();
+
+					if (obj.qutActive == undefined) {
+						obj.qutActive = "0";
+					} else {
+						obj.qutActive = "1";
+					}
+					datas.push(obj);
+
+				});  
+
+			} /* else {
+				var obj = {};
+				obj.salePackageId = $("#salesPackageId").val();
+				obj.salePackageId = $("#packageheadId").html();
+				obj.poId = $("#poId").val();
+				obj.packageSlip = $("#packageSlip").val();
+				obj.internalNotes = $("#internalNotes").val();
+				obj.custId=$('#custId').val();
+				obj.custName=$('#custName').val();
+				
+				datas.push(obj);
+
+			} */
+
+			console.log(datas);
+			saveAllPackages(datas);
+		}
+	}
+
+	function saveAllPackages(datas) {
+		console.log(JSON.stringify(datas))
+				$.ajax({
+					type : "POST",
+					url : "view-packages-add",
+					contentType : "application/json",
+					data : JSON.stringify(datas),
+					success : function(response) {
+						if (response.message == "Success") {
+							//Cancel();
+							console.log(JSON.stringify(datas))
+
+							$("#messageParagraph").text(
+									"Data Saved Successfully");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							 $("#deliveryChallanDtls").show();
+							 $("#shipment").show();
+							Cancel();
+							$("#poId").val(response.body[0].poId);
+							$("#custId").val(response.body[0].custId);
+							$("#custName").val(response.body[0].custName);
+							$("#packageSlip").val(response.body[0].packageSlip);
+							$("#internalNotes").val(response.body[0].internalNotes);
+							$("#packageheadId").html(response.body[0].salePackageId);
+
+						}
+
+					},
+					error : function(datas) {
+						console.log(datas)
+					}
+				})
+
+	}
+	
+	function openNav() {
+		$("#sku").val("");
+		$("#itemName").val("");
+		$("#hsnCode").val("");
+		$("#quantity").val("");
+		$("#unitPrice").val("");
+		$("#discount").val(0);
+		$("#gstRate").val(0);
+		$("#lineTotal").val("");
+		$("#editProduct").val("");
+		$("#packingQut").val(null);
+		$("#packType").val(null);
+		$("#packDate").val(null);
+		$("#packQut").val(null);
+		$("#packDesc").val(null);
+		
+		var custValid = true;
+		if ($("#custName").val() == null || $("#custName").val() == "") {
+			custValid = false;
+		}
+		if (custValid) {
+			document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:430px;";
+			document.getElementById("main_content").style.width = "75%";
+		} else {
+			$("#messageParagraph").text("First Choose Customer Name");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+		}
+	}
+	
+	function closeNav() {
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main_content").style.width = "100%";
+		$('.formValidation').remove();
+		$("#sku").val('');
+		$("#itemId").val('');
+		$("#itemName").val('');
+		$("#hsnCode").val('');
+		$("#unit").val('');
+		$("#noOfItem").val('');
+		$("#quantity").val('');
+		
+		
+		$("#packingQut").val(null);
+		$("#packType").val(null);
+		$("#packDate").val(null);
+		$("#packQut").val(null);
+		$("#packDesc").val(null);
+		
+		
+		$("#editProduct").val(null);
+	}
+	//validation
+	function validFormData() {
+		var allValid = true;
+		if (!validationUpdated("PO Id. Required",
+				'poId'))
+			allValid = false;
+		/* if (!validationUpdated("Store Name Required", 'storeId'))
+			allValid = false; */
+		return allValid;
+	}
+
+	function validProductData() {
+		var x=0.0;
+		if (itemOptions.api.getDisplayedRowCount() > 0) {
+			itemOptions.api.forEachNode(function(rowNode, indrx) {
+				x =x+ parseFloat(rowNode.data.packQut);
+			});  
+		}
+		if(x>0){
+			return true;
+		}else{
+			$("#messageParagraph").text("Please Packing More than 1 Item");
+			$("#msgOkModal").removeClass("btn3");
+			$("#msgOkModal").addClass("btn1");
+			$("#msgModal").modal('show');
+			return false;
+		}
+	}
+
+	function editSalesPackage (salePackageId,poId,status) {
+		var status=window.atob(status);
+		if(status=='Generated'){
+			$("#save").hide();
+			$("#packedQut1").hide();
+			
+		}else{
+			$("#save").show();
+			$("#packedQut1").show();
+		}
+		$("#searchRowDiv").hide();
+		$("#notess").show();
+		$("#myGrid").hide();
+		$("#reqTable").hide();
+		$(".btn-hs").hide();
+		$("#addData").show();
+		$("#add").hide();
+		//$("#save").hide();
+		
+		$("#delete1").hide();
+		$("#Cancel").show();
+		$("#totalCandidate").hide();
+		$("#dwnld").hide();
+		$("#upld").hide();
+		$('#delete1').attr("disabled", true);
+		$('#new1').attr("disabled", false);
+		$('#packedQut1').attr("disabled", true);
+		
+
+		agGrid.simpleHttpRequest({
+			url : 'view-packages-edit-new?id=' + salePackageId
+		}).then(
+				function(data) {
+					console.log("tytghhyjh");
+					console.log(data);
+					$("#packageheadId").html(data[0].salePackageId);
+					$("#taxtype").val(data[0].taxType);
+					getAddressDetails(data[0].custId);
+					$("#custId").val(data[0].custId);
+					$("#custName").val(data[0].custName);
+					$("#custName").attr("disabled", true);
+					$("#poId").val(data[0].poId);
+					$("#salesOrderIdHid").val(data[0].salesOrder);
+					$("#poId").attr("disabled", true);
+					$("#deliveryChallanDate").val(data[0].packagingDate);
+					$("#deliveryChallanDate").attr("disabled", true);
+					$("#packageSlip").val(data[0].packageSlip);
+					$("#packageSlip").attr("disabled", true);
+					$("#internalNotes").val(data[0].internalNotes);
+					
+					itemOptions.api.setRowData(data);
+					
+				});
+		
+	
+
+	}
+
+	function getEditTaxType(search) {
+
+		$.ajax({
+			type : "POST",
+			url : "view-packages-get-customer-list",
+			dataType : 'json',
+			contentType : 'application/json',
+			data : search,
+			success : function(response) {
+				if (response.message == "success") {
+					console.log("response data" + response.body[0].taxType)
+					$("#taxType").val(response.body[0].taxType);
+					hideShowS();
+				}
+			},
+			error : function(data) {
+				console.log(data);
+			}
+		})
+	}
+   /* 
+	Delete  
+	 */
+	function deleteQuotation() {
+
+		$('#deleteQuot').modal('show');
+	}
+	function cancelModalBtn() {
+
+	 $("#deleteModalBtn").removeAttr("disabled");
+	 $('#deleteQuot').modal('hide');
+	 
+	}
+
+	
+	function rowSelect() {
+		var selectedNodes = gridOptions.api.getSelectedNodes();
+		 var selectedData = selectedNodes.map(node => node.data);
+		 var salePackageId= selectedData.map(node => node.salePackageId);
+		 var status= selectedData.map(node => node.status);
+		 var dchallanStatus= selectedData.map(node => node.dchallanStatus);
+		var selectedRows = gridOptions.api.getSelectedRows();
+		
+		id = "";
+		 var rowCount = 0;
+		for (var i = 0; i < selectedRows.length; i++) {
+			id = id + '"' + selectedRows[i].salePackageId+ '"';
+		     rowCount = rowCount + 1;
+		}
+		if (rowCount > 0) {
+			if(dchallanStatus=='Generated'){
+				$('#deliveryChallanDtls').attr("disabled", true);
+				$('#delete').attr("disabled", true);
+				if(status=='Shipped'){
+					$('#shipment').attr("disabled", true);
+					$('#deliveryChallanDtls').attr("disabled", true);
+				}else{
+					$('#shipment').attr("disabled", false);
+					$('#deliveryChallanDtls').attr("disabled", true);
+				}
+			}else{
+				$('#deliveryChallanDtls').attr("disabled", false);
+				$('#delete').attr("disabled", false);
+				$('#shipment').attr("disabled", true);
+			}
+			
+		} else {
+			$('#delete').attr("disabled", true);
+			$('#shipment').attr("disabled", true);
+			$('#deliveryChallanDtls').attr("disabled", true);
+			
+		}
+
+	}
+	 function deliveryChallan() {
+			var selectedRows = gridOptions.api.getSelectedRows();
+			var selectedRowsString = '';
+			selectedRows.forEach(function(selectedRow, index) {
+				if (index > 0) {
+					selectedRowsString += ',';
+				}
+				selectedRowsString += selectedRow.salePackageId;
+			//	alert("selectedRowsStringggggg"+selectedRowsString);
+				
+
+			});
+			if (selectedRowsString) {
+				sessionStorage.setItem('activity', 'ACT0204');
+				agGrid.simpleHttpRequest({
+					url : 'view-packages-edit-neww?id=' + selectedRowsString
+							
+				}).then(function(data) {
+					localStorage.setItem('ReqChallanData', JSON.stringify(data));
+					itemOptions.api.setRowData(data);
+				//	return false;
+					window.location.href = "/customer/view-deliverychallan"
+					
+				});
+
+			} else {
+				$("#alert").modal('show');
+				document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+			}
+
+		}   
+
+	function rowSelectItem() {
+		var selectedRows = itemOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			$('#delete1').attr("disabled", false);
+			$('#new1').attr("disabled", true);
+			$('#packedQut1').attr("disabled", false);
+			
+		} else {
+			$('#delete1').attr("disabled", true);
+			$('#new1').attr("disabled", false);
+			$('#packedQut1').attr("disabled", true);
+			
+		}
+	}
+	
+	function deleteOnclick() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var id = selectedRows[0].salePackageId;
+		$.ajax({
+			type : "POST",
+			url : "view-packages-delete?id=" + id,
+			success : function(response) {
+				if (response.message == "success") {
+	           			Cancel();
+	           			$('#deleteQuot').modal('hide');
+	           		
+				}
+			},
+			error : function(data) {
+				console.log(data);
+			}
+		})
+	}
+
+
+	
+	function onQuickFilterChanged() {
+		$(".ti-search srchicon").hide();
+		gridOptions.api
+				.setQuickFilter(document.getElementById('quickFilter').value);
+	}
+
+	function cancelBar() {
+		var id = document.getElementById("closeKey");
+		id.style.display = "block";
+
+		if ($('#quickFilter').val() == null || $('#quickFilter').val() == "") {
+			id.style.display = "none";
+		}
+	}
+	
+
+	/* customer AutoSearch */
+
+		function getCustomerList() {
+		var search = $("#custName").val();
+		//alert('hello get cust1 search--------'+search);
+		if (search) {
+			//alert('hello get cust2');
+			$
+					.ajax({
+						type : "POST",
+						url : "view-packages-get-customer-list",
+						dataType : 'json',
+						contentType : 'application/json',
+						data : search,
+						success : function(response) {
+							if (response.message == "success") {
+								console.log("response data"
+										+ JSON.stringify(response))
+								if (response.body.length != 0) {
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1" >';
+									for (var i = 0; i < response.body.length; i++) {
+										content += '<li style="margin-left:-30px; font-weight:100; font-size:14px; color:#ccc;     background-color: #0909e4;"  class="autocompletedata cp" onClick="selectAutocompleteValue1(\''
+												+ response.body[i].custId
+												+ '\',\''
+												+ response.body[i].custName
+												+ '\',\''
+												+ response.body[i].custGSTNo
+												+ '\',\''
+												+ response.body[i].taxType
+												+ '\')">'
+												+ response.body[i].custName
+												+ '</li>';
+									}
+									content += '<li style="margin-left:-30px;"  onclick="AddCustomer();"><a class="addCust" href="#">Add New Customer</a>'
+											+ '</li>';
+									content += '</ul>';
+									//console.log("content " + content)
+									$("#suggesstion-box1_").show();
+									$("#suggesstion-box1_").html(content);
+
+								} else {
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1">';
+									content += '<li style="margin-left:-30px; font-weight:100; font-size:14px; color:#ccc;     background-color: #0909e4;" onClick="selectAutocompleteValue()">'
+											+ "No Data Found" + '</li>';
+									content += '<li style="margin-left:-30px;"  onclick="AddCustomer();"><a class="addCust" href="#">Add New Customer</a>'
+											+ '</li>';
+									content += '</ul>';
+									$("#suggesstion-box1_").show();
+									$("#suggesstion-box1_").html(content);
+								}
+							}
+						},
+						error : function(data) {
+							console.log(data);
+						}
+					})
+		}
+
+	}
+		function AddCustomer() {
+
+			$('#addCustomerModel').modal('show');
+
+		}
+		function cancelBtn1() {
+			$('#addCustomerModel').modal('hide');
+			}
+		function selectAutocompleteValue1(custId, custName, custGSTNo, taxType) {
+
+			if (custId) {
+				//alert(custName)
+
+				$("#custId").val(custId);
+
+				$("#custName").val(custName);
+				$("#custGSTNo").val(custGSTNo);
+				$("#taxType").val(taxType);
+				$("#search").val(custName);
+				$("#search").attr('data-procat', custId);
+				$("#suggesstion-box1_").hide();
+				
+				$("#addre").show();
+				
+				hideShowS();
+				//checkForDuplicate(key,counter);
+	       getAddressDetails(custId);
+	       getSalesOrderList(custId,"add","");
+	     
+			} else {
+
+				$("#custId").val("");
+
+				$("#custName").val("");
+				$("#custGSTNo").val("");
+				$("#taxType").val("");
+				$("#search").val("");
+				$("#search").attr('data-procat', "");
+				$("#suggesstion-box1_").hide();
+
+			}
+		}
+		function selectAutocompleteValue() {
+
+			$("#custId").val("");
+
+			$("#custName").val("");
+			$("#custGSTNo").val("");
+			$("#taxType").val("");
+			$("#search").val("");
+			$("#search").attr('data-procat', "");
+			$("#suggesstion-box1_").hide();
+
+		}
+		function selectProductVal() {
+			$("#itemName").val($("#itemNameTemp").val());
+			$("#itemId").val($("#itemIdTemp").val());
+			$("#hsnCode").val($("#hsnCodeTemp").val());
+			$("#unit").val($("#unitTemp").val());
+			$("#gstRate").val($("#gstRateTemp").val());
+			$("#brandName").val($("#brandNameTemp").val());
+			$("#brandId").val($("#brandIdTemp").val());
+			$("#category").val($("#prodCatIdTemp").val());
+			$("#categoryName").val($("#prodCatNameTemp").val());
+			$("#sku").val($("#skuTemp").val());
+			$("#search").val($("#itemNameTemp").val())
+			$("#select_product").html('');
+			$('#myModal').modal('hide');
+		}
+		
+		/* Item AutoSearch */
+
+		function getItemQutotationList() {
+			var search = $("#itemName").val();
+			if (search) {
+
+				$
+						.ajax({
+							type : "POST",
+							url : "view-saleorder-item-get-customer-list",
+							dataType : 'json',
+							contentType : 'application/json',
+							data : search,
+							success : function(response) {
+								if (response.message == "success") {
+
+									if (response.body.length != 0) {
+										$("#itemName").css("background", "#FFF");
+										var content = '<ul id="autocomplete-list1" style="margin-left:-40px; font-weight:100; font-size:14px; color:#ccc;">';
+										for (var i = 0; i < response.body.length; i++) {
+											content += '<li class="autocompletedata cp" onClick="selectAutocompleteValueItem1(\''
+													+ response.body[i].itemId
+													+ '\',\''
+													+ response.body[i].itemName
+													+ '\',\''
+													+ response.body[i].gstRate
+													+ '\',\''
+													+ response.body[i].sku
+													+ '\')">'
+													+ response.body[i].itemName
+													+ '</li>';
+										}
+										content += '</ul>';
+										console.log("content " + content)
+										$("#suggesstion-box_").show();
+										$("#suggesstion-box_").html(content);
+
+									} else {
+										$("#itemName").css("background", "#FFF");
+										var content = '<ul id="autocomplete-list1">';
+										content += '<li onClick="selectAutocompleteValueItem()">'
+												+ "No Data Found" + '</li>';
+										content += '</ul>';
+										$("#suggesstion-box_").show();
+										$("#suggesstion-box_").html(content);
+									}
+								}
+							},
+							error : function(data) {
+								console.log(data);
+							}
+						})
+			}
+		}
+
+		function selectAutocompleteValueItem1(itemId, itemName, gstRate, sku) {
+
+			if (itemId) {
+
+				$("#itemId").val(itemId);
+				$("#itemName").val(itemName);
+				$("#gstRate").val(gstRate);
+				$("#sku").val(sku);
+				$("#itemName").attr('data-procat', itemId);
+				$("#suggesstion-box_").hide();
+				hideShowS();
+				//checkForDuplicate(key,counter);
+			} else {
+				$("#itemId").val("");
+				$("#hsnCode").val("");
+				$("#gstRate").val("");
+				$("#sku").val("");
+				$("#itemName").val("");
+				$("#itemName").attr('data-procat', "");
+				$("#suggesstion-box_").hide();
+
+			}
+		}
+		function selectAutocompleteValueItem() {
+
+			$("#itemId").val("");
+			$("#hsnCode").val("");
+			$("#gstRate").val("");
+			$("#sku").val("");
+			$("#itemName").val("");
+			$("#itemName").attr('data-procat', "");
+			$("#suggesstion-box_").hide();
+
+		}
+
+		function selectCheckBox(id, lvl) {
+			$("#select_product").empty();
+			getProductByCategory();
+			if (lvl == 'L1') {
+				var textDesc = $("#lbl_" + id).text();
+				$("#catDesc").text(textDesc);
+			} else {
+				var res = lvl.substring(1, 1000000);
+
+				var lastText = $("#lbl_" + id).text();
+				var textDesc = "";
+				for (i = res; i > 1; i--) {
+					var pUL = $("#lbl_" + id).parents("ul").attr("id");
+					pUL = pUL.substring(3, 10000000000000);
+					var newText = $("#lbl_" + pUL).text();
+					textDesc = newText + " > " + textDesc;
+					id = pUL;
+				}
+				textDesc = textDesc + lastText;
+				$("#catDesc").text(textDesc);
+			}
+		}
+		
+
+		function getProductByCategory() {
+
+			$("#select_product").empty();
+			var valor = "";
+			$('input.pc1-box[type=checkbox]').each(function() {
+				if (this.checked)
+					valor = valor + $(this).val() + ",";
+			});
+			if (valor) {
+				$("#select_product").empty();
+				$
+						.ajax({
+							type : "POST",
+							url : "view-saleorder-item-product-by-cat",
+							dataType : 'json',
+							contentType : 'application/json',
+							data : valor,
+							success : function(response) {
+								if (response.message == "success") {
+									console.log(response.body)
+									$("#select_product").empty();
+									var content = '';
+									for (var i = 0; i < response.body.length; i++) {
+
+										content += '<div class="autocompletedata cp product-item" id="'
+												+ response.body[i].productId
+												+ "_"
+												+ response.body[i].sku
+												+ '" onClick=selectActive("'
+												+ response.body[i].productId
+												+ "_"
+												+ response.body[i].sku
+												+ '","'
+												+ response.body[i].sku
+												+ '","'
+												+ response.body[i].productId
+												+ '","'
+												+ window
+														.btoa(response.body[i].productName)
+												+ '","'
+												+ response.body[i].brandId
+												+ '","'
+												+ window
+														.btoa(response.body[i].brandName)
+												+ '","'
+												+ response.body[i].productCatId
+												+ '","'
+												+ window
+														.btoa(response.body[i].productCatName)
+												+ '","'
+												+ window
+														.btoa(response.body[i].hsnCode)
+												+ '","'
+												+ window
+														.btoa(response.body[i].unit)
+												+ '","'
+												+ window
+														.btoa(response.body[i].gstRate)
+												+ '")>'
+												+ response.body[i].sku
+												+ " - "
+												+ response.body[i].brandName
+												+ " - "
+												+ response.body[i].productName
+												+ '</div>';
+									}
+									content += '</ul>';
+									$("#select_product").show();
+									$("#select_product").append(content);
+
+									var itemId = $("#itemId").val();
+									var skuId = $("#sku").html();
+
+									if (itemId) {
+										$("#" + itemId + "_" + skuId).addClass(
+												'productActive');
+									}
+
+								}
+							},
+							error : function(data) {
+								console.log(data)
+							}
+						})
+			} else {
+				$("#select_product").empty();
+			}
+		}
+
+		function selectActive(id, sku, productId, productName, brandId, brandName,
+				prodCatId, prodCatName, hsnCode, unit, gstRate) {
+
+			$('.autocompletedata ').removeClass('productActive');
+			$("#" + id).addClass('productActive');
+			$("#itemNameTemp").val(window.atob(productName));
+			$("#itemIdTemp").val(productId);
+			$("#brandNameTemp").val(window.atob(brandName));
+			$("#brandIdTemp").val(brandId);
+			$("#skuTemp").val(sku);
+			$("#prodCatIdTemp").val(prodCatId);
+			$("#hsnCodeTemp").val(window.atob(hsnCode));
+			$("#unitTemp").val(window.atob(unit));
+			$("#gstRateTemp").val(window.atob(gstRate));
+			$("#prodCatNameTemp").val(window.atob(prodCatName));
+			$("#searchTemp").val(window.atob(productName))
+		}
+		
+		function getSalesOrderList(custId,id1,id2){
+			//alert(id2)
+			//alert("parameter1");
+		        // var cname = $('#c//ustId').val();
+				if (custId) { 
+					var option = $("<option></option>");
+					$(option).val(null);
+					$(option).html("Select");
+					//$("#dname").append(option);
+					$.ajax({type : "GET",
+						url : "view-packages-salesorderlist?id="+ custId+"&type="+id1,
+								success : function(response) {
+									if (response.message == "success") {
+										//console.log("Salesinvoice===="+JSON.stringify(response.body))
+								
+										$("#salesOrderId").empty();
+										var option = $("<option></option>");
+										$(option).val(null);
+										$(option).html("Select");
+										$("#salesOrderId").append(option);
+										for (var i = 0; i < response.body.length; i++) {
+											var option = $("<option></option>");
+											$(option).val(response.body[i].name);
+											$(option).html(response.body[i].name);
+											$("#salesOrderId").append(option);
+										}
+									 	if(id2 !=""){
+									 		$("#salesOrderId").val(id2);
+										}
+										
+									}
+								},
+								error : function(e) { 
+								}
+							});
+				} else {
+					$("#salesOrderId").empty();
+					var option = $("<option></option>");
+					$(option).val(null);
+					$(option).html("salesOrderId");
+					$("#salesOrderId").append(option);
+					$("#salesOrderId").empty();
+					var option = $("<option></option>");
+					$(option).val(null);
+					$(option).html("Select");
+					//$("#salesOrderId").append(option);
+				}
+			}	
+		
+		function getSalesOrder(custId,salesOrder){
+		   
+			if (custId) { 
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				
+				$.ajax({type : "GET",
+					url : "view-packages-salesorderlist?id="+ custId,
+							success : function(response) {
+								if (response.message == "success") {
+									//console.log("Salesorder===="+JSON.stringify(response.body))
+							
+									$("#salesOrderId").empty();
+									var option = $("<option></option>");
+									$(option).val(null);
+									$(option).html("Select");
+									$("#salesOrderId").append(option);
+									for (var i = 0; i < response.body.length; i++) {
+										
+										if(response.body[i].name==salesOrder){
+											$(option).val(response.body[i].name);
+											$(option).html(response.body[i].name);
+											$("#salesOrderId").append(option);
+											//alert("hello");
+										}
+										
+											
+									}
+									
+								 	if(salesOrderId == null){
+								 		$("#salesOrderId").val(null);
+									} else{
+										$("#salesOrderId").val(salesOrder);
+									}
+									
+								}
+							},
+							error : function(e) { 
+							}
+						});
+			
+			
+			} else {
+				$("#salesOrderId").empty();
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("salesOrderId");
+				$("#salesOrderId").append(option);
+				$("#salesOrderId").empty();
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+			
+			}
+			
+		}
+		
+		
+		function shipments() {
+			var selectedRows = gridOptions.api.getSelectedRows();
+			var selectedRowsString = '';
+			selectedRows.forEach(function(selectedRow, index) {
+				if (index > 0) {
+					selectedRowsString += ',';
+				}
+				selectedRowsString += selectedRow.salePackageId;
+			});
+			if (selectedRowsString) {
+				
+				var salePackageId=selectedRowsString;
+				sessionStorage.setItem('activity', 'ACT0206');
+				agGrid.simpleHttpRequest({
+					url : 'view-packages-edit-new?id=' + salePackageId
+				}).then(function(data) {
+					localStorage.setItem('ReqShipmentData', JSON.stringify(data));
+					itemOptions.api.setRowData(data);
+					//return false;
+					window.location.href = "/customer/view-shipments"
+
+				});
+
+			} else {
+				$("#alert").modal('show');
+				document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+			}
+		}
+		/* ============================START================================= */
+		function getsalesOrderData() {
+			var poId=$("#poId").val();
+			agGrid.simpleHttpRequest({
+				url : 'view-packages-get-SalesItemDetails?id=' + poId
+			}).then(function(data) {
+				itemOptions.api.setRowData(data);
+/* 				trCount = '';
+				var countItm=data.length;
+				console.log("count response mail----------"+countItm);
+				for (var i = 0; i < data.length; i++) {
+					var itemRow='<tr>'
+						+'<td>'
+						+'<div class="d-flex align-content-center">'
+						+'<div class="textsec">'	
+						+'<div class="name-txt">'+data[i].itemName+'</div>'
+						+'</div>'
+						+'</div>'
+						+'</td>'
+						+'<td style="text-align:center">1</td>'
+						+'<td style="text-align:center">0</td>'
+						+'<td style="text-align:center">'+data[i].quantity+'<span>pcs</span></td>'					
+						+'</tr>';
+						trCount = itemRow;
+						$("#itemTableDetails").append(trCount);
+					}  */
+			});
+
+		}
+		
+		
+		
+		function getsalesOrderData1(poId) {
+			agGrid.simpleHttpRequest({
+				url : 'view-packages-get-SOdata?id=' + poId
+			}).then(function(data) {
+				trCount = '';
+				var countItm=data.length;
+				for (var i = 0; i < data.length; i++) {
+					var itemRow='<tr>'
+						+'<td>'
+						+'<div class="d-flex align-content-center">'
+						+'<div class="textsec">'	
+						+'<div class="name-txt">'+data[i].itemName+'</div>'
+						+'</div>'
+						+'</div>'
+						+'</td>'
+						+'<td style="text-align:center">1</td>'
+						+'<td style="text-align:center">0</td>'
+						+'<td style="text-align:center">'+data[i].quantity+'<span>pcs</span></td>'					
+						+'</tr>';
+						trCount = itemRow;
+						$("#itemTableDetails").append(trCount);
+					} 
+			});
+
+		} 
+			
+	/* 	===========================END======================================== */
+	
+		function getAddressDetails(custId) {
+	        
+	        
+			//var Id=$("#custName").val();
+		$.ajax({
+			type : "GET",
+			url : "view-packages-get-address?id=" + custId,
+
+			async : false,
+			success : function(response) {
+				if (response.message == "Success") {
+					
+	                 console.log(response.body)
+					$("#con").html(response.body.country);
+					 $("#bstate").html(response.body.states);
+					 $("#bcity")
+							.html(response.body.city);
+					$("#bstreet1")
+							.html(response.body.street1);
+					$("#bstreet2").html(response.body.street2);
+					$("#bzipcode").html(response.body.zipCode);
+					$("#bphone").html(response.body.phone);
+					$("#bfax").html(response.body.fax); 
+					
+					$("#con1").html(response.body.country1);
+					 $("#bstate1").html(response.body.states1);
+					 $("#bcity1")
+							.html(response.body.city1);
+					$("#bstreet11")
+							.html(response.body.street11);
+					$("#bstreet21").html(response.body.street21);
+					$("#bzipcode1").html(response.body.zipCode1);
+					$("#bphone1").html(response.body.phone1);
+					$("#bfax1").html(response.body.fax1); 
+					
+
+	                  }
+			}
+		});
+	}
+		//add Customer Info
+		
+		function addCustomerInfo() { 
+			//alert('hello');return false;
+			var obj = {};				
+			obj.customerId = $('#customerId').text();
+			obj.customerType = $('#customerType').val();
+			obj.salutation = $('#salutation').val();
+			obj.customerName = $('#customerName').val();
+			obj.companyName = $('#companyName').val();
+			obj.customerDisplayName = $('#customerDisplayName').val();
+			obj.cusEmail = $('#cusEmail').val();
+			obj.custMobile = $('#custMobile').val();
+			obj.custSkype = $('#custSkype').val();
+			
+			
+			obj.custDesignation = $('#custDesignation').val();
+			obj.department = $('#department').val();
+			obj.webSite = $('#webSite').val();
+			obj.status = $('#status').val();
+			obj.pan = $('#pan').val();
+			obj.currency = $('#currency').val();
+			obj.openingBalance = $('#openingBalance').val();
+			obj.paymentTerms = $('#paymentTerms').val();
+			obj.enableDtls = $('#enableDtls').val();
+			obj.portableLang = $('#portableLang').val();
+					
+			obj.faceBook = $('#faceBook').val();
+			obj.twitter = $('#twitter').val();
+			obj.country = $('#country').val();
+			obj.states = $('#states').val();
+			obj.city = $('#city').val();
+			obj.street1 = $('#street1').val();
+			obj.street2 = $('#street2').val();
+			obj.zipCode = $('#zipCode').val();
+			obj.phone = $('#phone').val();
+			obj.fax = $('#fax').val();
+			
+			obj.country1 = $('#country1').val();
+			obj.states1 = $('#states1').val();
+			obj.city1 = $('#city').val();
+			obj.street11 = $('#street11').val();
+			obj.street21 = $('#street21').val();
+			obj.zipCode1 = $('#zipCode1').val();
+			obj.phone1 = $('#phone1').val();
+			obj.fax1 = $('#fax1').val();
+					
+			obj.salutation1 = $('#salutation1').val();
+			obj.firstName = $('#firstName').val();
+			obj.lastName = $('#lastName').val();
+			obj.emailAdd = $('#emailAdd').val();
+			obj.mobile = $('#mobile').val();
+			obj.remarks = $('#remarks').val();
+					
+			console.log("object on add customer-----------"+JSON.stringify(obj));
+			//return false;
+
+			/* FORM VALIDATION STARTS*/
+
+			var validation = true;
+
+		 
+		    
+			/* FORM VALIDATION ENDS*/
+
+			if (validation) {
+				$.ajax({
+					type : "POST",
+					url : "view-packages-adds",
+					contentType : "application/json",
+					data : JSON.stringify(obj),
+					success : function(response) {
+						if (response.code == "Success") {
+							console.log(response);
+							
+							
+							$("#add").hide();
+							$("#copy").show();
+							$("#delete").hide();
+							$("#totalReq").show();
+							$("#myGrid").hide();
+							$("#searchRowDiv").hide();
+							$("#demo").hide();
+							$("#addCustomerModel").modal('hide');
+							
+							
+							
+										
+						}
+					},
+					error : function(data) {
+
+						//console.log(data);
+					}
+				})
+			}
+
+		}
+		function addnewAddress() {
+
+			$('#addAddressModel').modal('show');
+
+		}
+		function addnewAddress1() {
+
+			$('#addAddressModel1').modal('show');
+
+		}
+		function cancelBtn() {
+			$('#addAddressModel').modal('hide');
+			}
+		function cancelBtn2() {
+			$('#addAddressModel1').modal('hide');
+			}
+		function tcscancelBtn() {
+			$('#manageTCsModel').modal('hide');
+			}
+		
+		
+		function addCustomerInfo2() {
+			var obj = {};
+			var Id = $("#custId").val();
+
+			obj.customerId = $("#custId").val();
+			obj.country = $("#countryb").val();
+			obj.states = $("#statesb").val();
+			obj.city = $("#cityb").val();
+			obj.street1 = $("#street1b").val();
+			obj.street2 = $("#street2b").val();
+			obj.zipCode = $("#zipCodeb").val();
+			obj.phone = $("#phoneb").val();
+			obj.fax = $("#faxb").val();
+
+			$.ajax({
+				type : "POST",
+				url : "view-packages-add-cust-billingaddress",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "Success") {
+						
+						$("#messageParagraph").text("Data Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+
+						//$("#myGrid").show();
+						$("#billingInfo").hide();
+
+					}
+				},
+				error : function(data) {
+				}
+			})
+
+		}
+		
+		function addCustomerInfo1() {
+			var obj = {};
+			var Id = $("#custId").val();
+
+			obj.customerId = $("#custId").val();
+			obj.country1 = $("#country1s").val();
+			obj.states1 = $("#states1s").val();
+			obj.city1 = $("#city1s").val();
+			obj.street11 = $("#street11s").val();
+			obj.street21 = $("#street21s").val();
+			obj.zipCode1 = $("#zipCode1s").val();
+			obj.phone1 = $("#phone1s").val();
+			obj.fax1 = $("#fax1s").val();
+
+			$.ajax({
+				type : "POST",
+				url : "view-packages-add-cust-shippingaddress",
+				contentType : "application/json",
+				data : JSON.stringify(obj),
+				success : function(response) {
+					if (response.message == "Success") {
+						
+						$("#messageParagraph").text("Data Saved Successfully");
+						$("#msgOkModal").removeClass("btn3");
+						$("#msgOkModal").addClass("btn1");
+						$("#msgModal").modal('show');
+
+						//$("#myGrid").show();
+						$("#shippingInfo").hide();
+
+					}
+				},
+				error : function(data) {
+				}
+			})
+
+		}	
+		
+		function showDisplay(){
+			var title = $('#salutation').val();
+			var name = $('#customerName').val();
+			var fullName = title + ' ' + name;
+			$('#customerDisplayName').val(fullName);
+		}		
+		
+		function getStateDetails(){
+			
+			var cname = $('#country').val();
+			if (cname) { 
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				//$("#dname").append(option);
+				$.ajax({type : "GET",
+					url : "view-packages-stateList?id="+ cname,
+							success : function(response) {
+								if (response.message == "success") {
+									$("#states").empty();
+									var option = $("<option></option>");
+									$(option).val(null);
+									$(option).html("Select");
+									$("#states").append(option);
+									for (var i = 0; i < response.body.length; i++) {
+										var option = $("<option></option>");
+										$(option).val(response.body[i].key);
+										$(option).html(response.body[i].name);
+										$("#states").append(option);
+									}
+								}
+							},
+							error : function(e) { 
+							}
+						});
+			} else {
+				$("#states").empty();
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				$("#states").append(option);
+				$("#states").empty();
+				var option = $("<option></option>");
+				$(option).val(null);
+				$(option).html("Select");
+				//$("#dname").append(option);
+			}
+		}
+		
+		
+	function getStateDetails1(){
+		
+		var cname = $('#country1').val();
+		if (cname) { 
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+			$.ajax({type : "GET",
+				url : "view-packages-stateList?id="+ cname,
+						success : function(response) {
+							if (response.message == "success") {
+								$("#states1").empty();
+								var option = $("<option></option>");
+								$(option).val(null);
+								$(option).html("Select");
+								$("#states1").append(option);
+								for (var i = 0; i < response.body.length; i++) {
+									var option = $("<option></option>");
+									$(option).val(response.body[i].key);
+									$(option).html(response.body[i].name);
+									$("#states1").append(option);
+								}
+							}
+						},
+						error : function(e) { 
+						}
+					});
+		} else {
+			$("#states1").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#states1").append(option);
+			$("#states1").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+		}
+	}
+
+	function getStateDetailsb(){
+		
+		var cname = $('#countryb').val();
+		if (cname) { 
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+			$.ajax({type : "GET",
+				url : "view-packages-stateList?id="+ cname,
+						success : function(response) {
+							if (response.message == "success") {
+								$("#statesb").empty();
+								var option = $("<option></option>");
+								$(option).val(null);
+								$(option).html("Select");
+								$("#statesb").append(option);
+								for (var i = 0; i < response.body.length; i++) {
+									var option = $("<option></option>");
+									$(option).val(response.body[i].key);
+									$(option).html(response.body[i].name);
+									$("#statesb").append(option);
+								}
+							}
+						},
+						error : function(e) { 
+						}
+					});
+		} else {
+			$("#statesb").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#statesb").append(option);
+			$("#statesb").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+		}
+	}
+
+
+	function getStateDetailss(){
+		
+		var cname = $('#country1s').val();
+		if (cname) { 
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+			$.ajax({type : "GET",
+				url : "view-packages-stateList?id="+ cname,
+						success : function(response) {
+							if (response.message == "success") {
+								$("#states1s").empty();
+								var option = $("<option></option>");
+								$(option).val(null);
+								$(option).html("Select");
+								$("#states1s").append(option);
+								for (var i = 0; i < response.body.length; i++) {
+									var option = $("<option></option>");
+									$(option).val(response.body[i].key);
+									$(option).html(response.body[i].name);
+									$("#states1s").append(option);
+								}
+							}
+						},
+						error : function(e) { 
+						}
+					});
+		} else {
+			$("#states1s").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#states1s").append(option);
+			$("#states1s").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			//$("#dname").append(option);
+		}
+	}
+
+	function copyAsBillingAdd(){
+		
+		var country = $('#country').val();
+		var states = $('#states').val();
+		var city = $('#city').val();
+		var street1 = $('#street1').val();
+		var street2 = $('#street2').val();
+		var zipCode = $('#zipCode').val();
+		var phone = $('#phone').val();
+		var fax = $('#fax').val();
+		
+		$('#country1').val(country);
+		$('#states1').val(states);
+		getStateDataOnEdit1(states);
+		$('#city1').val(city);
+		$('#street11').val(street1);
+		$('#street21').val(street2);
+		$('#zipCode1').val(zipCode);
+		$('#phone1').val(phone);
+		$('#fax1').val(fax);
+	}	
+		
+		
+	function getStateDataOnEdit1(stateId) {
+		var country = $("#country").val();
+		if (country) { 
+			$.ajax({
+				type : "GET",
+				url : "view-packages-stateList?id=" + country,
+				success : function(response) {
+					if (response.message == "success") {
+						$("#states1").empty();
+						var option = $("<option></option>");
+						$(option).val(null);
+						$(option).html("Select");
+						$("#states1").append(option);
+						for (var i = 0; i < response.body.length; i++) {
+							var option = $("<option></option>");
+							$(option).val(response.body[i].key);
+							$(option).html(response.body[i].name);
+							$("#states1").append(option);
+						}
+						$("#states1").val(stateId);
+					}
+				},
+				error : function(e) { 
+				}
+			});
+		} else {
+			$("#states1").empty();
+			var option = $("<option></option>");
+			$(option).val(null);
+			$(option).html("Select");
+			$("#states1").append(option);
+		}
+	}
+//downloadDetails		
+function downloadDetails() { 
+	var dataset = [];
+	gridOptions.api.forEachNodeAfterFilterAndSort(function(rowNode, index) {
+		 dataset.push(rowNode.data);
+	});
+	gridOptions.api.exportDataAsCsv(dataset);
+}
+//	changeDateFormat
+function changeDateFormat(inputDate){  // expects Y-m-d
+	    var splitDate = inputDate.split('-');
+	    if(splitDate.count == 0){
+	        return null;
+	    }
+	    var year = splitDate[0];
+	    var month = splitDate[1];
+	    var day = splitDate[2]; 
+	    return day + '-' + month + '-' + year;
+	}
+
+function checkNumeric(fieldId) {
+
+	var tempVal = $("#" + fieldId).val().replace(/[^0-9 ]/g, '');
+
+	const input = document.getElementById(fieldId);
+	const position = input.selectionStart;
+	if (tempVal.slice(-1) == ' ') {
+		$("#" + fieldId).empty();
+		tempVal = '';
+	}
+	$("#" + fieldId).val(tempVal);
+}
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+
+
+						<div class="d-flex justify-content-between" id="reqTable"
+							style="display: none;">
+
+							<div class="btn-hs">
+								<div class="font-design" id="totalCandidate">
+									Packages(<span></span>)
+								</div>
+							</div>
+							<input type="hidden" id="editProduct">
+							<div id="searchRowDiv">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+
+							<div class="col-md-5 buttonsec btn-hs">
+
+								<button class="btn4" id=dwnld onclick="downloadDetails()">Download</button>
+								<!-- <button onclick="add()" class="btn1" id="add">New</button> -->
+								<button onclick="deleteQuotation()" class="btn3" id="delete">delete</button>
+								<button onclick="shipments()" class="new-btn" id="shipment">shipment</button>
+								<button onclick="deliveryChallan()" class="btn2"
+									id="deliveryChallanDtls">Delivery Challan</button>
+							</div>
+						</div>
+						<div id="myGrid" style="height: 500px; width: 100%;"
+							class="ag-theme-alpine"></div>
+						<div class="collapse" id="addData">
+							<div class="innerstickybg">
+								<div class="row">
+									<div class="col-md-3">
+										Packages ID: <span id="packageheadId"></span>
+									</div>
+									<input type="hidden" id="salePackageId">
+									<input type="hidden" id="salesOrderIdHid">
+									<div class="col-md-9" align="right">
+										<button class="cancel-btn" id="Cancel" onClick="Cancel()">Cancel</button>
+										<button class="approve-btn" id="save" onclick="save()"> Save </button>
+									</div>
+								</div>
+							</div>
+							<div class="row innersticky_contentgap">
+								<input type="hidden" id="salesOrder"> <input
+									type="hidden" id="quotationId"> <input type="hidden"
+									id="saleInvoice"><input type="hidden"
+									id="saleDeliveryChallan"><input type="hidden"
+									id="salesPackageId">
+								<div class="col-lg-3">
+									<div class="form-group">
+										<div class="autocomplete" style="width: 100%;">
+											<label>Customer Name</label> <input type="text" id="custName"
+												placeholder="Customer Name" class="form-control fromtxt" 
+												onkeyup='getCustomerList();'><input type="hidden"
+												id="custId"> <input type="hidden" id="custGSTNo">
+											<input type="hidden" id="taxType" onclick="hideShowS()">
+										</div>
+										<div id="suggesstion-box1_" class="sugg-cls"></div>
+									</div>
+									<div class="row" id=addre>
+										<div class="col-md-6">
+											<span class="billtxt" id="billingAdd">Billing Address</span>
+											<address class="font-small ember-view">
+												<!-- <strong id="addNewAdd1" onclick="addnewAddress()"
+													style="color: blue" >Add New Address</strong> -->
+											</address>
+											<div class="preserve-wrap1">
+												<span id='con'></span><br> <span id='bstate'></span><br>
+												<span id='bcity'></span><br> <span id='bstreet1'></span><br>
+												<span id='bstreet2'></span><br> <span id='bzipcode'></span><br>
+												<span id='bphone'></span><br> <span id='bfax'></span><br>
+											</div>
+										</div>
+										<div class="col-md-6">
+											<span class="billtxt" id="shippingAdd">Shipping
+												Address</span>
+											<address class="font-small ember-view">
+												<!-- <strong id="addNewAdd" onclick="addnewAddress1()"
+													style="color: blue">Add New Address</strong> -->
+											</address>
+											<div class="preserve-wrap1">
+												<span id='con1'></span><br> <span id='bstate1'></span><br>
+												<span id='bcity1'></span><br> <span id='bstreet11'></span><br>
+												<span id='bstreet21'></span><br> <span id='bzipcode1'></span><br>
+												<span id='bphone1'></span><br> <span id='bfax1'></span><br>
+											</div>
+										</div>
+									</div>
+								</div>
+								<div class="col-md-3">
+									<div class="form-group">
+										<label>PO Id</label>
+										<input type="text"
+											id="poId" 
+											class="form-control" readonly>
+									</div>
+								</div>
+								<div class="col-lg-3">
+									<div class="form-group">
+										<label>Package Slip#</label><input type="text"
+											id="packageSlip" placeholder="Package Slip"
+											class="form-control" readonly>
+									</div>
+								</div>
+								<div class="col-lg-3">
+									<label> Date</label> <input type="text"
+										id="deliveryChallanDate" class="form-control" readonly>
+								</div>
+							</div>
+							<br> <br>
+							<!-- 							<div>
+								<table class="table table-bordered">
+									<thead>
+										<tr>
+											<th width="40%">Item Name</th>
+											<th width="15%">Ordered</th>
+											<th width="15%">Packed</th>
+											<th width="30%">Quantity Of Pack</th>
+										</tr>
+									</thead>
+									<tbody id="itemTableDetails">
+									</tbody>
+								</table>
+							</div> -->
+							<div id="main_content">
+								<div class="accordion-item">
+									<h2 class="accordion-header" id="headingOne">
+										<button class="accordion-button" type="button"
+											data-bs-toggle="collapse" data-bs-target="#collapseOne"
+											aria-expanded="false" aria-controls="collapseOne">
+											Item Details</button>
+									</h2>
+
+									<div id="collapseOne" class="accordion-collapse collapse show"
+										aria-labelledby="headingOne"
+										data-bs-parent="#accordionExample">
+										<div class="accordion-body">
+
+											<div class="row">
+
+												<div class="col-md-4 btn-hs1">
+													<div class="font-design"></div>
+												</div>
+												<div class="col-md-8 butttonsec">
+
+
+													<!-- 	<button class="new-btn" id="new1" onclick="openNav()">NEW</button> -->
+													<button class="new-btn" id="packedQut1"
+														onclick="packedItem()">PACKED QUT</button>
+												</div>
+											</div>
+											<div id="item" style="width: 100%; height: 200px;"
+												class="ag-theme-alpine"></div>
+
+
+										</div>
+
+									</div>
+
+
+									<div id="mySidenav" class="sidenav">
+										<div class="slidebox">
+											<div class="row">
+												<div class="chartbtnsec">
+													<div align="right">
+														<button class="cancel-btn" onclick="closeNav()">CANCEL</button>
+														<button class="approve-btn" id="saveTableData"
+															onclick="saveTableData()">SAVE</button>
+
+													</div>
+												</div>
+
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Stock Keeping Unit</label> <input type="text"
+															id="sku" class="form-control" onblur="removeValid(event)" readonly>
+														<!-- 	<div id="suggesstion-box_" class="sugg-cls"></div> -->
+													</div>
+												</div>
+<!-- 												<div class="col-lg-6 mrt_6">
+													<div class="form-group">
+														<button id="browseBtnNew" class="browse-btn">Browse</button>
+													</div>
+												</div> -->
+												<div class="col-lg-6">
+													<div class="form-group">
+														<div class="autocomplete" style="width: auto">
+															<input type="hidden" id="editProduct"> 
+															<input type="hidden" id="isalesOrderId"> <input
+																type="hidden" id="itemId"> <label>Item
+																Name</label> <input type="text" id="itemName"
+																onblur="removeValid(event)" class="form-control"
+																onkeyup='getItemQutotationList()' readonly>
+														</div>
+														<div id="suggesstion-box_" class="sugg-cls"></div>
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>HSN Code</label> <input type="text" id="hsnCode"
+															onblur="removeValid(event)" class="form-control" readonly>
+													</div>
+												</div>
+
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Quantity</label> <input type="text" id="quantity"
+															onblur="removeValid(event)" class="form-control" readonly>
+													</div>
+												</div>
+												
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>MOQ</label>
+														<div class="select">
+															<select id="unit" class="form-control" onblur="removeValid(event);">
+																<option value="">Select</option>
+																<option th:each="c,iter:${unitList}" th:value="${c.key}"
+																	th:text="${c.name}"></option>
+															</select>
+														</div>
+													</div>
+												</div>
+											
+												
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Packed Quantity</label> <input type="text" id="packedQut"
+															onblur="removeValid(event)" class="form-control" readonly>
+													</div>
+												</div>
+												
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Pending Quantity</label> <input type="text" id="pendingQut"
+															onblur="removeValid(event)" class="form-control" readonly>
+													</div>
+												</div>
+
+
+
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Packing Quantity</label> <input type="text"
+															class="form-control" id="packingQut" autocomplete="off"
+															onkeyup="addPackQut('packingQut')" />
+													</div>
+												</div>
+												
+													
+											<div class="col-lg-6">
+													<div class="form-group">
+														<label>No. Of Item</label><input type="text" id="noOfItem"
+															class="form-control" onkeyup="checkNumeric('noOfItem');">
+													</div>
+												</div>
+
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Packaging Type</label> 
+														<select class="form-control" id="packType">
+															
+															<!-- <option value="">Select</option> -->
+															<option  value="">Select</option>
+															<option th:each="c,iter:${packTypeList}" th:value="${c.key}"
+																th:text="${c.name}"></option>
+														</select>
+													</div>
+												</div>
+												<div class="col-lg-6" id="packDateDiv">
+													<div class="form-group" >
+												<label>Packaging Date</label> <input type="text"
+													class="form-control" id="packDate" autocomplete="off" readonly/>
+											   </div>
+											   <input type="hidden"
+															class="form-control" id="packQut" autocomplete="off"
+															readonly />
+                                                     </div>
+<!-- 												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Packed Quanity</label> <input type="text"
+															class="form-control" id="packQut" autocomplete="off"
+															readonly />
+													</div>
+												</div> -->
+												<div class="col-lg-12">
+													<div class="form-group">
+														<label>Description</label>
+														<textarea type="text" class="form-control" id="packDesc"
+															autocomplete="off" /></textarea>
+													</div>
+												</div>
+
+
+
+
+											</div>
+
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="col-md-12" id="notess">
+							<div class="form-group" >
+								<label style="margin-bottom: 10px;">Internal Notes</label>
+								<textarea id="internalNotes" class="mt-2 form-controls"
+									style="height: 129px;"> </textarea>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="modal fade" id="myModal">
+					<div class="modal-dialog modal-lg" style="margin-top: 130px;">
+						<div class="modal-content">
+
+							<!-- Modal Header -->
+							<div class="modal-header">
+								<h4 class="modal-title md-color">Select Product</h4>
+								<button type="button" class="close cp" data-dismiss="modal"
+									onclick="closeModal1()">&times;</button>
+							</div>
+
+							<!-- Modal body -->
+							<div class="modal-body modal-cat">
+								<div class="row">
+
+									<div class="col-md-6" df="0"
+										style="height: 300px; overflow-y: scroll;">
+										<table id="basic">
+											<tbody id="productCategoryCBDiv"></tbody>
+										</table>
+
+
+									</div>
+									<div class="col-md-6" id="productCategorySelectDiv" df="0"
+										style="border-left: 1px solid #ccc;">
+										<div>
+											<div class="productlist">Select Product</div>
+											<div id="select_product"></div>
+											<input type="hidden" id="itemNameTemp" /> <input
+												type="hidden" id="itemIdTemp" /> <input type="hidden"
+												id="brandNameTemp" /> <input type="hidden" id="brandIdTemp" />
+											<input type="hidden" id="skuTemp" /> <input type="hidden"
+												id="hsnCodeTemp" /> <input type="hidden" id="unitTemp" />
+											<input type="hidden" id="gstRateTemp" /> <input
+												type="hidden" id="prodCatIdTemp" /> <input type="hidden"
+												id="prodCatNameTemp" />
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<!-- Modal footer -->
+							<div class="modal-footer">
+								<div class="chartbtnsec">
+									<button class="approve-btn" onclick="selectProductVal()">SELECT</button>
+									<button class="cancel-btn" data-dismiss="modal"
+										onclick="closeModal1()">CANCEL</button>
+								</div>
+							</div>
+
+						</div>
+					</div>
+				</div>
+				<!-- delete modal start -->
+				<div id="deleteQuot" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column">
+								<!-- <button type="button" class="close" data-dismiss="modal"
+									aria-hidden="true" onclick="cancelModalBtn()">
+									<i class="ti-close modal-close"></i>
+								</button> -->
+							</div>
+							<div class="modal-body">
+								<p>Do you really want to delete these records? This process
+									cannot be undone.</p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: -30px;">
+
+								<button type="button" class="cancel-btn" data-dismiss="modal"
+									onclick="cancelModalBtn()">Cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="deleteOnclick()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+
+				<!-- alert modal start -->
+				<div id="alert" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column">
+								<button type="button" class="close" data-dismiss="modal"
+									aria-hidden="true" onclick="cancelModalBtn()">
+									<i class="ti-close modal-close"></i>
+								</button>
+							</div>
+							<div class="modal-body">
+								<p id="textId"></p>
+							</div>
+							<div class="modal-footer justify-content-center"
+								style="margin-top: -30px;">
+								<button type="button" class="btn1" data-dismiss="modal">SELECT</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div id="deleteAttachment" class="modal fade show" aria-modal="true">
+					<div class="modal-dialog modal-confirm">
+						<div class="modal-content">
+							<div class="modal-header flex-column">
+								<button type="button" class="close" data-dismiss="modal"
+									aria-hidden="true" onclick="closeDeleteConfirm()">
+									<i class="ti-close modal-close"></i>
+								</button>
+							</div>
+							<div class="modal-body">
+								<p>Do you really want to delete these records? This process
+									cannot be undone.</p>
+								<input type="hidden" id="dltValue">
+							</div>
+							<div class="modal-footer justify-content-center">
+
+								<button type="button" class="cancel-btn" data-dismiss="modal"
+									onclick="closeDeleteConfirm()">Cancel</button>
+								<button type="button" class="delete-btn"
+									onclick="deletAttachmentRow()">Delete</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="modal fade" id="addCustomerModel">
+					<div class="modal-dialog modal-lg"
+						style="margin-top: 130px; height: 900px;">
+						<div class="modal-content">
+							<!-- Modal body -->
+							<div class="modal-body">
+								<div class="innerstickybg">
+									<div class="d-flex justify-content-between" id="main">
+										<div class="col-md-3" id="idDiv">
+											Customer ID: <span id="customerId"></span>
+										</div>
+										<div>
+											<span class="taskInfo">Customer Information</span>
+										</div>
+									</div>
+								</div>
+
+								<div class="row">
+									<div class="innercontent">
+										<div class="row">
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Customer Type</label>
+													<div class="select">
+														<select id="customerType">
+															<option value="">Select</option>
+															<option value="Business">Business</option>
+															<option value="Individual">Individual</option>
+														</select>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Salutation</label>
+													<div class="select">
+														<select id="salutation" onchange="showDisplay()">
+															<option value="">Select</option>
+															<option value="Mr.">Mr.</option>
+															<option value="Mrs.">Mrs.</option>
+															<option value="Ms.">Ms.</option>
+															<option value="Miss.">Miss.</option>
+															<option value="Dr.">Dr.</option>
+															<option value="Prof.">Prof.</option>
+														</select>
+													</div>
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Customer Name</label> <input type="text"
+														class="form-control" id="customerName"
+														placeholder="Customer Name" onblur="showDisplay()">
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Company Name</label> <input type="text"
+														class="form-control" id="companyName"
+														placeholder="Company Name">
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Customer Display Name</label> <input type="text"
+														class="form-control" id="customerDisplayName"
+														placeholder="Customer Display Name" disabled>
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Customer Email</label> <input type="text"
+														class="form-control" id="cusEmail" placeholder="Email">
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Customer Mobile</label> <input type="text"
+														class="form-control" id="custMobile" placeholder="Mobile">
+												</div>
+											</div>
+
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Customer Skype</label> <input type="text"
+														class="form-control" id="custSkype"
+														placeholder="Customer Skype">
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Customer Designation</label> <input type="text"
+														class="form-control" id="custDesignation"
+														placeholder="Customer Designation">
+												</div>
+											</div>
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Department</label> <input type="text"
+														class="form-control" id="department"
+														placeholder="Department">
+												</div>
+											</div>
+
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Web Site</label> <input type="text"
+														class="form-control" id="webSite" placeholder="Web Site">
+												</div>
+											</div>
+
+
+											<div class="col-md-4">
+												<div class="form-group">
+													<label>Status</label>
+													<div class="select">
+														<select id="status">
+															<option value="">Select</option>
+															<option value="Active">Active</option>
+															<option value="Inactive">Inactive</option>
+														</select>
+													</div>
+												</div>
+											</div>
+
+
+										</div>
+									</div>
+
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingTwo">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseTwo"
+												aria-expanded="true" aria-controls="collapseTwo">
+												Other Details</button>
+										</h2>
+										<div id="collapseTwo" class="accordion-collapse collapse show"
+											aria-labelledby="headingTwo"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+
+												<div class="row">
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>PAN</label> <input type="text"
+																class="form-control" id="pan" placeholder="PAN">
+														</div>
+													</div>
+
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Currency</label>
+															<div class="select">
+																<select id="currency">
+																	<option value="">Select</option>
+																	<option value="AED-UAE Dirham">AED-UAE Dirham</option>
+																	<option value="AUD-Australian Doller">AUD-Australian
+																		Dollar</option>
+																	<option value="CAD-Canadian Doller">CAD-Canadian
+																		Dollar</option>
+																	<option value="CNY-Yuan Renminbi">CNY-Yuan
+																		Renminbi</option>
+																	<option value="EUR-Euro">EUR-Euro</option>
+																	<option value="GBP-Pound Sterlin">GBP-Pound
+																		Sterlin</option>
+																	<option value="JPY-Japanese Yen">JPY-Japanese
+																		Yen</option>
+																	<option value="SAR-Saudi Riyal">SAR-Saudi
+																		Riyal</option>
+																	<option value="USD-United State Doller">USD-United
+																		State Dollar</option>
+																	<option value="ZAR-South Africa Rand">ZAR-South
+																		Africa Rand</option>
+																</select>
+															</div>
+														</div>
+													</div>
+
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Opening Balance</label> <input type="text"
+																class="form-control" id="openingBalance"
+																placeholder="Opening Balance">
+														</div>
+													</div>
+
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Payment Terms</label>
+															<div class="select">
+																<select id="paymentTerms">
+																	<option value="">Select</option>
+																	<option value="Net 15">Net 15</option>
+																	<option value="Net 30">Net 30</option>
+																	<option value="Net 45">Net 45</option>
+																	<option value="Net 60">Net 60</option>
+																	<option value="Due end of the month">Due end
+																		of the month</option>
+																	<option value="Due end of the next month">Due
+																		end of the next month</option>
+																	<option value="Due on receipt">Due on receipt</option>
+																</select>
+															</div>
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Enable Portals</label><br> <input
+																type="checkbox" class="form-control" id="enableDtls"
+																placeholder="Enable Details"> <label>Allow
+																portal acces for this customer</label>
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Portable Language</label>
+
+															<div class="select">
+																<select id="portableLang">
+																	<option value="">Select</option>
+																	<option value="English">English</option>
+																	<option value="HIndi">Hindi</option>
+																	<option value="Bengali">Bengali</option>
+																	<option value="Odia">Odia</option>
+																	<option value="French">French</option>
+																	<option value="Spanish">Spanish</option>
+																	<option value="Bahasa Indonesia">Bahasa
+																		Indonesia</option>
+																	<option value="Italian">Italian</option>
+																	<option value="Dutch">Dutch</option>
+																	<option value="Sanskrit">Sanskrit</option>
+																</select>
+															</div>
+														</div>
+													</div>
+
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>FaceBook</label> <input type="text"
+																class="form-control" id="faceBook"
+																placeholder="FaceBook">
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Twitter</label> <input type="text"
+																class="form-control" id="twitter" placeholder="Twitter">
+														</div>
+													</div>
+
+
+												</div>
+
+											</div>
+										</div>
+									</div>
+
+
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingTwo2">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseTwo2"
+												aria-expanded="true" aria-controls="collapseTwo2">
+												Billing Address Details</button>
+										</h2>
+										<div id="collapseTwo2"
+											class="accordion-collapse collapse show"
+											aria-labelledby="headingTwo2"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+
+												<div class="row">
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Country</label>
+															<div class="select">
+																<select id="country" onchange="getStateDetails()">
+																	<option th:value="NULL">Select Country</option>
+																	<option th:each="c,iter:${countryList}"
+																		th:value="${c.key}" th:text="${c.name}"></option>
+																</select>
+															</div>
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>State</label>
+															<div class="select">
+																<select id="states">
+																	<option th:value="NULL">Select State</option>
+																	<!-- <option th:each="c,iter:${statesList}"
+													th:value="${c.key}" th:text="${c.name}"></option> -->
+																</select> <span class="focus"></span>
+															</div>
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>City</label> <input type="text"
+																class="form-control" id="city" placeholder="City">
+														</div>
+													</div>
+
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Street 1</label> <input type="text"
+																class="form-control" id="street1" placeholder="Street 1">
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Street 2</label> <input type="text"
+																class="form-control" id="street2" placeholder="Street 2">
+														</div>
+													</div>
+
+
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>ZipCode</label> <input type="text"
+																class="form-control" id="zipCode" placeholder="Zip Code">
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Phone</label> <input type="text"
+																class="form-control" id="phone" placeholder="Phone">
+														</div>
+													</div>
+
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Fax</label> <input type="text"
+																class="form-control" id="fax" placeholder="Fax">
+														</div>
+													</div>
+
+												</div>
+
+											</div>
+										</div>
+									</div>
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingTwo2">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseTwo2"
+												aria-expanded="true" aria-controls="collapseTwo2">
+												Shipping Address Details</button>
+											<div class="btnbill">
+												<button class="btn btn-primarynew"
+													onclick="copyAsBillingAdd()">Copy As Billing
+													Address</button>
+											</div>
+										</h2>
+										<div id="collapseTwo2"
+											class="accordion-collapse collapse show"
+											aria-labelledby="headingTwo2"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+
+												<div class="row">
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Country</label>
+															<div class="select">
+																<select id="country1" onchange="getStateDetails1()">
+																	<option th:value="NULL">Select Country</option>
+																	<option th:each="c,iter:${countryList}"
+																		th:value="${c.key}" th:text="${c.name}"></option>
+																</select>
+															</div>
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>State</label>
+															<div class="select">
+																<select id="states1">
+																	<option th:value="NULL">Select State</option>
+																	<!-- <option th:each="c,iter:${statesList}"
+													th:value="${c.key}" th:text="${c.name}"></option> -->
+																</select> <span class="focus"></span>
+															</div>
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>City</label> <input type="text"
+																class="form-control" id="city1" placeholder="City">
+														</div>
+													</div>
+
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Street 1</label> <input type="text"
+																class="form-control" id="street11"
+																placeholder="Street 1">
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Street 2</label> <input type="text"
+																class="form-control" id="street21"
+																placeholder="Street 2">
+														</div>
+													</div>
+
+
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>ZipCode</label> <input type="text"
+																class="form-control" id="zipCode1"
+																placeholder="Zip Code">
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Phone</label> <input type="text"
+																class="form-control" id="phone1" placeholder="Phone">
+														</div>
+													</div>
+
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Fax</label> <input type="text"
+																class="form-control" id="fax1" placeholder="Fax">
+														</div>
+													</div>
+
+												</div>
+
+											</div>
+										</div>
+									</div>
+
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingTwo3">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseTwo3"
+												aria-expanded="true" aria-controls="collapseTwo3">
+												Contact Person Details</button>
+										</h2>
+										<div id="collapseTwo3"
+											class="accordion-collapse collapse show"
+											aria-labelledby="headingTwo3"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+
+												<div class="row">
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Salutation</label>
+															<div class="select">
+																<select id="salutation1">
+																	<option value="">Select</option>
+																	<option value="Mr.">Mr.</option>
+																	<option value="Mrs.">Mrs.</option>
+																	<option value="Ms.">Ms.</option>
+																	<option value="Miss.">Miss.</option>
+																	<option value="Dr.">Dr.</option>
+																	<option value="Prof.">Prof.</option>
+																</select>
+															</div>
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>First Name</label> <input type="text"
+																class="form-control" id="firstName"
+																placeholder="first Name">
+														</div>
+													</div>
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Last Name</label> <input type="text"
+																class="form-control" id="lastName"
+																placeholder="last Name">
+														</div>
+													</div>
+
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Email Address</label> <input type="text"
+																class="form-control" id="emailAdd" placeholder="Email">
+														</div>
+													</div>
+
+
+													<div class="col-md-4">
+														<div class="form-group">
+															<label>Mobile</label> <input type="text"
+																class="form-control" id="mobile" placeholder="Mobile">
+														</div>
+													</div>
+
+												</div>
+
+											</div>
+										</div>
+									</div>
+
+
+									<div class="accordion-item">
+										<h2 class="accordion-header" id="headingTwo4">
+											<button class="accordion-button" type="button"
+												data-bs-toggle="collapse" data-bs-target="#collapseTwo4"
+												aria-expanded="true" aria-controls="collapseTwo4">
+												Remark Details</button>
+										</h2>
+										<div id="collapseTwo4"
+											class="accordion-collapse collapse show"
+											aria-labelledby="headingTwo4"
+											data-bs-parent="#accordionExample">
+											<div class="accordion-body">
+
+												<div class="row">
+													<div class="col-md-8">
+														<div class="modal-inrheading">Remarks</div>
+														<div class="position-text">
+															<textarea rows="4" cols="100" id="remarks"
+																onkeyup="textCount(event)"></textarea>
+															<div id="charNumSN" class="txtcounter" align="right">
+																<span>0</span> characters
+															</div>
+														</div>
+													</div>
+
+
+												</div>
+
+											</div>
+										</div>
+									</div>
+
+									<div class="row mt-4">
+										<div class="form-group">
+
+											<button class="btn4" id="cancel" onclick="cancelBtn1()">CANCEL</button>
+											<button class="btn1" id="save" onclick="addCustomerInfo()">SAVE</button>
+
+										</div>
+									</div>
+
+								</div>
+
+							</div>
+
+
+						</div>
+					</div>
+				</div>
+
+
+
+				<div class="modal fade" id="addAddressModel">
+					<div class="modal-dialog modal-lg"
+						style="margin-top: 130px; height: 900px;">
+						<div class="modal-content">
+
+							<!-- Modal Header -->
+							<div class="modal-header flex-column">
+								<button type="button" class="close" data-dismiss="modal"
+									aria-hidden="true" onclick="cancelModalBtn()">
+									<i class="ti-close modal-close"></i>
+								</button>
+							</div>
+							<!-- 	Modal body -->
+							<div class="modal-body">
+
+								<div class="col-md-12" id="billingInfo">
+									<div class="card-title">
+										<h4>Billing Address</h4>
+									</div>
+									<div class="row">
+
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Country</label>
+												<div class="select">
+													<select id="countryb" onchange="getStateDetailsb()">
+														<option th:value="NULL">Select Country</option>
+														<option th:each="c,iter:${countryList}"
+															th:value="${c.key}" th:text="${c.name}"></option>
+													</select>
+												</div>
+											</div>
+										</div>
+
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>State</label>
+												<div class="select">
+													<select id="statesb">
+														<option th:value="NULL">Select State</option>
+														<option th:each="c,iter:${statesList}" th:value="${c.key}"
+															th:text="${c.name}"></option>
+													</select> <span class="focus"></span>
+												</div>
+											</div>
+										</div>
+
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>City</label> <input type="text" class="form-control"
+													id="cityb" placeholder="City">
+											</div>
+										</div>
+
+
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Street 1</label> <input type="text"
+													class="form-control" id="street1b" placeholder="Street 1">
+											</div>
+										</div>
+
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Street 2</label> <input type="text"
+													class="form-control" id="street2b" placeholder="Street 2">
+											</div>
+										</div>
+
+
+
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>ZipCode</label> <input type="text"
+													class="form-control" id="zipCodeb" placeholder="Zip Code">
+											</div>
+										</div>
+
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Phone</label> <input type="text" class="form-control"
+													id="phoneb" placeholder="Phone">
+											</div>
+										</div>
+
+
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Fax</label> <input type="text" class="form-control"
+													id="faxb" placeholder="Fax">
+											</div>
+										</div>
+
+									</div>
+
+									<div class="row mt-4">
+										<div class="form-group">
+
+											<button class="btn4" id="cancel" onclick="cancelBtn()">CANCEL</button>
+											<button class="btn1" id="save" onclick="addCustomerInfo2()">SAVE</button>
+
+										</div>
+									</div>
+								</div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="modal fade" id="packModal">
+					<div class="modal-dialog modal-lg"
+						style="margin-top: 130px; height: 900px;">
+						<div class="modal-content">
+
+							<!-- Modal Header -->
+							<div class="modal-header">
+								<h4 class="modal-title md-color">ADD PACKED QUANTITY</h4>
+								<button type="button" class="close cp" data-bs-dismiss="modal">&times;</button>
+							</div>
+							<!-- Modal body -->
+							<div class="modal-body">
+
+								<div class="col-md-12" id="paymentDetails">
+									<div class="card-title">
+										<h4>Quantity Details</h4>
+									</div>
+									<div class="row">
+										<input type="hidden" id="paymentId">
+										<div class="col-lg-6">
+											<div class="form-group" id="branchNamediv">
+												<label>Item Name</label> <input type="text"
+													autocomplete="off" class="form-control" id="packItemName"
+													readonly />
+											</div>
+
+
+											<div class="form-group">
+												<label>Total Quantity</label> <input type="text"
+													class="form-control" id="packTotalQut" readonly>
+											</div>
+
+											<div class="form-group">
+												<label>Unit</label> <input type="text" class="form-control"
+													id="packUnit" readonly />
+											</div>
+											<!-- 	<div class="form-group">
+													<label>Packed Quantity</label> <input type="text"
+														class="form-control" id="packQut" readonly />
+												</div> -->
+										</div>
+										<div class="col-lg-6">
+											<div class="form-group">
+												<label>Packing Quantity</label> <input type="text"
+													class="form-control" id="packingQut" autocomplete="off" />
+											</div>
+
+											<div class="form-group">
+												<label>Packaging Type</label> <select class="form-control"
+													id="packType">
+													<option value="">--Select--</option>
+													<option th:each="c:${packTypeList}" th:value='${c.key}'
+														th:text="${c.name}"></option>
+												</select>
+											</div>
+											<!-- 	<div class="form-group" >
+												<label>Packaging Date</label> <input type="text"
+													class="form-control" id="packDate" autocomplete="off"/>
+											</div>
+											 -->
+											<div class="form-group calendar_box">
+												<label>Packaging Date</label> <input type="text"
+													id="packDate" class="form-control"
+													th:attr="onkeyup=|formatDate('packDate','${session.DATEFORMAT_JS}')|"
+													readonly> <i class="ti-calendar picker_calendar"
+													id="dateCalendar"></i>
+											</div>
+										</div>
+										<div class="col-lg-12">
+											<div class="form-group">
+												<label>Description</label>
+												<textarea type="text" class="form-control" id="packDesc"
+													autocomplete="off" /></textarea>
+											</div>
+										</div>
+
+									</div>
+
+									<div class="row">
+										<div class="form-group">
+											<button type="button" id="submitPackaging" class="btn1"
+												onclick="addPackagingQutDetails();">Submit</button>
+										</div>
+									</div>
+
+								</div>
+							</div>
+
+							<!-- Modal footer -->
+							<div class="modal-footer">
+								<div class="chartbtnsec">
+
+									<!-- <button class="btn4" data-bs-dismiss="modal">CANCEL</button> -->
+								</div>
+							</div>
+
+						</div>
+					</div>
+				</div>
+
+				<div class="modal fade" id="addAddressModel1">
+					<div class="modal-dialog modal-lg"
+						style="margin-top: 130px; height: 900px;">
+						<div class="modal-content">
+
+							<!-- 	Modal Header -->
+							<div class="modal-header flex-column">
+								<button type="button" class="close" data-dismiss="modal"
+									aria-hidden="true" onclick="cancelModalBtn()">
+									<i class="ti-close modal-close"></i>
+								</button>
+							</div>
+							<!-- Modal body -->
+							<div class="modal-body">
+
+								<div class="col-md-12" id="shippingInfo">
+									<div class="card-title">
+										<h4>Shipping Address</h4>
+									</div>
+									<div class="row">
+
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Country</label>
+												<div class="select">
+													<select id="country1s" onchange="getStateDetailss()">
+														<option th:value="NULL">Select Country</option>
+														<option th:each="c,iter:${countryList}"
+															th:value="${c.key}" th:text="${c.name}"></option>
+													</select>
+												</div>
+											</div>
+										</div>
+
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>State</label>
+												<div class="select">
+													<select id="states1s">
+														<option th:value="NULL">Select State</option>
+														<option th:each="c,iter:${statesList}" th:value="${c.key}"
+															th:text="${c.name}"></option>
+													</select> <span class="focus"></span>
+												</div>
+											</div>
+										</div>
+
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>City</label> <input type="text" class="form-control"
+													id="city1s" placeholder="City">
+											</div>
+										</div>
+
+
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Street 1</label> <input type="text"
+													class="form-control" id="street11s" placeholder="Street 1">
+											</div>
+										</div>
+
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Street 2</label> <input type="text"
+													class="form-control" id="street21s" placeholder="Street 2">
+											</div>
+										</div>
+
+
+
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>ZipCode</label> <input type="text"
+													class="form-control" id="zipCode1s" placeholder="Zip Code">
+											</div>
+										</div>
+
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Phone</label> <input type="text" class="form-control"
+													id="phone1s" placeholder="Phone">
+											</div>
+										</div>
+
+
+										<div class="col-md-4">
+											<div class="form-group">
+												<label>Fax</label> <input type="text" class="form-control"
+													id="fax1s" placeholder="Fax">
+											</div>
+										</div>
+
+									</div>
+
+									<div class="row mt-4">
+										<div class="form-group">
+
+											<button class="btn4" id="cancel" onclick="cancelBtn2()">CANCEL</button>
+											<button class="btn1" id="save" onclick="addCustomerInfo1()">SAVE</button>
+
+										</div>
+									</div>
+								</div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+
+			</div>
+		</div>
+	</div>
+	
+</body>
+</html>
