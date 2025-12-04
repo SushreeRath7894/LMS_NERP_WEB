@@ -2604,117 +2604,133 @@ function getTrainingDetails(courseId) {
         url: "academic-training-view?id=" + courseId,
     }).then(function (response) {
         if (response.message === "Success") {
-            const innerJsonString = response.body[0];
-            const responseBody = JSON.parse(innerJsonString);
-            const courseData = Array.isArray(responseBody)
-                ? (responseBody[0] ? responseBody[0].courseCategoryType : [])
-                : (responseBody.courseCategoryType || []);
-            console.log('Training Data Received:', courseData);
-            savedData = {};
-            let dynamicCategories = [];
-            if (Array.isArray(courseData)) {
-                courseData.forEach(item => {
-                    const category = item.trainingCategory;
-                     if (!category) return;
-                    dynamicCategories.push({
-                        category: category,
-                        trainingRefId: item.trainingRefId || null
-                    });
-                    // docs
-                    /* let documentFiles = [];
-                    if (Array.isArray(item.documents) && item.documents.length > 0) {
-                        documentFiles = item.documents.map((doc, index) => ({
-                            slno: index + 1,
-                            isEditDoc: false,
-                            docName: doc.documentName || doc.fileName || 'Unnamed Document',
-                            docType: (doc.type || (doc.fileName ? doc.fileName.split('.').pop().toLowerCase() : "N/A")).replace(/^\./, ''),
-                            dociURL: doc.documentUrl || "",
-                            documentFile: null,
-                            docView: doc.documentName || doc.fileName || 'Unnamed Document'
-                        }));
-                    } */
-                
-                    let documentFiles = [];
-                    const selectedType = ($('#docTypeSelect').val() || '').trim();
+        	 if (!response.body || response.body.length === 0) {
+                 console.warn("No training data found");
 
-                    if (Array.isArray(item.documents) && item.documents.length > 0) {
-                        let filteredDocs = item.documents;
+                 $("#trainingCategoryContainer").html(
+                     '<div class="col-12"><p class="text-muted text-center">No training categories available.</p></div>'
+                 );
 
-                        if (selectedType && selectedType.toLowerCase() !== 'all') {
+                 $(".categoryCheck").prop("disabled", true);
+                 $("#addCustomTraining").prop("disabled", true);
 
-                            filteredDocs = item.documents.filter(doc => {
+                 savedData = {};
+                 return;
+             }else{
+            	  const innerJsonString = response.body[0];
+                  const responseBody = JSON.parse(innerJsonString);
+                  const courseData = Array.isArray(responseBody)
+                      ? (responseBody[0] ? responseBody[0].courseCategoryType : [])
+                      : (responseBody.courseCategoryType || []);
+                  console.log('Training Data Received:', courseData);
+                  savedData = {};
+                  let dynamicCategories = [];
+                  if (Array.isArray(courseData)) {
+                      courseData.forEach(item => {
+                          const category = item.trainingCategory;
+                           if (!category) return;
+                          dynamicCategories.push({
+                              category: category,
+                              trainingRefId: item.trainingRefId || null
+                          });
+                          // docs
+                          /* let documentFiles = [];
+                          if (Array.isArray(item.documents) && item.documents.length > 0) {
+                              documentFiles = item.documents.map((doc, index) => ({
+                                  slno: index + 1,
+                                  isEditDoc: false,
+                                  docName: doc.documentName || doc.fileName || 'Unnamed Document',
+                                  docType: (doc.type || (doc.fileName ? doc.fileName.split('.').pop().toLowerCase() : "N/A")).replace(/^\./, ''),
+                                  dociURL: doc.documentUrl || "",
+                                  documentFile: null,
+                                  docView: doc.documentName || doc.fileName || 'Unnamed Document'
+                              }));
+                          } */
+                      
+                          let documentFiles = [];
+                          const selectedType = ($('#docTypeSelect').val() || '').trim();
 
-                                // DB key: documentType
-                                const docTypeSelect = (doc.documentType || "").trim().toLowerCase();
+                          if (Array.isArray(item.documents) && item.documents.length > 0) {
+                              let filteredDocs = item.documents;
 
-                                // UI value (Normal / Scorm)
-                                const uiType = selectedType.trim().toLowerCase();
+                              if (selectedType && selectedType.toLowerCase() !== 'all') {
 
-                                return docTypeSelect === uiType;
-                            });
+                                  filteredDocs = item.documents.filter(doc => {
 
-                            console.log(`Filtered docs for ${selectedType}: ${filteredDocs.length}`);
-                        }
+                                      // DB key: documentType
+                                      const docTypeSelect = (doc.documentType || "").trim().toLowerCase();
 
-                        documentFiles = filteredDocs.map((doc, index) => {
-                            let fileExt = doc.fileName ? doc.fileName.split('.').pop().toLowerCase() : "N/A";
-                            return {
-                                slno: index + 1,
-                                isEditDoc: false,
-                                docName: doc.documentName || doc.fileName || 'Unnamed Document',
-                                docType: fileExt,
-                                docTypeSelect: doc.documentType || '',
-                                dociURL: doc.documentUrl || "",
-                                documentFile: null,
-                                docView: doc.documentName || doc.fileName || 'Unnamed Document'
-                            };
-                        });
-                    }
+                                      // UI value (Normal / Scorm)
+                                      const uiType = selectedType.trim().toLowerCase();
 
-                
-                    // bootcamp
-                    let bootcampSchedules = [];
-                    if (category === "Online Bootcamp" && Array.isArray(item.bootcampDetails)) {
-                     console.log(item.bootcampDetails)
-                     bootcampSchedules = item.bootcampDetails.map(d => ({
-                            startDate: d.startDate || "",
-                            endDate: d.endDate || "",
-                            fromTime: d.fromTime || "",
-                            toTime: d.toTime || "",
-                            additionalInfo: d.title || "",
-                            isActive: d.sheduleStatus === "true" // ✅ Correct key + boolean conversion
-                        }));
-               
-                    }
-                    savedData[category] = {
-                        content: item.trainingDescription || "",
-                        pricing: item.trainingPrice || "",
-                        bootcampSchedules,
-                        documents: documentFiles
-                    };
-                });
-            }
-            dynamicCategories = [...new Set(dynamicCategories)];
-            console.log('Dynamically fetched categories:', dynamicCategories);
-            // Build checkboxes inside #trainingCategoryContainer
-            const $row = $("#trainingCategoryContainer");
-            if (dynamicCategories.length === 0) {
-                $row.html('<div class="col-12"><p class="text-muted text-center">No training categories available for this course.</p></div>');
-                $(".categoryCheck").prop("disabled", true);
-                $("#addCustomTraining").prop("disabled", true);
-                return;
-            } else {
-              populateCheckboxes(dynamicCategories, '#trainingCategoryContainer', true);
-            }
-            // view mode by default
-            $(".categoryCheck").prop("disabled", true);
-            $("#addCustomTraining").prop("disabled", true);
-            if (CKEDITOR.instances.notesField) {
-                CKEDITOR.instances.notesField.setReadOnly(true);
-            }
-            $("#priceField").prop("disabled", true);
-            currentCategory = "";
-            // no auto-selection – user must click a checkbox to open dynamic tab
+                                      return docTypeSelect === uiType;
+                                  });
+
+                                  console.log(`Filtered docs for ${selectedType}: ${filteredDocs.length}`);
+                              }
+
+                              documentFiles = filteredDocs.map((doc, index) => {
+                                  let fileExt = doc.fileName ? doc.fileName.split('.').pop().toLowerCase() : "N/A";
+                                  return {
+                                      slno: index + 1,
+                                      isEditDoc: false,
+                                      docName: doc.documentName || doc.fileName || 'Unnamed Document',
+                                      docType: fileExt,
+                                      docTypeSelect: doc.documentType || '',
+                                      dociURL: doc.documentUrl || "",
+                                      documentFile: null,
+                                      docView: doc.documentName || doc.fileName || 'Unnamed Document'
+                                  };
+                              });
+                          }
+
+                      
+                          // bootcamp
+                          let bootcampSchedules = [];
+                          if (category === "Online Bootcamp" && Array.isArray(item.bootcampDetails)) {
+                           console.log(item.bootcampDetails)
+                           bootcampSchedules = item.bootcampDetails.map(d => ({
+                                  startDate: d.startDate || "",
+                                  endDate: d.endDate || "",
+                                  fromTime: d.fromTime || "",
+                                  toTime: d.toTime || "",
+                                  additionalInfo: d.title || "",
+                                  isActive: d.sheduleStatus === "true" // ✅ Correct key + boolean conversion
+                              }));
+                     
+                          }
+                          savedData[category] = {
+                              content: item.trainingDescription || "",
+                              pricing: item.trainingPrice || "",
+                              bootcampSchedules,
+                              documents: documentFiles
+                          };
+                      });
+                  }
+                  dynamicCategories = [...new Set(dynamicCategories)];
+                  console.log('Dynamically fetched categories:', dynamicCategories);
+                  // Build checkboxes inside #trainingCategoryContainer
+                  const $row = $("#trainingCategoryContainer");
+                  if (dynamicCategories.length === 0) {
+                      $row.html('<div class="col-12"><p class="text-muted text-center">No training categories available for this course.</p></div>');
+                      $(".categoryCheck").prop("disabled", true);
+                      $("#addCustomTraining").prop("disabled", true);
+                      return;
+                  } else {
+                    populateCheckboxes(dynamicCategories, '#trainingCategoryContainer', true);
+                  }
+                  // view mode by default
+                  $(".categoryCheck").prop("disabled", true);
+                  $("#addCustomTraining").prop("disabled", true);
+                  if (CKEDITOR.instances.notesField) {
+                      CKEDITOR.instances.notesField.setReadOnly(true);
+                  }
+                  $("#priceField").prop("disabled", true);
+                  currentCategory = "";
+                  // no auto-selection – user must click a checkbox to open dynamic tab
+             }
+        	
+          
         } else {
             console.error("Failed to fetch data or no data available");
             $("#trainingCategoryContainer").html('<div class="col-12"><p class="text-muted text-center">No training categories available for this course.</p></div>');
@@ -3664,10 +3680,10 @@ function deleteTraining(trainingId){
 												<a class="nav-link" id="tab-quizMap" data-bs-toggle="pill"
 												href="#quizMap" role="tab"> Course Quiz Map </a>
 											</li>
-											<li class="nav-item" role="presentation"
+											<!-- <li class="nav-item" role="presentation"
 												id="instructorDetails"><a class="nav-link"
 												id="tab-examination" data-bs-toggle="pill"
-												href="#examination" role="tab"> Instructors Assign </a></li>
+												href="#examination" role="tab"> Instructors Assign </a></li> -->
 										</ul>
                                         </div>
 									</div>
