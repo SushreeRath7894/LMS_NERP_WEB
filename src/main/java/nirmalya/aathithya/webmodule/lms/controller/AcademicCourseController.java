@@ -767,6 +767,15 @@ public class AcademicCourseController {
 	 * 
 	 * logger.info("Method: saveTraining ends"); return resp; }
 	 */
+	private String sanitizeFolderName(String name) {
+	    if (name == null) return "";
+	    return name
+	        .toLowerCase()
+	        .replaceAll("[^a-z0-9]+", "_")  // replace non-safe characters
+	        .replaceAll("_+", "_")          // collapse multiple _
+	        .replaceAll("^_|_$", "");       // trim leading/trailing _
+	}
+
 	private String extractBase64(Object fileObj) {
 	    try {
 	        String base64 = "";
@@ -840,8 +849,18 @@ public class AcademicCourseController {
 	        ZipEntry entry;
 
 	        while ((entry = zipIn.getNextEntry()) != null) {
+	            String entryName = entry.getName();
 
-	            File filePath = new File(destDir, entry.getName());
+ 	            String[] parts = entryName.split("/", 2);
+
+	            if (parts.length == 2) {
+	                String sanitizedRoot = sanitizeFolderName(parts[0]);
+	                entryName = sanitizedRoot + "/" + parts[1];
+	            } else {
+	                entryName = sanitizeFolderName(entryName);
+	            }
+
+	            File filePath = new File(destDir, entryName);
 
 	            if (entry.isDirectory()) {
 	                filePath.mkdirs();
