@@ -1,3 +1,0 @@
-  function operational(){
-    	alert("hi")
-    	}

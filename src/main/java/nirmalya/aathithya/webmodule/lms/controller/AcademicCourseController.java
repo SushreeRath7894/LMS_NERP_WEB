@@ -336,8 +336,8 @@ public class AcademicCourseController {
 	        @RequestParam("rate") String rate,
 	        @RequestParam("currencySymbol") String currencySymbol,
 	        @RequestParam("level") String level,
-	        @RequestParam(value = "documents", required = false) MultipartFile documents,
-	        @RequestParam("oldImage") String oldImage
+	        @RequestParam(value = "documents", required = false) MultipartFile documents
+	      /*  @RequestParam("oldImage") String oldImage*/
 	       /* @RequestParam(value = "uploadList", required = false) String uploadList*/) {
  
 	    logger.info("Method : saveCourse starts"+documents);
@@ -399,9 +399,6 @@ public class AcademicCourseController {
 	                courseData.put("documentURL", fileURL);
 	                courseData.put("documentName", fileName);
 	            }
-	        }else {
-	        	logger.info("documents"+documents);
-	        	 courseData.put("oldImage", oldImage);
 	        }
 	        	
  
