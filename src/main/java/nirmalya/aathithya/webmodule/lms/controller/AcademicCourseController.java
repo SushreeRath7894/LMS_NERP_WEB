@@ -336,10 +336,11 @@ public class AcademicCourseController {
 	        @RequestParam("rate") String rate,
 	        @RequestParam("currencySymbol") String currencySymbol,
 	        @RequestParam("level") String level,
-	        @RequestParam(value = "documents", required = false) MultipartFile documents
+	        @RequestParam(value = "documents", required = false) MultipartFile documents,
+	        @RequestParam("oldImage") String oldImage
 	       /* @RequestParam(value = "uploadList", required = false) String uploadList*/) {
  
-	    logger.info("Method : saveCourse starts");
+	    logger.info("Method : saveCourse starts"+documents);
  
 	    JsonResponse<Object> resp = new JsonResponse<Object>();
 	    String userId = "";
@@ -398,9 +399,14 @@ public class AcademicCourseController {
 	                courseData.put("documentURL", fileURL);
 	                courseData.put("documentName", fileName);
 	            }
+	        }else {
+	        	logger.info("documents"+documents);
+	        	 courseData.put("oldImage", oldImage);
 	        }
+	        	
  
 	        // --- Handle uploadList (old + new files) ---
+	        
 			/*
 			 * List<Map<String, Object>> uploadListData = new ArrayList<>();
 			 * 
