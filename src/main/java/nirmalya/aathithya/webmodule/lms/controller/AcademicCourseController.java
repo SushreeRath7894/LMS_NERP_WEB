@@ -1590,8 +1590,7 @@ public ResponseEntity<Resource> serveScormPackage(HttpServletRequest request,
 
     try {
         String requestUri = request.getRequestURI();
-        logger.info("[SCORM] Incoming request URI = {}", requestUri);
-
+ 
         String prefix = "/academic/scorm-content/" + zipFileName + "/";
         int idx = requestUri.indexOf(prefix);
         String relativePath = "";
@@ -1602,8 +1601,7 @@ public ResponseEntity<Resource> serveScormPackage(HttpServletRequest request,
             relativePath = "index.html";
         }
 
-        logger.info("[SCORM] Computed relativePath within SCORM package = {}", relativePath);
-
+ 
         Path uploadBase = Paths.get(env.getFileUploadDocumenttUrl());
         logger.info("[SCORM] uploadBase = {}", uploadBase.toAbsolutePath());
 
