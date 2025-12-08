@@ -828,10 +828,6 @@ public class AcademicCourseController {
 	        return null;
 	    }
 	}
-	
-	
-	
-	
 	private String extractZipAndGetLaunchUrl(String zipFileName, String courseId) {
        logger.info("extractZipAndGetLaunchUrl Start");
 	    String baseExtractPath = env.getScormExtractPath(); 
@@ -1688,7 +1684,7 @@ private MediaType resolveMediaType(Path file) {
     } else if (fileName.endsWith(".png")) {
         return MediaType.IMAGE_PNG;
     } else if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
-        return MediaType.IMAGE_JPEG;
+        return MediaType.IMAGE_JPEG;  
     } else if (fileName.endsWith(".gif")) {
         return MediaType.IMAGE_GIF;
     } else if (fileName.endsWith(".json")) {
