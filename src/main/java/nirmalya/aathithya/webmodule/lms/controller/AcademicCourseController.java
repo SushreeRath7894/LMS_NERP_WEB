@@ -828,6 +828,10 @@ public class AcademicCourseController {
 	        return null;
 	    }
 	}
+	
+	
+	
+	
 	private String extractZipAndGetLaunchUrl(String zipFileName, String courseId) {
        logger.info("extractZipAndGetLaunchUrl Start");
 	    String baseExtractPath = env.getScormExtractPath(); 
