@@ -1698,4 +1698,36 @@ private MediaType resolveMediaType(Path file) {
 }
 
 
+@SuppressWarnings("unchecked")
+@PostMapping("academic-course-delete")
+public @ResponseBody JsonResponse<Object> coursedelete(
+        HttpSession session,
+        @RequestBody Map<String, Object> payload) {
+
+    logger.info("Method : coursedelete starts");
+    JsonResponse<Object> response = new JsonResponse<>();
+
+    try {
+        String orgName = (String) session.getAttribute("ORGANIZATION");
+        String orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+        String userId = (String) session.getAttribute("USER_ID");
+
+        // Add session data
+        payload.put("orgName", orgName);
+        payload.put("orgDivision", orgDivision);
+        payload.put("loginUserId", userId);
+
+        logger.info("📦 Final payload to send: {}", payload);
+
+        String url = env.getHisUrl() + "rest-coursedelete";
+        response = restTemplate.postForObject(url, payload, JsonResponse.class);
+
+    } catch (Exception e) {
+        logger.error("Error calling REST service:", e);
+    }
+
+    logger.info("Method : coursedelete ends");
+    return response;
+}
+
 }
