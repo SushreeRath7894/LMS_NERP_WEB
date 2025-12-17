@@ -1,4 +1,4 @@
-package nirmalya.aathithya.webmodule.recruitment.controller;
+/*package nirmalya.aathithya.webmodule.recruitment.controller;
 
 
 import java.awt.Color;
@@ -365,7 +365,7 @@ public class CandidateMasterController {
 	return resp;
 	}
 	
-	@Scheduled(cron = "*/5 * * * * ?")
+	@Scheduled(cron = "5 * * * * ?")
 	public void scheduleTaskUsingCronExpression() {
 	    logger.info(
 	      "schedule tasks using cron jobs - ");
@@ -640,14 +640,14 @@ public class CandidateMasterController {
 		}
 		reqModel.setCreatedBy(userId);
 		
-		/*
+		
 		 * if(reqModel.getWorkFrom()!=null && reqModel.getWorkFrom()!="") {
 		 * reqModel.setWorkFrom(DateFormatter.inputDateFormat(reqModel.getWorkFrom(),
 		 * dateFormat)); } if(reqModel.getWorkTill()!=null &&
 		 * reqModel.getWorkTill()!="") {
 		 * reqModel.setWorkTill(DateFormatter.inputDateFormat(reqModel.getWorkTill(),
 		 * dateFormat)); }
-		 */
+		 
 		
 		try {
 			resp = restTemplate.postForObject(env.getRecruitment() + "addWorkExperience", reqModel, JsonResponse.class);
@@ -995,7 +995,7 @@ public class CandidateMasterController {
 			return resp;
 		}
 		
-		/*@SuppressWarnings("unchecked")
+		@SuppressWarnings("unchecked")
 		@GetMapping("/view-candidate-apply-req-list")
 		public @ResponseBody JsonResponse<List<CandidateApplyRequisitionModel>> getApplyReqList(Model model, HttpSession session, @RequestParam String id){
 			
@@ -1018,9 +1018,9 @@ public class CandidateMasterController {
 			logger.info("Method : getApplyReqList ends");
 			
 			return resp;
-		}*/
+		}
 		
-		/*
+		
 		 * @SuppressWarnings("unchecked")
 		 * 
 		 * @GetMapping("/view-candidate-requisition") public @ResponseBody
@@ -1055,7 +1055,7 @@ public class CandidateMasterController {
 		 * resp.setBody(req); logger.info("Method : getRequisitionOfCandidate ends");
 		 * 
 		 * return resp.getBody(); }
-		 */
+		 
 		
 		@SuppressWarnings("unchecked")
 		@GetMapping("/view-candidate-requisition")
@@ -1339,9 +1339,9 @@ public class CandidateMasterController {
 			return imageName;
 		}
 
-		/*
+		
 		 * for save all pdf in folder and return name
-		 */
+		 
 
 		public String saveAllPdf(byte[] imageBytes) {
 			logger.info("Method : saveAllPdf starts");
@@ -1659,7 +1659,7 @@ public class CandidateMasterController {
 			logger.info("editDocumentDetails====="+jsonResponse);
 			return jsonResponse;
 		}
-		/* edit address */
+		 edit address 
 		@SuppressWarnings("unchecked")
 		@GetMapping("view-candidate-edit-address")
 		public @ResponseBody JsonResponse<CandidateAddressModel> editAddressDetails(@RequestParam String addressId,
@@ -1686,7 +1686,7 @@ public class CandidateMasterController {
 			return jsonResponse;
 		}
 
-		/* edit education */
+		 edit education 
 
 		@SuppressWarnings("unchecked")
 		@GetMapping("view-candidate-edit-education")
@@ -1712,7 +1712,7 @@ public class CandidateMasterController {
 			return jsonResponse;
 		}
 		
-		/* edit skilss */
+		 edit skilss 
 		
 		@SuppressWarnings("unchecked")
 		@GetMapping("view-candidate-edit-SkillDetails")
@@ -1738,7 +1738,7 @@ public class CandidateMasterController {
 		}
 		
 		
-		/* edit work */
+		 edit work 
 		//
 		@SuppressWarnings("unchecked")
 		@GetMapping("view-candidate-edit-WorkDetails")	
@@ -1763,7 +1763,7 @@ public class CandidateMasterController {
 			return jsonResponse;
 		}
 		
-		/* edit award */
+		 edit award 
 		
 		
 		@SuppressWarnings("unchecked")
@@ -1790,7 +1790,7 @@ public class CandidateMasterController {
 		}
 		
 		
-		/* edit reference */
+		 edit reference 
 		
 		@SuppressWarnings("unchecked")
 		@GetMapping("view-candidate-editReferenceDetails")	
@@ -1816,7 +1816,7 @@ public class CandidateMasterController {
 		}
 		
 		
-		/* edit Source */
+		 edit Source 
 		
 		@SuppressWarnings("unchecked")
 		@GetMapping("view-candidate-editSourceDetails")	
@@ -1840,7 +1840,7 @@ public class CandidateMasterController {
 			logger.info("Method : editSourceDetails ends");
 			return jsonResponse;
 		}
-	/* add-newDocInfo */
+	 add-newDocInfo 
 		@SuppressWarnings("unchecked")
 		@GetMapping("view-candidate-add-newDocInfo")
 		public @ResponseBody JsonResponse<Object> addNewDocInfo(@RequestParam String newDocName,
@@ -1879,7 +1879,7 @@ public class CandidateMasterController {
 			
 			JsonResponse<List<DropDownModel>> resp = new JsonResponse<List<DropDownModel>>();
 			
-			/*
+			
 			 * String orgName = ""; String orgDiv = ""; try {
 			 * 
 			 * orgName = (String) session.getAttribute("ORGANIZATION"); orgDiv = (String)
@@ -1888,7 +1888,7 @@ public class CandidateMasterController {
 			 * } catch(Exception e) {
 			 * 
 			 * }
-			 */
+			 
 			
 			try {
 				resp = restTemplate.getForObject(env.getRecruitment() + "rest-education-list-candidate", JsonResponse.class);
@@ -1996,7 +1996,7 @@ public class CandidateMasterController {
 		}
 		
 		
-		/* add-newDocInfo */
+		 add-newDocInfo 
 		@SuppressWarnings("unchecked")
 		@GetMapping("view-candidate-add-newQualInfo")
 		public @ResponseBody JsonResponse<Object> addNewQualiFication(@RequestParam String newQualName,
@@ -2033,3 +2033,4 @@ public class CandidateMasterController {
 		
 		
 }
+*/

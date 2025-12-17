@@ -22,7 +22,6 @@ import org.springframework.web.client.RestTemplate;
 import nirmalya.aathithya.webmodule.common.utils.DropDownModel;
 import nirmalya.aathithya.webmodule.common.utils.EnvironmentVaribles;
 import nirmalya.aathithya.webmodule.common.utils.JsonResponse;
-import nirmalya.aathithya.webmodule.his.model.HISPatientModel;
 
 @Controller
 @RequestMapping(value = { "" })
@@ -48,16 +47,17 @@ public class ConfigurationController {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		try {
-			DropDownModel[] departmentType = restTemplate.getForObject(env.getMasterUrl() + "getDepartmentTypeForShiftType?organization=" + organization + "&orgDivision=" + orgDivision,
-					DropDownModel[].class);
-
-			List<DropDownModel> department = Arrays.asList(departmentType);
-			model.addAttribute("department", department);
-
-		} catch (RestClientException e) {
-			e.printStackTrace();
-		}
+		/*
+		 * try { DropDownModel[] departmentType =
+		 * restTemplate.getForObject(env.getMasterUrl() +
+		 * "getDepartmentTypeForShiftType?organization=" + organization +
+		 * "&orgDivision=" + orgDivision, DropDownModel[].class);
+		 * 
+		 * List<DropDownModel> department = Arrays.asList(departmentType);
+		 * model.addAttribute("department", department);
+		 * 
+		 * } catch (RestClientException e) { e.printStackTrace(); }
+		 */
 		
 		try {
 			DropDownModel[] category = restTemplate.getForObject(env.getMasterUrl() + "getcategorylist?organization=" + organization + "&orgDivision=" + orgDivision,
@@ -81,14 +81,14 @@ public class ConfigurationController {
 			e.printStackTrace();
 		}
 		
-		try {
-			DropDownModel[] source = restTemplate.getForObject(env.getPipeline() + "/getCountry", DropDownModel[].class);
-
-			List<DropDownModel> sourceList = Arrays.asList(source);
-			model.addAttribute("countryList", sourceList);
-		} catch (RestClientException e) { 
-			e.printStackTrace();
-		}
+		/*
+		 * try { DropDownModel[] source = restTemplate.getForObject(env.getPipeline() +
+		 * "/getCountry", DropDownModel[].class);
+		 * 
+		 * List<DropDownModel> sourceList = Arrays.asList(source);
+		 * model.addAttribute("countryList", sourceList); } catch (RestClientException
+		 * e) { e.printStackTrace(); }
+		 */
 		
 		try {
 			DropDownModel[] locationType = restTemplate.getForObject(env.getMasterUrl() + "getLocationTypeList", DropDownModel[].class);

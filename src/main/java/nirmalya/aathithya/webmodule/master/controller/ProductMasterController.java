@@ -639,7 +639,7 @@ public class ProductMasterController {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		return new ModelAndView(new ExcelProductReport(), map);
+		return new ModelAndView();
 	}
 	
 	@SuppressWarnings("unchecked")

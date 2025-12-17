@@ -27,7 +27,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import nirmalya.aathithya.webmodule.common.utils.DropDownModel;
 import nirmalya.aathithya.webmodule.common.utils.EnvironmentVaribles;
 import nirmalya.aathithya.webmodule.common.utils.JsonResponse;
-import nirmalya.aathithya.webmodule.master.model.LocationRoomModel;
 import nirmalya.aathithya.webmodule.user.model.ModulesAccessModel;
 
 /**

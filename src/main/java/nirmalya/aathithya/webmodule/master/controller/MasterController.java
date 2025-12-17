@@ -33,7 +33,6 @@ import nirmalya.aathithya.webmodule.common.utils.DropDownModel;
 import nirmalya.aathithya.webmodule.common.utils.EnvironmentVaribles;
 import nirmalya.aathithya.webmodule.common.utils.JsonResponse;
 import nirmalya.aathithya.webmodule.master.model.MasterModel;
-import nirmalya.aathithya.webmodule.master.model.MasterWarehouseModel;
 
 @Controller
 @RequestMapping(value = "configuration")
@@ -339,39 +338,33 @@ public class MasterController {
 		return res;
 		 
 	}
-	
-	@SuppressWarnings("unchecked")
-	@PostMapping("/add-master-OffDays-Data")
-	public @ResponseBody JsonResponse<Object> saveOffDaysMaster(@RequestBody MasterWarehouseModel data, HttpSession session) {
-		logger.info("Method : saveOffDaysMaster starts");
-		
-		JsonResponse<Object> resp = new JsonResponse<Object>();
-		
-		String userId = "";
-		String organization = "";
-		String orgDivision = "";
-		
-		try {
-			userId = (String) session.getAttribute("USER_ID");
-			organization = (String) session.getAttribute("ORGANIZATION");
-			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-		data.setCreatedBy(userId);
-		data.setOrg(organization);
-		data.setOrgDiv(orgDivision);
-		
-		try {
-			resp = restTemplate.postForObject(env.getMasterUrl() + "saveOffDaysMaster", data, JsonResponse.class);
-		} catch (RestClientException e) {
-			e.printStackTrace();
-		}
-		
-		logger.info("Method : saveOffDaysMaster starts");
-		return resp;
-	}
+
+	/*
+	 * @SuppressWarnings("unchecked")
+	 * 
+	 * @PostMapping("/add-master-OffDays-Data") public @ResponseBody
+	 * JsonResponse<Object> saveOffDaysMaster(@RequestBody MasterWarehouseModel
+	 * data, HttpSession session) {
+	 * logger.info("Method : saveOffDaysMaster starts");
+	 * 
+	 * JsonResponse<Object> resp = new JsonResponse<Object>();
+	 * 
+	 * String userId = ""; String organization = ""; String orgDivision = "";
+	 * 
+	 * try { userId = (String) session.getAttribute("USER_ID"); organization =
+	 * (String) session.getAttribute("ORGANIZATION"); orgDivision = (String)
+	 * session.getAttribute("ORGANIZATION_DIVISION"); } catch (Exception e) {
+	 * e.printStackTrace(); }
+	 * 
+	 * data.setCreatedBy(userId); data.setOrg(organization);
+	 * data.setOrgDiv(orgDivision);
+	 * 
+	 * try { resp = restTemplate.postForObject(env.getMasterUrl() +
+	 * "saveOffDaysMaster", data, JsonResponse.class); } catch (RestClientException
+	 * e) { e.printStackTrace(); }
+	 * 
+	 * logger.info("Method : saveOffDaysMaster starts"); return resp; }
+	 */
 //
 	@SuppressWarnings("unchecked")
 	@GetMapping("/delete-master-OffDays-data")
