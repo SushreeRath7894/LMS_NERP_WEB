@@ -117,6 +117,7 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 				.antMatchers("/master/advanceManagement")
 				.permitAll().antMatchers("/layout/**").permitAll()
 				.antMatchers("/sales/**").permitAll()
+				.antMatchers("/scorm/**").permitAll()
 
 				.antMatchers("/master/**").permitAll()
 				.antMatchers("/master/payslip-pdf-download").permitAll()

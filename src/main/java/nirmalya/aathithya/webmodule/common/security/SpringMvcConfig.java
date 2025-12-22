@@ -12,7 +12,7 @@ public class SpringMvcConfig extends WebMvcConfigurerAdapter {
 	public void addInterceptors(InterceptorRegistry registry) {
 		registry.addInterceptor(new RequestInterceptor()).excludePathPatterns("/index-assets/**",
 				"/index-get-breadcrumb-data", "/assets/**", "/extend/**", "/css/**", "/datatables/**", "/FileUpload/**",
-				"/download/**", "/js/**", "/login", "/his-index", "/logout", "/register", "/", "/account/viewbank",
+				"/download/**", "/js/**","/scorm/**", "/login", "/his-index", "/logout", "/register", "/", "/account/viewbank",
 				"/document/**", "/access-denied", "/order-status", "/sales", "/restaurant/kitchen-staff-order-details",
 				"/restaurant/kitchen-staff-order-details-modal", "/error", "/purchase/vendor-page-modal-adds",
 				"/itemDetails-page/**", "/purchase/**", "/recruitment/offer-letter-pdf", "/master/payslip-pdf-download",
