@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org" th:fragment="del-challan-preview">
+<head>
+<meta charset="UTF-8">
+<style>
+.container {
+	width: 100%;
+	margin: 0 auto;
+	border: 1px solid #000;
+	/* padding: 10px; */
+}
+
+.header {
+	text-align: center;
+	margin-bottom: 20px;
+}
+
+.header h1 {
+	margin: 0;
+	font-size: 16px;
+}
+
+.header p {
+	margin: 2px 0;
+	font-size: 12px;
+}
+
+.contact-details {
+	margin-bottom: 10px;
+	border-bottom: 1px solid black;
+}
+
+.contact-details div {
+	/* width: 33%; */
+	text-align: center;
+}
+
+.title {
+	text-align: center;
+	font-weight: bold;
+	margin-bottom: 10px;
+	font-size: 14px;
+}
+
+.challan-details, .consignee-details {
+	display: flex;
+	justify-content: space-between;
+	margin-bottom: 10px;
+}
+
+.table-container {
+	width: 100%;
+	margin-bottom: 10px;
+}
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+th, td {
+	border: 1px solid #000;
+	padding: 5px;
+	text-align: left;
+	font-size: 12px;
+}
+
+th {
+	font-weight: bold;
+}
+
+.total-section {
+	text-align: right;
+	margin-top: 10px;
+}
+
+.total-section p {
+	margin: 2px 0;
+}
+
+.remarks, .comments {
+	margin-top: 10px;
+	padding: 5px;
+}
+
+.remarks p, .comments p {
+	margin: 2px 0;
+}
+
+table.border-0 td, table.border-0 th {
+	border: 0;
+}
+</style>
+<script>
+function getChallanPreviewById(chId) {
+	
+	$("#tbodyId").empty();
+	$(".cgst,.sgst,.igst").addClass('d-none');
+	
+	agGrid.simpleHttpRequest({
+        url: "view-deliverychallan-get-preview-data?id=" + chId,
+    }).then(function(data) {
+    	if(data?.body) {
+    		
+    		let chData = JSON.parse(data?.body);
+    		let chPreviewData = chData?.challanPdfData[0];
+    		let custDetails = chData?.challanPdfData[0]?.customerDetails[0];
+    		let itemDetails = chData?.challanPdfData[0]?.itemDetails;
+    		
+    		$("#challanNo").text(chPreviewData?.challanId);
+    		$("#challanDate").text(chPreviewData?.challanDate);
+    		$("#dcDesc1").text(chPreviewData?.dcDesc);
+    		$("#custPoNo").text(chPreviewData?.cpoNumber);
+    		$("#poDate").text(chPreviewData?.poDate);
+    		$("#vechicleNumberId").text(chPreviewData?.vechicleNumber);
+    		$("#transporterNameId").text(chPreviewData?.transporterName);
+    		$("#custNameId").text(custDetails?.customerName);
+    		$("#placeOfSupplyId").text(chPreviewData?.supplyFrom);
+    		$("#stateCodeId").text(custDetails?.stateCode);
+    		$("#custAddressId").text(custDetails?.customerAddress);
+    		$("#custGstId").text(custDetails?.CcustomerGst);
+    		$("#soNumber").text(chPreviewData?.soNumber);
+    		$("#dcRemark").text(chPreviewData?.dcRemark);
+    		$("#dcComment1").text(chPreviewData?.dcComment);
+    		
+    		let itemCGST = 0.00;
+    		let itemSGST = 0.00;
+    		let itemIGST = 0.00;
+    		let grandTotal = 0.00;
+    		itemDetails?.forEach(a=>{
+    			itemCGST += a?.cGst || 0;
+    			itemSGST += a?.sGst || 0;
+    			itemIGST += a?.iGst || 0;
+    			grandTotal += a?.totalAmount + a?.cGst + a?.sGst + a?.iGst;
+    		})
+    		
+    		if(itemCGST == 0) {
+    			$('.cgst').addClass('d-none');
+    		} else {
+    			$('.cgst').removeClass('d-none');
+    		}
+    		if(itemSGST == 0) {
+    			$('.sgst').addClass('d-none');
+    		} else {
+    			$('.sgst').removeClass('d-none');
+    		}
+    		if(itemIGST == 0) {
+    			$('.igst').addClass('d-none');
+    		} else {
+    			$('.igst').removeClass('d-none');
+    		}
+    		
+    		$("#itemCGSTId").text(commaFormattedWithDecimal(itemCGST))
+    		$("#itemSGSTId").text(commaFormattedWithDecimal(itemSGST))
+    		$("#itemIGSTId").text(commaFormattedWithDecimal(itemIGST))
+    		$("#grandTotalId").text(commaFormattedWithDecimal(grandTotal))
+    		
+    		const tableBody = document.getElementById('tbodyId');
+    		
+    		itemDetails.forEach((item, index) => {
+				const itemRow = document.createElement('tr');
+				itemRow.innerHTML = `
+					<td>${index + 1}</td>
+					<td>${item.itemSku}</td>
+					<td>${item.itemName}</td>
+					<td>${item.hsnCode}</td>
+					<td>${item.uom}</td>
+					<td style="text-align: right;">${item.quantity}</td>
+					<td>${commaFormattedWithDecimal(item.unitPrice)}</td>
+					<td>${commaFormattedWithDecimal(item.totalAmount)}</td>
+				`;
+				tableBody.appendChild(itemRow);
+    		});
+
+    		const taxRow = document.createElement('tr');
+    		taxRow.innerHTML = `
+    			<td colspan="7">
+    				<table class="border-0 w-100">
+    					<tr class="cgst ${itemCGST === 0 ? 'd-none' : ''}">
+    						<td style="text-align: right;">CGST - SALES</td>
+    					</tr>
+    					<tr class="sgst ${itemSGST === 0 ? 'd-none' : ''}">
+    						<td style="text-align: right;">SGST - SALES</td>
+    					</tr>
+    					<tr class="igst ${itemIGST === 0 ? 'd-none' : ''}">
+    						<td style="text-align: right;">IGST - SALES</td>
+    					</tr>
+    				</table>
+    			</td>
+    			<td>
+    				<table class="border-0 w-100">
+    					<tr class="cgst ${itemCGST === 0 ? 'd-none' : ''}">
+    						<td style="text-align: right;"><span>${commaFormattedWithDecimal(itemCGST)}</span></td>
+    					</tr>
+    					<tr class="sgst ${itemSGST === 0 ? 'd-none' : ''}">
+    						<td style="text-align: right;"><span>${commaFormattedWithDecimal(itemSGST)}</span></td>
+    					</tr>
+    					<tr class="igst ${itemIGST === 0 ? 'd-none' : ''}">
+    						<td style="text-align: right;"><span>${commaFormattedWithDecimal(itemIGST)}</span></td>
+    					</tr>
+    				</table>
+    			</td>
+    		`;
+    		tableBody.appendChild(taxRow);
+    		
+    		const gtRow = document.createElement('tr');
+    		gtRow.innerHTML = `
+    			<td colspan="7">
+    				<table class="border-0 w-100">
+    					<tr>
+    						<td style="text-align: right;">TOTAL&nbsp;&nbsp;INR</td>
+    					</tr>
+    				</table>
+    			</td>
+    			<td>
+    				<table class="border-0 w-100">
+    					<tr>
+    						<td style="text-align: right;"><span>${commaFormattedWithDecimal(grandTotal)}</span></td>
+    					</tr>
+    				</table>
+    			</td>
+    		`;
+    		tableBody.appendChild(gtRow);
+    	}
+	})
+}
+
+function chPdfDownload() {
+	var selectedRows = gridOptionsChallan.api.getSelectedRows();
+	let challanId = selectedRows[0].saleDeliveryChallan;
+	window.open("/sales/view-challan-pdf-downloads?challanId=" + challanId, '_blank');
+}
+</script>
+</head>
+<body>
+	<div class="d-flex gap-2 justify-content-end">
+
+		<button class="btn btn-primary max-btn" id="downloadPDF1"
+			onclick="chPdfDownload()" data-bs-toggle="tooltip"
+			data-bs-placement="top" title="Download PDF">
+			<i class="fa-solid fa-download" id="downloadPDFIcon1"></i>
+		</button>
+	</div>
+	<div class="container mt-2">
+		<div class="header mt-2"
+			style="display: block !important; border: none !important">
+			<h1>Akanksha Power and Infrastructure Ltd.</h1>
+			<p>REGISTERED ADDRESS: 105/1/4 MIDC Satpur, Nashik,</p>
+			<p>Work Address: Plot No. 7 - 107, MIDC, Satpur, Nashik,</p>
+			<p>Nashik Maharashtra 422007 INDIA</p>
+		</div>
+
+		<div class="contact-details" style="margin-top: 2.5rem;">
+			<table class="border-0" style="padding: 0 !important;">
+				<tr>
+					<td>PHONE: 02532357238</td>
+					<td>EMAIL: bdm@apil.co.in</td>
+					<td>WEBSITE: www.apil.co.in</td>
+				</tr>
+				<tr>
+					<td>GSTIN: 27AAHCA36671ZB</td>
+					<td>CIN: U40104MH2008PLC181449</td>
+					<td>PAN: AAHCA3667K</td>
+				</tr>
+			</table>
+		</div>
+
+		<div class="title">
+			DELIVERY CHALLAN <br />
+			<p style="font-size: 10px; margin: 0; font-weight: 400;">Transportation
+				of goods without issue of invoice under Rule 55(1) (b) of GST 2017</p>
+		</div>
+
+		<div class="challan-details">
+
+			<table class="border-0">
+				<tr>
+					<td>Challan No.</td>
+					<td>:</td>
+					<th><span id="challanNo"></span></th>
+					<td>Date of Issue</td>
+					<td>:</td>
+					<th><span id="challanDate"></span></th>
+				</tr>
+				<tr>
+					<td>Challan Description</td>
+					<td>:</td>
+					<th><span id="dcDesc1"></span></th>
+					<td>Customer Po No.</td>
+					<td>:</td>
+					<th><span id="custPoNo"></span></th>
+				</tr>
+				<tr>
+					<td colspan="3" rowspan="4">CONSIGNEE DETAILS
+						<p>
+							<strong><span id="custNameId"></span></strong>
+						</p> <span id="custAddressId"></span>
+					</td>
+					<td>Customer Po Date</td>
+					<td>:</td>
+					<td id="poDate"></td>
+				</tr>
+				<tr>
+					<td>Transporter Name</td>
+					<td>:</td>
+					<td><span id="transporterNameId"></span></td>
+				</tr>
+				<tr>
+					<td>Reference</td>
+					<td>:</td>
+					<td><span id="soNumber"></span></td>
+				</tr>
+				<tr>
+					<td>Vehicle No.</td>
+					<td>:</td>
+					<td><span id="vechicleNumberId"></span></td>
+				</tr>
+				<tr>
+					<td>Consignee GSTIN</td>
+					<td>:</td>
+					<td><span id="custGstId"></span></td>
+					<td>Place Of Supply</td>
+					<td>:</td>
+					<td id="placeOfSupplyId"></td>
+				</tr>
+				<tr>
+					<td>State Code</td>
+					<td>:</td>
+					<td><span id="stateCodeId"></span></td>
+					<td colspan="3"></td>
+				</tr>
+			</table>
+		</div>
+
+		<div class="table-container">
+			<table>
+				<thead>
+					<tr>
+						<th>S No</th>
+						<th>Item Code</th>
+						<th>Item Description</th>
+						<th>HSN Code</th>
+						<th>UOM</th>
+						<th style="text-align: center;">Qty</th>
+						<th style="text-align: center;">Rate</th>
+						<th style="text-align: center;">Amount</th>
+					</tr>
+				</thead>
+				<tbody id="tbodyId">
+					<tr>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td style="text-align: right;"></td>
+						<td></td>
+						<td></td>
+					</tr>
+					<tr>
+						<td colspan="7">
+							<table class="border-0">
+								<tr class="cgst">
+									<td style="text-align: right;">CGST - SALES</td>
+								</tr>
+								<tr class="sgst">
+									<td style="text-align: right;">SGST - SALES</td>
+								</tr>
+								<tr class="igst">
+									<td style="text-align: right;">IGST - SALES</td>
+								</tr>
+							</table>
+						</td>
+						<td>
+							<table class="border-0">
+								<tr class="cgst">
+									<td style="text-align: right;"><span id="itemCGSTId"></span></td>
+								</tr>
+								<tr class="sgst">
+									<td style="text-align: right;"><span id="itemSGSTId"></span></td>
+								</tr>
+								<tr class="igst">
+									<td style="text-align: right;"><span id="itemIGSTId"></span></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+					<tr>
+						<td colspan="7">
+							<table class="border-0">
+								<tr>
+									<td style="text-align: right;">TOTAL&nbsp;&nbsp;INR</td>
+								</tr>
+							</table>
+						</td>
+						<td>
+							<table class="border-0">
+								<tr>
+									<td style="text-align: right;"><strong><span
+											id="grandTotalId"></span></strong></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+				</tbody>
+
+			</table>
+		</div>
+
+		<div class="remarks">
+			<p>
+				<strong>Remarks:</strong>
+			</p>
+			<p><span id="dcRemark"></span></p>
+		</div>
+
+		<div class="comments">
+			<p>
+				<strong>Comments:</strong>
+			</p>
+			<p><span id="dcComment1"></span></p>
+		</div>
+	</div>
+</body>
+</html>
