@@ -1,0 +1,2812 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+.form-group label {
+	font-size: 12px;
+	position: relative;
+	top: 4px;
+}
+
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+
+.blueClsWT {
+	background: #0076ba;
+	color: #fff;
+}
+
+.blueCls {
+	background: #0076ba;
+	color: #fff;
+}
+
+.blueClsWT::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	padding-right: 7px;
+}
+
+.modal-body table td input[type=checkbox] {
+	width: 0px;
+	margin-right: 16px;
+	position: relative;
+	top: 0px;
+	float: none;
+}
+
+.firstnode {
+	color: #929292;
+	border-top: 1px solid transparent !important;
+	border-left: 1px solid transparent !important;
+	border-bottom: 1px solid transparent !important;
+	width: 320px;
+	font-size: 12px;
+	font-weight: 100;
+}
+
+.simple-tree-table-closed .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'FontAwesome';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+	transform: rotate(90deg);
+}
+
+.simple-tree-table-opened .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'FontAwesome';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+}
+
+.simple-tree-table-icon {
+	display: inline-block;
+	width: 1.5em;
+	line-height: 1.5em;
+	margin: 0.1em;
+	background-color: transparent;
+	text-align: center;
+	cursor: pointer;
+}
+
+.tptCls {
+	background: transparnt;
+}
+</style>
+<script>
+	function closeAllNav() {
+		closeNav();
+		closeNav1();
+		closeNav2();
+	}
+	var columnDefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true,
+				pinned : 'left',
+			},
+			{
+				headerName : "Sales Invoice Id",
+				field : "saleInvoice",
+				pinned : 'left',
+				cellRenderer : function(params) {
+					return '<a onclick=editsalesInvoice("'
+							+ params.data.saleInvoice
+							+ '") href="javascript:void(0)">'
+							+ params.data.saleInvoice + '</a>';
+				}
+			}, {
+
+				headerName : 'Sales Order',
+				field : "salesOrderId"
+			}, {
+
+				headerName : 'store Name',
+				field : "storeId"
+			}, {
+				headerName : 'Active',
+				field : "qutActive",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			}, {
+				headerName : 'Created By',
+				field : "qutCreatedBy"
+			}, {
+				headerName : 'Updated On',
+				field : "qutUpdatedOn",
+				cellStyle : {
+					textAlign : 'center'
+				}
+			} ];
+
+	var gridOptions = {
+		columnDefs : columnDefs,
+		rowSelection : 'multiple',
+
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 251,
+			height : 10
+		},
+		onSelectionChanged : rowSelect,
+	};
+
+	/*
+	 sales Item 
+	 */
+
+	var itemDefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+
+			},
+			{
+				headerName : "SlNo",
+				field : "slNo",
+				cellRenderer : function(params) {
+					if (params.data.slNo) {
+						return '<a onclick=editProduct("' + params.data.slNo
+								+ '") href="javascript:void(0)">'
+								+ params.data.slNo + '</a>';
+					} else {
+						return '<a onclick=editProduct("' + params.data.slNo
+								+ '") href="javascript:void(0)">'
+								+ params.data.slNo + '</a>';
+					}
+				}
+			}, {
+				headerName : 'SKU',
+				field : "sku"
+			}, {
+
+				headerName : 'Item Name',
+				field : "itemName"
+			}, {
+				headerName : 'Quantity',
+				field : "quantity",
+				type : 'rightAligned',
+				editable : true,
+				singleClickEdit : true,
+				cellStyle : {
+					textAlign : 'right',
+					'background-color' : 'white'
+				}
+			}, {
+				headerName : 'Unit Price',
+				field : "unitPrice",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : 'Discount',
+				field : "discount",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+			}, {
+				headerName : 'GstRate',
+				field : "gstRate",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+			}, {
+				headerName : 'Amount',
+				field : "lineTotal",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter,
+				aggFunc : 'sum'
+			}, ];
+
+	var itemOptions = {
+		columnDefs : itemDefs,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 251,
+			height : 10,
+			editable : true,
+		},
+		getRowNodeId : function(data) {
+			return data.slNo;
+		},
+		onCellValueChanged : function(param) {
+			var quantity = param.data.quantity;
+			var quantitynew = param.data.quantitynew;
+			var unitPrice = param.data.unitPrice;
+			var discount = param.data.discount;
+			var lineTotal = parseFloat(quantity) * parseFloat(unitPrice)
+					- parseFloat(discount);
+
+			if (parseFloat(quantity) > parseFloat(quantitynew)) {
+				param.data.quantity = quantitynew;
+
+				alert("param.data.quantity " + param.data.quantity)
+				param.api.refreshCells({
+					columns : [ "quantity" ]
+				});
+				$("#messageParagraph").text(
+						"quantity Can't Be Greater Than real value");
+				$("#msgOkModal").addClass("btn3");
+				$("#msgOkModal").removeClass("btn1");
+				$("#msgModal").modal('show');
+			} else {
+				param.data.quantity = quantity;
+				param.data.lineTotal = lineTotal;
+				param.api.refreshCells({
+					columns : [ "quantitynew", "lineTotal" ]
+				});
+			}
+			//var subTotal = $("#subTotal").val(lineTotal);+subTotal
+
+		}
+
+	};
+	/*
+	 * salesinvoice
+	 */
+	var iteminvoiceDefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+
+			},
+			{
+				headerName : "SlNo",
+				field : "slNo",
+				cellRenderer : function(params) {
+					if (params.data.slNo) {
+						return '<a onclick=editProduct("' + params.data.slNo
+								+ '") href="javascript:void(0)">'
+								+ params.data.slNo + '</a>';
+					} else {
+						return '<a onclick=editProduct("' + params.data.slNo
+								+ '") href="javascript:void(0)">'
+								+ params.data.slNo + '</a>';
+					}
+				}
+			}, {
+				headerName : 'SKU',
+				field : "sku"
+			}, {
+
+				headerName : 'Item Name',
+				field : "itemName"
+			}, {
+				headerName : 'Quantity',
+				field : "quantity",
+				type : 'rightAligned',
+
+			}, {
+				headerName : 'Unit Price',
+				field : "unitPrice",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : 'Discount',
+				field : "discount",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+			}, {
+				headerName : 'GstRate',
+				field : "gstRate",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+			}, {
+				headerName : 'Amount',
+				field : "lineTotal",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter,
+				aggFunc : 'sum'
+			}, ];
+
+	var iteminvoiceOptions = {
+		columnDefs : iteminvoiceDefs,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 251,
+			height : 10,
+			editable : false,
+		},
+		getRowNodeId : function(data) {
+			return data.slNo;
+		},
+
+	};
+	/*
+	invoice return 
+	 */
+	var itemretnDefs = [
+			{
+				headerCheckboxSelection : true,
+				headerCheckboxSelectionFilteredOnly : true,
+				checkboxSelection : true,
+				width : 10,
+				sortable : false,
+				filter : false,
+				resizable : true
+
+			},
+			{
+				headerName : "SlNo",
+				field : "slNo",
+				cellRenderer : function(params) {
+					if (params.data.slNo) {
+						return '<a onclick=editProduct("' + params.data.slNo
+								+ '") href="javascript:void(0)">'
+								+ params.data.slNo + '</a>';
+					} else {
+						return '<a onclick=editProduct("' + params.data.slNo
+								+ '") href="javascript:void(0)">'
+								+ params.data.slNo + '</a>';
+					}
+				}
+			}, {
+				headerName : 'SKU',
+				field : "sku"
+			}, {
+
+				headerName : 'Item Name',
+				field : "itemName"
+			}, {
+				headerName : 'Quantity',
+				field : "quantity",
+				type : 'rightAligned'
+
+			}, {
+				headerName : 'Unit Price',
+				field : "unitPrice",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+
+			}, {
+				headerName : 'Discount',
+				field : "discount",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+			}, {
+				headerName : 'GstRate',
+				field : "gstRate",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter
+			}, {
+				headerName : 'Amount',
+				field : "lineTotal",
+				type : 'rightAligned',
+				valueFormatter : currencyFormatter,
+				aggFunc : 'sum'
+			}, ];
+
+	var itemRetnOptions = {
+		columnDefs : itemretnDefs,
+		rowSelection : 'multiple',
+		groupSelectsChildren : true,
+		suppressRowClickSelection : true,
+		suppressAggFuncInHeader : true,
+		defaultColDef : {
+			sortable : true,
+			filter : true,
+			resizable : true,
+			width : 251,
+			height : 10,
+			editable : false,
+		},
+		getRowNodeId : function(data) {
+			return data.slNo;
+		},
+	};
+
+	$(document).ready(
+			function() {
+				var gridDiv = document.querySelector('#myGrid');
+				new agGrid.Grid(gridDiv, gridOptions);
+
+				var gridDiv = document.querySelector('#item');
+				new agGrid.Grid(gridDiv, itemOptions);
+
+				var gridDiv = document.querySelector('#iteminvoice');
+				new agGrid.Grid(gridDiv, iteminvoiceOptions);
+
+				var gridDiv = document.querySelector('#itemReturn');
+				new agGrid.Grid(gridDiv, itemRetnOptions);
+
+				gridOptions.api.setRowData();
+				itemOptions.api.setRowData();
+				itemRetnOptions.api.setRowData();
+				iteminvoiceOptions.api.setRowData();
+
+				$("#tdNo").hide();
+				$("#ckNo").hide();
+
+				$("#paymodeId").on('change', function() {
+					var paymodeId = $(this).val();
+					if (paymodeId == "PMOD001") {
+						$("#tdNo").show();
+						$("#ckNo").hide();
+
+					} else if ((paymodeId == "PMOD003")) {
+						$("#tdNo").hide();
+						$("#ckNo").show();
+
+					} else {
+						$("#tdNo").hide();
+						$("#ckNo").hide();
+					}
+
+				});
+				var dateFormat = localStorage.getItem("dateFormat");
+
+				$("#toDateCalendar").datetimepicker({
+					format : dateFormat,
+					closeOnDateSelect : true,
+					timepicker : false,
+				}).on("change", function() {
+					$('#payDate').val($(this).val());
+				})
+
+				$('#payDate').blur(function() {
+					$("#toDateCalendar").val($(this).val());
+				})
+
+				$("#Cancel").hide();
+				$("#addData").hide();
+				$("#save").hide();
+				$('#delete').attr("disabled", true);
+				$('#salesInvrtn').attr("disabled", true);
+				$('#paymentDtls').attr("disabled", true);
+
+				$("#igstTR").hide();
+				$("#igstPayTR").hide();
+
+				$("#Cancel").click(function() {
+					$('.loader').show();
+					$("body").addClass("overlay");
+					$("#reqTable").show();
+					$(".btn-hs").show();
+					$("#myGrid").show();
+					$("#addData").hide();
+					agGrid.simpleHttpRequest({
+						url : "view-saleInvoice-through-ajax"
+					}).then(function(data) {
+						var len = data.length;
+						$('#totalCandidate').find('span').html(len);
+						gridOptions.api.setRowData(data);
+					});
+					$("#salesInvoiceheadId").html('');
+					$("#itemId").val('');
+					$("#itemName").val('');
+					$("#quantity").val('');
+					$("#unitPrice").val('');
+					$("#discount").val('');
+					$("#gstRate").val('');
+					$("#lineTotal").val('');
+					$("#subTotal").val('');
+					$("#qIGST").val('');
+					$("#qCGST").val('');
+					$("#qSGST").val('');
+					$("#grandTotal").val('');
+					$("#taxType").val('');
+					$("#sku").val('');
+					$("#salesOrderId").val('');
+					$("#storeId").val('');
+					$("#qutActive").val('');
+					$("#itemIgst").val();
+					$("#itemCgst").val();
+					$("#itemSgst").val();
+
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+				});
+
+				$("#CancelPymt").click(function() {
+					$('.loader').show();
+					$("body").addClass("overlay");
+					$("#reqTable").show();
+					$(".btn-hs").show();
+					$("#myGrid").show();
+					$("#addData").hide();
+					$("#addPayment").hide();
+					agGrid.simpleHttpRequest({
+						url : "view-saleInvoice-through-ajax"
+					}).then(function(data) {
+						var len = data.length;
+						$('#totalCandidate').find('span').html(len);
+						gridOptions.api.setRowData(data);
+					});
+					$("#paymntheadId").html('');
+					$("#itemId").val('');
+					$("#itemName").val('');
+					$("#quantity").val('');
+					$("#unitPrice").val('');
+					$("#discount").val('');
+					$("#gstRate").val('');
+					$("#lineTotal").val('');
+					$("#subTotalpay").val('');
+					$("#qIGSTpay").val('');
+					$("#qCGSTpay").val('');
+					$("#qSGSTpay").val('');
+					$("#grandTotalpay").val('');
+					$("#taxType").val('');
+					$("#sku").val('');
+					$("#sOrder").val('');
+					$("#sInvoice").val('');
+					$("#tdN").val('');
+					$("#ckn").val('');
+					$("#paymodeId").val('');
+					$("#payDate").val('');
+					$("#totalAmnt").val('');
+					$("#paidAmnt").val('');
+					$("#itemIgstpay").val();
+					$("#itemCgstpay").val();
+					$("#itemSgstpay").val();
+
+					$('.loader').hide();
+					$("body").removeClass("overlay");
+				});
+
+				agGrid.simpleHttpRequest({
+					url : "view-saleInvoice-through-ajax"
+				}).then(function(data) {
+					var len = data.length;
+					$('#totalCandidate').find('span').html(len);
+					gridOptions.api.setRowData(data);
+				});
+				/*
+				 sales Invoice page*/
+
+				var ld = localStorage.getItem('ReqData');
+				var data = JSON.parse(ld);
+				if (data) {
+					console.log(data)
+					$('#hideTbl').hide();
+					$("#add").hide();
+					$("#paymentDtls").hide();
+					$("#salesInvrtn").hide();
+					$("#delete").hide();
+					$("#myGrid").hide();
+					$("#save").show();
+					$("#Cancel").show();
+					$("#addData").show();
+					$("#totalCandidate").hide();
+					$("#dwnld").hide();
+					$("#upld").hide();
+					$("#salesOrderId").val(data[0].salesOrder);
+					$("#storeId").val(data[0].storeId);
+					if (data[0].qutActive == "0") {
+						$("#qutActive").prop("checked", false);
+					} else {
+						$("#qutActive").prop("checked", true);
+					}
+					itemOptions.api.setRowData(data);
+					$("#subTotal").val(data[0].subTotal);
+					$("#qIGST").val(data[0].qIGST);
+					$("#qCGST").val(data[0].qCGST);
+					$("#qSGST").val(data[0].qSGST);
+					$("#grandTotal").val(data[0].grandTotal);
+					$("#taxType").val(data[0].taxType);
+					$("#itemIgst").val(data[0].itemIgst);
+					$("#itemCgst").val(data[0].itemCgst);
+					$("#itemSgst").val(data[0].itemSgst);
+					$("#custId").val(data[0].custId);
+					$("#custName").val(data[0].custName);
+					hideShowS();
+
+					//calculation
+					var sum = 0.0;
+					var gstRate = 0.0;
+					var qSGST = 0.0;
+					var qCGST = 0.0;
+					var qIGST = 0.0;
+					var len = data.length;
+					for (var i = 0; i < len; i++) {
+						sum = sum + data[i].lineTotal;
+
+						var taxType = $("#taxtype").val(data[0].taxType);
+						if (data[0].taxType) {
+							data[0].itemIgst = data[i].lineTotal
+									* data[i].gstRate / 100;
+							qIGST = qIGST + data[0].itemIgst;
+
+							grandTotal = sum + qIGST;
+						} else {
+							data[0].itemCgst = data[i].lineTotal
+									* data[i].gstRate / 200;
+							data[0].itemSgst = data[i].lineTotal
+									* data[i].gstRate / 200;
+
+							qCGST = qCGST + data[0].itemCgst;
+							qSGST = qSGST + data[0].itemSgst;
+							grandTotal = sum + qCGST + qSGST;
+						}
+
+					}
+
+					$("#itemIgst").val(itemIgst);
+					$("#itemCgst").val(itemCgst);
+					$("#itemSgst").val(itemSgst);
+					$("#subTotal").val(sum);
+					$("#qIGST").val(qIGST);
+					$("#qCGST").val(qCGST);
+					$("#qSGST").val(qSGST);
+					$("#grandTotal").val(grandTotal)
+
+					localStorage.setItem('ReqData', null);
+				} else {
+					$("#salesOrderId").val('New');
+				}
+
+				/*
+				sales invoice for payment
+				 */
+
+				var ld = localStorage.getItem('InvoiceData');
+				var data = JSON.parse(ld);
+				if (data) {
+					console.log(data)
+					$("#myGrid").hide();
+					$("#reqTable").hide();
+					$(".btn-hs").hide();
+					$("#addData").hide();
+					$("#add").hide();
+					$("#paymentDtls").hide();
+					$("#salesInvrtn").hide();
+					$("#delete").hide();
+					$("#save").show();
+					$("#Cancel").show();
+					$("#totalCandidate").hide();
+					$("#dwnld").hide();
+					$("#upld").hide();
+					$("#addPayment").show();
+
+					$("#sOrder").val(data[0].salesOrderId);
+					$("#sInvoice").val(data[0].saleInvoice);
+					iteminvoiceOptions.api.setRowData(data);
+					$("#subTotalinv").val(data[0].subTotal);
+					$("#qIGSTinv").val(data[0].qIGST);
+					$("#qCGSTinv").val(data[0].qCGST);
+					$("#qSGSTinv").val(data[0].qSGST);
+					$("#grandTotalinv").val(data[0].grandTotal);
+					$("#itemIgstinv").val(data[0].itemIgst);
+					$("#itemCgstinv").val(data[0].itemCgst);
+					$("#itemSgstinv").val(data[0].itemSgst);
+
+					$("#taxType").val(data[0].taxType);
+					$("#custName").val(data[0].custName);
+
+					hideShowSPay();
+
+					localStorage.setItem('InvoiceData', null);
+				} else {
+					$("#saleInvoice").val('New');
+				}
+
+				/*
+				 * salesInvoicereturn for payment
+				 */
+				var ld = localStorage.getItem('InvoicertnData');
+				var data = JSON.parse(ld);
+				if (data) {
+					$("#myGrid").hide();
+					$("#reqTable").hide();
+					$(".btn-hs").hide();
+					$("#addData").hide();
+					$("#add").hide();
+					$("#paymentDtls").hide();
+					$("#salesInvrtn").hide();
+					$("#delete").hide();
+					$("#save").show();
+					$("#Cancel").show();
+					$("#totalCandidate").hide();
+					$("#dwnld").hide();
+					$("#upld").hide();
+					$("#addPayment").show();
+
+					itemRetnOptions.api.setRowData(data);
+					$("#subTotalrtn").val(data[0].subTotal);
+
+					$("#qIGSTrtn").val(data[0].qIGST);
+					$("#qCGSTrtn").val(data[0].qCGST);
+					$("#qSGSTrtn").val(data[0].qSGST);
+					$("#grandTotalrtn").val(data[0].grandTotal);
+					$("#itemIgstrtn").val(data[0].itemIgst);
+					$("#itemCgstrtn").val(data[0].itemCgst);
+					$("#itemSgstrtn").val(data[0].itemSgst);
+
+					$("#taxType").val(data[0].taxType);
+
+					hideShowSPay();
+
+					localStorage.setItem('InvoicertnData', null);
+				} else {
+					$("#saleInvoice").val('New');
+				}
+				totalAmnt
+
+				//calculation 
+
+				var subTotalrtn = $("#subTotalrtn").val();
+				var subTotalinv = $("#subTotalinv").val();
+
+				var qIGSTrtn = $("#qIGSTrtn").val();
+				var qIGSTinv = $("#qIGSTinv").val();
+
+				var qCGSTrtn = $("#qCGSTrtn").val();
+				var qCGSTinv = $("#qCGSTinv").val();
+
+				var qSGSTrtn = $("#qSGSTrtn").val();
+				var qSGSTinv = $("#qSGSTinv").val();
+
+				//var outStdAmt=$("#outStdAmt").val();
+
+				var totalAmnt = $("#totalAmnt").val();
+				var paidAmnt = $("#paidAmnt").val();
+
+				var payamt = $("#paidAmnt").val();
+
+				var subTotalpay = parseFloat(subTotalinv)
+						- parseFloat(subTotalrtn);
+				var taxType = $("#taxType").val();
+				if (taxType == "true") {
+
+					var qIGSTpay = parseFloat(qIGSTinv) - parseFloat(qIGSTrtn);
+					var grandTotalpay = parseFloat(subTotalpay)
+							+ parseFloat(qIGSTpay)
+				} else {
+
+					var qCGSTpay = parseFloat(qCGSTinv) - parseFloat(qCGSTrtn);
+
+					var qSGSTpay = parseFloat(qSGSTinv) - parseFloat(qSGSTrtn);
+
+					var grandTotalpay = parseFloat(subTotalpay)
+							+ parseFloat(qCGSTpay) + parseFloat(qSGSTpay)
+
+				}
+
+				totalAmnt = grandTotalpay;
+				paidAmnt = ""
+				/* var outStdAmt=parseFloat(totalAmnt)-parseFloat(paidAmnt)
+				alert(outStdAmt)  */
+				$("#subTotalpay").val(subTotalpay)
+				$("#qIGSTpay").val(qIGSTpay)
+				$("#qCGSTpay").val(qCGSTpay)
+				$("#qSGSTpay").val(qSGSTpay)
+				$("#grandTotalpay").val(grandTotalpay)
+				$("#totalAmnt").val(grandTotalpay)
+				$("#paidAmnt").val(grandTotalpay)
+
+				/*pay save	*/
+				$("#savePymt").click(
+						function() {
+
+							var obj = {};
+							obj.saleInvoice = $("#sInvoice").val();
+							obj.paymentId = $("#paymentId").val();
+							obj.paymodeId = $("#paymodeId").val();
+							obj.payDate = $("#payDate").val();
+							obj.totalAmnt = $("#totalAmnt").val();
+							obj.paidAmnt = $("#paidAmnt").val();
+							obj.tdN = $("#tdN").val();
+							obj.ckn = $("#ckn").val();
+							obj.outStdAmt = $("#outStdAmt").val();
+							obj.custName = $("#custName").val();
+							obj.rVoucher = $("#rVoucher").val();
+							obj.salesOrderId = $("#sOrder").val();
+							obj.taxType = $("#taxTypepay").val();
+							obj.gstRate = $("#gstRatepay").val();
+							obj.subTotalpay = $("#subTotalpay").val();
+							obj.qIGSTpay = $("#qIGSTpay").val();
+							obj.qCGSTpay = $("#qCGSTpay").val();
+							obj.qSGSTpay = $("#qSGSTpay").val();
+							obj.grandTotalpay = $("#grandTotalpay").val();
+
+							console.log(obj)
+							var validation = true;
+
+							if (obj.paymodeId == null || obj.paymodeId == "") {
+								validation = validationUpdated(
+										"paymodeId Requied", "paymodeId");
+
+							}
+
+							if (obj.payDate == null || obj.payDate == "") {
+								validation = validationUpdated(
+										"payDate Requied", "payDate");
+
+							}
+
+							if (obj.paidAmnt == null || obj.paidAmnt == "") {
+								validation = validationUpdated(
+										"paidAmnt Requied", "paidAmnt");
+
+							}
+							if (obj.totalAmnt == null || obj.totalAmnt == "") {
+								validation = validationUpdated(
+										"totalAmnt Requied", "totalAmnt");
+
+							}
+
+							console.log("validation " + validation
+									+ JSON.stringify(obj))
+							if (validation) {
+
+								$.ajax({
+									type : "POST",
+									url : "view-saleInvoice-payment-add",
+									contentType : "application/json",
+									data : JSON.stringify(obj),
+
+									success : function(response) {
+										if (response.message == "Success") {
+											console.log(JSON.stringify(obj))
+
+											$("#messageParagraph").text(
+													"Data saved successfully");
+											$("#msgOkModal")
+													.removeClass("btn3");
+											$("#msgOkModal").addClass("btn1");
+											$("#msgModal").modal('show');
+
+										}
+
+									},
+
+									error : function(data) {
+
+										console.log(data);
+									}
+								})
+							}
+
+						})
+
+			});
+
+	function add() {
+		$('#hideTbl').hide();
+		$("#add").hide();
+		$("#paymentDtls").hide();
+		$("#salesInvrtn").hide();
+		$("#delete").hide();
+		$("#myGrid").hide();
+		$("#save").show();
+		$("#Cancel").show();
+		$("#addData").show();
+		$("#totalCandidate").hide();
+		$("#dwnld").hide();
+		$("#upld").hide();
+
+		$("#salesInvoiceheadId").html('');
+		$("#itemId").val('');
+		$("#itemName").val('');
+		$("#quantity").val('');
+		$("#unitPrice").val('');
+		$("#discount").val('');
+		$("#gstRate").val('');
+		$("#lineTotal").val('');
+		$("#subTotal").val('');
+		$("#qIGST").val('');
+		$("#qCGST").val('');
+		$("#qSGST").val('');
+		$("#grandTotal").val('');
+		$("#taxType").val('');
+		$("#sku").val('');
+		$("#salesOrderId").val('');
+		$("#storeId").val('');
+		$("#qutActive").val('');
+		$("#itemIgst").val();
+		$("#itemCgst").val();
+		$("#itemSgst").val();
+		$("#custId").val();
+		$("#custName").val();
+	}
+
+	function Cancel() {
+		$("#add").show();
+		$("#paymentDtls").show();
+		$("#delete").show();
+		$("#salesInvrtn").show();
+		$("#myGrid").show();
+		$("#save").hide();
+		$("#Cancel").hide();
+		$("#addData").hide();
+		$('#hideTbl').show();
+		$("#totalCandidate").show();
+		$("#dwnld").show();
+		$("#upld").show();
+		$("#addPayment").hide();
+		itemOptions.api.setRowData();
+
+		$('#delete').attr("disabled", true);
+		$('#salesInvrtn').attr("disabled", true);
+		$('#paymentDtls').attr("disabled", true);
+	}
+
+	/*
+	payment
+	 */
+	function CancelPymt() {
+		$("#add").show();
+		$("#paymentDtls").show();
+		$("#delete").show();
+		$("#salesInvrtn").show();
+		$("#myGrid").show();
+		$("#save").hide();
+		$("#Cancel").hide();
+		$("#addData").hide();
+		$('#hideTbl').show();
+		$("#totalCandidate").show();
+		$("#dwnld").show();
+		$("#upld").show();
+
+		iteminvoiceOptions.api.setRowData();
+		itemRetnOptions.api.setRowData();
+
+		$('#delete').attr("disabled", true);
+		$('#salesInvrtn').attr("disabled", true);
+		$('#paymentDtls').attr("disabled", true);
+	}
+
+	function openNav() {
+		$("#sku").val("");
+		$("#itemName").val("");
+		$("#quantity").val("");
+		$("#unitPrice").val("");
+		$("#discount").val("");
+		$("#gstRate").val("");
+		$("#lineTotal").val("");
+		$("#editProduct").val("");
+		document.getElementById("mySidenav").style.cssText = "width: 25%; position: absolute; right:-10px; overflow: hidden; height:auto; top:300px;";
+		document.getElementById("main_content1").style.width = "75%";
+		$("#gstCalS").hide();
+
+	}
+
+	function closeNav() {
+		document.getElementById("mySidenav").style.width = "0";
+		document.getElementById("main_content1").style.width = "100%";
+		$("#gstCalS").show();
+		$("#sku").val('');
+		$("#itemId").val('');
+		$("#itemName").val('');
+		$("#quantity").val('');
+		$("#unitPrice").val('');
+		$("#discount").val('');
+		$("#gstRate").val('');
+		$("#lineTotal").val('');
+		$("#editProduct").val(null);
+
+	}
+
+	function openNav1() {
+		$("#sku").val("");
+		$("#itemName").val("");
+		$("#quantity").val("");
+		$("#unitPrice").val("");
+		$("#discount").val("");
+		$("#gstRate").val("");
+		$("#lineTotal").val("");
+		$("#editProduct").val("");
+		document.getElementById("mySidenav1").style.cssText = "width: 25%; position: absolute; right:-30px; overflow: hidden; height:auto; top:140px;";
+		document.getElementById("main_content").style.width = "75%";
+
+	}
+
+	function closeNav1() {
+		document.getElementById("mySidenav1").style.width = "0";
+		document.getElementById("main_content").style.width = "100%";
+		$("#sku").val('');
+		$("#itemId").val('');
+		$("#itemName").val('');
+		$("#quantity").val('');
+		$("#unitPrice").val('');
+		$("#discount").val('');
+		$("#gstRate").val('');
+		$("#lineTotal").val('');
+		$("#editProduct").val(null);
+
+	}
+
+	function openNav2() {
+		$("#sku").val("");
+		$("#itemName").val("");
+		$("#quantity").val("");
+		$("#unitPrice").val("");
+		$("#discount").val("");
+		$("#gstRate").val("");
+		$("#lineTotal").val("");
+		$("#editProduct").val("");
+		document.getElementById("mySidenav2").style.cssText = "width: 350px; position: absolute; right:-30px; overflow: hidden; height:auto; top:140px;";
+		document.getElementById("main_content").style.width = "72%";
+
+	}
+
+	function closeNav2() {
+		document.getElementById("mySidenav2").style.width = "0";
+		document.getElementById("main_content").style.width = "100%";
+		$("#sku").val('');
+		$("#itemId").val('');
+		$("#itemName").val('');
+		$("#quantity").val('');
+		$("#unitPrice").val('');
+		$("#discount").val('');
+		$("#gstRate").val('');
+		$("#lineTotal").val('');
+		$("#editProduct").val(null);
+
+	}
+
+	/*Sales Order Auto Search*/
+
+	function getSalesOrderNo() {
+		var search = $("#salesOrderId").val();
+
+		if (search) {
+
+			$
+					.ajax({
+						type : "POST",
+						url : "view-saleInvoice-get-customer-list",
+						dataType : 'json',
+						contentType : 'application/json',
+						data : search,
+						success : function(response) {
+							if (response.message == "success") {
+								openNav();
+								if (response.body.length != 0) {
+									$("#search").css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1" style="margin-left:-40px; font-weight:100; font-size:14px; color:#ccc;">';
+									for (var i = 0; i < response.body.length; i++) {
+										content += '<li class="autocompletedata cp" onClick="selectAutocompleteValue1(\''
+												/* + response.body[i].salesOrder
+												+ '\',\'' */
+												+ response.body[i].salesOrderId
+												+ '\',\''
+												+ response.body[i].storeId
+												+ '\',\''
+												+ response.body[i].itemId
+												+ '\',\''
+												+ response.body[i].slNo
+												+ '\',\''
+												+ response.body[i].itemName
+												+ '\',\''
+												+ response.body[i].gstRate
+												+ '\',\''
+												+ response.body[i].sku
+												+ '\',\''
+												+ response.body[i].taxType
+												+ '\')">'
+												+ response.body[i].salesOrderId
+												+ '</li>';
+									}
+									content += '</ul>';
+									console.log("content " + content)
+									$("#suggesstion-box1_").show();
+									$("#suggesstion-box1_").html(content);
+
+								} else {
+									$("#salesOrderId")
+											.css("background", "#FFF");
+									var content = '<ul id="autocomplete-list1">';
+									content += '<li onClick="selectAutocompleteValue()">'
+											+ "No Data Found" + '</li>';
+									content += '</ul>';
+									$("#suggesstion-box1_").show();
+									$("#suggesstion-box1_").html(content);
+								}
+							}
+						},
+						error : function(data) {
+							console.log(data);
+						}
+					})
+		}
+
+	}
+
+	function selectAutocompleteValue1(salesOrderId, storeId, itemId, slNo,
+			itemName, gstRate, sku, taxType) {
+
+		if (salesOrderId) {
+			$("#salesOrderId").val(salesOrderId);
+			$("#storeId").val(storeId);
+			$("#itemId").val(itemId);
+			$("#slNo").val(slNo);
+
+			$("#itemName").val(itemName);
+			$("#gstRate").val(gstRate);
+			$("#sku").val(sku);
+			$("#taxType").val(taxType);
+			$("#salesOrderId").attr('data-procat', salesOrderId);
+			$("#suggesstion-box1_").hide();
+			hideShowS();
+			//checkForDuplicate(key,counter);
+
+		} else {
+
+			$("#salesOrderId").val("");
+			$("#storeId").val("");
+			$("#itemId").val("");
+			$("#slNo").val("");
+
+			$("#itemName").val("");
+			$("#gstRate").val("");
+			$("#sku").val("");
+			$("#taxType").val("");
+			$("#salesOrderId").attr('data-procat', "");
+			$("#suggesstion-box1_").hide();
+
+		}
+	}
+
+	/*
+	 * taxtype fn
+	 */
+	function hideShowS() {
+		var taxType = $("#taxType").val();
+		if (taxType == "true") {
+			$('#igstTR').show();
+			$('#cgstTR').hide();
+			$('#sgstTR').hide();
+
+		} else {
+			$('#igstTR').hide();
+			$('#cgstTR').show();
+			$('#sgstTR').show();
+
+		}
+
+	}
+	/*
+	 * taxtype fn for payment
+	 */
+	function hideShowSPay() {
+		var taxType = $("#taxType").val();
+		if (taxType == "true") {
+			$('#igstPayTR').show();
+			$('#cgstPayTR').hide();
+			$('#sgstPayTR').hide();
+
+		} else {
+			$('#igstPayTR').hide();
+			$('#cgstPayTR').show();
+			$('#sgstPayTR').show();
+
+		}
+
+	}
+
+	/* //sale Invoice item  table add */
+
+	function saveTableData() {
+		var editProduct = $("#editProduct").val();
+		var item = {};
+		var data = 1;
+		var validation = true;
+
+		if (item.sku == null || item.sku == "") {
+			validation = validationUpdated("SKU Required", 'sku');
+		}
+		if (item.itemName == null || item.itemName == "") {
+			validation = validationUpdated("itemName Required", 'itemName');
+		}
+		if (item.quantity == null || item.quantity == "") {
+			validation = validationUpdated("quantity Required", 'quantity');
+		}
+		if (item.unitPrice == null || item.unitPrice == "") {
+			validation = validationUpdated("unitPrice Required", 'unitPrice');
+		}
+		if (item.discount == null || item.discount == "") {
+			validation = validationUpdated("discount Required", 'discount');
+		}
+		if (item.gstRate == null || item.gstRate == "") {
+			validation = validationUpdated("gstRate Required", 'gstRate');
+		}
+		if (item.lineTotal == null || item.lineTotal == "") {
+			validation = validationUpdated("lineTotal Required", 'lineTotal');
+		}
+
+		if (validation) {
+			itemOptions.api.forEachNode(function(rowNode, index) {
+				if (!editProduct) {
+					data = data + 1;
+				}
+			});
+
+			item.itemId = $('#itemId').val();
+			item.sku = $('#sku').val();
+			item.itemName = $('#itemName').val();
+			item.quantity = $('#quantity').val();
+			item.unitPrice = $('#unitPrice').val();
+			item.discount = $('#discount').val();
+			item.gstRate = $('#gstRate').val();
+			item.lineTotal = $('#lineTotal').val();
+
+			item.slNo = data;
+			var quot = [];
+
+			if (editProduct) {
+				var rowNode = itemOptions.api.getRowNode(editProduct);
+				rowNode.setData(item);
+			} else {
+				itemOptions.api.forEachNode(function(rowNode, index) {
+					quot.push(rowNode.data);
+				});
+				quot.push(item)
+				itemOptions.api.setRowData(quot);
+
+				//calculation GST,IGST,SGST,CGST,SUBTOTAL,GRANDTOTAL
+				var sum = 0.0;
+				var gstRate = 0.0;
+				var qSGST = 0.0;
+				var qCGST = 0.0;
+				var qIGST = 0.0;
+				var itemIgst = 0.0;
+				var itemCgst = 0.0;
+				var itemSgst = 0.0;
+				var len = quot.length;
+				for (var i = 0; i < len; i++) {
+
+					sum = sum + parseFloat(quot[i].lineTotal);
+					var taxType = $("#taxType").val();
+
+					if (taxType == "true") {
+
+						quot[i].itemIgst = quot[i].lineTotal * quot[i].gstRate
+								/ 100;
+						qIGST = qIGST + quot[i].itemIgst;
+						grandTotal = sum + qIGST;
+
+					} else {
+						quot[i].itemCgst = quot[i].lineTotal * quot[i].gstRate
+								/ 200;
+						quot[i].itemSgst = quot[i].lineTotal * quot[i].gstRate
+								/ 200;
+
+						qCGST = qCGST + quot[i].itemCgst;
+						qSGST = qSGST + quot[i].itemSgst;
+						grandTotal = sum + qCGST + qSGST;
+					}
+
+				}
+
+				$("#subTotal").val(sum);
+				$("#qIGST").val(qIGST);
+				$("#qCGST").val(qCGST);
+				$("#qSGST").val(qSGST);
+				$("#grandTotal").val(grandTotal)
+
+			}
+			closeNav();
+			$("#sku").val('');
+			$("#itemId").val('');
+			$("#itemName").val('');
+			$("#quantity").val('');
+			$("#unitPrice").val('');
+			$("#discount").val('');
+			$("#gstRate").val('');
+			$("#lineTotal").val('');
+
+			$("#editProduct").val(null);
+		}
+
+	}
+	/* //salesInvoice  table add */
+
+	function save() {
+
+		if (validProductData() && validFormData()) {
+			var datas = [];
+			if (itemOptions.api.getDisplayedRowCount() > 0) {
+				itemOptions.api.forEachNode(function(rowNode, indrx) {
+
+					var obj = rowNode.data;
+					obj.saleInvoice = $("#saleInvoice").val();
+					obj.saleInvoice = $("#salesInvoiceheadId").html();
+					obj.salesOrderId = $("#salesOrderId").val();
+					obj.subTotal = $("#subTotal").val();
+					obj.grandTotal = $("#grandTotal").val();
+					obj.qIGST = $('#qIGST').val();
+					obj.qCGST = $('#qCGST').val();
+					obj.qSGST = $('#qSGST').val();
+					obj.taxType = $('#taxType').val();
+					obj.storeId = $('#storeId').val();
+					obj.custId = $('#custId').val();
+					obj.custName = $('#custName').val();
+					obj.qutActive = $("#qutActive:checkbox:checked").val();
+
+					if (obj.qutActive == undefined) {
+						obj.qutActive = "0";
+					} else {
+						obj.qutActive = "1";
+					}
+					datas.push(obj);
+
+				});
+
+			} else {
+				var obj = {};
+				obj.saleInvoice = $("#saleInvoice").val();
+				obj.salesOrderId = $("#salesOrderId").val();
+				obj.subTotal = $("#subTotal").val();
+				obj.grandTotal = $("#grandTotal").val();
+				obj.qIGST = $('#qIGST').val();
+				obj.qCGST = $('#qCGST').val();
+				obj.qSGST = $('#qSGST').val();
+				obj.taxType = $('#taxType').val();
+				obj.storeId = $('#storeId').val();
+				obj.custId = $('#custId').val();
+				obj.custName = $('#custName').val();
+				obj.qutActive = $("#qutActive:checkbox:checked").val();
+
+				if (obj.qutActive == undefined) {
+					obj.qutActive = "0";
+				} else {
+					obj.qutActive = "1";
+				}
+				datas.push(obj);
+
+			}
+
+			console.log(datas);
+			saveAllSalesOreder(datas);
+		}
+	}
+
+	function saveAllSalesOreder(datas) {
+		console.log(JSON.stringify(datas))
+		$
+				.ajax({
+
+					type : "POST",
+					url : "view-saleInvoice-add",
+					contentType : "application/json",
+					data : JSON.stringify(datas),
+					success : function(response) {
+						if (response.message == "Success") {
+
+							console.log(JSON.stringify(datas))
+
+							$("#messageParagraph").text(
+									"Data saved successfully");
+							$("#msgOkModal").removeClass("btn3");
+							$("#msgOkModal").addClass("btn1");
+							$("#msgModal").modal('show');
+							$("#itemId").val(response.body[0].itemId);
+							$("#itemName").val(response.body[0].itemName);
+							$("#salesOrderId").val(
+									response.body[0].salesOrderId);
+							$("#subTotal").val(response.body[0].subTotal);
+							$("#grandTotal").val(response.body[0].grandTotal);
+							$("#storeId").val(response.body[0].storeId);
+							if (response.body[0].qutActive == "0") {
+								$("#qutActive").prop("checked", false);
+							} else {
+								$("#qutActive").prop("checked", true);
+
+							}
+							$("#itemName").attr("data-procat",
+									response.body[0].itemId);
+							$("#salesInvoiceheadId").html(
+									response.body[0].saleInvoice);
+							// itemOptions.api.setRowData(response.body);
+
+						}
+
+					},
+					error : function(datas) {
+						console.log(datas)
+					}
+				})
+
+	}
+	//validation
+	function validFormData() {
+		var allValid = true;
+		if (!validationUpdated("salesOrderId  can't be Left Blank",
+				'salesOrderId'))
+			allValid = false;
+		if (!validationUpdated("storeId  can't be Left Blank", 'storeId'))
+			allValid = false;
+		return allValid;
+	}
+
+	function validProductData() {
+		return true;
+	}
+
+	/* 
+	Edit Invoice Item
+	 */
+	function editProduct(slNo) {
+		var saleInvoice = $("#salesInvoiceheadId").html();
+		var rowNode = itemOptions.api.getRowNode(slNo);
+
+		console.log(rowNode)
+		openNav();
+		$("#editProduct").val(slNo);
+		$("#sku").val(rowNode.data.sku);
+		$("#itemId").val(rowNode.data.itemId);
+		$("#itemName").val(rowNode.data.itemName);
+		$("#quantity").val(rowNode.data.quantity);
+		$("#unitPrice").val(rowNode.data.unitPrice);
+		$("#gstRate").val(rowNode.data.gstRate);
+		$("#discount").val(rowNode.data.discount);
+		$("#lineTotal").val(rowNode.data.lineTotal);
+		$("#itemIgst").val(rowNode.data.itemIgst);
+		$("#itemCgst").val(rowNode.data.itemCgst);
+		$("#itemSgst").val(rowNode.data.itemSgst);
+
+	}
+
+	function editsalesInvoice(saleInvoice) {
+		Cancel();
+		$("#myGrid").hide();
+		$("#reqTable").hide();
+		$(".btn-hs").hide();
+		$("#addData").show();
+		$("#add").hide();
+		$("#paymentDtls").hide();
+		$("#delete").hide();
+		$("#salesInvrtn").hide();
+		$("#save").show();
+		$("#Cancel").show();
+		$("#totalCandidate").hide();
+		$("#dwnld").hide();
+		$("#upld").hide();
+
+		agGrid.simpleHttpRequest({
+			url : 'view-saleInvoice-edit-new?id=' + saleInvoice
+		}).then(
+				function(data) {
+					console.log(data);
+					$("#salesInvoiceheadId").html(data[0].saleInvoice);
+					$("#taxtype").val(data[0].taxType);
+					$("#salesOrderId").val(data[0].salesOrderId);
+					$("#storeId").val(data[0].storeId);
+					$("#custId").val(data[0].custId);
+					$("#custName").val(data[0].custName);
+					if (data[0].qutActive == "0") {
+						$("#qutActive").prop("checked", false);
+					} else {
+						$("#qutActive").prop("checked", true);
+					}
+					getEditTaxType(data[0].salesOrderId);
+
+					itemOptions.api.setRowData(data);
+					//EDIT GST,SUBTOTAL,GRANDTOTAL,SGST,CGST,IGST
+					var sum = 0.0;
+					var gstRate = 0.0;
+					var qSGST = 0.0;
+					var qCGST = 0.0;
+					var qIGST = 0.0;
+					var len = data.length;
+					for (var i = 0; i < len; i++) {
+						sum = sum + data[i].lineTotal;
+
+						var taxType = $("#taxtype").val(data[0].taxType);
+						//alert(data[0].taxType)
+						if (data[0].taxType) {
+							//alert("@" +data[0].taxType)
+							data[0].itemIgst = data[i].lineTotal
+									* data[i].gstRate / 100;
+							qIGST = qIGST + data[0].itemIgst;
+
+							grandTotal = sum + qIGST;
+						} else {
+							data[0].itemCgst = data[i].lineTotal
+									* data[i].gstRate / 200;
+							data[0].itemSgst = data[i].lineTotal
+									* data[i].gstRate / 200;
+
+							qCGST = qCGST + data[0].itemCgst;
+							qSGST = qSGST + data[0].itemSgst;
+							grandTotal = sum + qCGST + qSGST;
+						}
+
+					}
+
+					$("#itemIgst").val(itemIgst);
+					$("#itemCgst").val(itemCgst);
+					$("#itemSgst").val(itemSgst);
+					$("#subTotal").val(sum);
+					$("#qIGST").val(qIGST);
+					$("#qCGST").val(qCGST);
+					$("#qSGST").val(qSGST);
+					$("#grandTotal").val(grandTotal)
+
+				});
+
+	}
+
+	function getEditTaxType(search) {
+
+		$.ajax({
+			type : "POST",
+			url : "view-saleInvoice-get-customer-list",
+			dataType : 'json',
+			contentType : 'application/json',
+			data : search,
+			success : function(response) {
+				if (response.message == "success") {
+					console.log("response data" + response.body[0].taxType)
+					$("#taxType").val(response.body[0].taxType);
+					hideShowS();
+				}
+			},
+			error : function(data) {
+				console.log(data);
+			}
+		})
+	}
+
+	//calculate Amount=(quantity*unitPrice)-Discount
+	var totalLine;
+	function calculateLineTotal() {
+		var price = $("#unitPrice").val();
+		var quantity = $("#quantity").val();
+		var discount = $("#discount").val();
+
+		if (price && quantity) {
+			var mul = price * quantity;
+
+			if (discount > mul) {
+
+				$("#discount").val("0");
+				totalLine = mul - discount;
+				$("#lineTotal").val((mul).toFixed(2));
+			} else {
+				totalLine = mul - discount;
+				$("#lineTotal").val((totalLine).toFixed(2));
+			}
+
+		} else {
+			var mul = 0;
+			$("#lineTotal").val((mul).toFixed(2));
+
+		}
+	}
+	/* 
+	Delete  
+	 */
+	function deleteQuotation() {
+
+		$('#deleteQuot').modal('show');
+	}
+	function deleteItem() {
+
+		$('#deleteProduct').modal('show');
+	}
+
+	function cancelModalBtn() {
+
+		$("#deleteModalBtn").removeAttr("disabled");
+	}
+
+	function cancelModalProductBtn() {
+
+		$("#deleteModalBtn").removeAttr("disabled");
+		$('#deleteProduct').modal('hide');
+	}
+
+	function rowSelect() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var rowCount = 0;
+		selectedRows.forEach(function(selectedRow, index) {
+			rowCount = rowCount + 1;
+		});
+
+		if (rowCount > 0) {
+			$('#delete').attr("disabled", false);
+			$('#salesInvrtn').attr("disabled", false);
+			$('#paymentDtls').attr("disabled", false);
+
+		} else {
+			$('#delete').attr("disabled", true);
+			$('#salesInvrtn').attr("disabled", true);
+			$('#paymentDtls').attr("disabled", true);
+		}
+
+	}
+
+	// delete salesInvoice 
+
+	function deleteOnclick() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var selectedRowsString = '';
+		selectedRows.forEach(function(selectedRow, index) {
+			if (index > 0) {
+				selectedRowsString += ',';
+			}
+			selectedRowsString += selectedRow.saleInvoice;
+		});
+		if (selectedRowsString) {
+			var item = {};
+			item.saleInvoice = selectedRowsString;
+			$('.loader').show();
+			$("body").addClass("overlay");
+			$.ajax({
+				type : "POST",
+				url : "view-saleInvoice-delete",
+				dataType : "json",
+				contentType : "application/json",
+				data : JSON.stringify(item),
+				success : function(response) {
+					$('.loader').hide();
+					$('.modal').hide();
+					if (response.message == "Success") {
+						agGrid.simpleHttpRequest({
+							url : 'view-saleInvoice-through-ajax'
+						}).then(function(data) {
+							gridOptions.api.setRowData(data);
+							console.log(JSON.stringify(data))
+						});
+
+					} else {
+
+					}
+				},
+				error : function(data) {
+					console.log(data)
+				}
+			})
+		} else {
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+	}
+
+	function deleteProductOnclick() {
+		var selectedRows = itemOptions.api.getSelectedRows();
+		itemOptions.api.applyTransaction({
+			remove : selectedRows
+
+		});
+		cancelModalProductBtn();
+		//DELETE GST,SUBTOTAL,GRANDTOTAL,SGST,CGST,IGST
+		var sum = $("#subTotal").val();
+		var gstRate = $("#gstRate").val();
+		var qCGST = $("#qCGST").val();
+		var qSGST = $("#qSGST").val();
+		var qIGST = $("#qIGST").val();
+		var grandTotal = $("#grandTotal").val();
+		var itemIgst = $("#itemIgst").val();
+		var itemCgst = $("#itemCgst").val();
+		var itemSgst = $("#itemSgst").val();
+		var len = selectedRows.length;
+		for (var i = 0; i < len; i++) {
+
+			sum = sum - selectedRows[i].lineTotal;
+			var taxType = $("#taxType").val()
+			if (taxType == "true") {
+
+				selectedRows[i].itemIgst = selectedRows[i].lineTotal
+						* selectedRows[i].gstRate / 100;
+				qIGST = qIGST - selectedRows[i].itemIgst;
+				grandTotal = sum + qIGST;
+			} else {
+				selectedRows[i].itemCgst = selectedRows[i].lineTotal
+						* selectedRows[i].gstRate / 200;
+				selectedRows[i].itemSgst = selectedRows[i].lineTotal
+						* selectedRows[i].gstRate / 200;
+
+				qCGST = qCGST - selectedRows[i].itemCgst;
+				qSGST = qSGST - selectedRows[i].itemSgst;
+				grandTotal = sum + qCGST + qSGST;
+			}
+
+		}
+
+		$("#itemIgst").val(itemIgst);
+		$("#itemCgst").val(itemCgst);
+		$("#itemSgst").val(itemSgst);
+		$("#subTotal").val(sum);
+		$("#qIGST").val(qIGST);
+		$("#qCGST").val(qCGST);
+		$("#qSGST").val(qSGST);
+		$("#grandTotal").val(grandTotal)
+	}
+
+	/*create sales Invoice Return*/
+
+	function salesInvrtn() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var selectedRowsString = '';
+		selectedRows.forEach(function(selectedRow, index) {
+			if (index > 0) {
+				selectedRowsString += ',';
+			}
+			selectedRowsString += selectedRow.saleInvoice;
+
+		});
+		if (selectedRowsString) {
+			sessionStorage.setItem('activity', 'ACT0080');
+
+			agGrid.simpleHttpRequest({
+				url : 'view-saleInvoice-edit-new?id=' + selectedRowsString
+			}).then(function(data) {
+				localStorage.setItem('ReqData', JSON.stringify(data));
+				itemOptions.api.setRowData(data);
+				window.location.href = "/sales/view-saleInvoicereturn"
+			});
+
+		} else {
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+	}
+	/*create payment through salesinvoice*/
+	function paymentDtls() {
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var selectedRowsString = '';
+		selectedRows.forEach(function(selectedRow, index) {
+			if (index > 0) {
+				selectedRowsString += ',';
+			}
+			selectedRowsString += selectedRow.saleInvoice;
+
+		});
+
+		var selectedRows = gridOptions.api.getSelectedRows();
+		var selectedRowsStringInvr = '';
+		selectedRows.forEach(function(selectedRow, index) {
+			if (index > 0) {
+				selectedRowsStringInvr += ',';
+			}
+			selectedRowsStringInvr += selectedRow.saleInvoice;
+
+		});
+
+		if (selectedRowsStringInvr) {
+			$("#myGrid").hide();
+			$("#reqTable").hide();
+			$(".btn-hs").hide();
+			$("#addData").hide();
+			$("#add").hide();
+			$("#paymentDtls").hide();
+			$("#delete").hide();
+			$("#salesInvrtn").hide();
+			$("#save").show();
+			$("#Cancel").show();
+			$("#totalCandidate").hide();
+			$("#dwnld").hide();
+			$("#upld").hide();
+			$("#addPayment").show();
+
+			agGrid.simpleHttpRequest(
+					{
+						url : 'view-saleInvoicereturn-edit-return-new?id='
+								+ selectedRowsStringInvr
+
+					}).then(function(data) {
+
+				localStorage.setItem('InvoicertnData', JSON.stringify(data));
+				itemOptions.api.setRowData(data);
+				window.location.href = "/sales/view-saleInvoice"
+
+			});
+
+		} else {
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+		if (selectedRowsString) {
+			sessionStorage.setItem('activity', 'ACT0079');
+
+			agGrid.simpleHttpRequest({
+				url : 'view-saleInvoice-edit-new?id=' + selectedRowsString
+			}).then(function(data) {
+
+				localStorage.setItem('InvoiceData', JSON.stringify(data));
+				itemOptions.api.setRowData(data);
+				window.location.href = "/sales/view-saleInvoice"
+			});
+
+		} else {
+			$("#alert").modal('show');
+			document.getElementById("textId").innerHTML = "Please Select Atleast one Record !";
+		}
+
+	}
+	//calculate outStdAmt
+	function calculateoutStdAmt() {
+		var totalAmnt = $("#totalAmnt").val();
+		var paidAmnt = $("#paidAmnt").val();
+		var amt = parseFloat(totalAmnt) - parseFloat(paidAmnt)
+		var outStdAmt = $("#outStdAmt").val(amt)
+
+	}
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<div class="content_padding">
+						<!-- <div class="row" id="hideTbl">
+							<div id="searchRowDiv" class="d-flex justify-content-center mb-2">
+								<div class="input-style">
+									<input type="text" placeholder="Search.." name="search"
+										class="searchboxinput" onkeyup="cancelBar()"
+										oninput="onQuickFilterChanged()" id="quickFilter"
+										autocomplete="off">
+									<div class="searchicon">
+										<a href="javascript:void(0)"><span
+											style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+											id="closeKey"
+											onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+											class="close_i"><i class="ti-close srchicon"></i></span></a><a
+											href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+									</div>
+								</div>
+							</div>
+						</div> -->
+
+						<div class="d-flex flex-wrap justify-content-between" id="reqTable">
+
+							<div class="btn-hs">
+								<div class="font-design" id="totalCandidate">
+									SALE INVOICE LIST (<span></span>)
+								</div>
+							</div>
+
+							<div id="hideTbl">
+								<div id="searchRowDiv">
+									<div class="input-style">
+										<input type="text" placeholder="Search.." name="search"
+											class="searchboxinput" onkeyup="cancelBar()"
+											oninput="onQuickFilterChanged()" id="quickFilter"
+											autocomplete="off">
+										<div class="searchicon">
+											<a href="javascript:void(0)"><span
+												style="display: none; border-right: 1px solid #ccc; padding-right: 5px;"
+												id="closeKey"
+												onclick="gridOptions.api.setQuickFilter(null);$('#quickFilter').val('');document.getElementById('closeKey').style.display='none';"
+												class="close_i"><i class="ti-close srchicon"></i></span></a><a
+												href="javascript:void(0)"><i class="ti-search srchicon"></i></a>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<div class="col-md-5 buttonsec btn-hs">
+
+								<button class="btn4" id=dwnld>Download</button>
+								<button class="btn4" id=upld>Upload</button>
+								<!-- <div class="buttongap"></div> -->
+
+								<button onclick="add()" class="btn1" id="add">New</button>
+								<button onclick="deleteQuotation()" class="btn3" id="delete">delete</button>
+								<button onclick="salesInvrtn()" class="btn2" style="width: 88px"
+									id="salesInvrtn">salesInvoice Return</button>
+								<button onclick="paymentDtls()" class="btn2" id="paymentDtls">Payment</button>
+							</div>
+						</div>
+						<div id="myGrid" style="height: 500px; width: 100%;"
+							class="ag-theme-alpine"></div>
+						<div class="collapse" id="addPayment">
+							<div class="innerstickybg">
+								<div class="row">
+
+
+									<div class="col-md-12" align="right">
+										<button class="btn4" id="CancelPymt" onClick="CancelPymt()">Cancel</button>
+										<button class="btn1" id="savePymt" onclick="savePymt()">Pay</button>
+									</div>
+								</div>
+							</div>
+
+							<div class="row innersticky_contentgap">
+								<input type="hidden" id="salesOrder"> <input
+									type="hidden" id="quotationId"> <input type="hidden"
+									id="saleInvoice"> <input type="hidden" id="custName">
+								<input type="hidden" id="paymentId">
+
+
+								<div class="col-lg-4">
+									<div class="form-group">
+										<label>Sales Order No</label> <input type="text" id="sOrder"
+											placeholder="Sales Order No" class="form-control"><input
+											type="hidden" id="taxTypeinv"> <input type="hidden"
+											id="taxTypertn"> <input type="hidden"
+											id="saleInvoice"> <input type="hidden" id="rVoucher">
+										<input type="hidden" id=taxTypepay>
+									</div>
+
+								</div>
+								<div class="col-lg-4">
+									<div class="form-group">
+										<label>Sales Invoice No</label> <input type="text"
+											id="sInvoice" placeholder="Sales Invoice No"
+											class="form-control">
+									</div>
+
+								</div>
+								<!-- <div class="col-lg-4">
+									<div class="form-group">
+										<label>Payment Mode</label>
+										<div class="select">
+											<select id="paymodeId">
+												<option value="">Select</option>
+												<option th:each="c,iter:${paymentModeList}"
+													th:value="${c.key}" th:text="${c.name}"
+													onkeyup="hideShowTCn"></option>
+											</select>
+										</div>
+									</div>
+
+								</div> -->
+
+								<div class="col-lg-4" id="tdNo">
+									<div class="form-group">
+										<label>Transaction No</label> <input type="text" id="tdN"
+											placeholder=Transaction No class="form-control">
+
+									</div>
+
+								</div>
+
+								<div class="col-lg-4" id="ckNo">
+									<div class="form-group">
+										<label>Check No</label> <input type="text" id="ckn"
+											placeholder=Check No class="form-control">
+
+									</div>
+
+								</div>
+
+								<div class="col-md-4">
+									<label>Payment Date</label> <input type="text" id="payDate"
+										class="form-control"
+										th:attr="onkeyup=|formatDate('payDate','${session.DATEFORMAT_JS}')|">
+									<i class="ti-calendar picker_calendar" id="toDateCalendar"></i>
+								</div>
+
+								<div class="col-lg-4">
+									<div class="form-group">
+										<label>Total Amount</label> <input type="text" id="totalAmnt"
+											placeholder="Total Amount" class="form-control">
+
+									</div>
+
+								</div>
+
+								<div class="col-lg-4">
+									<div class="form-group">
+										<label>Paid Amount</label> <input type="text" id="paidAmnt"
+											placeholder="Paid Amount" class="form-control"
+											onkeyup="calculateoutStdAmt()"> <input type="hidden"
+											id="outStdAmt">
+
+									</div>
+
+								</div>
+
+								<!-- <div class="col-lg-4">
+									<div class="form-group">
+											<label>OutStandAmt</label> <input type="text"
+												id="outStdAmt" placeholder="amt"
+												class="form-control">
+									</div>
+
+								</div> -->
+
+							</div>
+
+							<div id="main_content">
+								<div class="wrapper center-block">
+
+									<div class="panel-group" id="accordion" role="tablist"
+										aria-multiselectable="true">
+
+
+
+										<div class="panel panel-default">
+											<div class="panel-heading" role="tab" id="headingOne"
+												onclick="closeAllNav()">
+												<!--onclick="closeAllNav()" -->
+												<h4 class="panel-title">
+													<a class="collapsed mainSecond" role="button"
+														data-toggle="collapse" data-parent="#accordion"
+														href="#collapseOne" aria-expanded="false"
+														aria-controls="collapseOne"> Sales Invoice Item
+														Details </a>
+												</h4>
+											</div>
+											<div id="collapseOne" class="panel-collapse collapse"
+												role="tabpanel" aria-labelledby="headingOne">
+												<div class="row">
+
+													<div class="col-md-5  btn-hs1">
+														<div class="font-design">
+															<!-- Vendor LIST <span>(10)</span> -->
+														</div>
+													</div>
+													<div class="col-md-12 btn-hs1">
+
+														<!-- <button class="btn1" id="awardsId" onclick="openNav1()">NEW</button> -->
+
+													</div>
+
+													<div class="col-md-12">
+
+														<div id="iteminvoice" style="width: 100%; height: 100px;"
+															class="ag-theme-alpine"></div>
+
+													</div>
+												</div>
+											</div>
+										</div>
+
+
+
+										<div class="panel panel-default">
+											<div class="panel-heading" role="tab" id="headingTwo"
+												onclick="closeAllNav()">
+												<!-- onclick="closeAllNav()" -->
+												<h4 class="panel-title">
+													<a class="collapsed mainSecond" role="button"
+														data-toggle="collapse" data-parent="#accordion"
+														href="#collapseTwo" aria-expanded="false"
+														aria-controls="collapseTwo">Sales Invoice Return Item
+														Details</a>
+												</h4>
+											</div>
+											<div id="collapseTwo" class="panel-collapse collapse"
+												role="tabpanel" aria-labelledby="headingTwo">
+												<div class="row">
+
+													<div class="col-md-5  btn-hs1">
+														<div class="font-design"></div>
+													</div>
+													<div class="col-md-12 btn-hs1">
+
+														<!-- <button class="btn1" id="awardsId" onclick="openNav2()">NEW</button> -->
+
+													</div>
+
+													<div class="col-md-12">
+
+														<div id="itemReturn" style="width: 100%; height: 100px;"
+															class="ag-theme-alpine"></div>
+
+													</div>
+												</div>
+											</div>
+										</div>
+
+										<!-- <div class="row" id=gstCalS>
+											<div class="col-lg-9"></div>
+											<div class="col-lg-3">
+												<table style="width: 88%">
+													<tr>
+														<th>
+															<div class="row">
+																<div class="col-lg-6">Sub Total:</div>
+																<div class="col-lg-6">
+																	<div class="form-group">
+																		<input type="text" id="subTotalpay"
+																			class="form-control"> <input type="hidden"
+																			id="subTotalinv" class="form-control"> <input
+																			type="hidden" id="subTotalrtn" class="form-control">
+
+																	</div>
+																</div>
+															</div>
+														</th>
+
+													</tr>
+													<tr class="tbl-box" id="sgstPayTR">
+														<th>
+															<div class="row">
+																<div class="col-lg-6">SGST:</div>
+																<div class="col-lg-6">
+																	<div class="form-group">
+																		<input type="text" id="qSGSTpay" class="form-control">
+																		<input type="hidden" id="qSGSTinv"
+																			class="form-control"> <input type="hidden"
+																			id="qSGSTrtn" class="form-control"> <input
+																			type="hidden" id=itemSgstpay> <input
+																			type="hidden" id=itemSgstinv> <input
+																			type="hidden" id=itemSgstrtn>
+																	</div>
+																</div>
+															</div>
+														</th>
+
+													</tr>
+
+													<tr id="cgstPayTR">
+														<th>
+
+															<div class="row">
+																<div class="col-lg-6">CGST:</div>
+																<div class="col-lg-6">
+																	<div class="form-group">
+																		<input type="text" id="qCGSTpay" class="form-control">
+																		<input type="hidden" id="qCGSTinv"
+																			class="form-control"> <input type="hidden"
+																			id="qCGSTrtn" class="form-control"> <input
+																			type="hidden" id=itemCgstpay> <input
+																			type="hidden" id=itemCgstinv> <input
+																			type="hidden" id=itemCgstrtn>
+																	</div>
+																</div>
+															</div>
+														</th>
+
+													</tr>
+
+													<tr class="tbl-box" id="igstPayTR">
+														<th>
+															<div class="row">
+																<div class="col-lg-6">IGST:</div>
+																<div class="col-lg-6">
+																	<div class="form-group">
+																		<input type="text" id="qIGSTpay" class="form-control">
+																		<input type="hidden" id="qIGSTinv"
+																			class="form-control"> <input type="hidden"
+																			id="qIGSTrtn" class="form-control"> <input
+																			type="hidden" id=itemIgstpay> <input
+																			type="hidden" id=itemIgstinv> <input
+																			type="hidden" id=itemIgstrtn>
+
+																	</div>
+																</div>
+															</div>
+														</th>
+													</tr>
+
+													<tr>
+														<th>
+															<div class="row">
+																<div class="col-lg-6">Grand Total:</div>
+																<div class="col-lg-6">
+																	<div class="form-group">
+																		<input type="text" id="grandTotalpay"
+																			class="form-control"> <input type="hidden"
+																			id="grandTotalinv" class="form-control"> <input
+																			type="hidden" id="grandTotalrtn" class="form-control">
+																	</div>
+																</div>
+															</div>
+														</th>
+
+													</tr>
+												</table>
+											</div>
+										</div> -->
+
+
+										<!--  <div class="panel panel-default">
+											<div class="panel-heading" role="tab" id="headingOne"
+												onclick="closeAllNav()">
+												
+												<h4 class="panel-title">
+													<a class="collapsed mainSecond" role="button"
+														data-toggle="collapse" data-parent="#accordion"
+														href="#collapseThree" aria-expanded="false"
+														aria-controls="collapseThree">Payment Details</a>
+												</h4>
+											</div>
+											<div id="collapseThree" class="panel-collapse collapse"
+												role="tabpanel" aria-labelledby="headingThree">
+												<div class="row">
+
+													<div class="col-md-5  btn-hs1">
+														<div class="font-design">
+															
+														</div>
+													</div>
+													<div class="col-md-12 btn-hs1">
+
+														<button class="btn1" id="awardsId" onclick="openNav3()">NEW</button>
+
+													</div>
+
+													<div class="col-md-12">
+
+														<div id="payment" style="width: 100%; height: 100px;"
+															class="ag-theme-alpine"></div>
+
+													</div>
+												</div>
+											</div>
+										</div> 
+										 -->
+
+									</div>
+									<!-- SIDE BAR NAVIGATION STARTS -->
+
+									<div id="mySidenav1" class="sidenav">
+										<div class="slidebox">
+											<div class="row">
+												<div class="row">
+													<div class="col-md-10">
+														<div class="edit" id="heading">Invoice Item Details</div>
+														<input type="hidden" id="teamPlanId">
+													</div>
+													<div class="col-md-2">
+														<div class="arrow">
+															<a href="javascript:void(0)" class="closebtn"
+																onclick="closeNav1()"><i class="ti-arrow-right"></i></a>
+														</div>
+													</div>
+												</div>
+
+
+												<div class="chartbtnsec">
+													<div align="right">
+														<button class="btn4" onclick="closeNav1()">CANCEL</button>
+														<button class="btn1" id="saveTableData"
+															onclick="saveTableData()">SAVE</button>
+
+													</div>
+												</div>
+												<div class="clearfix"></div>
+
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>SKU</label> <input type="text" id="sku"
+															class="form-control">
+													</div>
+												</div>
+												<div class="col-lg-6 mrt_6">
+													<div class="form-group">
+														<button id="browseBtnNew" class="btn2">Browse</button>
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<div class="autocomplete" style="width: auto">
+															<input type="hidden" id="editProduct"> <input
+																type="hidden" id="itemId"> <label>Item
+																Name</label> <input type="text" id="itemName"
+																class="form-control" onkeyup='getItemQutotationList()'>
+														</div>
+														<div id="suggesstion-box_" class="sugg-cls"></div>
+													</div>
+												</div>
+
+
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Quantity</label> <input type="text" id="quantity"
+															class="form-control" onkeyup="calculateLineTotal()">
+														<input type="hidden" id="quantitynew">
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Unit Price</label><input type="text" id="unitPrice"
+															class="form-control" onkeyup="calculateLineTotal()">
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Discount</label> <input type="text" id="discount"
+															class="form-control" onkeyup="calculateLineTotal()">
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>gstRate</label><input type="text" id="gstRate"
+															class="form-control">
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>lineTotal</label> <input type="text" id="lineTotal"
+															class="form-control">
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+									<!-- SIDE BAR NAVIGATION ENDS -->
+
+									<!-- SIDE BAR NAVIGATION STARTS -->
+
+									<div id="mySidenav2" class="sidenav">
+										<div class="slidebox">
+											<div class="row">
+												<div class="col-md-10">
+													<div class="edit" id="heading">Invoice Return Item
+														Details</div>
+													<input type="hidden" id="nonResourceId">
+												</div>
+												<div class="col-md-2">
+													<div class="arrow">
+														<a href="javascript:void(0)" class="closebtn"
+															onclick="closeNav2()"><i class="ti-arrow-right"></i></a>
+													</div>
+												</div>
+												<div class="chartbtnsec">
+													<div align="right">
+														<button class="btn4" onclick="closeNav2()">CANCEL</button>
+														<button class="btn1" id="saveTableData"
+															onclick="saveTableData()">SAVE</button>
+
+													</div>
+												</div>
+
+												<div class="clearfix"></div>
+
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>SKU</label> <input type="text" id="sku"
+															class="form-control">
+													</div>
+												</div>
+												<div class="col-lg-6 mrt_6">
+													<div class="form-group">
+														<button id="browseBtnNew" class="btn2">Browse</button>
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<div class="autocomplete" style="width: auto">
+															<input type="hidden" id="editProduct"> <input
+																type="hidden" id="itemId"> <label>Item
+																Name</label> <input type="text" id="itemName"
+																class="form-control" onkeyup='getItemQutotationList()'>
+														</div>
+														<div id="suggesstion-box_" class="sugg-cls"></div>
+													</div>
+												</div>
+
+
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Quantity</label> <input type="text" id="quantity"
+															class="form-control" onkeyup="calculateLineTotal()">
+														<input type="hidden" id="quantitynew">
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Unit Price</label><input type="text" id="unitPrice"
+															class="form-control" onkeyup="calculateLineTotal()">
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Discount</label> <input type="text" id="discount"
+															class="form-control" onkeyup="calculateLineTotal()">
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>gstRate</label><input type="text" id="gstRate"
+															class="form-control">
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>lineTotal</label> <input type="text" id="lineTotal"
+															class="form-control">
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+
+								</div>
+							</div>
+
+						</div>
+						<div class="collapse" id="addData">
+							<div class="innerstickybg">
+								<div class="row">
+									<div class="col-md-3">
+										SalesInvoice ID: <span id="salesInvoiceheadId"></span>
+									</div>
+
+									<div class="col-md-6">
+										<div id="statusDiv">
+											<div class="hr4"></div>
+											<div class="main-div">
+												<div class="section2">
+													<div id="createdDiv" class="green-box">
+														<div class="green-box-heading">CREATED</div>
+														<div class="date" id="createdDate"></div>
+													</div>
+												</div>
+												<div class="section3">
+													<div id="activeDiv" class="green-box">
+														<div class="green-box-heading">ACTIVE</div>
+														<div class="date" id="activeDate"></div>
+													</div>
+												</div>
+												<div class="section4">
+													<div id="completeDiv" class="grey-box">
+														<div class="green-box-heading">COMPLETE</div>
+														<div class="date" id="completeDate"></div>
+													</div>
+												</div>
+												<div class="section5">
+													<div id="onHoldDiv" class="grey-box">
+														<div class="green-box-heading">ONHOLD</div>
+														<div class="date" id="onHoldDate"></div>
+													</div>
+												</div>
+
+											</div>
+										</div>
+									</div>
+									<div class="col-md-3" align="right">
+										<button class="btn4" id="Cancel" onClick="Cancel()">Cancel</button>
+										<button class="btn1" id="save" onclick="save()">Save</button>
+									</div>
+								</div>
+							</div>
+
+							<div class="row innersticky_contentgap">
+								<input type="hidden" id="salesOrder"> <input
+									type="hidden" id="quotationId"> <input type="hidden"
+									id="saleInvoice"> <input type="hidden" id="custName">
+								<input type="hidden" id="custId">
+								<div class="col-lg-4">
+									<div class="form-group">
+										<div class="autocomplete">
+											<label>Sales Order No</label> <input type="text"
+												id="salesOrderId" placeholder="Sales Order No"
+												class="form-control" onkeyup='getSalesOrderNo()'> <input
+												type="hidden" id="taxType" onclick="hideShowS()">
+										</div>
+										<div id="suggesstion-box1_" class="sugg-cls"></div>
+
+									</div>
+
+								</div>
+								<div class="col-lg-4">
+									<div class="form-group">
+										<label>Store Name</label>
+										<div class="select">
+											<select id="storeId">
+												<option value="">Select</option>
+												<option th:each="c,iter:${storeList}" th:value="${c.key}"
+													th:text="${c.name}"></option>
+											</select>
+										</div>
+									</div>
+
+								</div>
+
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<input type="checkbox" class="loc-chb" name="isActive"
+											id="qutActive" value="1" checked> <label
+											style="margin-top: 10px;">Active</label>
+									</div>
+								</div>
+
+
+							</div>
+
+							<div id="main_content1" class="mt-2">
+								<div class="wrapper center-block">
+									<div class="panel-group" id="accordion" role="tablist"
+										aria-multiselectable="true">
+										<div class="panel panel-default">
+											<div class="panel-heading active" role="tab" id="headingOne">
+												<h4 class="panel-title">
+													<a role="button" data-toggle="collapse"
+														data-parent="#accordion" href="#itemList"
+														aria-expanded="true" aria-controls="itemList"> Item
+														Details </a>
+												</h4>
+											</div>
+											<div id="itemList" class="panel-collapse collapse show"
+												role="tabpanel" aria-labelledby="headingOne">
+												<div class="row">
+
+													<div class="col-md-4 btn-hs1">
+														<div class="font-design"></div>
+													</div>
+													<div class="col-md-8 butttonsec">
+
+														<button class="btn1" onclick="openNav()">NEW</button>
+														<button class="btn3" id="delete" onclick="deleteItem()">Delete</button>
+
+													</div>
+												</div>
+												<div id="item" style="width: 100%; height: 200px;"
+													class="ag-theme-alpine"></div>
+
+
+											</div>
+
+										</div>
+									</div>
+
+									<div id="mySidenav" class="sidenav">
+										<div class="slidebox">
+											<div class="row">
+												<div class="chartbtnsec">
+													<div align="right">
+														<button class="btn4" onclick="closeNav()">CANCEL</button>
+														<button class="btn1" id="saveTableData"
+															onclick="saveTableData()">SAVE</button>
+
+													</div>
+												</div>
+
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>SKU</label> <input type="text" id="sku"
+															class="form-control">
+													</div>
+												</div>
+												<div class="col-lg-6 mrt_6">
+													<div class="form-group">
+														<button id="browseBtnNew" class="btn2">Browse</button>
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<div class="autocomplete" style="width: auto">
+															<input type="hidden" id="editProduct"> <input
+																type="hidden" id="itemId"> <label>Item
+																Name</label> <input type="text" id="itemName"
+																class="form-control" onkeyup='getItemQutotationList()'>
+														</div>
+														<div id="suggesstion-box_" class="sugg-cls"></div>
+													</div>
+												</div>
+
+
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Quantity</label> <input type="text" id="quantity"
+															class="form-control" onkeyup="calculateLineTotal()">
+														<input type="hidden" id="quantitynew">
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Unit Price</label><input type="text" id="unitPrice"
+															class="form-control" onkeyup="calculateLineTotal()">
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>Discount</label> <input type="text" id="discount"
+															class="form-control" onkeyup="calculateLineTotal()">
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>gstRate</label><input type="text" id="gstRate"
+															class="form-control">
+													</div>
+												</div>
+												<div class="col-lg-6">
+													<div class="form-group">
+														<label>lineTotal</label> <input type="text" id="lineTotal"
+															class="form-control">
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<div class="row mt-2" id="gstCalS">
+								<div class="col-lg-9"></div>
+								<div class="col-lg-3">
+									<table style="width: 88%">
+										<tr>
+											<th>
+												<div class="row">
+													<div class="col-lg-6">Sub Total:</div>
+													<div class="col-lg-6">
+														<div class="form-group">
+															<input type="text" id="subTotal" class="form-control">
+														</div>
+													</div>
+												</div>
+											</th>
+
+										</tr>
+										<tr class="tbl-box" id="sgstTR">
+											<th>
+												<div class="row">
+													<div class="col-lg-6">SGST:</div>
+													<div class="col-lg-6">
+														<div class="form-group">
+															<input type="text" id="qSGST" class="form-control">
+															<input type="hidden" id=itemSgst>
+														</div>
+													</div>
+												</div>
+											</th>
+
+										</tr>
+
+										<tr id="cgstTR">
+											<th>
+
+												<div class="row">
+													<div class="col-lg-6">CGST:</div>
+													<div class="col-lg-6">
+														<div class="form-group">
+															<input type="text" id="qCGST" class="form-control">
+															<input type="hidden" id=itemCgst>
+														</div>
+													</div>
+												</div>
+											</th>
+
+										</tr>
+
+										<tr class="tbl-box" id="igstTR">
+											<th>
+												<div class="row">
+													<div class="col-lg-6">IGST:</div>
+													<div class="col-lg-6">
+														<div class="form-group">
+															<input type="text" id="qIGST" class="form-control">
+															<input type="hidden" id=itemIgst>
+														</div>
+													</div>
+												</div>
+											</th>
+										</tr>
+
+										<tr>
+											<th>
+												<div class="row">
+													<div class="col-lg-6">Grand Total:</div>
+													<div class="col-lg-6">
+														<div class="form-group">
+															<input type="text" id="grandTotal" class="form-control">
+														</div>
+													</div>
+												</div>
+											</th>
+
+										</tr>
+									</table>
+								</div>
+							</div>
+
+						</div>
+					</div>
+					<!-- delete modal start -->
+					<div id="deleteQuot" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-dismiss="modal"
+										aria-hidden="true" onclick="cancelModalBtn()">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p>Do you really want to delete these records? This process
+										cannot be undone.</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: -30px;">
+
+									<button type="button" class="btn4" data-dismiss="modal"
+										onclick="cancelModalBtn();">Cancel</button>
+									<button type="button" class="btn3" onclick="deleteOnclick()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<!-- delete item start	 -->
+					<div id="deleteProduct" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-dismiss="modal"
+										aria-hidden="true" onclick="cancelModalProductBtn()">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p>Do you really want to delete these records? This process
+										cannot be undone.</p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: -30px;">
+
+									<button type="button" class="btn4" data-dismiss="modal"
+										onclick="cancelModalBtn();">Cancel</button>
+									<button type="button" class="btn3"
+										onclick="deleteProductOnclick()">Delete</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<!-- alert modal start -->
+					<div id="alert" class="modal fade show" aria-modal="true">
+						<div class="modal-dialog modal-confirm">
+							<div class="modal-content">
+								<div class="modal-header flex-column">
+									<button type="button" class="close" data-dismiss="modal"
+										aria-hidden="true" onclick="cancelModalBtn()">
+										<i class="ti-close modal-close"></i>
+									</button>
+								</div>
+								<div class="modal-body">
+									<p id="textId"></p>
+								</div>
+								<div class="modal-footer justify-content-center"
+									style="margin-top: -30px;">
+
+									<button type="button" class="btn1" data-dismiss="modal">SELECT</button>
+									<!-- <button type="button" class="btn3" onclick="deleteOnclick()">Delete</button> -->
+								</div>
+							</div>
+						</div>
+					</div>
+
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

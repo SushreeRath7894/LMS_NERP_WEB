@@ -1,0 +1,2344 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{layout/master}">
+<head>
+<style type="text/css">
+.highcharts-exporting-group {
+	display: none;
+}
+
+.btn-primarynew {
+	color: #fff !important;
+	background-color: #0d6efd;
+	border-color: #0d6efd;
+}
+
+.slidebox {
+	padding: 14px;
+	margin-top: 0px;
+	margin: 0px 10px;
+}
+
+.form-group label {
+	position: relative;
+}
+
+.holdCls {
+	background-color: rgb(0, 143, 0);
+}
+
+.bg_white {
+	background: #ffffff !important;
+}
+
+.blueClsWT {
+	background: #0076ba;
+	color: #fff;
+}
+
+.blueCls {
+	background: #0076ba;
+	color: #fff;
+}
+
+.blueClsWT::before {
+	font-size: 8px;
+	color: #FFF;
+	content: '\e64c';
+	font-family: 'themify';
+	padding-right: 7px;
+}
+
+.modal-body table td input[type=checkbox] {
+	width: 0px;
+	margin-right: 16px;
+	position: relative;
+	top: 0px;
+	float: none;
+}
+
+.firstnode {
+	color: #929292;
+	border-top: 1px solid transparent !important;
+	border-left: 1px solid transparent !important;
+	border-bottom: 1px solid transparent !important;
+	width: 320px;
+	font-size: 12px;
+	font-weight: 100;
+}
+
+.simple-tree-table-closed .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'FontAwesome';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+	transform: rotate(90deg);
+}
+
+.simple-tree-table-opened .simple-tree-table-icon:after {
+	content: "\f105" !important;
+	font-family: 'FontAwesome';
+	color: black;
+	display: inline-block;
+	margin-right: 6px;
+}
+
+.simple-tree-table-icon {
+	display: inline-block;
+	width: 1.5em;
+	line-height: 1.5em;
+	margin: 0.1em;
+	background-color: transparent;
+	text-align: center;
+	cursor: pointer;
+}
+
+.tptCls {
+	background: transparnt;
+}
+.out-box .max-btn1 {
+    color: var(--mainColor);
+    font-size: 16px;
+    width: 40px;
+    height: 37px;
+    background-color: var(--whiteColor) !important;
+    line-height: 20px !important;
+    padding: 8px 12px;
+    transition: 0.5s;
+    border: solid 1px var(--grayborderColor) !important;
+}
+</style>
+
+<script src="https://cdn.ckeditor.com/4.16.0/standard/ckeditor.js"></script>
+<script>
+$(function() {
+	CKEDITOR.replace('qutDescription');
+	
+	pno = 1;
+	viewSalesOrder();
+	var gridDiv = document.querySelector('#mySalesGrid');
+	new agGrid.Grid(gridDiv, salesGridOptions);
+
+	var gridDiv = document.querySelector('#myPackageGrid');
+	new agGrid.Grid(gridDiv, packageGridOptions);
+
+	var gridDiv = document.querySelector('#item');
+	new agGrid.Grid(gridDiv, itemOptions);
+
+	var gridDiv = document.querySelector('#itemDetailsGrid');
+	new agGrid.Grid(gridDiv, itemDetailsOptions);
+
+	var gridDiv = document.querySelector('#mySAGrid');
+	new agGrid.Grid(gridDiv, gridSAOptions);
+
+ $("#packageSearchDiv").addClass("d-none");
+	$('#docTbl').on('click', '.rmv1', function() {
+
+		var value = $(this).parent("div").attr("id");
+		$("#dltValue").val(value);
+		openDeleteConfirm();
+
+	});
+
+	
+	$('#mySAGrid').hide();
+	var dateFormat = localStorage.getItem("dateFormat") || "d-m-Y";
+	var today = new Date();
+	var formattedDate = ("0" + today.getDate()).slice(-2) + "-" +
+		("0" + (today.getMonth() + 1)).slice(-2) + "-" +
+		today.getFullYear();
+	$("#orderReceiveDate").val(formattedDate);
+	$("#orderReceiveDateCalendar").val(formattedDate);
+
+	$("#orderReceiveDateCalendar").datetimepicker({
+		format: dateFormat,
+		closeOnDateSelect: true,
+		timepicker: false,
+		datepicker: true,
+		scrollMonth: false,
+		value: formattedDate
+	}).on("change", function() {
+		$('#orderReceiveDate').val($(this).val());
+	});
+
+	$('#orderReceiveDate').blur(function() {
+		$("#orderReceiveDateCalendar").val($(this).val());
+	});
+
+	$("#expectedShipmentDateCalendar").datetimepicker({
+		format: dateFormat,
+		closeOnDateSelect: true,
+		timepicker: false,
+		datepicker: true,
+		scrollMonth: false,
+		//minDate : new Date()
+	}).on("change", function() {
+		$('#expectedShipmentDate').val($(this).val());
+	})
+	$('#expectedShipmentDate').blur(
+		function() {
+			$("#expectedShipmentDateCalendar").val(
+				$(this).val());
+		});
+
+	$(".br-s-btn").hide();
+
+	$('#itemName').select2({
+		placeholder: "Select",
+		allowClear: true
+	});
+	$('#project').select2({
+		placeholder: "Select",
+		allowClear: true
+	});
+	$("#quickFilter").on("keydown", function(event) {
+		if (event.key === "Enter" || event.which === 13) {
+			event.preventDefault();
+			onQuickFilterChanged();
+		}
+	});
+});
+var pno;
+function viewSalesOrder() {
+	var pages;
+	var pageno = pno;
+
+	$(".loader").show();
+	agGrid.simpleHttpRequest({
+		url: "view-packages-get-sales-order?pageno=" + pageno,
+	}).then(function(data) {
+		$(".loader").hide();
+		var jsonData = JSON.parse(data.body);
+		var allData = jsonData.viewSalesOrder;
+		console.log("dataALl=================",allData);
+		salesGridOptions.api.setRowData(allData);
+
+		var totalRowCount = salesGridOptions.api.getModel().getRowCount();
+		$('#totalCandidate').find('span').html(totalRowCount);
+
+		if (allData.length > 0) {
+			console.log("AAAAAAllll", allData[0].totalPageno)
+			$('#totalPageno').val(allData[0].totalPageno);
+			pages = allData[0].totalPageno;
+
+		}
+
+	});
+}
+function amountFormatter(value) {
+	if (value !== null && value !== undefined) {
+		var parts = value.toString().split('.');
+		var integerPart = parts[0];
+		var decimalPart = parts.length > 1 ? '.' + parts[1] : '';
+		var formattedIntegerPart = new Intl.NumberFormat('en-IN').format(integerPart);
+		return formattedIntegerPart + decimalPart;
+	} else {
+		return '';
+	}
+}
+var columnDefsPackage = [
+	{
+		//headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly: true,
+		checkboxSelection: true,
+		width: 10,
+		sortable: false,
+		filter: false,
+		resizable: true,
+		pinned: 'left',
+	},
+	{
+		headerName: "Package",
+		field: "salePackageId",
+		pinned: 'left',
+		flex: 2,
+
+	},
+	{
+		headerName: "Sales Order ID",
+		field: "salesOrder",
+		pinned: 'left',
+		flex: 2,
+	}, {
+		headerName: 'Package Date',
+		field: "qutUpdatedOn",
+		flex: 2,
+	}, {
+		headerName: 'Po Id',
+		field: "poId",
+		flex: 2,
+	}, {
+		headerName: 'Challan',
+		field: "dchallanStatus",
+		flex: 2,
+		cellRenderer: function(params) {
+			if (params.data.dchallanStatus == "Generated") {
+				return '<div style="color:#0642f5">' + params.data.dchallanStatus + '</div>';
+			} else {
+				return '<div style="color:#ff8242">' + params.data.dchallanStatus + '</div>';
+			}
+		}
+
+
+	}, {
+
+		headerName: 'Customer Name',
+		field: "custName",
+		flex: 3,
+	}, {
+
+		headerName: 'Quantity',
+		field: "quantity",
+		flex: 2,
+
+	}];
+
+var packageGridOptions = {
+	columnDefs: columnDefsPackage,
+	rowSelection: 'single',
+
+	groupSelectsChildren: true,
+	suppressRowClickSelection: true,
+	suppressAggFuncInHeader: true,
+	pagination: true,
+	paginationPageSize: 19,
+	
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 251,
+		height: 10
+	},
+	getRowNodeId: function (data) {
+				return data.salePackageId;
+			},
+	onSelectionChanged: rowSelectPackage,
+	onFirstDataRendered: function(params) {
+		setTimeout(function() {
+			var firstRow = params.api.getDisplayedRowAtIndex(0);
+			if (firstRow) {
+				params.api.selectNode(firstRow, true);
+			}
+		}, 1000);
+	},
+	
+};
+
+function rowSelectPackage() {
+	var selectedNodes = packageGridOptions.api.getSelectedNodes();
+	var selectedData = selectedNodes.map(node => node.data);
+
+	if (selectedData.length > 0) {
+		var salePackageId = selectedData[0].salePackageId;
+		var dchallanStatus = selectedData[0].dchallanStatus;
+		editSalesPackage(salePackageId);
+		cancelItemDetails();
+
+		if (dchallanStatus == "Generated") {
+			$('#deletePackage').addClass('d-none');
+			$('#savePackage').addClass('d-none');
+			$('#pacakgeBtn').removeClass('d-none');
+		} else {
+			$('#deletePackage').removeClass('d-none');
+			$('#savePackage').removeClass('d-none');
+			$('#pacakgeBtn').removeClass('d-none');
+		}
+	} else {
+		// Now this will run properly if nothing is selected
+		console.log("No package selected");
+	
+		$("#custName").val("");
+		$("#packageViewId").html("");
+		$("#purchaseOrderId").val("");
+		$("#packageSlip").val("");
+		$("#deliveryChallanDate").val("");
+		$("#country1").val("");
+		$("#states1").val("");
+		$("#city1").val("");
+		$("#street11").val("");
+		$("#street21").val("");
+		$("#zipCode1").val("");
+		$("#phone1").val("");
+		$("#fax1").val("");
+		
+		
+		gridSAOptions.api.setRowData([]);
+		itemOptions.api.setRowData([]);
+
+		$('#deletePackage').addClass('d-none');
+		$('#savePackage').addClass('d-none');
+		
+		
+	}
+}
+
+var columnDefs = [
+	{
+		headerCheckboxSelection: true,
+		headerCheckboxSelectionFilteredOnly: true,
+		checkboxSelection: true,
+		width: 10,
+		sortable: false,
+		filter: false,
+		resizable: true,
+		pinned: 'left',
+	},
+	{
+		headerName: "Sales Order ID",
+		field: "salesOrder",
+		pinned: 'left',
+		flex: 4,
+	},
+	{
+		headerName: "PO ID",
+		field: "poId",
+		flex: 4,
+	},
+	{
+		headerName: 'Customer Name',
+		field: "custName",
+		flex: 4,
+	},
+	{
+
+		headerName: 'Receive Date',
+		field: "orderReceiveDate",
+		flex: 2,
+		cellStyle: {
+			textAlign: 'center'
+		}
+	},
+	{
+
+		headerName: 'Expected Shipment',
+		field: "expectedShipmentDate",
+		flex: 2,
+		cellStyle: {
+			textAlign: 'center'
+		}
+	}, {
+		headerName: 'Approve Status',
+		field: "approveStatus",
+		flex: 2,
+		cellStyle: {
+			textAlign: 'center'
+		},
+		cellRenderer: function(params) {
+			if (params.data.approveStatus == "Approved") {
+				return '<div style="color:#0642f5">' + params.data.approveStatus + '</div>';
+			} else {
+				return '<div style="color:#a9a9a9">' + params.data.approveStatus + '</div>';
+			}
+		},
+		hide: true,
+	}, {
+
+		headerName: 'Order Quantity',
+		field: "quantity",
+		flex: 2,
+		type: 'rightAligned',
+		cellRenderer: function(params) {
+			var value = parseFloat(params.value).toFixed(2);
+			return amountFormatter(value);
+		}
+	}, {
+		headerName: 'Packed Quantity',
+		field: "packedQut",
+		flex: 2,
+		type: 'rightAligned',
+		cellRenderer: function(params) {
+			var value = parseFloat(params.value).toFixed(2);
+			return amountFormatter(value);
+		}
+	}, {
+		headerName: 'Pending Quantity',
+		field: "pendingQut",
+		flex: 2,
+		type: 'rightAligned',
+		cellRenderer: function(params) {
+			var value = parseFloat(params.value).toFixed(2);
+			return amountFormatter(value);
+		}
+	}, {
+		headerName: 'Created By',
+		field: "qutCreatedBy",
+		flex: 2,
+		hide: true,
+	},{
+		headerName: 'Customer Id',
+		field: "custId",
+		flex: 2,
+		hide: true,
+	}];
+
+var salesGridOptions = {
+	columnDefs: columnDefs,
+	rowSelection: 'single',
+	groupSelectsChildren: true,
+	suppressRowClickSelection: true,
+	suppressAggFuncInHeader: true,
+	pagination: true,
+	paginationPageSize: 19,
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 150,
+		height: 10
+	},
+	onSelectionChanged: rowSelect,
+	onFirstDataRendered: function(params) {
+		setTimeout(function() {
+			var firstRow = params.api.getDisplayedRowAtIndex(0);
+			if (firstRow) {
+				params.api.selectNode(firstRow, true);
+			}
+		}, 1000);
+	}
+};
+
+function rowSelect() {
+	var selectedNodes = salesGridOptions.api.getSelectedNodes();
+	var rowCount = selectedNodes.length;
+
+	console.log("Row count:", rowCount);
+
+	if (rowCount > 0) {
+		var selectedData = selectedNodes.map(node => node.data);
+		console.log('Selected data for SO:', selectedData);
+
+		var selectedRow = selectedData[0]; // just using the first row for now
+
+		// 👉 Fill form inputs directly
+		
+		$("#salesViewId").html(selectedRow.custName);
+		$("#salesCustName").val(selectedRow.custName);
+		$("#salesReferenceId").val(selectedRow.salesOrder);
+		$("#expectedShipmentDate").val(selectedRow.expectedShipmentDate);
+		$("#orderReceiveDate").val(selectedRow.orderReceiveDate);
+		$("#salesOrder").val(selectedRow.salesOrder);
+		$("#custId").val(selectedRow.custId);
+		
+
+		// 👉 Set itemDetails data to agGrid
+		var itemDetailsData = selectedRow.itemDetails || [];
+		itemDetailsOptions.api.setRowData(itemDetailsData);
+
+		// 👉 Handle buttons
+		if (selectedRow.approveStatus === 'Approved') {
+			$('#soApproveBtn').addClass('d-none');
+			$('#deleteSo').addClass('d-none');
+			$('#editSo').addClass('d-none');
+			$('#saveSo').addClass('d-none');
+			$('#pacakgeBtn').removeClass('d-none');
+		} else {
+			$('#soApproveBtn').removeClass('d-none');
+			$('#deleteSo').removeClass('d-none');
+			$('#editSo').removeClass('d-none');
+			$('#saveSo').removeClass('d-none');
+			$('#pacakgeBtn').addClass('d-none');
+		}
+	} else {
+		console.log("No rows selected");
+
+		// Reset form and itemDetails grid
+		$("#salesOrderheadId").html('');
+		$("#salesCustName").val('');
+		$("#salesReferenceId").val('');
+		$("#expectedShipmentDate").val('');
+		$("#orderReceiveDate").val('');
+		$("#orderReceiveTime").val('');
+		$("#salesOrder").val('');
+		$("#taxtype").val('');
+		$("#salesViewId").html('');
+
+		itemDetailsOptions.api.setRowData([]);
+
+		// Reset buttons
+		$('#soApproveBtn').removeClass('d-none');
+		$('#deleteSo').removeClass('d-none');
+		$('#editSo').removeClass('d-none');
+		$('#saveSo').removeClass('d-none');
+		$('#pacakgeBtn').addClass('d-none');
+	}
+}
+
+
+var itemDefs = [
+	{
+		//headerCheckboxSelection : false,
+		headerCheckboxSelectionFilteredOnly: true,
+		checkboxSelection: true,
+		width: 10,
+		sortable: false,
+		filter: false,
+		resizable: true
+
+	},
+	{
+		headerName: "SlNo",
+		field: "slNo",
+		flex: 2,
+	},{
+
+		headerName: 'Item Name',
+		field: "itemName",
+		flex: 4,
+	},  {
+		headerName: 'SKU',
+		field: "sku",
+		width: 60,
+		hide : true
+	}, {
+		headerName: 'salesOrderId',
+		field: "salesOrderId",
+		hide: true,
+	}, {
+		headerName: 'HSN Code',
+		field: "hsnCode",
+		flex: 2,
+	}, {
+
+		headerName: 'Item Id',
+		field: "itemId",
+		width: 175,
+		hide: true,
+	}, {
+		headerName: 'Total Quantity',
+		field: "quantity",
+		type: 'rightAligned',
+		flex: 3,
+	}, {
+		headerName: 'Unit',
+		field: "unitName",
+		flex: 1,
+	}, {
+
+		headerName: 'Packed Quantity',
+		field: "packedQut",
+		type: 'rightAligned',
+		flex: 3,
+		//valueFormatter : currencyFormatter
+	},
+	{
+		headerName: 'Pending Quantity',
+		field: "pendingQut",
+		flex: 3,
+		type: 'rightAligned',
+		//valueFormatter : currencyFormatter
+	},
+	{
+		headerName: 'Unit',
+		field: "unit",
+		hide: true,
+	},
+	{
+		headerName: 'packing Quantity',
+		field: "packingQut",
+		hide: true,
+	}, {
+		headerName: 'packType',
+		field: "packType",
+		hide: true,
+	}, {
+		headerName: 'packDate',
+		field: "packDate",
+		hide: true,
+	}, {
+		headerName: 'packDesc',
+		field: "packDesc",
+		hide: true,
+	},
+	{
+		headerName: 'Packaging Quantity',
+		field: "packQut",
+		type: 'rightAligned',
+		flex: 3,
+		//valueFormatter : currencyFormatter
+	},
+	{
+
+		headerName: 'No. Of Item',
+		field: "noOfItem",
+		flex: 3,
+	}, {
+		headerName: 'Packaging Type',
+		field: "packType",
+		hide: true
+
+	}, {
+		headerName: 'Packaging Type ',
+		field: "packName",
+		flex: 3,
+
+	}, {
+		headerName: 'Packaging Date ',
+		field: "packDate",
+		flex: 3,
+	}, {
+		headerName: 'Description ',
+		field: "packDesc",
+		flex: 4,
+
+	}
+
+];
+
+
+var itemOptions = {
+	columnDefs: itemDefs,
+	rowSelection: 'single',
+	groupSelectsChildren: true,
+	suppressRowClickSelection: true,
+	suppressAggFuncInHeader: true,
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 120,
+		height: 10
+	},
+	onSelectionChanged: rowSelectItem,
+	getRowNodeId: function(data) {
+		return data.slNo;
+	}
+};
+function rowSelectItem() {
+	var selectedRows = itemOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(selectedRow, index) {
+		rowCount = rowCount + 1;
+	});
+
+	if (rowCount > 0) {
+		$('#packItem').prop('disabled', false);
+
+	} else {
+		$('#packItem').prop('disabled', true);
+	}
+}
+
+var itemDetailsDefs = [
+	{
+		headerCheckboxSelection: false,
+		headerCheckboxSelectionFilteredOnly: false,
+		checkboxSelection: false,
+		width: 10,
+		sortable: false,
+		filter: false,
+		resizable: true
+
+	},
+	{
+		headerName: "SlNo",
+		field: "slNo",
+		flex: 1,
+	}, {
+		headerName: 'salesOrderId',
+		field: "salesOrderId",
+		hide: true,
+	}, {
+		headerName: 'Material Code',
+		field: "sku",
+		hide: true,
+	},{
+
+		headerName: 'Material Name',
+		field: "itemName",
+		flex: 4,
+	}, {
+		headerName: 'HSN Code',
+		field: "hsnCode",
+		//width: 70,
+		flex: 2,
+	},  {
+
+		headerName: 'Item Id',
+		field: "itemId",
+		width: 175,
+		hide: true,
+	}, {
+		headerName: 'Quantity',
+		field: "quantity",
+		type: 'rightAligned',
+		flex: 2,
+		valueFormatter: currencyFormatter
+	}, {
+		headerName: 'Unit',
+		field: "unitName",
+		flex: 2,
+	}, {
+		headerName: 'Unit',
+		field: "unit",
+		hide: true,
+	},
+	{
+
+		headerName: 'Size In MM',
+		field: "sizeInMM",
+		width: 65,
+		hide: true,
+	},
+	{
+
+		headerName: 'Thickness In MM',
+		field: "thicknessInMM",
+		width: 60,
+		hide: true,
+	}, {
+		headerName: 'Discount',
+		field: "discount",
+		type: 'rightAligned',
+		hide: true,
+		valueFormatter: currencyFormatter
+	}, {
+		headerName: 'Amount',
+		field: "lineTotal",
+		type: 'rightAligned',
+		valueFormatter: currencyFormatter,
+		aggFunc: 'sum',
+		hide: true,
+	}, {
+		headerName: 'GST Rate',
+		field: "gstRate",
+		type: 'rightAligned',
+		width: 100,
+		valueFormatter: currencyFormatter,
+		hide: true,
+	}, {
+		headerName: 'CGST',
+		field: "itemCgst",
+		type: 'rightAligned',
+		width: 100,
+		valueFormatter: currencyFormatter,
+		hide: true,
+	}, {
+		headerName: 'SGST',
+		field: "itemSgst",
+		type: 'rightAligned',
+		width: 100,
+		hide: true,
+		valueFormatter: currencyFormatter
+	}, {
+		headerName: 'IGST',
+		field: "itemIgst",
+		type: 'rightAligned',
+		width: 100,
+		hide: true,
+		valueFormatter: currencyFormatter
+	}, {
+		headerName: 'Taxable Amount',
+		field: "taxableAmt",
+		type: 'rightAligned',
+		width: 155,
+		hide: true,
+		valueFormatter: currencyFormatter
+	},
+	{
+		headerName: 'Item Description',
+		field: "itemDesc",
+		flex: 4,
+	},
+	/*{
+		headerName: 'Remarks',
+		field: "itemRemarks",
+		width: 183,
+	},
+	{
+		headerName: 'No. Of Item',
+		field: "noOfItem",
+		width: 183,
+	},*/
+	{
+		headerName: "Status",
+		field: "blockeOrder",
+		flex: 2,
+	}];
+
+var itemDetailsOptions = {
+	columnDefs: itemDetailsDefs,
+	rowSelection: 'single',
+	groupSelectsChildren: true,
+	suppressRowClickSelection: true,
+	suppressAggFuncInHeader: true,
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 120,
+		height: 10
+	},
+	getRowNodeId: function(data) {
+		return data.slNo;
+	}
+};
+const columnDefsa = [
+	{
+		headerCheckboxSelection: false,
+		headerCheckboxSelectionFilteredOnly: true,
+		checkboxSelection: true,
+		width: 10,
+		sortable: false,
+		filter: false,
+		resizable: true
+
+	},
+	{
+		headerName: "Address Id",
+		field: "shippingId",
+		hide: true,
+		cellRenderer: function(params) {
+			return '<a onclick=openDetails("' + params.data.addressId
+				+ ',' + '0' + '") href="javascript:void(0)">'
+				+ params.data.addressId + '</a>';
+		},
+		cellRenderer: function(params) {
+			return '<a onclick=("' + params.data.addressId + '","' + params.data.customerId + '") href="javascript:void(0)">' + params.data.addressId + '</a>';
+		}
+	},
+
+	{
+		headerName: "Country",
+		field: "country",
+		width: 200,
+		hide: true,
+	}, {
+		headerName: "Country",
+		field: "countryName",
+		width: 200,
+	}, {
+		headerName: "State",
+		field: "state",
+		width: 200,
+		hide: true,
+
+	}, {
+		headerName: "State",
+		field: "stateName",
+		width: 200,
+	}, {
+		headerName: "City",
+		field: "city",
+		width: 200,
+	}, {
+		headerName: "Street",
+		field: "street1",
+		width: 200,
+	}, {
+		headerName: "Street",
+		field: "street2",
+		width: 200,
+	}, {
+		headerName: "Zip Code",
+		field: "zipcode",
+		width: 200,
+	}, {
+		headerName: "Phone",
+		field: "phone",
+		width: 200,
+	}, {
+		headerName: "Fax",
+		field: "fax",
+		cellStyle: {
+			textAlign: 'left'
+		}
+	}, {
+		headerName: "Default Address",
+		field: "defaultStatus",
+		width: 200,
+		cellStyle: {
+			textAlign: 'center'
+		},
+		cellRenderer: function(params) {
+			if (params.data.defaultStatus == "Yes") {
+				return '<div style="color:#0642f5">' + params.data.defaultStatus + '</div>';
+			} else {
+				return '<div style="color:#a9a9a9">' + params.data.defaultStatus + '</div>';
+			}
+		}
+	}];
+
+const gridSAOptions = {
+	columnDefs: columnDefsa,
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 187,
+		height: 10
+	},
+	rowSelection: 'single',
+	suppressRowClickSelection: true,
+	onSelectionChanged: rowSelectAddress,
+	/* getRowNodeId : function(data) {
+		return data.customerId;
+	} */
+};
+function rowSelectAddress() {
+	var selectedRows = gridSAOptions.api.getSelectedRows();
+
+	var rowCount = 0;
+	selectedRows.forEach(function(i) {
+		rowCount = rowCount + 1;
+	});
+	if (rowCount > 0) {
+		$('#selectAddress').removeClass('d-none');
+
+	} else {
+		$('#selectAddress').addClass('d-none');
+	}
+}
+function nextTab(id) {
+	const tabElement = document.querySelector('#' + id + ' a');
+	console.log(tabElement);
+	const tab = new bootstrap.Tab(tabElement);
+	console.log(tab)
+	tab.show();
+}
+var pno;
+function viewPackage() {
+	var pages;
+	var pageno = pno;
+
+	$(".loader").show();
+	agGrid.simpleHttpRequest({
+		url: "view-packages-through-ajax?pageno=" + pageno,
+	}).then(function(data) {
+		$(".loader").hide();
+		var jsonData = JSON.parse(data.body);
+		var allData = jsonData.viewPackage;
+		/* var len = allData.length;
+		$('#totalItem').find('span').html(len); */
+		packageGridOptions.api.setRowData(allData);
+
+		var totalRowCount = packageGridOptions.api.getModel().getRowCount();
+		$('#totalCandidate').find('span').html(totalRowCount);
+
+		if (allData.length > 0) {
+			console.log("AAAAAAllll", allData[0].totalPageno)
+			$('#totalPageno').val(allData[0].totalPageno);
+			pages = allData[0].totalPageno;
+
+		}
+		//createPagination(pages, pageno);
+
+	});
+}
+
+function editsalesOrder(salesOrder) {
+	//Cancel();
+	$('#salesInfLiId').removeClass('d-none');
+	$('#salesInfo').removeClass('d-none');
+	$('#packageInfLid').addClass('d-none');
+	$('#packageInfo').addClass('d-none');
+	$('#salesItemId').addClass('d-none');
+	$('#itemDetails').addClass('d-none');
+	$('#shippingAddressId').addClass('d-none');
+	$('#shippingAddress').addClass('d-none');
+	$('#salesInfo').addClass('active show');
+	$('#salesInfLiId').children().addClass('active');
+	//$('#salesInfLiId').addClass('active');
+	$('.loader').show();
+	agGrid
+		.simpleHttpRequest({
+			url: 'view-saleorder-edit-new?id=' + salesOrder
+		})
+		.then(
+			function(data) {
+				console.log(data);
+				$('.loader').hide();
+				$("#salesOrderheadId").html(data[0].salesOrder);
+				//$("#quotationId").val(data[0].quotationId);
+				//$("#custId").val(data[0].custId);
+				$("#salesCustName").val(data[0].custName);
+				$("#taxtype").val(data[0].taxType);
+				$("#salesOrder").val(data[0].salesOrder);
+				$("#orderReceiveDate").val(data[0].orderReceiveDate);
+				$("#orderReceiveTime").val(data[0].orderReceiveTime);
+				$("#expectedShipmentDate").val(data[0].expectedShipmentDate);
+				$("#salesReferenceId").val(data[0].salesOrder);
+				let filteredData = data.filter(item => item.blockeOrder === "Open");
+				itemDetailsOptions.api.setRowData(filteredData);
+			});
+
+}
+function handleCustomerChange() {
+	$('#shippingAddressId').removeClass('d-none');
+	$('#shippingAddress').removeClass('d-none');
+}
+function getAddressDetails(custId, shipId) {
+	$.ajax({
+		type: "GET",
+		url: "view-quotation-get-address?id=" + custId,
+		async: false,
+		success: function(response) {
+			if (response.message === "Success") {
+				var shippingDetails = JSON.parse(response.body.shippingDetails);
+
+				var validShippingDetails = shippingDetails.filter(item => item.delFlag === 0);
+				if (shipId === "null" || shipId === "" || shipId === null) {
+					gridSAOptions.api.setRowData(validShippingDetails);
+
+					var firstShippingAddress = validShippingDetails.length > 0 ? validShippingDetails[0] : null;
+					console.log("1st Shipping Address------>", firstShippingAddress);
+					if (firstShippingAddress) {
+						$("#shippingHiddenId").val(firstShippingAddress.shippingId || "");
+						$("#country1").val(firstShippingAddress.country || "").attr("disabled", true);
+						$("#states1").val(firstShippingAddress.state || "").attr("disabled", true);
+						$("#city1").val(firstShippingAddress.city || "").attr("disabled", true);
+						$("#street11").val(firstShippingAddress.street1 || "").attr("disabled", true);
+						$("#street21").val(firstShippingAddress.street2 || "").attr("disabled", true);
+						$("#zipCode1").val(firstShippingAddress.zipcode || "").attr("disabled", true);
+						$("#phone1").val(firstShippingAddress.phone || "").attr("disabled", true);
+						$("#fax1").val(firstShippingAddress.fax || "").attr("disabled", true);
+						getStateDataOnEditMul('country1', 'states1', firstShippingAddress.state);
+					} else {
+						$("#shippingHiddenId").val("").attr("disabled", true);
+						$("#country1").val("").attr("disabled", true);
+						$("#states1").val("").attr("disabled", true);
+						$("#city1").val("").attr("disabled", true);
+						$("#street11").val("").attr("disabled", true);
+						$("#street21").val("").attr("disabled", true);
+						$("#zipCode1").val("").attr("disabled", true);
+						$("#phone1").val("").attr("disabled", true);
+						$("#fax1").val("").attr("disabled", true);
+					}
+				} else {
+					gridSAOptions.api.setRowData(validShippingDetails);
+					console.log("Shipping Details during edit------>", validShippingDetails);
+					var selectedShippingAddress = validShippingDetails.find(item => item.shippingId === shipId);
+					if (selectedShippingAddress) {
+						$("#shippingHiddenId").val(selectedShippingAddress.shippingId);
+						$("#country1").val(selectedShippingAddress.country).attr("disabled", true);
+						$("#states1").val(selectedShippingAddress.state).attr("disabled", true);
+						$("#city1").val(selectedShippingAddress.city).attr("disabled", true);
+						$("#street11").val(selectedShippingAddress.street1).attr("disabled", true);
+						$("#street21").val(selectedShippingAddress.street2).attr("disabled", true);
+						$("#zipCode1").val(selectedShippingAddress.zipcode).attr("disabled", true);
+						$("#phone1").val(selectedShippingAddress.phone).attr("disabled", true);
+						$("#fax1").val(selectedShippingAddress.fax).attr("disabled", true);
+						getStateDataOnEditMul('country1', 'states1', selectedShippingAddress.state);
+					}
+				}
+			}
+		}
+	});
+}
+function changeDateFormat(inputDate) {
+	var splitDate = inputDate.split('-');
+	if (splitDate.count == 0) {
+		return null;
+	}
+	var year = splitDate[0];
+	var month = splitDate[1];
+	var day = splitDate[2];
+	return day + '-' + month + '-' + year;
+}
+function getStateDataOnEditMul(cid, sid, stateId) {
+	var country = $("#" + cid).val();
+	if (country) {
+		$.ajax({
+			type: "GET",
+			url: "view-customer-stateList?id=" + country,
+			success: function(response) {
+				if (response.message == "success") {
+					$("#" + sid).empty();
+					var option = $("<option></option>");
+					$(option).val(null);
+					$(option).html("Select");
+					$("#" + sid).append(option);
+					for (var i = 0; i < response.body.length; i++) {
+						var option = $("<option></option>");
+						$(option).val(response.body[i].key);
+						$(option).html(response.body[i].name);
+						$("#" + sid).append(option);
+					}
+					$("#" + sid).val(stateId);
+				}
+			},
+			error: function(e) {
+			}
+		});
+	} else {
+		$("#" + sid).empty();
+		var option = $("<option></option>");
+		$(option).val(null);
+		$(option).html("Select");
+		$("#" + sid).append(option);
+	}
+}
+function changeAddress() {
+	$('#mySAGrid').show();
+	$('#shippingAddressSec').addClass('d-none');
+	$('#changeAddress').addClass('d-none');
+
+}
+function selectAddress() {
+	$('#changeAddress').removeClass('d-none');
+	$('#shippingAddressSec').removeClass('d-none');
+	//$('#selectAddress').addClass('d-none');
+	$('#mySAGrid').hide();
+	let selectedData = gridSAOptions.api.getSelectedRows();
+	console.log(gridSAOptions);
+	$("#shippingHiddenId").val(selectedData[0].shippingId);
+	$("#country1").val(selectedData[0].country).attr("disabled", true);
+	$("#states1").val(selectedData[0].state).attr("disabled", true);
+	$("#city1").val(selectedData[0].city).attr("disabled", true);
+	$("#street11").val(selectedData[0].street1).attr("disabled", true);
+	$("#street21").val(selectedData[0].street2).attr("disabled", true);
+	$("#zipCode1").val(selectedData[0].zipcode).attr("disabled", true);
+	$("#phone1").val(selectedData[0].phone).attr("disabled", true);
+	$("#fax1").val(selectedData[0].fax).attr("disabled", true);
+	getStateDataOnEditMul('country1', 'states1', selectedData[0].state);
+	gridSAOptions.api.deselectAll();
+}
+function Package() {
+	$('#savePackage').removeClass('d-none');
+	$('#cacelPackage').removeClass('d-none');
+	$('#salesInfLiId').addClass('d-none');
+	
+	$('#shippingAddressSec').addClass('d-none');
+	$('#changeAddress').addClass('d-none');
+	$('#mySAGrid').show();
+	
+	$('#salesInfLiId').find('.active').removeClass('active');
+	$('#salesInfo').addClass('d-none');
+	$('#salesInfo').removeClass('active show');
+	$('#packageInfo').addClass('active show');
+	$('#packageInfLid').removeClass('d-none');
+	$('#cacelPackageGrid').addClass('d-none');
+	$('#packageInfo').removeClass('d-none');
+	
+	$('#salesItemId').removeClass('d-none');
+	$('#itemDetails').removeClass('d-none');
+	
+
+
+	var selectedNodes = salesGridOptions.api.getSelectedNodes();
+	var selectedData = selectedNodes.map(node => node.data);
+	console.log('selected data for so', selectedData);
+	var salesOrderId = selectedData[0].salesOrder;
+	var poidd = selectedData[0].poId;
+	var custName = selectedData[0].custName;
+	
+		$("#packageViewId").html(custName);
+		$("#custName").val(custName);
+		$("#purchaseOrderId").val(poidd);
+		$("#salesOrder").val(salesOrderId);
+		
+	$('.loader').show();
+		agGrid.simpleHttpRequest(
+				{
+					url : 'view-saleorder-for-packing?id='+ salesOrderId + '&poidd=' + poidd
+				}).then(function(data) {
+					$('.loader').hide();
+					
+					var jsonData = JSON.parse(data.body);
+					var shippingData = jsonData.shipping_address;
+					var itemDtls = jsonData.item_details;
+					var rowData1 = [shippingData]; // agGrid expects an array
+					var rowData2 = itemDtls; // agGrid expects an array
+					console.log("data==================",rowData2);
+					$("#packageSlip").val(jsonData.new_inserted_id);
+					gridSAOptions.api.setRowData(rowData1);
+					itemOptions.api.setRowData(rowData2);
+				});
+		$('.loader').hide();
+	var date = (new Date()).toISOString().split('T')[0];
+	var newDate = changeDateFormat(date);
+	$("#deliveryChallanDate").val(newDate).prop("disable", true);
+	$('#salePackageId').val('')
+
+}
+function getItemdetailsBySku() {
+	var id = $("#itemName").val();
+	if (id) {
+		$.ajax({
+			type: "GET",
+			url: "view-quotation-get-item-bySku?id=" + id,
+			success: function(response) {
+				if (response.code == "success") {
+					var jsonData = JSON.parse(response.body);
+					var allData = jsonData.itemDetails;
+					console.log("Product Details=====>", allData)
+					if (allData != null) {
+						$("#sku").val(allData.productSku);
+						$("#unit").val(allData.productUnit);
+						$("#hsnCode").val(allData.hsnCode);
+						$("#productName").val(allData.productName);
+						$("#itemId").val(allData.productId);
+					} else {
+						toastr.error("Something Went Wrong!");
+						$("#itemName").val("").trigger('change');
+						$("#sku").val("");
+						$("#unit").val("");
+						$("#model").val("");
+						$("#unit").val("");
+						$("#hsnCode").val("");
+						$("#itemId").val("");
+					}
+				} else {
+					toastr.error("Something Went Wrong!");
+					$("#itemName").val("").trigger('change');
+					$("#skuName").val("");
+					$("#itemId").val("");
+					$("#model").val("");
+					$("#unit").val("");
+					$("#hsnCode").val("");
+					$("#itemId").val("");
+				}
+			},
+			error: function(e) { }
+		});
+	}
+}
+function toggleSection() {
+	$(".br-m-btn").hide();
+	$(".br-s-btn").show();
+	$("#sku").val('');
+	$("#editProduct").val('').attr("disabled", false);
+	$("#itemId").val('').attr("disabled", false);
+	$("#itemName").val('').attr("disabled", false);
+	$("#packedQut").val('').attr("disabled", false);
+	$("#pendingQut").val('').attr("disabled", false);
+	$("#unit").val('').attr("disabled", false);
+	$("#quantity").val('').attr("disabled", false);
+	$("#packType").val('').attr("disabled", false);
+	$("#packingQut").val('').attr("disabled", false);
+	$("#noOfItem").val('').attr("disabled", false);
+	$("#itemDesc").val('').attr("disabled", false);
+	$("#hsnCode").val('').attr("disabled", false);
+}
+function cancelItemDetails() {
+	itemOptions.api.deselectAll();
+	$(".br-m-btn").show();
+	$(".br-s-btn").hide();
+
+	$("#sku").val('');
+	$("#editProduct").val(null);
+	$("#itemId").val('');
+	$("#itemName").val('').trigger('change');
+	//$("#itemName").text('');
+	$("#packedQut").val('');
+	$("#pendingQut").val('');
+	$("#unit").val('');
+	$("#quantity").val('');
+	$("#unitPrice").val('');
+	$("#gstRate").val('');
+	$("#packType").val('');
+	$("#itemDesc").val('');
+	$("#hsnCode").val('');
+	$("#productName").val('');
+	$("#itemId").val('');
+	$("#packingQut").val('');
+	$("#noOfItem").val('');
+}
+function packedItem() {
+	var selectedRows = itemOptions.api.getSelectedRows();
+	var slNo = selectedRows[0].slNo;
+	var rowNode = itemOptions.api.getRowNode(slNo);
+
+	console.log(rowNode)
+	toggleSection();
+	var date1 = (new Date()).toISOString().split('T')[0];
+	var newDate1 = changeDateFormat(date1);
+	$("#packDate").val(newDate1);
+	$("#editProduct").val(slNo);
+	$("#sku").val(rowNode.data.sku);
+	$("#itemId").val(rowNode.data.itemId);
+	$("#itemName").val(rowNode.data.itemId).trigger('change').prop('disabled', true);
+	$("#hsnCode").val(rowNode.data.hsnCode);
+	$("#quantity").val(rowNode.data.quantity);
+	$("#packedQut").val(rowNode.data.packedQut);
+	$("#pendingQut").val(rowNode.data.pendingQut);
+	$("#packQut").val(rowNode.data.pendingQut);
+	$("#packingQut").val(rowNode.data.pendingQut);
+	$("#unit").val(rowNode.data.unit);
+	$("#unit").attr("disabled", true);
+	$("#packType").val(rowNode.data.packType);
+	$("#noOfItem").val(rowNode.data.noOfItem);
+	$("#itemDesc").val(rowNode.data.packDesc);
+	$("#isalesOrderId").val(rowNode.data.salesOrderId);
+
+
+}
+function addPackQut(fieldId) {
+	var pending = parseFloat($("#pendingQut").val());
+	var tempVal = $("#" + fieldId).val().replace(/[^0-9 ]/g, '');
+	if (tempVal <= pending) {
+		$("#" + fieldId).val(tempVal);
+		$("#packQut").val(tempVal);
+	}
+	else {
+		toastr.error('Please add less than or same Packing Quantity as Pending Quantity');
+		$("#" + fieldId).val(null);
+		$("#packQut").val(null);
+	}
+
+}
+function saveTableData() {
+	var editProduct = $("#editProduct").val();
+	var item = {};
+	var data = 1;
+
+	// Populate item fields
+	item.itemId = $('#itemId').val();
+	item.sku = $('#sku').val();
+	item.salesOrderId = $('#isalesOrderId').val();
+	item.hsnCode = $('#hsnCode').val();
+	item.itemName = $('#itemName option:selected').text();
+	item.quantity = $('#quantity').val();
+	item.unit = $('#unit').val();
+	item.packedQut = $('#packedQut').val();
+	item.pendingQut = $('#pendingQut').val();
+	item.unitName = $("#unit option:selected").text();
+	item.noOfItem = $("#noOfItem").val();
+	item.packQut = $("#packQut").val();
+	item.packingQut = $("#packingQut").val();
+	item.packType = $("#packType").val();
+	item.packName = $("#packType").val() ? $("#packType option:selected").text() : "";
+	item.packDate = $("#packDate").val();
+	item.packDesc = $("#itemDesc").val();
+
+	// Validation logic
+	var validation = true;
+
+	if (!item.sku) {
+		toastr.error('Stock Keeping Unit Required');
+		validation = false;
+		return false;
+	}
+	if (!item.itemName) {
+		toastr.error('Item Name Required');
+		validation = false;
+		return false;
+	}
+	if (!item.quantity) {
+		toastr.error('Quantity Required');
+		validation = false;
+		return false;
+	}
+	if (!item.unit) {
+		toastr.error('Unit Required');
+		validation = false;
+		return false;
+	}
+	if (!item.packingQut) {
+		toastr.error('Packing Item Required');
+		validation = false;
+		return false;
+	}
+	if (!item.noOfItem) {
+		toastr.error('No Of Item Required');
+		validation = false;
+		return false;
+	}
+	if (!item.packType) {
+		toastr.error('Packing Type Required');
+		validation = false;
+		return false;
+	}
+
+	if (!validation) return;
+
+	item.slNo = data;
+	itemOptions.api.forEachNode(function(rowNode, index) {
+		if (!editProduct) {
+			data = data + 1;
+			item.slNo = data;
+		} else {
+			item.slNo = editProduct;
+		}
+	});
+console.log("Item Data Before Grid Update:", item);
+
+	var quot = [];
+
+	if (editProduct) {
+		var rowNode = itemOptions.api.getRowNode(editProduct);
+		rowNode.setData(item);
+	} else {
+		itemOptions.api.forEachNode(function(rowNode, index) {
+			quot.push(rowNode.data);
+		});
+		quot.push(item);
+		itemOptions.api.setRowData(quot);
+	}
+
+	cancelItemDetails();
+	$("#sku").val('');
+	$("#itemId").val('');
+	$("#itemName").val('');
+	$("#quantity").val('');
+	$("#unit").val('');
+	$("#noOfItem").val('');
+	$("#packedQut").val('');
+	$("#pendingQut").val('');
+
+	$("#editProduct").val(null);
+}
+function validFormData() {
+	var allValid = true;
+	var poId = $("#purchaseOrderId").val();
+	if (!poId) {
+		toastr.error('PO Id. Required');
+		allValid = false;
+		return false;
+	}
+	return allValid;
+}
+
+function validProductData() {
+	var x = 0.0;
+	if (itemOptions.api.getDisplayedRowCount() > 0) {
+		itemOptions.api.forEachNode(function(rowNode, indrx) {
+			x = x + parseFloat(rowNode.data.packQut);
+		});
+	}
+	if (x > 0) {
+		return true;
+	} else {
+		toastr.error('Please Packing More than 1 Item');
+		return false;
+	}
+}
+function savePackage() {
+	if (validProductData() && validFormData()) {
+		var datas = [];
+		if (itemOptions.api.getDisplayedRowCount() > 0) {
+			itemOptions.api.forEachNode(function(rowNode, indrx) {
+
+				var obj = rowNode.data;
+				obj.salePackageId = $("#salePackageId").val();
+				obj.poId = $("#purchaseOrderId").val();
+				obj.salesOrder = $("#salesOrderIdHid").val();
+				obj.packageSlip = $("#packageSlip").val();
+				obj.custId = $('#custId').val();
+				obj.custName = $('#custName').val();
+				obj.qutActive = $("#qutActive:checkbox:checked").val();
+				obj.shippingHiddenId = $("#shippingHiddenId").val();
+				obj.project = $("#projectId").val();
+				if (obj.qutActive == undefined) {
+					obj.qutActive = "0";
+				} else {
+					obj.qutActive = "1";
+				}
+				datas.push(obj);
+
+			});
+
+		} 
+
+		console.log(datas);
+		saveAllPackages(datas);
+	}
+}
+
+function saveAllPackages(datas) {
+	console.log(JSON.stringify(datas))
+	$('.loader').show();
+	$.ajax({
+		type: "POST",
+		url: "view-packages-add",
+		contentType: "application/json",
+		data: JSON.stringify(datas),
+		success: function(response) {
+			if (response.message == "Success") {
+				console.log(JSON.stringify(datas))
+				$('.loader').hide();
+				toastr.success('Data saved successfully');
+				viewPackageGrid();
+				}
+
+		},
+		error: function(datas) {
+			console.log(datas)
+			$('.loader').hide();
+		}
+	})
+
+}
+
+function viewPackageGrid() {
+	$('#salesInfLiId').addClass('d-none');
+	$('#salesInfLiId').find('.active').removeClass('active');
+	$('#salesInfo').addClass('d-none');
+	$('#salesInfo').removeClass('active show');
+	$('#packageInfo').addClass('active show');
+	$('#packageInfLid').removeClass('d-none');
+	//$('#packageInfLid').addClass('active');
+	$('#packageInfo').removeClass('d-none');
+	$('#salesItemId').removeClass('d-none');
+	$('#itemDetails').removeClass('d-none');
+	$('#myPackageGrid').removeClass('d-none');
+	$('#mySalesGrid').addClass('d-none');
+	$('#viewPackage').addClass('d-none');
+	$('#cacelPackage').addClass('d-none');
+	$('#viewSalesOrder').removeClass('d-none');
+	$('#cacelPackageGrid').removeClass('d-none');
+
+	$("#salesOrderSearchDiv").addClass("d-none");
+	$("#packageSearchDiv").removeClass("d-none");
+
+	viewPackage();
+
+	setTimeout(() => {
+		if (packageGridOptions.api) {
+			packageGridOptions.api.deselectAll();
+
+			const firstRowNode = packageGridOptions.api.getDisplayedRowAtIndex(0);
+			if (firstRowNode) {
+				firstRowNode.setSelected(true);
+			}
+		}
+	}, 3000);
+
+	salesGridOptions.api.deselectAll();
+}
+
+function editSalesPackage(salePackageId, poId, status) {
+	agGrid.simpleHttpRequest({
+		url: 'view-packages-edit-new?id=' + salePackageId
+	}).then(
+		function(data) {
+			console.log("DATA=============",data);
+			$("#packageViewId").html(data[0].custName);
+			$("#salesViewId").html(data[0].custName);
+			$("#salePackageId").val(data[0].salePackageId);
+			$("#taxtype").val(data[0].taxType);
+			$("#shippingHiddenId").val(data[0].shippingHiddenId);
+			getAddressDetails(data[0].custId, data[0].shippingHiddenId);
+			$("#custId").val(data[0].custId);
+			$("#custName").val(data[0].custName).trigger("change").prop("disabled",true);
+			$("#purchaseOrderId").val(data[0].poId);
+			$("#salesOrderIdHid").val(data[0].salesOrder);
+			$("#deliveryChallanDate").val(data[0].packagingDate);
+			$("#packageSlip").val(data[0].packageSlip);
+			
+			itemOptions.api.setRowData(data);
+
+		});
+
+}
+function viewSalesGrid() {
+	$('#myPackageGrid').addClass('d-none');
+	$('#mySalesGrid').removeClass('d-none');
+	$('#viewPackage').removeClass('d-none');
+	$('#viewSalesOrder').addClass('d-none');
+	
+	$("#salesOrderSearchDiv").removeClass("d-none");
+    $("#packageSearchDiv").addClass("d-none");
+	packageGridOptions.api.deselectAll();
+	setTimeout(() => {
+		if (salesGridOptions.api) {
+			salesGridOptions.api.getDisplayedRowAtIndex(0)?.setSelected(true);
+		}
+	}, 500);
+	cacelPackage();
+	
+}
+function deletePackageOnclick() {
+	var selectedRows = packageGridOptions.api.getSelectedRows();
+	var id = selectedRows[0].salePackageId;
+	$.ajax({
+		type: "POST",
+		url: "view-packages-delete?id=" + id,
+		success: function(response) {
+			if (response.message == "success") {
+				//Cancel();
+				viewPackageGrid();
+				
+				toastr.success('Package Deleted Successfully');
+			}
+		},
+		error: function(data) {
+			console.log(data);
+		}
+	})
+}
+function getActiveGrid() {
+    // Check which grid is visible
+    if (!$('#mySalesGrid').hasClass('d-none')) {
+        return salesGridOptions;  
+    } else if (!$('#myPackageGrid').hasClass('d-none')) {
+        return packageGridOptions; 
+    }
+    return null;  
+}
+
+
+function onQuickFilterChanged() {
+    salesGridOptions.api
+        .setQuickFilter(document.getElementById('quickFilter').value);
+    setTimeout(() => {
+        if (salesGridOptions.api) {
+            salesGridOptions.api.getDisplayedRowAtIndex(0)?.setSelected(true);
+        }
+    }, 300);
+}
+
+function handleEnter(event) {
+	if (event.key === "Enter") {
+      	onQuickFilterChanged()
+    }
+}
+
+function onQuickFilterChanged1() {
+    gridDraftOptions.api
+        .setQuickFilter(document.getElementById('quickFilter1').value);
+    setTimeout(() => {
+        if (gridDraftOptions.api) {
+            gridDraftOptions.api.getDisplayedRowAtIndex(0)?.setSelected(true);
+        }
+    }, 300);
+}
+
+function handleEnter1(event) {
+	if (event.key === "Enter") {
+      	onQuickFilterChanged1()
+    }
+}
+
+function resetBtn() {
+    $("#quickFilter").val('');
+    gridOptions.api.setQuickFilter('');
+    gridOptions.api.refreshCells({
+        force: true
+    });
+    setTimeout(() => {
+        if (gridOptions.api) {
+            gridOptions.api.getDisplayedRowAtIndex(0)?.setSelected(true);
+        }
+    }, 300);
+}
+function resetBtn1() {
+    $("#quickFilter1").val('');
+    packageGridOptions.api.setQuickFilter('');
+    packageGridOptions.api.refreshCells({
+        force: true
+    });
+    setTimeout(() => {
+        if (packageGridOptions.api) {
+            packageGridOptions.api.getDisplayedRowAtIndex(0)?.setSelected(true);
+        }
+    }, 300);
+}
+
+function cacelPackage(){
+	
+	setTimeout(() => {
+		if (salesGridOptions.api) {
+			salesGridOptions.api.getDisplayedRowAtIndex(0)?.setSelected(true);
+		}
+	}, 500);
+	viewSalesOrder();
+	$('#savePackage').addClass('d-none');
+	$('#cacelPackage').addClass('d-none');
+	$('#salesInfLiId').removeClass('d-none');
+	
+	$('#shippingAddressSec').removeClass('d-none');
+	$('#changeAddress').removeClass('d-none');
+	$('#mySAGrid').hide();
+	
+	$('#salesInfLiId').find('.active').removeClass('active');
+	$('#salesInfo').removeClass('d-none');
+	$('#salesInfo').addClass('active show');
+	$('#packageInfo').removeClass('active show');
+	$('#packageInfLid').addClass('d-none');
+	$('#cacelPackageGrid').removeClass('d-none');
+	$('#packageInfo').addClass('d-none');
+	
+	$('#salesItemId').addClass('d-none');
+	$('#itemDetails').addClass('d-none');
+}
+
+function cacelPackageGrid(){
+	
+	var selectedNodes = packageGridOptions.api.getSelectedNodes();
+			var selectedData = selectedNodes.map(node => node.data);
+			var id = selectedData.map(node => node.salePackageId); 
+			
+			console.log("Id>>>>>" , id[0]);
+			let a = id[0];
+		if(a){
+			const rowNode = packageGridOptions.api.getRowNode(a);
+			console.log("rowNode>>>>>" , rowNode);
+		if (rowNode) {
+				const rowIndex = rowNode.rowIndex; // Get the row index
+				console.log("rowIndex>>>>>" , rowIndex);
+				const pageSize = packageGridOptions.api.paginationGetPageSize(); // Get the number of rows per page
+				const pageNumber = Math.floor(rowIndex / pageSize); // Calculate page number
+				packageGridOptions.api.paginationGoToPage(pageNumber); // Switch to the calculated page
+				packageGridOptions.api.getDisplayedRowAtIndex(rowIndex).setSelected(true); // Select row at index
+				rowSelectPackage();
+			}	
+		}	
+	
+}
+
+function closeTooltip(button) {
+    let tooltip = bootstrap.Tooltip.getInstance(button);
+    if (tooltip) {
+        tooltip.hide();
+    }
+}
+
+</script>
+</head>
+<body>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="maincontentsec">
+					<input type="hidden" id="sessionOrganization1"
+						th:value="${session.ORGANIZATION}" /> <input type="hidden"
+						id="sessionOrganization" th:value="${organization}" /> <input
+						type="hidden" id="sessionOrgDivision" th:value="${orgDivision}" />
+					<input type="hidden" id="baseUrl" th:value="${baseUrl}" /> <input
+						type="hidden" id="sessionId" th:value="${userId}" /> <input
+						type="hidden" id="sessionName" th:value="${userName}" /> <input
+						type="hidden" id="hrRole" th:value="${hrRole}" /> <input
+						type="hidden" id="sessionRole" th:value="${userRole}" /> <input
+						type="hidden" id="adRole" th:value="${adRole}" /> <input
+						type="hidden" id="totalPageno"> <input type="hidden"
+						id="currentPageno">
+					<!--Tabbination 1 Start-->
+					<div id="tab1" class="tab-pane" role="tabpanel">
+						<div class="d-flex flex-column flex-lg-row">
+							<!--Left Sec Start-->
+							<div class="box-sec" id="collapseWidthR1">
+								<div class="out-box">
+									<div class="h-100 d-flex flex-column">
+										<div class="d-flex justify-content-between p-2 gap-3 bdr-line">
+											<div class="col-md-8 col-12">
+
+												<div class="d-flex search-sec" id="salesOrderSearchDiv">
+													<input class="form-control me-2 search_input_bar"
+														placeholder="Search.." type="text" name="search"
+														id="quickFilter" autocomplete="off"
+														onkeydown="handleEnter(event)">
+													<button class="btn btn-primary go-btn"
+														onclick="onQuickFilterChanged()" id="SearchBtn"
+														type="button">Go</button>
+													<button class="btn go-btn w-auto mx-2" type="button"
+														onclick="resetBtn()">Reset</button>
+
+												</div>
+												<div class="d-flex search-sec" id="packageSearchDiv">
+													<input class="form-control me-2" type="text"
+														placeholder="Search" id="quickFilter1" autocomplete="off"
+														onkeydown="handleEnter1(event)">
+													<button class="btn go-btn" type="button"
+														onclick="onQuickFilterChanged1()">Go</button>
+													&nbsp;
+													<button class="btn go-btn w-auto" type="button"
+														onclick="resetBtn()">Reset</button>
+												</div>
+											</div>
+											<div class="d-flex gap-2">
+												<button class="btn btn-primary max-btn" id="viewPackage"
+													onclick="viewPackageGrid()" data-bs-toggle="tooltip"
+													data-bs-placement="top" title="View Package">
+													<i class="fa-solid fa-eye" id="draftQoutIcon"></i>
+												</button>
+												<button class="btn btn-primary max-btn d-none"
+													id="viewSalesOrder" onclick="viewSalesGrid()"
+													data-bs-toggle="tooltip" data-bs-placement="top"
+													title="View Sales Order">
+													<i class="fa-solid fa-file-invoice" id="viewQoutIcon"></i>
+												</button>
+
+
+												<button class="btn btn-primary max-btn"
+													id="collapseButtonR1" onclick="triggerExpansionR(1)"
+													data-bs-toggle="tooltip" data-bs-placement="top"
+													title="Expand">
+													<i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
+														class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+												</button>
+											</div>
+
+
+										</div>
+										<div class="card m-2 p-2">
+											<div id="mySalesGrid" style="width: 100%; height: 100vh;"
+												class="ag-theme-alpine"></div>
+											<div id="myPackageGrid" style="width: 100%; height: 100vh;"
+												class="ag-theme-alpine d-none"></div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div id="snackbar" class="snackbar"></div>
+							<!--Right Sec Start-->
+							<div class="box-sec" id="collapseWidthL1">
+								<div class="out-box" id="rightSideDiv">
+									<div
+										class="d-flex justify-content-between flex-row-reverse align-items-center p-2 bdr-line">
+										<button class="btn btn-primary max-btn" id="collapseButtonL1"
+											type="button" onclick="triggerExpansionL(1)"
+											data-bs-toggle="tooltip" data-bs-placement="top"
+											title="Expand">
+											<i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
+												class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+										</button>
+
+
+
+										<!--Right Inner Tab Start-->
+										<div class="d-flex gap-2">
+											<ul class="nav nav-pills newtab" role="tablist">
+												<li class="nav-item" role="presentation" id="salesInfLiId"><a
+													class="nav-link active" data-bs-toggle="pill"
+													href="#salesInfo" aria-selected="true" role="tab">
+														Sales Information</a></li>
+												<li class="nav-item d-none" role="presentation"
+													id="packageInfLid"><a class="nav-link active"
+													data-bs-toggle="pill" href="#packageInfo"
+													aria-selected="true" role="tab"> Information</a></li>
+
+											</ul>
+										</div>
+									</div>
+
+									<!-- Tab panes -->
+									<div class="tab-content flex-fill">
+										<div id="salesInfo"
+											class="tab-pane fade active p-2 h-100 show" role="tabpanel">
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+
+
+												<div
+													class="d-flex w-100 justify-content-between align-items-center p-2 border rounded">
+													<div class="project-name">
+														<span class="head-user-name" id="salesViewId"></span>
+													</div>
+													<div class="d-flex justify-content-end gap-2 flex-wrap">
+													
+														<span th:text="${action_list}"></span>
+														<button class="btn m-0 edit-btn" type="button"
+															id="pacakgeBtn" onclick="Package()">Package</button>
+													</div>
+												</div>
+
+												<div class="card p-2">
+													<div class="innercontent">
+														<div class="cust-detls">
+															<!-- Customer Details -->
+															<input type="hidden" id="qutNo" disabled>
+															<div class="card">
+																<div class="card-header text-black">Sales Details</div>
+																<div class="card-body">
+																	<div class="row">
+																		<div class="col-md-3">
+																			<label for="custName">Customer Name</label><span
+																				class="mandatory">*</span> <input type="text"
+																				id="salesCustName" class="form-control" disabled>
+																		</div>
+																		<div class="col-md-3">
+																			<div class="form-group">
+																				<label>Sales Order Reference Id#</label> <input
+																					type="text" id="salesReferenceId"
+																					class="form-control" disabled> <input
+																					type="hidden" id="salePackageId"> <input
+																					type="hidden" id="salesOrderIdHid">
+																			</div>
+																		</div>
+																		<div class="col-md-3">
+																			<div class="form-group calendar_box">
+																				<label>Sales Order Date</label> <input type="text"
+																					id="orderReceiveDate" class="form-control" disabled>
+																			</div>
+																		</div>
+																		<div class="col-md-3">
+																			<div class="form-group calendar_box">
+																				<label>Expected Shipment Date</label> <input
+																					type="text" id="expectedShipmentDate"
+																					class="form-control" disabled>
+																			</div>
+																		</div>
+																	</div>
+																</div>
+															</div>
+															<div class="row mt-2">
+																<div id="itemDetailsGrid" style="height: 200px;"
+																	class="ag-theme-alpine"></div>
+															</div>
+															<!-- Sales Order  Details -->
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+
+										<div id="packageInfo" class="tab-pane fade p-2 h-100 d-none"
+											role="tabpanel">
+
+											<div class="requisition-tbl d-flex flex-column h-100 gap-2">
+
+
+												<div
+													class="d-flex w-100 justify-content-between align-items-center p-2 border rounded">
+													<div class="project-name">
+														<span class="head-user-name" id="packageViewId"></span>
+													</div>
+													<div class="d-flex justify-content-end gap-2 flex-wrap">
+														<span th:text="${action_list}"></span>
+														<button class="btn m-0 edit-btn" id="cacelPackage"
+															type="button" onclick="cacelPackage()"
+															data-bs-toggle="tooltip">Cancel</button>
+															<button class="btn m-0 edit-btn" id="cacelPackageGrid"
+															type="button" onclick="cacelPackageGrid()"
+															data-bs-toggle="tooltip">Cancel</button>
+														<button class="btn m-0 edit-btn" id="savePackage"
+															type="button" onclick="savePackage()">Save</button>
+														<button class="btn m-0 edit-btn d-none" type="button"
+															id="deletePackage" onclick="deletePackageOnclick()">Delete</button>
+													</div>
+												</div>
+
+												<div class="card p-2">
+
+													<div class="innercontent">
+														<div class="cust-detls">
+															<!-- Customer Details -->
+															<input type="hidden" id="qutNo">
+															<div class="card">
+																<div class="card-header text-black">Customer
+																	Details</div>
+																<div class="card-body">
+																	<div class="row">
+																		<div class="col-md-3">
+																			<label for="custName">Customer Name</label><span
+																				class="mandatory">*</span> <input type="text"
+																				id="custName" class="form-control"
+																				placeholder="Enter Customer Name"
+																				onchange="handleCustomerChange()"
+																				onkeyup="getCustomerList()" autocomplete="off">
+																			<input type="hidden" id="custId"> <input
+																				type="hidden" id="custGSTNo"> <input
+																				type="hidden" id="approveStatus">
+																			<div id="suggesstion-box1_" class="sugg-cls"></div>
+																		</div>
+																		<div class="col-md-3">
+																			<label for="quotationId">PO ID</label><input
+																				type="text" id="purchaseOrderId"
+																				class="form-control" readonly>
+																		</div>
+																		<div class="col-md-3">
+																			<div class="form-group">
+																				<label>Package Slip Id#</label><input type="text"
+																					id="packageSlip" class="form-control" readonly>
+																			</div>
+																		</div>
+
+																		<div class="col-md-3">
+																			<div class="form-group calendar_box">
+																				<label>Package Date</label> <input type="text"
+																					id="deliveryChallanDate" class="form-control"
+																					onblur="removeValid(event)"
+																					th:attr="onkeyup=|formatDate('orderReceiveDate','${session.DATEFORMAT_JS}')|"
+																					readonly>
+
+																			</div>
+																		</div>
+																	</div>
+																</div>
+															</div>
+															<div class="card mt-3">
+																<!-- <div class="card-header text-black">Item Details</div> -->
+																<div class="row">
+																	<div class="col-md-12 cnt-sp-bw">
+																		<h5 class="sub-header-new">Item Details</h5>
+																		<div class="d-flex gap-1 task-btn-sec">
+																			<button
+																				class="border-0 btn-transition btn btn-outline-primary br-dis br-m-btn"
+																				title="Pack Item" disabled id="packItem"
+																				onclick="packedItem()" data-bs-toggle="tooltip">
+																				<i class="bi bi-cart-plus-fill"></i>
+																			</button>
+																			<button class="btn btn-primary edit-btn br-s-btn"
+																				type="button" onclick="saveTableData()"
+																				data-bs-toggle="tooltip">Save</button>
+																			<button class="btn btn-primary edit-btn br-s-btn"
+																				type="button" onclick="cancelItemDetails()"
+																				data-bs-toggle="tooltip">Cancel</button>
+																		</div>
+																	</div>
+																</div>
+																<div class="card-body">
+
+																	<div class="row br-m-btn mt-1">
+																		<div id="item" style="height: 200px;"
+																			class="ag-theme-alpine"></div>
+																	</div>
+																	<div class="row br-s-btn">
+																		<div class="row">
+																			<div class="col-lg-3">
+																				<div class="mb-3">
+																					<label class="form-label">Stock Keeping
+																						Unit</label> <input type="text"
+																						onblur="removeValid(event)" id="sku"
+																						class="form-control" disabled>
+																				</div>
+																			</div>
+																			<div class="col-lg-3">
+																				<div class="mb-3">
+																					<label class="form-label">Item Name</label> <input
+																						type="hidden" id="editProduct"> <input
+																						type="hidden" id="itemId"> <input
+																						type="hidden" id="productName"> <select
+																						id="itemName" class="searchable-select"
+																						onchange="getItemdetailsBySku();">
+																						<option value="">Select</option>
+																						<option th:each="c,iter:${productList}"
+																							th:value="${c.key}" th:text="${c.name}"></option>
+																					</select>
+																				</div>
+																			</div>
+																			<div class="col-lg-3">
+																				<div class="mb-3">
+																					<label class="form-label">Quantity</label> <input
+																						type="text" id="quantity" class="form-control"
+																						onkeyup="calculateLineTotal();getGSTRateCal()"
+																						onblur="removeValid(event)">
+																				</div>
+																			</div>
+																			<div class="col-lg-3">
+																				<div class="mb-3">
+																					<label class="form-label">Unit</label> <select
+																						class="form-select" id="unit"
+																						onblur="removeValid(event);">
+																						<option value="">Select</option>
+																						<option th:each="c,iter:${unitList}"
+																							th:value="${c.key}" th:text="${c.name}"></option>
+																					</select>
+																				</div>
+																			</div>
+
+																		</div>
+
+																		<div class="row">
+																			<div class="col-lg-3">
+																				<div class="form-group">
+																					<label>Packed Quantity</label> <input type="text"
+																						id="packedQut" onblur="removeValid(event)"
+																						class="form-control" readonly>
+																				</div>
+																			</div>
+
+																			<div class="col-lg-3">
+																				<div class="form-group">
+																					<label>Pending Quantity</label> <input type="text"
+																						id="pendingQut" onblur="removeValid(event)"
+																						class="form-control" readonly>
+																				</div>
+																			</div>
+
+
+
+																			<div class="col-lg-3">
+																				<div class="form-group">
+																					<label>Packing Quantity</label> <input type="text"
+																						class="form-control" id="packingQut"
+																						autocomplete="off"
+																						onkeyup="addPackQut('packingQut')" />
+																				</div>
+																			</div>
+
+
+																			<div class="col-lg-3">
+																				<div class="form-group">
+																					<label>No. Of Item</label><input type="text"
+																						id="noOfItem" class="form-control"
+																						onkeyup="checkNumeric('noOfItem');">
+																				</div>
+																			</div>
+																		</div>
+
+																		<input type="hidden" id="isalesOrderId">
+																		<div class="row">
+																			<div class="col-lg-3">
+																				<div class="form-group">
+																					<label>Packaging Type</label><span
+																						class="mandatory">*</span> <select
+																						class="form-control" id="packType">
+																						<option value="">Select</option>
+																						<option th:each="c,iter:${packTypeList}"
+																							th:value="${c.key}" th:text="${c.name}"></option>
+																					</select>
+																				</div>
+																			</div>
+																			<div class="col-lg-3" id="packDateDiv">
+																				<div class="form-group">
+																					<label>Packaging Date</label> <input type="text"
+																						class="form-control" id="packDate"
+																						autocomplete="off" readonly />
+																				</div>
+																				<input type="hidden" class="form-control"
+																					id="packQut" autocomplete="off" readonly />
+																			</div>
+																			<div class="col-lg-3">
+																				<div class="form-group">
+																					<label>HSN Code</label> <input type="text"
+																						id="hsnCode" onblur="removeValid(event)"
+																						class="form-control" readonly>
+																				</div>
+																			</div>
+																			<div class="col-lg-3">
+																				<div class="mb-3">
+																					<label class="form-group">Description</label> <input
+																						type="text" id="itemDesc" class="form-control">
+																				</div>
+																			</div>
+																		</div>
+																	</div>
+																</div>
+															</div>
+															<!-- Quotation Details -->
+															<div class="card mt-3">
+																<div class="card-header text-black">Shipping
+																	Address Details</div>
+																<div class="card-body">
+
+																	<div class="row">
+																		<div class="col-md-12 cnt-sp-bw">
+																			<h5 class="sub-header-new">Shipping Address</h5>
+																			<div class="d-flex gap-1 task-btn-sec">
+
+																				<button class="btn btn-primary max-btn1 br-m-btn-sa"
+																					title="" data-bs-toggle="tooltip"
+																					data-bs-original-title="Close"
+																					id="changeAddress"
+																					onclick="changeAddress();closeTooltip(this);">
+																					<i class="fa-solid fa-remove"
+																						aria-hidden="true"></i>
+																				</button>
+																				<button id="selectAddress"
+																					class="btn btn-primary max-btn1 br-m-btn-sa d-none"
+																					title=""
+																					onclick="selectAddress();closeTooltip(this);"
+																					data-bs-toggle="tooltip"
+																					data-bs-original-title="Select Address">
+																					<i class="fa-solid fa-check-square"
+																						aria-hidden="true"></i>
+																				</button>
+
+																			</div>
+																		</div>
+																	</div>
+																	<div class="row">
+																		<div id="mySAGrid" style="height: 120px;"
+																			class="ag-theme-alpine"></div>
+																	</div>
+																	<div class="row" id="shippingAddressSec">
+																		<div class="col-md-3">
+																			<div class="form-group">
+																				<label>Country</label>
+																				<div class="select">
+																					<input type=hidden id="shippingHiddenId"> <input
+																						type="hidden" id="shippingId"> <select
+																						id="country1" onchange="getStateDetails1()"
+																						onblur="removeValid(event)">
+																						<option th:value="NULL">Select Country</option>
+																						<option th:each="c,iter:${countryList}"
+																							th:value="${c.key}" th:text="${c.name}"></option>
+																					</select>
+																				</div>
+																			</div>
+																		</div>
+
+																		<div class="col-md-3">
+																			<div class="form-group">
+																				<label>State</label>
+																				<div class="select">
+																					<select id="states1" onblur="removeValid(event)">
+																						<option th:value="NULL">Select State</option>
+																					</select> <span class="focus"></span>
+																				</div>
+																			</div>
+																		</div>
+
+																		<div class="col-md-3">
+																			<div class="form-group">
+																				<label>City</label> <input type="text"
+																					class="form-control" id="city1" placeholder="City"
+																					onblur="removeValid(event)"
+																					onkeyup="checkAlphabet('city')" maxLength="30">
+																			</div>
+																		</div>
+																		<div class="col-md-3">
+																			<div class="form-group">
+																				<label>Street 1</label> <input type="text"
+																					class="form-control" id="street11"
+																					placeholder="Street 1" onblur="removeValid(event)"
+																					maxLength="30">
+																			</div>
+																		</div>
+																		<div class="col-md-3">
+																			<div class="form-group">
+																				<label>Street 2</label> <input type="text"
+																					class="form-control" id="street21"
+																					placeholder="Street 2" onblur="removeValid(event)"
+																					maxLength="30">
+																			</div>
+																		</div>
+																		<div class="col-md-3">
+																			<div class="form-group">
+																				<label>Zip Code</label> <input type="text"
+																					class="form-control" id="zipCode1"
+																					autocomplete="off" placeholder="Zip Code"
+																					onkeyup="zipcodeVal1();checkNumeric('zipCode1');"
+																					onblur="removeValid(event)"> <span
+																					id="error15" class="formValidation1"></span>
+																			</div>
+																		</div>
+
+																		<div class="col-md-3">
+																			<div class="form-group">
+																				<label>Phone</label> <input type="text"
+																					class="form-control" id="phone1"
+																					placeholder="Phone"
+																					onkeyup="checkNumeric('phone1');"
+																					onblur="removeValid(event)"> <span
+																					id="error12" class="formValidation1"></span>
+																			</div>
+																		</div>
+																		<div class="col-md-3">
+																			<div class="form-group">
+																				<label>Fax</label> <input type="text"
+																					class="form-control" id="fax1" placeholder="Fax"
+																					onblur="removeValid(event)">
+																			</div>
+																		</div>
+																	</div>
+
+																</div>
+															</div>
+
+															<!-- Hidden Fields -->
+															<input type="hidden" id="salesOrder"> <input
+																type="hidden" id="taxType">
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+									<!--Right Inner Tab End-->
+								</div>
+							</div>
+							<!--Right Sec End-->
+						</div>
+					</div>
+					<!--Tabbination 1 End-->
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
