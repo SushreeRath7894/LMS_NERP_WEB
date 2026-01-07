@@ -1590,6 +1590,7 @@ public ResponseEntity<Resource> serveScormPackage(HttpServletRequest request,
         String prefix = "/academic/scorm-content/" + zipFileName + "/";
         int idx = requestUri.indexOf(prefix);
         String relativePath = "";
+		
         if (idx != -1) {
             relativePath = requestUri.substring(idx + prefix.length());
         }
