@@ -876,7 +876,7 @@ public class CrmLeadsController {
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@GetMapping("view-crm-leads-view-Data")
 	public @ResponseBody JsonResponse viewLeadsDetails(HttpSession session, @RequestParam String pageno,
-			@RequestParam String userId) {
+			@RequestParam String userId ,@RequestParam String fromDate,@RequestParam String toDate) {
 
 		logger.info("Method : viewLeadsDetails starts");
 		JsonResponse jsonResponse = new JsonResponse();
@@ -893,7 +893,7 @@ public class CrmLeadsController {
 				e.printStackTrace();
 			}
 			jsonResponse = restTemplate.getForObject(env.getPipeline() + "rest-viewLeadDet?pageno=" + pageno
-					+ "&userId=" + userId + "&orgName=" + orgName + "&orgDivision=" + orgDivision, JsonResponse.class);
+					+ "&userId=" + userId + "&orgName=" + orgName + "&orgDivision=" + orgDivision +"&fromDate="+fromDate+"&toDate="+toDate, JsonResponse.class);
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -2233,9 +2233,9 @@ public class CrmLeadsController {
 				long nowTime = new Date().getTime();
 
 				if (ext.contentEquals("jpeg") || ext.contentEquals("jpg")) {
-					imageName = user_id + "_" + nowTime + ".jpg";
+					imageName = nowTime + ".jpg";
 				} else {
-					imageName = user_id + "_" + nowTime + "." + ext;
+					imageName = nowTime + "." + ext;
 				}
 			}
 			Path path = Paths.get(env.getFileUploadCrmUrl() + imageName);

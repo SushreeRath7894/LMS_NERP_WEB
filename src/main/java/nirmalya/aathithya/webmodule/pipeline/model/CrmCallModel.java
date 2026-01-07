@@ -59,7 +59,21 @@ public class CrmCallModel {
 	private String participantId;
 	
 	private String callEndTime;
+	private String callRemark;
 	
+	
+
+
+
+	public String getCallRemark() {
+		return callRemark;
+	}
+
+
+
+	public void setCallRemark(String callRemark) {
+		this.callRemark = callRemark;
+	}
 
 
 

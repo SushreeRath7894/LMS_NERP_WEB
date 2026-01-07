@@ -708,7 +708,7 @@ function addContact() {
 
 					cancelBtn()
 
-					$("#messageParagraph").text("Data Saved Successfully");
+					$("#messageParagraph").text("Data saved successfully");
 					$("#msgOkModal").removeClass("btn3");
 					$("#msgOkModal").addClass("btn1");
 					$("#msgModal").modal('show');

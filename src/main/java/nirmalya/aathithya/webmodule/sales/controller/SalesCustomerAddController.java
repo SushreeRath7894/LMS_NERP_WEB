@@ -15,7 +15,6 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import groovyjarjarpicocli.CommandLine.Model;
-import nirmalya.aathithya.webmodule.account.model.AccountCusModel;
 import nirmalya.aathithya.webmodule.common.utils.EnvironmentVaribles;
 import nirmalya.aathithya.webmodule.common.utils.FileUpload;
 import nirmalya.aathithya.webmodule.common.utils.JsonResponse;

@@ -1,6 +1,42 @@
 $(document)
 	.ready(
 		function() {
+			var dateFormat = localStorage.getItem("dateFormat");
+			$("#toDateLeadCalendar").datetimepicker({
+				format: dateFormat,
+				closeOnDateSelect: true,
+				//minDate: new Date(),
+				timepicker: false,
+			}).on("change", function() {
+				$('#toDateLeadQ').val($(this).val());
+			});
+
+			$('#toDateLeadQ').blur(function() {
+				$("#toDateLeadCalendar").val($(this).val());
+			});
+
+			//
+			$("#fromDateLeadCalendar").datetimepicker({
+				format: dateFormat,
+				closeOnDateSelect: true,
+				//minDate: new Date(),
+				timepicker: false,
+			}).on("change", function() {
+				$('#fromDateLeadQ').val($(this).val());
+			});
+
+			$('#fromDateLeadQ').blur(function() {
+				$("#fromDateLeadCalendar").val($(this).val());
+			});
+			const today = new Date();
+			const currentYear = today.getFullYear();
+			const currentMonth = today.getMonth();
+
+			const fyStartYear = currentMonth < 3 ? currentYear - 1 : currentYear;
+			const firstDayOfFY = new Date(fyStartYear, 3, 1);
+
+			$("#fromDateLeadQ").val(formatDatee(firstDayOfFY));
+			$("#toDateLeadQ").val(formatDatee(today));
 			var docDet = `<div class="control-group">
 														<label class="custom-file-upload" for="uploadDoc_1"> 
 															<i class="ti-plus"></i>
@@ -55,13 +91,15 @@ $(document)
 
 			var draftgridDiv = document.querySelector('#myGridDraft');
 			new agGrid.Grid(draftgridDiv, draftgridOptions);
+			var productGrid = document.querySelector('#leadProductGrid');
+			new agGrid.Grid(productGrid, productGridOptions);
 			userId = $("#userId").val();
 			viewLeadAggridData();
 			setTimeout(() => {
 				if (gridOptionsLead.api) {
 					gridOptionsLead.api.getDisplayedRowAtIndex(0)?.setSelected(true);
 				}
-			}, 500);
+			}, 1000);
 			let ccMailListData = new Set();
 			let bccMailListData = new Set();
 			let isValidEmail = false;
@@ -124,6 +162,9 @@ $(document)
 					case "#leadEmail":
 						closeMailSection();
 						break;
+					case "#leadNote":
+						closeNote();
+						break;
 				}
 
 				$clickedTab.tab("show");
@@ -134,6 +175,38 @@ $(document)
 					event.preventDefault();
 					onQuickFilterChanged();
 				}
+			});
+			$('#frequency').select2({
+				placeholder: "Select",
+				allowClear: true
+			});
+			$('#meetingStatus').select2({
+				placeholder: "Select",
+				allowClear: true
+			});
+			$('#meetingHost').select2({
+				placeholder: "Select",
+				allowClear: true
+			});
+			$('#callOwner').select2({
+				placeholder: "Select",
+				allowClear: true
+			});
+			$('#callStatus').select2({
+				placeholder: "Select",
+				allowClear: true
+			});
+			$('#callPurpose').select2({
+				placeholder: "Select",
+				allowClear: true
+			});
+			$('#taskStatus').select2({
+				placeholder: "Select",
+				allowClear: true
+			});
+			$('#taskPriority').select2({
+				placeholder: "Select",
+				allowClear: true
 			});
 		});
 
@@ -340,8 +413,11 @@ function viewLeadAggridData() {
 	var rowData = [];
 	gridOptionsLead.api.setRowData(rowData);
 
+	var fromDate = $("#fromDateLeadQ").val();
+	var toDate = $("#toDateLeadQ").val();
+
 	agGrid.simpleHttpRequest({
-		url: "view-crm-leads-view-Data?pageno=" + pageno + "&userId=" + userId,
+		url: "view-crm-leads-view-Data?pageno=" + pageno + "&userId=" + userId + "&fromDate=" + fromDate + "&toDate=" + toDate,
 	}).then(function(data) {
 		console.log("lead Grid=============>", data);
 		if (data.code === "Success") {
@@ -512,6 +588,7 @@ function checkGridData() {
 		$('#prevTimeline').removeClass('d-none');
 		mailgridOptions.api.setRowData([]);
 		draftgridOptions.api.setRowData([]);
+		productGridOptions.api.setRowData([]);
 	}
 }
 var leadid = "";
@@ -563,6 +640,7 @@ function onSelectionChanged() {
 		getMeeting(contactId);
 		getMail(contactId);
 		getDraft(contactId);
+		viewProductOnLead(leadid);
 		return;
 	}
 	getActivity("allTimeline");
@@ -574,6 +652,7 @@ function onSelectionChanged() {
 	getMeeting(contactId);
 	getMail(contactId);
 	getDraft(contactId);
+	viewProductOnLead(leadid);
 	$("#pipelineId").text(contactId);
 	let convertSts = selectedData.map(node => node.convertSts);
 	id = "";
@@ -615,7 +694,75 @@ function onSelectionChanged() {
 	}
 
 }
+var productDefs = [
+	{
+		headerName: "Product Name",
+		field: "productName",
+		width: 150,
+		minWidth: 100,
+		flex: 1
 
+	}, {
+		headerName: "Product Id",
+		field: "productId",
+		hide: true,
+	}, {
+		headerName: "SKU Name",
+		field: "skuName",
+		width: 150,
+		minWidth: 100,
+		flex: 1
+
+	}, {
+		headerName: "Sku Id",
+		field: "skuId",
+		hide: true,
+	},
+	{
+		headerName: "Description",
+		field: "itemDesc",
+		width: 150,
+		minWidth: 100,
+		flex: 1,
+		cellRenderer: params => params.value
+	}
+];
+
+var productGridOptions = {
+	columnDefs: productDefs,
+	defaultColDef: {
+		sortable: true,
+		filter: true,
+		resizable: true,
+		width: 200,
+		height: 10,
+		minWidth: 50,
+		flex: 1
+	},
+	onSelectionChanged: onSelectionProduct,
+	onGridReady: function(params) {
+		productGridOptions.api = params.api;
+		productGridOptions.columnApi = params.columnApi;
+		params.api.sizeColumnsToFit();
+	},
+	onGridSizeChanged: function(params) {
+		params.api.sizeColumnsToFit();
+	},
+	suppressAutoSize: false,
+	maintainColumnOrder: true
+};
+function onSelectionProduct() {
+	var selectedRows = productGridOptions.api.getSelectedRows();
+	var rowCount = 0;
+	selectedRows.forEach(function(selectedRow, index) {
+		rowCount = rowCount + 1;
+	});
+	if (rowCount > 0) {
+		$(".br-dis").prop("disabled", false);
+	} else {
+		$(".br-dis").prop("disabled", true);
+	}
+}
 
 var columnMailDefs = [{
 	headerName: "Subject",
@@ -670,7 +817,7 @@ var mailgridOptions = {
 };
 
 var columnDraftDefs = [{
-	headerCheckboxSelection: true,
+	headerCheckboxSelection: false,
 	checkboxSelection: true,
 	width: 10,
 	sortable: false,
@@ -855,25 +1002,34 @@ function saveMultiFileDoc1(event) {
 			documentFile: e.target.result.split(",")[1],
 		};
 
-		let icon = "";
+		let iconHtml = "";
+		let iconClass = "";
+
 		if (extension === "jpg" || extension === "png" || extension === "jpeg") {
-			icon = `<div class='uploadicon'><a class='example-image-link' href='${iURL}' title='${fileName}' target='_blank'><i class='fa fa-picture-o'></i></a><span><i class='ti-close red' onclick='deleteFile1();'></i></span></div>`;
+			iconClass = "fa-solid fa-file-image custom-file-icon";
 		} else if (extension === "pdf") {
-			icon = `<div class='uploadicon'><a class='example-image-link' href='${iURL}' title='${fileName}' target='_blank'><i class='fa fa-file-pdf-o'></i></a><span><i class='ti-close red' onclick='deleteFile1();'></i></span></div>`;
+			iconClass = "fa-solid fa-file-pdf custom-file-icon";
 		} else if (extension === "xls" || extension === "xlsx") {
-			icon = `<div class='uploadicon'><a class='example-image-link' href='${iURL}' title='${fileName}' target='_blank'><i class='fa fa-file-excel-o'></i></a><span><i class='ti-close red' onclick='deleteFile1();'></i></span></div>`;
+			iconClass = "fa-solid fa-file-excel custom-file-icon";
 		} else if (extension === "doc" || extension === "docx") {
-			icon = `<div class='uploadicon'><a class='example-image-link' href='${iURL}' title='${fileName}' target='_blank'><i class='fa fa-file-word-o'></i></a><span><i class='ti-close red' onclick='deleteFile1();'></i></span></div>`;
-		} else {
-			icon = `<div class='uploadicon'></div>`;
+			iconClass = "fa-solid fa-file-word custom-file-icon";
 		}
 
-		// let deleteIcon = "<i class='ti-close position-l rmv1'></i>";
-		$("#uploadedBillDiv_1").html(icon);
-		$("#imageName_1").html(fileName);
-		/* $("#dltImage_1").html(deleteIcon);
-		 $("#dltImage_1").addClass("custom-file-delete");
-		 $("#clickImg_1").removeClass("ti-plus").addClass("ti-pencil");*/
+		if (iconClass) {
+			iconHtml = `
+				<a style='margin-left: 10px' class='example-image-link' href='${iURL}' title='${fileName}' target='_blank'>
+					<i class='${iconClass}'></i>
+				</a>
+			`;
+		}
+
+		let fileNameHtml = `
+			<div id="imageName_1" class="imageName" style="margin-left: 2px;">${fileName}</div>
+			<span><i class="ti-close red close_sec1 deleteFileDoc ml-5" onclick="deleteFile1();"></i></span>
+		`;
+
+		$("#uploadedBillDiv_1").html(iconHtml + fileNameHtml);
+		$("#clickImg_1").removeClass("ti-plus").addClass("ti-pencil");
 	};
 
 	fileReader.readAsDataURL(fileInput);
@@ -951,6 +1107,7 @@ function editNote(id) {
 	$("#saveNote").hide();
 	$("#cancelNote").hide();
 
+
 	$.ajax({
 		type: "GET",
 		url: "view-crm-leads-view-detail-edit-note?id=" + id,
@@ -1021,7 +1178,7 @@ function editNote(id) {
 			});
 
 			if (!hasValidNotes) {
-				container.innerHTML = `<div class="no-note-message"><i class="fa fa-info-circle"></i> Note Details Not Available</div>`;
+				container.innerHTML = `<div class="no-note-message mt-10"><i class="fa fa-info-circle"></i> Note Details Not Available</div>`;
 			}
 		},
 		error: function(err) {
@@ -1065,8 +1222,12 @@ function closeNote() {
 	$('#imageName_1').empty();
 	$('#uploadedBillDiv_1').empty();
 	uploadedDocument = null;
+	$('#prevNote').prop('disabled', false);
+	$('#nextNote').prop('disabled', false);
 }
 function openNote1() {
+	$('#prevNote').prop('disabled', true);
+	$('#nextNote').prop('disabled', true);
 	$("#noteForm").show();
 	$("#noteData").hide();
 	$('#leadNoteId').val('');
@@ -1107,6 +1268,8 @@ function openNote(id) {
 	$("#openNote").hide();
 	$("#noteForm").show();
 	$("#noteData").hide();
+	$('#prevNote').prop('disabled', true);
+	$('#nextNote').prop('disabled', true);
 
 	$.ajax({
 		type: "GET",
@@ -1573,7 +1736,7 @@ function getTask(leadId) {
 
 					// Create task card (Always Clickable)
 					let taskCard = `
-						<div class="card-task clickable-card" onclick="editPage('${taskId}')" style="cursor: pointer;">
+						<div class="card-task clickable-card" onclick="editTask('${taskId}')" style="cursor: pointer;">
 							<div class="task-header">
 								${taskSubject}
 							</div>
@@ -1616,8 +1779,8 @@ function getTask(leadId) {
 }
 
 
-function editPage(id) {
-	toggleSection();
+function editTask(id) {
+	toggleSection1();
 	$("#deleteTaskIcon").removeClass("d-none");
 	$.ajax({
 		type: "GET",
@@ -1642,14 +1805,14 @@ function editPage(id) {
 				$("#taskOwner").val(response.body[0].taskOwner);
 				$("#taskSubject").val(response.body[0].taskSubject);
 				$('#dueDate').val(dueDate);
-				$('#taskStatus').val(response.body[0].taskStatus);
+				$('#taskStatus').val(response.body[0].taskStatus).trigger('change');
 				let taskStatus = response.body[0].taskStatus;
 				if (taskStatus == "Completed") {
 					disableTaskFields();
 				} else {
 					enableTaskFields();
 				}
-				$('#taskPriority').val(response.body[0].taskPriority);
+				$('#taskPriority').val(response.body[0].taskPriority).trigger('change');
 				$('#description').val(response.body[0].description);
 
 				var tskLead = response.body[0].taskLead;
@@ -1858,7 +2021,7 @@ function getCount(contact) {
 
 }
 /* Call Section Start */
-function toggleSection() {
+function toggleSection1() {
 	enableTaskFields();
 	$(".formValidation").remove();
 	$("#taskLead").prop('disabled', false);
@@ -1874,8 +2037,8 @@ function toggleSection() {
 	$('#taskLead').val(leadId);
 	$('#taskSubject').val('');
 	$('#dueDate').val('');
-	$('#taskStatus').val('');
-	$('#taskPriority').val('');
+	$('#taskStatus').val('').trigger('change');
+	$('#taskPriority').val('').trigger('change');
 	$('#description').val('');
 	$("#taskStatus option[value='Completed']").prop("disabled", true);
 
@@ -1887,6 +2050,8 @@ function toggleSection() {
 	$("#taskContactName").val(contactName);
 	$("#taskAccountName").val(company);
 	$("#accountId").val(accountId);
+	$('#prevTask').prop('disabled', true);
+	$('#nextTask').prop('disabled', true);
 }
 function closeSection() {
 	$("#deleteTaskIcon").addClass("d-none");
@@ -1897,6 +2062,8 @@ function closeSection() {
 	$("#addTaskIcon").removeClass("d-none");
 	$("#saveTaskIcon").addClass("d-none");
 	$("#accountId").val('');
+	$('#prevTask').prop('disabled', false);
+	$('#nextTask').prop('disabled', false);
 }
 
 function toggleCallSection() {
@@ -1912,12 +2079,13 @@ function toggleCallSection() {
 	$('#callSubject').val('');
 
 	$('#callType').val('Outbound');
-	$('#callStatus').val('Scheduled');
+	$('#callStatus').val('Scheduled').trigger('change');
 	$('#callStartDate').val('');
-	$('#callPurpose').val('');
+	$('#callPurpose').val('').trigger('change');
 	$('#callAgenda').val('');
+	$('#callRemark').val('');
 	var userId = $("#userId").val();
-	$('#callOwner').val(userId);
+	$('#callOwner').val(userId).trigger('change');
 	var selectedNodes = gridOptionsLead.api.getSelectedNodes();
 	var selectedData = selectedNodes.map(node => node.data);
 	var contactName = selectedData.map(node => node.leadName);
@@ -1939,7 +2107,7 @@ function toggleCallSection() {
 	$("#relatedType").val('');
 	$("#relatedName").val('');
 	$("#callType").val('Outbound');
-	$("#callStatus").val('Scheduled');
+	$("#callStatus").val('Scheduled').trigger('change');
 	$("#callEndTime").val('');
 	$("#callStartTime").val('');
 	$("#callSubject").val('');
@@ -1954,6 +2122,8 @@ function toggleCallSection() {
 	$("#callStatus option[value='Completed']").prop("disabled", true);
 
 	$('#leadId').val(leadid);
+	$('#prevCall').prop('disabled', true);
+	$('#nextCall').prop('disabled', true);
 
 }
 function closeCallSection() {
@@ -1965,6 +2135,8 @@ function closeCallSection() {
 	$("#deleteCallIcon").addClass("d-none");
 	$("#saveCallIcon").addClass("d-none");
 	$('#leadId').val('');
+	$('#prevCall').prop('disabled', false);
+	$('#nextCall').prop('disabled', false);
 
 }
 
@@ -2118,12 +2290,15 @@ function addCallInfo() {
 	obj.callAgenda = $('#callAgenda').val();
 	obj.accountName = $('#callAccountName').val();
 	obj.accountId = $('#accountId').val();
+	obj.callRemark = $('#callRemark').val();
 	//obj.participantId = JSON.stringify(participantData);
 	obj.toMail = toMail;
 	//obj.ccMail = ccMeetingMail;
 	obj.excutiveMail = executiveMail;
 
 	console.log("Prepared Object:", obj);
+	var callStatus = $('#callStatus').val();
+	var callRemark = $('#callRemark').val();
 
 
 	// FORM VALIDATION STARTS
@@ -2179,6 +2354,12 @@ function addCallInfo() {
 		toastr.error("Call Agenda is required");
 		validation = false;
 		return;
+	}
+	if (callStatus !== "" && (callStatus === "Deferred" || callStatus === "Completed")) {
+		if (!callRemark) {
+			toastr.error("Remark is required");
+			return false;
+		}
 	}
 
 	// FORM VALIDATION ENDS
@@ -2246,7 +2427,7 @@ function editCallPage(id) {
 				$("#relatedId").val(response.body[0].relatedId);
 				$('#relatedName').val(response.body[0].relatedName);
 				$('#callType').val(response.body[0].callType);
-				$('#callStatus').val(response.body[0].callStatus);
+				$('#callStatus').val(response.body[0].callStatus).trigger('change');
 				let callStatus = response.body[0].callStatus;
 				if (callStatus == "Completed") {
 					disableCallFields();
@@ -2257,11 +2438,12 @@ function editCallPage(id) {
 				$('#callStartTime').val(response.body[0].callStartTime);
 				$('#callEndTime').val(response.body[0].callEndTime);
 
-				$('#callOwner').val(response.body[0].callOwner);
+				$('#callOwner').val(response.body[0].callOwner).trigger('change');
 				$('#callSubject').val(response.body[0].callSubject);
 				$('#callReminder').val(response.body[0].callReminder);
-				$('#callPurpose').val(response.body[0].callPurpose);
+				$('#callPurpose').val(response.body[0].callPurpose).trigger('change');
 				$('#callAgenda').val(response.body[0].callAgenda);
+				$('#callRemark').val(response.body[0].callRemark);
 
 				$('#leadName').val(response.body[0].leadName);
 				$('#leadId').val(response.body[0].leadId);
@@ -2364,12 +2546,12 @@ function editCallPage(id) {
 	})
 }
 function disableCallFields() {
-	$("#deleteCallIcon,#saveCallIcon,#callOwner, #callSubject,#callStatus, #callPurpose, #callStartDate, #callStartTime, #callEndTime, #callAgenda ").prop("disabled", true);
+	$("#deleteCallIcon,#saveCallIcon,#callOwner, #callSubject,#callStatus, #callPurpose, #callStartDate, #callStartTime, #callEndTime, #callAgenda,#callRemark ").prop("disabled", true);
 	$(" .day, .date-items .date-item").addClass("disabled");
 }
 
 function enableCallFields() {
-	$("#deleteCallIcon,#saveCallIcon,#callOwner, #callSubject,#callStatus, #callPurpose, #callStartDate, #callStartTime, #callEndTime, #callAgenda ").prop("disabled", false);
+	$("#deleteCallIcon,#saveCallIcon,#callOwner, #callSubject,#callStatus, #callPurpose, #callStartDate, #callStartTime, #callEndTime, #callAgenda,#callRemark ").prop("disabled", false);
 	$(".day, .date-items .date-item").removeClass("disabled");
 }
 function deleteCallOnclick() {
@@ -2484,9 +2666,10 @@ function cancelModal() {
 	$('#toHiddenIdOrg').val('');
 	$('#toHiddenIdAttendees').val('');
 	$('#notesContent').val('');
-	$('#meetingStatus').val('');
+	$('#meetingStatus').val('').trigger('change');
 	$('#eventModal').modal('hide');
 	$("#onlineMode").prop("checked", true);
+	$('#meetingRemark').val('');
 	toggleModeFields();
 }
 function setMeetingDatesAndTimes() {
@@ -2548,7 +2731,7 @@ function toggleMeetingSection() {
 	$("#SaveMeetingIcon").removeClass("d-none");
 	$("#openMeetingContainer").addClass("d-none");
 	$("#closeMeetingContainer").addClass("d-none");
-	$('#meetingHost').val(userId);
+	$('#meetingHost').val(userId).trigger('change');
 	$('#meetingId').text("");
 	$(".formValidation").remove()
 
@@ -2556,6 +2739,8 @@ function toggleMeetingSection() {
 	setMeetingDatesAndTimes();
 	getTheEmployeeList();
 	$("#meetingStatus option[value='Completed']").prop("disabled", true);
+	$('#prevMeeting').prop('disabled', true);
+	$('#nextMeeting').prop('disabled', true);
 }
 function closeMeetingSection() {
 	$("#addMeetingIcon").removeClass("d-none");
@@ -2574,6 +2759,8 @@ function closeMeetingSection() {
 	$("#leadName").val("");
 	$("#leadId").val("");
 	$("#leadMail").val("");
+	$('#prevMeeting').prop('disabled', false);
+	$('#nextMeeting').prop('disabled', false);
 
 }
 function addDiscuss() {
@@ -2626,47 +2813,43 @@ function removeDiscuss(button) {
 	$(button).closest('.diss').remove();
 	updateDiscussionPointNumbers();
 }
-function getTheEmployeeList(attendees = []) {
-	var hostId = $("#meetingHost").val();
-
+function getTheEmployeeList(attendees = [], hostId = '') {
 	$.ajax({
 		url: 'view-crm-calls-get-all-attendees?hostId=' + hostId,
 		type: 'get',
 		success: function(response) {
 			try {
-				console.log('API Response:', response);
-
 				const data = JSON.parse(response.body);
-				console.log("Data For DropDown =======>", data);
-
 				const employees = data.EmployeesData;
 				const leads = data.Leads;
-				let dropdownHTML = '<select id="employeeDropdown" name="employee" class="chosen-select" multiple>';
-				dropdownHTML += '<option value="">Select Employee or Lead</option>';
+				console.log("Leads------>", leads);
+				console.log("Employess------>", employees);
 
-				// Add employees to the dropdown
+				let dropdownHTML = '<select id="employeeDropdown" name="employee" class="chosen-select" multiple>';
+				dropdownHTML += '<option value="" disabled>Select Employee or Lead</option>';
+
+				// Add employees
 				employees.forEach(function(employee) {
 					let isSelected = attendees.some(att => att.id === employee.employeeId);
-					dropdownHTML += `<option value="${employee.employeeId}" data-name="${employee.employeeName}" ${isSelected ? "selected" : ""
-						}>${employee.employeeName}</option>`;
+					let isDisabled = employee.employeeId === hostId;
+					dropdownHTML += `<option value="${employee.employeeId}" data-name="${employee.employeeName}" ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}>${employee.employeeName}</option>`;
 				});
 
-				// Add leads to the dropdown
-				leads.forEach(function(lead) {
-					let isSelected = attendees.some(att => att.id === lead.leadId);
-					dropdownHTML += `<option value="${lead.leadId}" data-name="${lead.fullName}" ${isSelected ? "selected" : ""
-						}>${lead.fullName} (Lead)</option>`;
-				});
+				// Add leads
+				// Add leads
+				if (Array.isArray(leads)) {
+					leads.forEach(function(lead) {
+						let isSelected = attendees.some(att => att.id === lead.leadId);
+						dropdownHTML += `<option value="${lead.leadId}" data-name="${lead.fullName}" ${isSelected ? 'selected' : ''}>${lead.fullName} (Lead)</option>`;
+					});
+				}
+
 
 				dropdownHTML += '</select>';
-
 				$("#employeeDropdownContainer").html(dropdownHTML);
 
-				$(".chosen-select").chosen({
-					width: "100%",
-				});
+				$(".chosen-select").chosen({ width: "100%" });
 
-				console.log("Dropdown created successfully with selected attendees:", attendees);
 			} catch (error) {
 				console.error('Error processing API response:', error);
 			}
@@ -2805,6 +2988,9 @@ function addMeetingInfo() {
 	obj.meetingFrequency = meetingFrequency;
 	var meetFromDate = "";
 	var meetToDate = "";
+	obj.meetingRemark = $('#meetingRemark').val();
+	var status = $('#meetingStatus').val();
+	var remark = $('#meetingRemark').val();
 
 	if (meetingFrequency == 'one-time') {
 		meetFromDate = $('#meetingFromDate').val();
@@ -2920,6 +3106,12 @@ function addMeetingInfo() {
 		validation = false;
 		return false;
 	}
+	if (status !== "" && (status === "Deferred" || status === "Completed")) {
+		if (!remark) {
+			toastr.error("Remark is required");
+			return false;
+		}
+	}
 
 	console.log("Validation", validation);
 	/* FORM VALIDATION ENDS*/
@@ -2982,8 +3174,9 @@ function editMeetingPage(id) {
 				$('input[name="meetingMode"][value="' + response.body[0].meetingMode + '"]').prop('checked', true).trigger('change');
 				$("#location").val(response.body[0].meetingLocation);
 				$("#meetingLink").val(response.body[0].meetingUrl);
-				$('#meetingHost').val(response.body[0].meetingHost).change();
+				$('#meetingHost').val(response.body[0].meetingHost).trigger('change');
 				$('#agenda').val(response.body[0].meetingAgenda);
+				$('#meetingRemark').val(response.body[0].meetingRemark);
 
 				/* var isThisOnlineValue = response.body[0].isThisOnlineMeeting;
 				var isAllDayValue = response.body[0].isAllDay; */
@@ -2993,7 +3186,7 @@ function editMeetingPage(id) {
 				$('#meetingFromTime').val(response.body[0].meetingFromTime);
 				$('#meetingToDate').val(formatDate(response.body[0].meetingToDate));
 				$('#meetingToTime').val(response.body[0].meetingToTime);
-				$('#meetingStatus').val(response.body[0].meetingStatus);
+				$('#meetingStatus').val(response.body[0].meetingStatus).trigger('change');
 				//$('#meetingHost').val(response.body[0].meetingHost);
 				var meetingDays = response.body[0].daysFilter;
 				if (typeof meetingDays === 'string') {
@@ -3011,9 +3204,10 @@ function editMeetingPage(id) {
 				$('#contactMail').val(response.body[0].toMail);
 				$('#leadMail').val(response.body[0].ccMail);
 				var attendees = response.body[0].attendees;
+				var hostId = response.body[0].meetingHost;
 				console.log("Attendees======>", attendees);
 
-				getTheEmployeeList(attendees);
+				getTheEmployeeList(attendees, hostId);
 
 
 				var tskLead = response.body[0].leadId;
@@ -3055,13 +3249,18 @@ function editMeetingPage(id) {
 	})
 }
 function disableMeetingFields() {
-	$("#meetingName,#SaveMeetingIcon,#deleteMeetingIcon,#addDiscuss, #frequency, input[name='meetingMode'], #location, #meetingLink, #meetingHost, #agenda, #meetingCrationTime, #meetingCrationDate, #meetingFromDate, #meetingFromTime, #meetingToDate, #meetingToTime, #meetingStatus, #contactMail, #leadMail, #leadName, #leadId, #contactName, #contactId").prop("disabled", true);
+	$("#meetingName,#SaveMeetingIcon,#deleteMeetingIcon,#addDiscuss, #frequency, input[name='meetingMode'], #location, #meetingLink, #meetingHost, #agenda, #meetingCrationTime, #meetingCrationDate, #meetingFromDate, #meetingFromTime, #meetingToDate, #meetingToTime, #meetingStatus, #contactMail, #leadMail, #leadName, #leadId, #contactName, #contactId,#meetingRemark").prop("disabled", true);
 	$(".discussion-btn-bg, #weakSelect .day, .date-items .date-item").addClass("disabled");
+	$("#addDiscuss").addClass("disabled").on("click.preventDisabled", function(e) {
+		e.preventDefault();
+		e.stopImmediatePropagation();
+	});
 }
 
 function enableMeetingFields() {
-	$("#meetingName,#SaveMeetingIcon,#deleteMeetingIcon,#addDiscuss, #frequency, input[name='meetingMode'], #location, #meetingLink, #meetingHost, #agenda, #meetingCrationTime, #meetingCrationDate, #meetingFromDate, #meetingFromTime, #meetingToDate, #meetingToTime, #meetingStatus, #contactMail, #leadMail, #leadName, #leadId, #contactName, #contactId").prop("disabled", false);
+	$("#meetingName,#SaveMeetingIcon,#deleteMeetingIcon,#addDiscuss, #frequency, input[name='meetingMode'], #location, #meetingLink, #meetingHost, #agenda, #meetingCrationTime, #meetingCrationDate, #meetingFromDate, #meetingFromTime, #meetingToDate, #meetingToTime, #meetingStatus, #contactMail, #leadMail, #leadName, #leadId, #contactName, #contactId,#meetingRemark").prop("disabled", false);
 	$(".discussion-btn-bg, #weakSelect .day, .date-items .date-item").removeClass("disabled");
+	$("#addDiscuss").removeClass("disabled").off("click.preventDisabled");
 }
 function deleteMeetingOnclick() {
 	var deleteId = $("#meetingId").text();
@@ -3801,6 +4000,8 @@ function deleteDraftOnclick() {
 				var contactId = selectedData.map(node => node.contactId);
 				getMail(contactId);
 				getDraft(contactId);
+				$("#editMailIcon").addClass("d-none");
+				$("#deleteDraftIcon").addClass("d-none");
 			}
 		}
 	});
@@ -3928,7 +4129,7 @@ function convertToCustomer() {
 				$('#pan').val(selectedData[0].leadPan);
 				$('#gstNo').val(selectedData[0].leadGst);
 				$('#status').val("Active").trigger('change');
-
+				gridOptionsPocDtls.api.setRowData([]);
 				let refContacts = [];
 				if (selectedData[0].referenceContact) {
 					try {
@@ -3977,11 +4178,33 @@ function resetBtn() {
 	}, 300);
 }
 
-function nextTab(id) {
+function nextTab1(id) {
 	const tabElement = document.querySelector('#' + id + ' a');
+	if (!tabElement) return;
+
+	const tabId = tabElement.getAttribute("href");
+
+	switch (tabId) {
+		case "#leadMeeting":
+			closeMeetingSection();
+			break;
+		case "#leadCall":
+			closeCallSection();
+			break;
+		case "#leadTask":
+			closeSection();
+			break;
+		case "#leadEmail":
+			closeMailSection();
+			break;
+		case "#leadNote":
+			closeNote();
+			break;
+	}
 	const tab = new bootstrap.Tab(tabElement);
 	tab.show();
 }
+
 var GSTValid;
 function ValidateGSTNumber() {
 	var gstNumber = $('#gstNo').val();
@@ -4003,6 +4226,14 @@ function ValidateGSTNumber() {
 		return true;
 	}
 }
+
+function excelDownload() {
+	var params = {
+		fileName: 'Qualified_Lead_list.csv', // Specify your custom filename here
+	};
+	gridOptionsLead.api.exportDataAsCsv(params);
+}
+
 function onLeadStatusChange(status) {
 	var selectedNodes = gridOptionsLead.api.getSelectedNodes();
 	var selectedData = selectedNodes.map(node => node.data);
@@ -4032,4 +4263,100 @@ function excelDownload() {
 		fileName: 'Qualified_Lead_list.csv', // Specify your custom filename here
 	};
 	gridOptionsLead.api.exportDataAsCsv(params);
+}
+function viewProductOnLead(leadId) {
+	if (!leadId) {
+		var selectedNodes = gridOptionsLead.api.getSelectedNodes();
+		if (!selectedNodes.length) {
+			console.warn("No lead selected.");
+			return;
+		}
+		var selectedData = selectedNodes.map(node => node.data);
+		leadId = selectedData[0].leadId;
+	}
+
+	$.ajax({
+		type: "GET",
+		url: "crm-lead-contacted-get-product?leadId=" + leadId,
+		success: function(response) {
+			if (response.code === "success" && response.body && response.body.length > 0) {
+				try {
+					var parsed = JSON.parse(response.body[0]);
+					if (parsed.productList && Array.isArray(parsed.productList)) {
+						productGridOptions.api.setRowData(parsed.productList);
+					} else {
+						productGridOptions.api.setRowData([]);
+					}
+				} catch (err) {
+					console.error("Error parsing product list:", err);
+					productGridOptions.api.setRowData([]);
+				}
+			} else {
+				productGridOptions.api.setRowData([]);
+			}
+		},
+		error: function(e) {
+			console.error("Error fetching SKU list:", e);
+		}
+	});
+}
+function onChangeOfMeetingStatus(value) {
+	if (value == "Completed") {
+		$('#remarkDiv').removeClass('d-none');
+	} else {
+		$('#remarkDiv').addClass('d-none');
+	}
+}
+function callOnChange(value) {
+	if (value == "Completed") {
+		$('#callRemarkDiv').removeClass('d-none');
+	} else {
+		$('#callRemarkDiv').addClass('d-none');
+	}
+}
+function formatDatee(date) {
+	const day = String(date.getDate()).padStart(2, '0');
+	const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+	const year = date.getFullYear();
+	return `${day}-${month}-${year}`;
+}
+function filterLeadQualifiedView() {
+	viewLeadAggridData();
+	if (gridOptionsLead.api) {
+		setTimeout(() => {
+			const firstRow = gridOptionsLead.api.getDisplayedRowAtIndex(0);
+			if (firstRow) {
+				firstRow.setSelected(true);
+				gridOptionsLead.api.ensureIndexVisible(0);
+			} else {
+				console.log("No rows available to select.");
+			}
+		}, 300);
+	} else {
+		console.error("Grid API is not available.");
+	}
+}	
+function resetLeadQualifiedView(){
+	let today = new Date();
+	let currentYear = today.getFullYear();
+	let currentMonth = today.getMonth();
+
+	let fyStartYear = currentMonth < 3 ? currentYear - 1 : currentYear;
+	let firstDayOfFY = new Date(fyStartYear, 3, 1);
+	$("#fromDateLeadQ").val(formatDatee(firstDayOfFY));
+	$("#toDateLeadQ").val(formatDatee(today));
+	viewLeadAggridData();
+	if (gridOptionsLead.api) {
+		setTimeout(() => {
+			const firstRow = gridOptionsLead.api.getDisplayedRowAtIndex(0);
+			if (firstRow) {
+				firstRow.setSelected(true);
+				gridOptionsLead.api.ensureIndexVisible(0);
+			} else {
+				console.log("No rows available to select.");
+			}
+		}, 300);
+	} else {
+		console.error("Grid API is not available.");
+	}
 }

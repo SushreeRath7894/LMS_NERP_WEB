@@ -1,5 +1,43 @@
 let userId = '';
 $(document).ready(function() {
+	var leadgridDiv = document.querySelector('#myLeadGrid');
+	new agGrid.Grid(leadgridDiv, gridOptionsLead);
+	var dateFormat = localStorage.getItem("dateFormat");
+	$("#toDateLeadCalendar").datetimepicker({
+		format: dateFormat,
+		closeOnDateSelect: true,
+		//minDate: new Date(),
+		timepicker: false,
+	}).on("change", function() {
+		$('#toDateLead').val($(this).val());
+	});
+
+	$('#toDateLead').blur(function() {
+		$("#toDateLeadCalendar").val($(this).val());
+	});
+
+	//
+	$("#fromDateLeadCalendar").datetimepicker({
+		format: dateFormat,
+		closeOnDateSelect: true,
+		//minDate: new Date(),
+		timepicker: false,
+	}).on("change", function() {
+		$('#fromDateLead').val($(this).val());
+	});
+
+	$('#fromDateLead').blur(function() {
+		$("#fromDateLeadCalendar").val($(this).val());
+	});
+	const today = new Date();
+	const currentYear = today.getFullYear();
+	const currentMonth = today.getMonth();
+
+	const fyStartYear = currentMonth < 3 ? currentYear - 1 : currentYear;
+	const firstDayOfFY = new Date(fyStartYear, 3, 1);
+
+	$("#fromDateLead").val(formatDate(firstDayOfFY));
+	$("#toDateLead").val(formatDate(today));
 	$("#leadStatus option[value='TLSM00004'], \
 	  #leadStatus option[value='TLSM00010'], \
 	  #leadStatus option[value='TLSM00009'], \
@@ -13,8 +51,6 @@ $(document).ready(function() {
 	setLeadTabAsDefault();
 	userId = $("#userId").val();
 	$("#leadExecutive").val(userId);
-	$('#industry').val("");
-	$('#leadSource').val("");
 
 	var leadId = (localStorage.getItem('leadId'));
 	if (leadId)
@@ -57,102 +93,23 @@ $(document).ready(function() {
 		}
 	});
 	$("#industry").select2({
-	  placeholder: "Select",
-	  allowClear: true,
-	  tags: true,  
-	  createTag: function (params) {
-	    return {
-	      id: params.term,
-	      text: params.term + " (new)",
-	      newOption: true  
-	    };
-	  },
-	  templateResult: function (data) {
-	    if (data.newOption) {
-	      return $('<span>' + data.text + '</span>');
-	    }
-	    return data.text;
-	  }
+		placeholder: "Select",
+		allowClear: true,
+		tags: true,
+		createTag: function(params) {
+			return {
+				id: params.term,
+				text: params.term + " (new)",
+				newOption: true
+			};
+		},
+		templateResult: function(data) {
+			if (data.newOption) {
+				return $('<span>' + data.text + '</span>');
+			}
+			return data.text;
+		}
 	});
-
-	var dateFormat = localStorage.getItem("dateFormat");
-	//Personal Details DOB Date
-	$("#dobCalendar").datetimepicker({
-		format: dateFormat,
-		closeOnDateSelect: true,
-		timepicker: false,
-	}).on("change", function() {
-		$('#dueDateid').val($(this).val());
-	})
-
-	$('#dueDateid').blur(function() {
-		$("#dobCalendar").val($(this).val());
-	})
-
-
-	$("#startDateCalendar").datetimepicker({
-		format: dateFormat,
-		closeOnDateSelect: true,
-		timepicker: false,
-	}).on("change", function() {
-		$('#startDate').val($(this).val());
-	})
-
-	$('#startDate').blur(function() {
-		$("#startDateCalendar").val($(this).val());
-	})
-
-
-	$("#endDateCalendar").datetimepicker({
-		format: dateFormat,
-		closeOnDateSelect: true,
-		timepicker: false,
-	}).on("change", function() {
-		$('#endDate').val($(this).val());
-	})
-
-	$('#endDate').blur(function() {
-		$("#endDateCalendar").val($(this).val());
-	})
-
-	//Personal Details DOB Date
-	$("#reminderCalendar").datetimepicker({
-		format: dateFormat,
-		closeOnDateSelect: true,
-		timepicker: false,
-	}).on("change", function() {
-		$('#reminderDateid').val($(this).val());
-	})
-
-	$('#reminderDateid').blur(function() {
-		$("#reminderCalendar").val($(this).val());
-	})
-
-	$("#dateCalendar").datetimepicker({
-		format: dateFormat,
-		closeOnDateSelect: true,
-		timepicker: false,
-	}).on("change", function() {
-		$('#dueDate').val($(this).val());
-	})
-
-	$('#dueDate').blur(function() {
-		$("#dateCalendar").val($(this).val());
-	})
-
-	$("#toDateCalendarTime").datetimepicker({
-		format: 'H:i',
-		closeOnDateSelect: false,
-		timepicker: true,
-		datepicker: false,
-		step: 15
-	}).on("change", function() {
-		$('#reminderTime').val($(this).val());
-	})
-
-	$('#reminderTime').blur(function() {
-		$("#toDateCalendarTime").val($(this).val());
-	})
 
 	$("#mySidenavTask").hide();
 
@@ -321,16 +278,15 @@ $(document).ready(function() {
 
 
 function viewLeadAggridData() {
-	var leadgridDiv = document.querySelector('#myLeadGrid');
-	new agGrid.Grid(leadgridDiv, gridOptionsLead);
-
 	var pages;
 	var pageno = 1;
 	var rowData = [];
 	gridOptionsLead.api.setRowData(rowData);
+	var fromDate = $("#fromDateLead").val();
+	var toDate = $("#toDateLead").val();
 
 	agGrid.simpleHttpRequest({
-		url: "view-crm-leads-view-Data?pageno=" + pageno + "&userId=" + userId,
+		url: "view-crm-leads-view-Data?pageno=" + pageno + "&userId=" + userId + "&fromDate=" + fromDate + "&toDate=" + toDate,
 	}).then(function(data) {
 		if (data.code === "Success") {
 			var resp = JSON.parse(data?.body);
@@ -452,17 +408,6 @@ $(document).ready(function() {
 		$("#lastName").prop("disabled", true);
 		//$("#phone").prop("disabled", false);
 	}
-
-});
-
-
-document.addEventListener('DOMContentLoaded', function() {
-
-	var gridDiv = document.querySelector('#myGridActivity');
-	new agGrid.Grid(gridDiv, activityOptions);
-
-	/*var gridDiv1 = document.querySelector('#activity');
-	new agGrid.Grid(gridDiv1, activityOptions);*/
 
 });
 function getLeadStatusHtml(value) {
@@ -593,7 +538,6 @@ var gridOptionsLead = {
 };
 
 
-
 // Functions for Lead Status 
 function leadStatus() {
 
@@ -646,7 +590,7 @@ function saveCampaign(dataset) {
 			if (response.message == "Success") {
 
 				$("#messageParagraph").text(
-					"Data Saved Successfully");
+					"Data saved successfully");
 
 				$("#msgOkModal").removeClass("btn3");
 				$("#msgOkModal").addClass("btn1");
@@ -706,7 +650,7 @@ function saveMacro(dataset) {
 			if (response.message == "Success") {
 
 				$("#messageParagraph").text(
-					"Data Saved Successfully");
+					"Data saved successfully");
 
 
 				$("#msgOkModal").removeClass("btn3");
@@ -755,7 +699,7 @@ function saveTags(dataset) {
 			if (response.message == "Success") {
 
 				$("#messageParagraph").text(
-					"Data Saved Successfully");
+					"Data saved successfully");
 
 
 				$("#msgOkModal").removeClass("btn3");
@@ -1099,22 +1043,43 @@ const gridOptions = {
 
 var decesionMakersColumnDefs = [
 	{
-		headerCheckboxSelection: false, // Checkbox in the header
-		checkboxSelection: true, // Checkbox for each row
-		width: 20
+		headerCheckboxSelection: false,
+		checkboxSelection: true,
+		width: 20,
+		minWidth: 20, // Prevent collapsing
+		maxWidth: 50,
+		suppressSizeToFit: true // Prevent resizing for checkbox column
 	},
-
 	{
 		headerName: "Name",
 		field: "dmName",
 		width: 150,
-		/*cellRenderer: function(params) {
-			return `<a href="javascript:void(0);" class="editable-name" onclick="editDecesionMakersData('${params.data.dmId}')">${params.value}</a>`;
-		}*/
+		minWidth: 100,
+		flex: 1 // Allow column to grow/shrink
 	},
-	{ headerName: "Designation", field: "dmDesignation", width: 100, },
-	{ headerName: "Email", field: "dmEmail", width: 200, type: "centerAligned" },
-	{ headerName: "Phone No.", field: "dmPhone", width: 120, type: "centerAligned" }
+	{
+		headerName: "Designation",
+		field: "dmDesignation",
+		width: 100,
+		minWidth: 80,
+		flex: 1
+	},
+	{
+		headerName: "Email",
+		field: "dmEmail",
+		width: 200,
+		minWidth: 150,
+		type: "centerAligned",
+		flex: 1
+	},
+	{
+		headerName: "Phone No.",
+		field: "dmPhone",
+		width: 120,
+		minWidth: 100,
+		type: "centerAligned",
+		flex: 1
+	}
 ];
 
 var gridOptionsDecesionMakers = {
@@ -1123,12 +1088,22 @@ var gridOptionsDecesionMakers = {
 		sortable: true,
 		filter: true,
 		resizable: true,
-		width: 195,
-		height: 10
+		minWidth: 50,
+		flex: 1
 	},
 	rowSelection: 'single',
 	onSelectionChanged: onSelectionChangedDecesion,
-	rowMultiSelectWithClick: false
+	rowMultiSelectWithClick: false,
+	onGridReady: function(params) {
+		gridOptionsDecesionMakers.api = params.api;
+		gridOptionsDecesionMakers.columnApi = params.columnApi;
+		params.api.sizeColumnsToFit();
+	},
+	onGridSizeChanged: function(params) {
+		params.api.sizeColumnsToFit();
+	},
+	suppressAutoSize: false,
+	maintainColumnOrder: true
 };
 function onSelectionChangedDecesion() {
 	var selectedRows = gridOptionsDecesionMakers.api.getSelectedRows();
@@ -1605,6 +1580,7 @@ function addNewLead() {
 	$("#cancelNewLead").removeClass("d-none")
 	$("#cancelLeadBtn").removeClass("d-none")
 	$("#addNewLead").addClass("d-none")
+	$("#editBtn").addClass("d-none")
 	$('#openSection').attr("disabled", false);
 	$("#fileUpload").val('');
 	gridOptionsLead.api.deselectAll();
@@ -1612,19 +1588,39 @@ function addNewLead() {
 	newBtn();
 	enableFields();
 	$("#employeeNameTop,#employeeNameTop1,#employeeNameTop2,#employeeNameTop3,#employeeNameTop4").text('');
+	setTimeout(function() {
+		$('#leadStatus').attr("disabled", true);
+	}, 300); // 300ms delay
 }
 function cancelNewLead() {
+	var selectedNodes = gridOptionsLead.api.getSelectedNodes();
+	var selectedData = selectedNodes.map(node => node.data);
+
+	// Remove form validation and toggle button visibility
 	$('div.formValidation').remove();
 	$('#addNewLeadBtn').removeClass('d-none');
-	$("#cancelNewLead").addClass("d-none")
-	$("#cancelLeadBtn").addClass("d-none")
-	$("#addNewLead").removeClass("d-none")
+	$("#cancelNewLead").addClass("d-none");
+	$("#cancelLeadBtn").addClass("d-none");
+	$("#addNewLead").removeClass("d-none");
+
 	if (gridOptionsLead.api) {
-		gridOptionsLead.api.forEachNode(function(node) {
-			if (node.rowIndex === 0) {
-				node.setSelected(true);
-			}
-		});
+		if (selectedData.length > 0) {
+			var leadId = selectedData[0].leadId;
+
+			gridOptionsLead.api.deselectAll();
+
+			gridOptionsLead.api.forEachNode(function(node) {
+				if (node.data.leadId === leadId) {
+					node.setSelected(true);
+				}
+			});
+		} else {
+			gridOptionsLead.api.forEachNode(function(node) {
+				if (node.rowIndex === 0) {
+					node.setSelected(true);
+				}
+			});
+		}
 	}
 }
 // for cancel button
@@ -1665,18 +1661,18 @@ function cancelBtn() {
 	$('#mobile').val("");
 	$('#website').val("");
 	$('#referenceContact').val("");
-	$('#leadSource').val("");
+	$('#leadSource').val("").trigger('change');
 	$('#leadStatus').val("");
 	$('#industry').val("").trigger('change');
 	$('#noOfEmp').val("");
 	$('#annualRevenue').val("");
-	$('#ratings').val("");
+	$('#ratings').val("").trigger('change');
 	$('#emailOpt').val("");
 	$('#skypeId').val("");
 	$('#secondaryEmail').val("");
 	$('#twitter').val("");
-	$('#country').val("");
-	$('#states').val("");
+	$('#country').val("").trigger('change');
+	$('#states').val("").trigger('change');
 	$('#city').val("");
 	$('#addressStreet').val("");
 	$('#zip').val("");
@@ -1775,9 +1771,10 @@ function deleteLeadOnclick(selectedIds) {
 				var pageno = 1;
 				var rowData = [];
 				gridOptionsLead.api.setRowData(rowData);
-
+				var fromDate = $("#fromDateLead").val();
+				var toDate = $("#toDateLead").val();
 				agGrid.simpleHttpRequest({
-					url: "view-crm-leads-view-Data?pageno=" + pageno + "&userId=" + userId,
+					url: "view-crm-leads-view-Data?pageno=" + pageno + "&userId=" + userId + "&fromDate=" + fromDate + "&toDate=" + toDate,
 				}).then(function(data) {
 					var resp = JSON.parse(data.body);
 					if (data.body == null) {
@@ -1810,13 +1807,14 @@ function disableFields() {
 		"phone", "project", "mobile", "website", "referenceContact", "leadSource",
 		"industry", "noOfEmp", "annualRevenue", "ratings", "skypeId",
 		"secondaryEmail", "twitter", "country", "states", "city", "addressStreet",
-		"zip", "description"
+		"zip", "description", "saveLeadInfoBtn", "openSection", "leadStatus"
 	];
 
 	fieldIds.forEach(id => {
 		$("#" + id).prop("disabled", true);
 	});
 	//$(".br-dis").prop("disabled", true);
+
 }
 function enableFields() {
 	let fieldIds = [
@@ -1825,7 +1823,7 @@ function enableFields() {
 		"phone", "project", "mobile", "website", "referenceContact", "leadSource",
 		"industry", "noOfEmp", "annualRevenue", "ratings", "skypeId",
 		"secondaryEmail", "twitter", "country", "states", "city", "addressStreet",
-		"zip", "description", "saveLeadInfoBtn"
+		"zip", "description", "saveLeadInfoBtn", "openSection", "leadStatus"
 	];
 	fieldIds.forEach(id => {
 		$("#" + id).prop("disabled", false);
@@ -1878,7 +1876,7 @@ function editLeadInfo(id) {
 				gridOptionsDecesionMakers.api.setRowData(referenceContactData);
 				rowDataDecesionMakers = referenceContactData;
 				//$('#referenceContact').val(response.body[0].referenceContact);
-				$('#leadSource').val(response.body[0].leadSource);
+				$('#leadSource').val(response.body[0].leadSource).trigger('change');
 
 				//Admin approval status
 				sessionStorage.setItem("adminApprvStatus", response.body[0].adminApprvStatus);
@@ -1886,11 +1884,11 @@ function editLeadInfo(id) {
 
 
 				setTimeout(function() {
-				    $('#industry').val(response.body[0].industry).trigger('change');
+					$('#industry').val(response.body[0].industry).trigger('change');
 				}, 1000);
 				$('#noOfEmp').val(response.body[0].noOfEmp);
-				$('#annualRevenue').val(response.body[0].annualRevenue);
-				$('#ratings').val(response.body[0].ratings);
+				$('#annualRevenue').val(response.body[0].annualRevenue).trigger('input');
+				$('#ratings').val(response.body[0].ratings).trigger('change');
 				$('#tags').val(response.body[0].tags);
 				$('#skypeId').val(response.body[0].skypeId);
 				$('#secondaryEmail').val(response.body[0].secondaryEmail);
@@ -1905,7 +1903,7 @@ function editLeadInfo(id) {
 
 
 				$('#twitter').val(response.body[0].twitter);
-				$('#country').val(response.body[0].country);
+				$('#country').val(response.body[0].country).trigger('change');
 				getStateDataOnEdit(response.body[0].states);
 				$('#city').val(response.body[0].city);
 				$('#addressStreet').val(response.body[0].addressStreet);
@@ -1949,41 +1947,8 @@ function editLeadInfo(id) {
 				$('#reason').val(response.body[0].reason).prop("disabled", true);
 				doHideShow(["#deleteLead", "#runMacro", "#sentMail", "#createTask", "#tags", "#action", "#addLead", "#leadTimeline"], false)
 
-				if (selectedStatusValue == "TLSM00001") {
-					$('#company').attr("disabled", false);
-					$('#firstName').attr("disabled", false);
-					$('#lastName').attr("disabled", false);
-					$('#email').attr("disabled", false);
-					$('#phone').attr("disabled", false);
-					$('#mobile').attr("disabled", false);
-					$('#country').attr("disabled", false);
-					$('#states').attr("disabled", false);
-					$('#city').attr("disabled", false);
-					$('#addressStreet').attr("disabled", false);
-					$('#zip').attr("disabled", false);
-					$('#description').attr("disabled", false);
-				} else if (selectedStatusValue == "TLSM00009") {
-					disableFields();
-					$('#saveLeadInfoBtn').attr("disabled", true);
-					$('#openSection').attr("disabled", true);
-				} else if (selectedStatusValue == "TLSM00004") {
-					disableFields();
-					$('#saveLeadInfoBtn').attr("disabled", true);
-					$('#openSection').attr("disabled", true);
-				} else if (selectedStatusValue == "TLSM00011") {
-					disableFields();
-					$('#saveLeadInfoBtn').attr("disabled", true);
-					$('#openSection').attr("disabled", true);
-				}
-				else {
-					$('#company').attr("disabled", true);
-					$('#firstName').attr("disabled", true);
-					$('#lastName').attr("disabled", true);
-					$('#email').attr("disabled", true);
-					$('#phone').attr("disabled", true);
-					$('#mobile').attr("disabled", true);
-					$('#saveLeadInfoBtn').attr("disabled", false);
-				}
+				disableFields();
+
 
 			}
 
@@ -2390,7 +2355,7 @@ function getStateDataOnEdit(stateId) {
 						$(option).html(response.body[i].name);
 						$("#states").append(option);
 					}
-					$("#states").val(stateId);
+					$("#states").val(stateId).trigger('change');
 				}
 			},
 			error: function(e) {
@@ -2448,7 +2413,7 @@ function saveTask(dataset) {
 		success: function(response) {
 			if (response.message == "Success") {
 
-				$("#messageParagraph").text("Data Saved Successfully");
+				$("#messageParagraph").text("Data saved successfully");
 				console.log(response);
 				location.reload();
 				//return false;
@@ -2512,141 +2477,193 @@ function nextTab(id) {
 	tab.show();
 }
 function saveLeadInfo() {
-	var tabs = ["#leadInformation", "#leadAddress", "#leadStatusTab"];
+    const tabs = ["#leadInformation", "#leadAddress", "#leadStatusTab"];
 
-	for (let i = 0; i < tabs.length; i++) {
-		if (!validateCurrentTab(tabs[i])) {
-			$("#tabMenu .nav-link[href='" + tabs[i] + "']").tab("show");
-			return;
-		}
-	}
-	var decesionMakers = [];
-	gridOptionsDecesionMakers.api.forEachNode(function(node) {
-		decesionMakers.push(node.data);
-	});
-	if (decesionMakers == null || decesionMakers.length == 0) {
-		nextTab('leadDecision-tab');
-		toastr.error('Decision Makers Required');
-		return;
-	}
+    for (let i = 0; i < tabs.length; i++) {
+        if (!validateCurrentTab(tabs[i])) {
+            $("#tabMenu .nav-link[href='" + tabs[i] + "']").tab("show");
+            return;
+        }
+    }
 
-	var obj = {};
-	const adminApprovalStatus = sessionStorage.getItem("adminApprvStatus");
-	obj.leadStatus = $('#leadStatus').val();
-	obj.leadId = $('#leadId').val();
+    const decesionMakers = [];
+    gridOptionsDecesionMakers.api.forEachNode(node => {
+        decesionMakers.push(node.data);
+    });
 
-	if (obj.leadStatus == "TLSM00004" && adminApprovalStatus != "true") {
-		obj.adminApprvStatus = true;
-		obj.statusUpdatedFrom = "";
+    if (!decesionMakers || decesionMakers.length === 0) {
+        nextTab('leadDecision-tab');
+        toastr.error('Decision Makers Required');
+        return;
+    }
 
-	} else if (obj.leadStatus == "TLSM00010") {
-		toastr.error("Waiting for Admin Approval!");
-	} else {
-		obj.leadOwner = $('#leadExecutive').val();
-		obj.company = $('#company').val();
-		obj.firstName = $('#firstName').val();
-		obj.lastName = $('#lastName').val();
-		obj.title = $('#title').val();
-		obj.email = $('#email').val();
-		obj.phone = $('#phone').val();
-		obj.fax = $('#project').val();
-		obj.mobile = $('#mobile').val();
-		obj.website = $('#website').val();
-		obj.referenceContact = JSON.stringify(decesionMakers);
-		obj.leadSource = $('#leadSource').val();
-		obj.industry = $('#industry').val();
-		obj.noOfEmp = $('#noOfEmp').val();
-		obj.annualRevenue = $('#annualRevenue').val();
-		obj.ratings = $('#ratings').val();
-		obj.emailOpt = $('#emailOpt').val();
-		obj.skypeId = $('#skypeId').val();
-		obj.secondaryEmail = $('#secondaryEmail').val();
-		obj.twitter = $('#twitter').val();
-		obj.country = $('#country').val();
-		obj.states = $('#states').val();
-		obj.city = $('#city').val();
-		obj.addressStreet = $('#addressStreet').val();
-		obj.zip = $('#zip').val();
-		obj.description = $('#description').val();
-		obj.createdBy = $('#createdBy').val();
-		obj.adminApprvStatus = false;
-		obj.statusUpdatedFrom = "";
-		obj.noteId = $("#noteId").val();
-		obj.titleId = $("#titleId").val();
-	}
+    const obj = {};
+    const adminApprovalStatus = sessionStorage.getItem("adminApprvStatus");
 
-	console.log("Final Object before sending:", obj);
-	$.ajax({
-		type: "POST",
-		url: "view-crm-leads-add-lead-details",
-		contentType: "application/json",
-		data: JSON.stringify(obj),
-		success: function(response) {
-			if (response.code == "Success") {
-				setLeadTabAsDefault();
-				$('#prevLead, #saveTask').addClass('d-none');
-				$('#addNewLead, #nextLead').removeClass('d-none');
-				toastr.success(response.message)
-				$('.loader').hide();
-				cancelBtn();
+    obj.leadStatus = $('#leadStatus').val();
+    obj.leadId = $('#leadId').val();
 
-				var pageno = 1;
-				var rowData = [];
-				gridOptionsLead.api.setRowData(rowData);
+    let folder = [];
+    const filePromises = [];
 
-				agGrid.simpleHttpRequest({
-					url: "view-crm-leads-view-Data?pageno=" + pageno + "&userId=" + userId,
-				}).then(function(data) {
-					var resp = JSON.parse(data.body);
-					gridOptionsLead.api.setRowData(resp);
+    const fileInput = document.getElementById("fileUpload");
+    if (fileInput.files.length > 0) {
+        for (let i = 0; i < fileInput.files.length; i++) {
+            const uFile = fileInput.files[i];
+            const fileName = uFile.name;
 
-					if (resp.length > 0) {
-						$('#totalPageno').val(resp[0].totalPageno);
-						var pages = resp[0].totalPageno;
-						//createPagination(pages, pageno);
-					}
-					$('.loader').hide();
-				});
-				setTimeout(() => {
-					gridOptionsLead.api.forEachNode((node) => {
-						if (obj.leadId == "") {
-							let firstRow = gridOptionsLead.api.getDisplayedRowAtIndex(0);
-							if (firstRow) {
-								firstRow.setSelected(true);
-							}
-						} else if (node.data.leadId == obj.leadId) {
-							node.setSelected(true);
+            if (fileName) {
+                const fileReaderPromise = new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(uFile);
+                    reader.onload = () => {
+                        const base64Data = reader.result.split(",")[1];
+                        folder.push({
+                            fileName: fileName,
+                            documentFile: [base64Data]
+                        });
+                        resolve();
+                    };
+                    reader.onerror = error => reject(error);
+                });
+
+                filePromises.push(fileReaderPromise);
+            }
+        }
+    }
+
+    if ($("#docListlen").val() > 0) {
+        const div = document.getElementById('divFiles');
+        const hiddenFiles = div.querySelectorAll('input[type="hidden"]');
+
+        hiddenFiles.forEach(element => {
+            const fileName = element.value;
+            folder.push({
+                fileName: fileName,
+                imageNameEdit: fileName
+            });
+        });
+    }
+
+    Promise.all(filePromises).then(() => {
+        obj.documentList = folder;
+
+        if (obj.leadStatus === "TLSM00004" && adminApprovalStatus !== "true") {
+            obj.adminApprvStatus = true;
+            obj.statusUpdatedFrom = "";
+        } else if (obj.leadStatus === "TLSM00010") {
+            toastr.error("Waiting for Admin Approval!");
+            return;
+        } else {
+            obj.leadOwner = $('#leadExecutive').val();
+            obj.company = $('#company').val();
+            obj.firstName = $('#firstName').val();
+            obj.lastName = $('#lastName').val();
+            obj.title = $('#title').val();
+            obj.email = $('#email').val();
+            obj.phone = $('#phone').val();
+            obj.fax = $('#project').val();
+            obj.mobile = $('#mobile').val();
+            obj.website = $('#website').val();
+            obj.referenceContact = JSON.stringify(decesionMakers);
+            obj.leadSource = $('#leadSource').val();
+            obj.industry = $('#industry').val();
+            obj.noOfEmp = $('#noOfEmp').val();
+            obj.annualRevenue = $('#annualRevenue').val();
+            obj.ratings = $('#ratings').val();
+            obj.emailOpt = $('#emailOpt').val();
+            obj.skypeId = $('#skypeId').val();
+            obj.secondaryEmail = $('#secondaryEmail').val();
+            obj.twitter = $('#twitter').val();
+            obj.country = $('#country').val();
+            obj.states = $('#states').val();
+            obj.city = $('#city').val();
+            obj.addressStreet = $('#addressStreet').val();
+            obj.zip = $('#zip').val();
+            obj.description = $('#description').val();
+            obj.createdBy = $('#createdBy').val();
+            obj.adminApprvStatus = false;
+            obj.statusUpdatedFrom = "";
+            obj.noteId = $("#noteId").val();
+            obj.titleId = $("#titleId").val();
+        }
+
+        console.log("Final Object before sending:", obj);
+
+        $.ajax({
+            type: "POST",
+            url: "view-crm-leads-add-lead-details",
+            contentType: "application/json",
+            data: JSON.stringify(obj),
+            success: function (response) {
+                if (response.code === "Success") {
+                    setLeadTabAsDefault();
+                    $('#prevLead, #saveTask').addClass('d-none');
+                    $('#addNewLead, #nextLead').removeClass('d-none');
+                    toastr.success(response.message);
+                    $('.loader').hide();
+                    cancelBtn();
+
+					var pageno = 1;
+					var rowData = [];
+					gridOptionsLead.api.setRowData(rowData);
+					var fromDate = $("#fromDateLead").val();
+					var toDate = $("#toDateLead").val();
+					agGrid.simpleHttpRequest({
+						url: "view-crm-leads-view-Data?pageno=" + pageno + "&userId=" + userId + "&fromDate=" + fromDate + "&toDate=" + toDate,
+					}).then(function(data) {
+						var resp = JSON.parse(data.body);
+						gridOptionsLead.api.setRowData(resp);
+
+						if (resp.length > 0) {
+							$('#totalPageno').val(resp[0].totalPageno);
+							var pages = resp[0].totalPageno;
+							//createPagination(pages, pageno);
 						}
+						$('.loader').hide();
 					});
-				}, 1000);
-				$("#leadStatus option[value='TLSM00004'], \
-					  #leadStatus option[value='TLSM00010'], \
-					  #leadStatus option[value='TLSM00009'], \
-					  #leadStatus option[value='TLSM00011'], \
-					  #leadStatus option[value='TLSM00005'], \
-					  #leadStatus option[value='TLSM00006']").remove();
-					  
-					  var industryDropdown = $('#industry');
-					  var responseIndustryId = response.body;
 
-					  if (industryDropdown.find(`option[value="${responseIndustryId}"]`).length === 0) {
-					      var tagOption = $('#industry option[data-select2-tag="true"]').last();
+                    setTimeout(() => {
+                        gridOptionsLead.api.forEachNode(node => {
+                            if (!obj.leadId) {
+                                const firstRow = gridOptionsLead.api.getDisplayedRowAtIndex(0);
+                                if (firstRow) firstRow.setSelected(true);
+                            } else if (node.data.leadId === obj.leadId) {
+                                node.setSelected(true);
+                            }
+                        });
+                    }, 1000);
 
-					      if (tagOption.length > 0) {
-					          var newText = tagOption.val();  
-					          tagOption.remove();
-					          industryDropdown.append(`<option value="${responseIndustryId}">${newText}</option>`);
-					      }
-					  }
+                    $("#leadStatus option[value='TLSM00004'], \
+                       #leadStatus option[value='TLSM00010'], \
+                       #leadStatus option[value='TLSM00009'], \
+                       #leadStatus option[value='TLSM00011'], \
+                       #leadStatus option[value='TLSM00005'], \
+                       #leadStatus option[value='TLSM00006']").remove();
 
-					  
-			}
-		},
-		error: function(data) {
-			console.error("Error:", data);
-		}
-	});
+                    const industryDropdown = $('#industry');
+                    const responseIndustryId = response.body;
+
+                    if (industryDropdown.find(`option[value="${responseIndustryId}"]`).length === 0) {
+                        const tagOption = $('#industry option[data-select2-tag="true"]').last();
+                        if (tagOption.length > 0) {
+                            const newText = tagOption.val();
+                            tagOption.remove();
+                            industryDropdown.append(`<option value="${responseIndustryId}">${newText}</option>`);
+                        }
+                    }
+                }
+            },
+            error: function (data) {
+                console.error("Error:", data);
+            }
+        });
+
+    }).catch(error => {
+        console.error("Error reading files:", error);
+    });
 }
+
 
 
 
@@ -2852,9 +2869,9 @@ function editPage(id) {
 				$('#addressStreet').val(response.body.addressStreet);
 				$('#addressStreet2').val(response.body.addressStreet2);
 				$('#city').val(response.body.city);
-				$('#states').val(response.body.states);
+				$('#states').val(response.body.states).trigger('change');
 				$('#zip').val(response.body.zip);
-				$('#country').val(response.body.country);
+				$('#country').val(response.body.country).trigger('change');
 				$('#website').val(response.body.website);
 				$('#language').val(response.body.language);
 				$('#contactName').val(response.body.contactName);
@@ -3222,6 +3239,7 @@ function onSelectionChanged() {
 
 	if (selectedData.length > 0) {
 		$("#openSection").prop("disabled", leadStatus == "Lost Lead" ? true : false);
+		leadStatus == "Created" || leadStatus == "Contacted" ? $("#editBtn").removeClass("d-none") : $("#editBtn").addClass("d-none");
 		leadid = selectedData.map(node => node.leadId);
 		editLeadInfo(leadid);
 		//editNote(leadid);
@@ -3245,11 +3263,13 @@ function onSelectionChanged() {
 		$("#cancelLeadBtn").addClass("d-none")
 	} else {
 		$('#addNewLeadBtn').addClass('d-none');
-		$("#cancelLeadBtn").removeClass("d-none")
-		$("#addNewLead").addClass("d-none")
+		$("#cancelLeadBtn").removeClass("d-none");
+		$("#addNewLead").addClass("d-none");
 		cancelBtn();
 		newBtn();
 		$("#employeeNameTop,#employeeNameTop1,#employeeNameTop2,#employeeNameTop3,#employeeNameTop4").text('');
+		$("#editBtn").addClass("d-none");
+		enableFields();
 	}
 }
 
@@ -3738,7 +3758,7 @@ function validateEmail1() {
 
 function openNavReference() {
 	var currentDate = new Date();
-	getCurrentDate = formatDate(currentDate);
+	getCurrentDate = formatDatee(currentDate);
 	$('#dmDate').val(getCurrentDate);
 	document.getElementById("mySidenav1").style.cssText = "width: 25%; position: absolute; overflow: hidden; height: auto; top: 1181px;";
 	document.getElementById("desecion-makers-div").style.width = "75%";
@@ -3797,6 +3817,7 @@ function saveDecesionMakersData() {
 		$('#dmEmail').val('');
 		$('#dmPhone').val('');
 		$('#dmDate').val('');
+		$('.br-m-btn').prop('disabled', true);
 
 		closeSection();
 	}
@@ -3841,7 +3862,7 @@ function deleteDecesionMakersData() {
 	$(".br-dis").prop("disabled", true);
 }
 
-function formatDate(date) {
+function formatDatee(date) {
 	var year = date.getFullYear();
 	var month = padZeros(date.getMonth() + 1);
 	var day = padZeros(date.getDate());
@@ -3863,11 +3884,11 @@ function onLeadStatusChange(status) {
 	} else {
 		$('#reasonField').addClass('d-none');
 	}
-	if (status == "TLSM00001" && selectedData.length > 0) {
+	/*if (status == "TLSM00001" && selectedData.length > 0) {
 		$('#saveLeadInfoBtn').prop("disabled", true);
 	} else {
 		$('#saveLeadInfoBtn').prop("disabled", false);
-	}
+	}*/
 }
 //function for download
 function excelDownload() {
@@ -3875,4 +3896,57 @@ function excelDownload() {
 		fileName: 'Lead_list.csv', // Specify your custom filename here
 	};
 	gridOptions.api.exportDataAsCsv(params);
+}
+function editLeadOnclick() {
+	$("#editBtn").addClass("d-none");
+	$("#addNewLeadBtn").addClass("d-none");
+	$("#cancelLeadBtn").removeClass("d-none");
+	enableFields();
+	$('#saveLeadInfoBtn').attr("disabled", false);
+}
+function formatDate(date) {
+	const day = String(date.getDate()).padStart(2, '0');
+	const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+	const year = date.getFullYear();
+	return `${day}-${month}-${year}`;
+}
+function filterLeadView() {
+	viewLeadAggridData();
+	if (gridOptionsLead.api) {
+		setTimeout(() => {
+			const firstRow = gridOptionsLead.api.getDisplayedRowAtIndex(0);
+			if (firstRow) {
+				firstRow.setSelected(true);
+				gridOptionsLead.api.ensureIndexVisible(0);
+			} else {
+				console.log("No rows available to select.");
+			}
+		}, 300);
+	} else {
+		console.error("Grid API is not available.");
+	}
+}
+function resetLeadView() {
+	let today = new Date();
+	let currentYear = today.getFullYear();
+	let currentMonth = today.getMonth();
+
+	let fyStartYear = currentMonth < 3 ? currentYear - 1 : currentYear;
+	let firstDayOfFY = new Date(fyStartYear, 3, 1);
+	$("#fromDateLead").val(formatDate(firstDayOfFY));
+	$("#toDateLead").val(formatDate(today));
+	viewLeadAggridData();
+	if (gridOptionsLead.api) {
+		setTimeout(() => {
+			const firstRow = gridOptionsLead.api.getDisplayedRowAtIndex(0);
+			if (firstRow) {
+				firstRow.setSelected(true);
+				gridOptionsLead.api.ensureIndexVisible(0);
+			} else {
+				console.log("No rows available to select.");
+			}
+		}, 300);
+	} else {
+		console.error("Grid API is not available.");
+	}
 }

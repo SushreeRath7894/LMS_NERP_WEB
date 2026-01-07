@@ -3,6 +3,7 @@ package nirmalya.aathithya.webmodule.pipeline.controller;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -16,6 +17,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -45,10 +48,10 @@ public class CrmExecutiveWebControllerV1 {
 	EnvironmentVaribles env;
 	@Autowired
 	MasterDataApiController master;
-	
-    @Value("${spring.mail.username}")
-    private String username;
-    
+
+	@Value("${spring.mail.username}")
+	private String username;
+
 	List<String> role = new ArrayList<String>();
 
 	public static String org = "";
@@ -61,7 +64,7 @@ public class CrmExecutiveWebControllerV1 {
 
 		List<DropDownModel> executiveList = master.getOwnerList(session);
 		model.addAttribute("executive", executiveList);
-		System.out.println("username==="+username);
+		System.out.println("username===" + username);
 		model.addAttribute("from_email", username);
 
 		org = (String) session.getAttribute("ORGANIZATION");
@@ -224,8 +227,32 @@ public class CrmExecutiveWebControllerV1 {
 		} catch (RestClientException e) {
 			e.printStackTrace();
 		}
-		System.out.println("username==="+username);
+		System.out.println("username===" + username);
 		model.addAttribute("from_email", username);
+
+		try {
+			String org = "";
+			String orgDiv = "";
+			String userID = "";
+			try {
+				userID = (String) session.getAttribute("USER_ID");
+				org = (String) session.getAttribute("ORGANIZATION");
+				orgDiv = (String) session.getAttribute("ORGANIZATION_DIVISION");
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			System.out.println("url for product----->" + env.getPipeline() + "get-lead-product-list?userId=" + userID
+					+ "&org=" + org + "&orgDiv=" + orgDiv);
+			DropDownModel[] lead = restTemplate.getForObject(
+					env.getPipeline() + "get-lead-product-list?userId=" + userID + "&org=" + org + "&orgDiv=" + orgDiv,
+					DropDownModel[].class);
+
+			List<DropDownModel> productList = Arrays.asList(lead);
+			logger.info("productList" + productList);
+			model.addAttribute("productList", productList);
+		} catch (RestClientException e) {
+			e.printStackTrace();
+		}
 		logger.info("Method: viewExecutivePage ends");
 		return "pipelineV2/lead-contacted";
 	}
@@ -379,7 +406,7 @@ public class CrmExecutiveWebControllerV1 {
 					DropDownModel[].class);
 			List<DropDownModel> emplists = Arrays.asList(emplist);
 			model.addAttribute("emplistsEvent", emplists);
-			System.out.println("username==="+username);
+			System.out.println("username===" + username);
 			model.addAttribute("from_email", username);
 		} catch (RestClientException e) {
 			e.printStackTrace();
@@ -388,4 +415,144 @@ public class CrmExecutiveWebControllerV1 {
 		return "pipelineV2/lead-qualified";
 	}
 
+	@SuppressWarnings("unchecked")
+	@GetMapping("crm-lead-contacted-sku-list")
+	public @ResponseBody Object getSkuOnProduct(@RequestParam String id, HttpSession session) {
+
+		logger.info("Method : getSkuOnProduct starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String organization = "";
+		String orgDivision = "";
+		String userId = "";
+		try {
+			organization = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+			userId = (String) session.getAttribute("USER_ID");
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		try {
+
+			resp = restTemplate.getForObject(env.getPipeline() + "rest-get-sku?orgName=" + organization + "&orgDiv="
+					+ orgDivision + "&userId=" + userId + "&id=" + id, JsonResponse.class);
+
+		} catch (Exception e) {
+			logger.error("Error in getSkuOnProduct: ", e);
+			e.printStackTrace();
+		}
+
+		logger.info("Method : getSkuOnProduct ends");
+
+		return resp;
+	}
+
+	@SuppressWarnings("unchecked")
+	@PostMapping("/crm-lead-contacted-add-product")
+	public @ResponseBody JsonResponse<Object> addProductForLead(@RequestBody List<Map<String, Object>> rowDataList,
+			HttpSession session) {
+		logger.info("Method : addProductForLead starts");
+
+		JsonResponse<Object> resp = new JsonResponse<>();
+		String organization = "";
+		String orgDivision = "";
+		String createdById = "";
+
+		try {
+			organization = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+			createdById = (String) session.getAttribute("USER_ID");
+		} catch (Exception e) {
+			logger.error("Error retrieving session attributes", e);
+		}
+
+		try {
+			String url = env.getPipeline() + "rest-add-product-for-lead";
+			System.out.println("URL For Metting=====>" + url);
+
+			Map<String, Object> requestPayload = new HashMap<>();
+			requestPayload.put("orgName", organization);
+			requestPayload.put("orgDiv", orgDivision);
+			requestPayload.put("createdById", createdById);
+			requestPayload.put("productList", rowDataList);
+
+			logger.info("Sending Meeting data to the service: " + requestPayload);
+			resp = restTemplate.postForObject(url, requestPayload, JsonResponse.class);
+		} catch (Exception e) {
+			logger.error("Error in addProductForLead: ", e);
+		}
+
+		logger.info("Method : addProductForLead ends");
+		return resp;
+	}
+
+	@SuppressWarnings("unchecked")
+	@GetMapping("crm-lead-contacted-get-product")
+	public @ResponseBody Object getProductOnLead(@RequestParam String leadId, HttpSession session) {
+
+		logger.info("Method : getProductOnLead starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String organization = "";
+		String orgDivision = "";
+		String userId = "";
+		try {
+			organization = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+			userId = (String) session.getAttribute("USER_ID");
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		try {
+
+			resp = restTemplate.getForObject(env.getPipeline() + "rest-get-product-on-lead?orgName=" + organization
+					+ "&orgDiv=" + orgDivision + "&userId=" + userId + "&leadId=" + leadId, JsonResponse.class);
+
+		} catch (Exception e) {
+			logger.error("Error in getProductOnLead: ", e);
+			e.printStackTrace();
+		}
+
+		logger.info("Method : getProductOnLead ends");
+
+		return resp;
+	}
+
+	@SuppressWarnings("unchecked")
+	@GetMapping("crm-lead-contacted-delete-product")
+	public @ResponseBody Object deleteLeadProduct(@RequestParam String productId, @RequestParam String skuId,
+			@RequestParam String leadId, HttpSession session) {
+
+		logger.info("Method : deleteLeadProduct starts");
+		JsonResponse<Object> resp = new JsonResponse<Object>();
+		String organization = "";
+		String orgDivision = "";
+		String userId = "";
+		try {
+			organization = (String) session.getAttribute("ORGANIZATION");
+			orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+			userId = (String) session.getAttribute("USER_ID");
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		try {
+
+			resp = restTemplate.getForObject(
+					env.getPipeline() + "rest-delete-lead-product?orgName=" + organization + "&orgDiv=" + orgDivision
+							+ "&userId=" + userId + "&leadId=" + leadId + "&productId=" + productId + "&skuId=" + skuId,
+					JsonResponse.class);
+
+		} catch (Exception e) {
+			logger.error("Error in deleteLeadProduct: ", e);
+			e.printStackTrace();
+		}
+
+		logger.info("Method : deleteLeadProduct ends");
+
+		return resp;
+	}
 }

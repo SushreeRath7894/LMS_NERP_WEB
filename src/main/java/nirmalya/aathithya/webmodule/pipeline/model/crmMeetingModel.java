@@ -54,6 +54,7 @@ public class crmMeetingModel {
 	private String meetingContactId;
 	private String meetingAccountId;
 	private String ownerName;
+	private String meetingRemark;
 	
 
 	private String quoteId;
@@ -478,6 +479,13 @@ public class crmMeetingModel {
 	}
 	public void setParticipantId(String participantId) {
 		this.participantId = participantId;
+	}
+	
+	public String getMeetingRemark() {
+		return meetingRemark;
+	}
+	public void setMeetingRemark(String meetingRemark) {
+		this.meetingRemark = meetingRemark;
 	}
 	@Override
 	public String toString() {

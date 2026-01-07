@@ -65,7 +65,29 @@ public class MasterDataApiController {
 		System.out.println("Owner Lists------->>>>>>"+ownerList);
 		return ownerList;
 	}
-	
+	//getOwnerListDashboard
+		public final  List<DropDownModel> getOwnerListDash(HttpSession session) {
+			
+			String role = (String) session.getAttribute("IS_SALES_MANAGER");
+			String userId = (String) session.getAttribute("USER_ID");
+			String org = "";
+			String orgDiv = "";
+
+			try {
+				org = (String) session.getAttribute("ORGANIZATION");
+				orgDiv = (String) session.getAttribute("ORGANIZATION_DIVISION");
+			} catch (Exception ex) {
+				logger.error(ex.getMessage());
+			}
+			
+			System.out.println("userId role------------>>>>>>"+role);
+			DropDownModel[] owner = restClient.getForObject(env.getMasterUrl() + "getOwnerListDash?userId=" + userId+"&org="+org+"&orgDiv="+orgDiv,
+					DropDownModel[].class);
+			System.out.println("Owner Lists------->>>>>>"+owner);
+			List<DropDownModel> ownerList = Arrays.asList(owner);
+			System.out.println("Owner Lists------->>>>>>"+ownerList);
+			return ownerList;
+		}
 	public final  List<DropDownModel> getCrmTaskStatus() {
 		logger.info("Inside getCrmTaskStatus" + env.getMasterUrl() + "getCrmTaskStatus");
 		DropDownModel[] owner = restClient.getForObject(env.getMasterUrl() + "getCrmTaskStatus",

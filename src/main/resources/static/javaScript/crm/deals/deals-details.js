@@ -100,7 +100,7 @@ function saveMail(dataset) {
 			if (response.message == "Success") {
 
 				$("#messageParagraph").text(
-					"Data Saved Successfully");
+					"Data saved successfully");
 
 
 				$("#msgOkModal").removeClass("btn3");
@@ -2521,7 +2521,7 @@ function productAssign(dataset) {
 			if (response.message == "Success") {
 
 				$("#messageParagraph").text(
-					"Data Saved Successfully");
+					"Data saved successfully");
 				closeViewModelAddProduct();
 				location.reload();
 
