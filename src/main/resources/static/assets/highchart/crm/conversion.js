@@ -7,7 +7,9 @@
 				var orgDiv = $("#divisionCrmCoversion").find('option:selected').text();
 				var loc = $("#locationCrmCoversion").val();
 				var executive = $("#executiveConversionId").val();
-			
+				var allKeyRoles = $("#allKeyRoles").val();
+				
+				
 				$.ajax({
 					type: "GET",
 					url: "crm-dashboard-conversion-top-five-sales-executive",
@@ -17,7 +19,8 @@
 						org: org,
 						orgDiv: orgDiv,
 						loc: loc,
-						executive: executive
+						executive: executive,
+						allKeyRoles: allKeyRoles
 						
 								},
 					async: true,
@@ -34,15 +37,12 @@
 							
 							if(length > 0){
 								$.each(allData, function(index, data) {
-							  // Create a new row with the required data
 							 var newRow = `<tr>
 							                  <td>${data.leadOwner}</td>
 							                  <td>${data.designation}</td>
 							                  <td>${data.leadConversionRatio}%</td>
 							                </tr>`;
 							  
-							   
-							  // Append the new row to the table with id 'top5SalesExecutiveId'
 							  $('#top5SalesExecutiveId').append(newRow);
 							});
 							}else{
@@ -72,7 +72,8 @@
 						org: org,
 						orgDiv: orgDiv,
 						loc: loc,
-						executive: executive
+						executive: executive,
+						allKeyRoles: allKeyRoles
 						
 								},
 					async: true,
@@ -88,10 +89,7 @@
 							$("#negotationForFunnel").text(allData[0].negotiationCount);
 							$("#closedForFunnel").text(allData[0].winCount);
 							
-							$("#timeSpentInOppotunities").text(5  +' '+'days on average');
-							$("#timeSpentInProposal").text(8  +' '+'days on average');
-							$("#timeSpentInNegotiation").text(8   +' '+'days on average');
-							$("#timeSpentInClosing").text(15  +' '+'days on average');
+							
 					
 						}
 					},
@@ -111,7 +109,8 @@
 						org: org,
 						orgDiv: orgDiv,
 						loc: loc,
-						executive: executive
+						executive: executive,
+						allKeyRoles: allKeyRoles
 						
 						},
 					async: true,
@@ -217,7 +216,8 @@
 						org: org,
 						orgDiv: orgDiv,
 						loc: loc,
-						executive: executive
+						executive: executive,
+						allKeyRoles: allKeyRoles
 						
 								},
 					async: true,
@@ -313,6 +313,10 @@
 						    });
 						
 						
+						
+						
+					
+						
 						////////////////////////////////////////////////////////////////
 						Highcharts.chart('cRMConvOpportunityWinRatio', {
 						        chart: {
@@ -391,8 +395,49 @@
 					}
 				});
 				
+				
+				$.ajax({
+					type: "GET",
+					url: "crm-dashboard-conversion-sales-target-length",
+					data: {
+						fromDate: fromDate,
+						toDate: toDate,
+						org: org,
+						orgDiv: orgDiv,
+						loc: loc,
+						executive: executive,
+						allKeyRoles: allKeyRoles
+						
+								},
+					async: true,
+					success: function(response) {
+						console.log(response);
+						if (response.code == "success") {
+							var jsonData = JSON.parse(response.body);
+							var allData = jsonData.dashboardData;
+							
+							var opportunityLength = allData[0].opprtunityLength;
+							var proposalLength = allData[0].proposalLength;
+							var negotiationLength = allData[0].negotiationLength;
+							var winLength = allData[0].winLength;
+							
+							
+							$("#timeSpentInOppotunities").text(opportunityLength  +' '+'days on average');
+							$("#timeSpentInProposal").text(proposalLength  +' '+'days on average');
+							$("#timeSpentInNegotiation").text(negotiationLength   +' '+'days on average');
+							$("#timeSpentInClosing").text(winLength  +' '+'days on average');
+			
+					
+						}
+					},
+					error: function(data) {
+						console.log(data);
+					}
+				});
+				
 	
 
+	
 
 
 }

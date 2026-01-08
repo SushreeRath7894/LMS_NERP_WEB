@@ -1,13 +1,31 @@
 
-function getOperationalCRMChart() {
-
-	getCRMHeadData();	
+function getOperationalCRMChart() {		
+	var executive = $("#executiveOprId").val();
+	if(executive == 'all'){
+		getCRMHeadData();
+	}else{
+		getOperationalCountDataWithExecutive(executive);
+	}
 	var id = "totalLeads";
 	getAllCRMData(id);
+	
+	
 }
 
-
+function getOperationalSearchCRMChart() {		
+	var executive = $("#executiveOprId").val();
+	if(executive == 'all'){
+		getCRMHeadData();
+	}else{
+		getOperationalCountDataWithExecutive(executive);
+	}
 	
+	var id = $("#tabId").val();
+	getAllCRMData(id);
+	
+	
+}
+
 
 
 function getCRMHeadData() {
@@ -17,6 +35,9 @@ function getCRMHeadData() {
 	
 	var fromDate = $("#fromDate").val();
 	var toDate = $("#toDate").val();
+	
+	var allKeyRoles = $("#allKeyRoles").val();
+
 	
 	if (!fromDate || !toDate) {
 	   var today = new Date();
@@ -44,8 +65,8 @@ function getCRMHeadData() {
 			toDate: toDate,
 			org: org,
 			orgDiv: orgDiv,
-			loc: loc
-			
+			loc: loc,
+			allKeyRoles, allKeyRoles
 		},
 		async: true,
 		success: function(response) {
@@ -72,8 +93,6 @@ let storedId = "";
 function getAllCRMData(id) {
 	storedId = id;
 	
-	
-	
 	var org = $("#organizationCrmOpr").find('option:selected').text();
 	var orgDiv = $("#divisionCrmOpr").find('option:selected').text();
 	var loc = $("#locationCrmOpr").val();
@@ -81,6 +100,8 @@ function getAllCRMData(id) {
 	var fromDate = $("#fromDate").val();
 	var toDate = $("#toDate").val();
 	var executive = $("#executiveOprId").val();
+	var allKeyRoles = $("#allKeyRoles").val();
+	
 	
 	if (!fromDate || !toDate) {
 	   var today = new Date();
@@ -96,6 +117,7 @@ function getAllCRMData(id) {
    	     toDate = ('0' + today.getDate()).slice(-2) + '-'
    				+ ('0' + (today.getMonth() + 1)).slice(-2) + '-'
    				+ today.getFullYear();
+   				
    				
    			
 	}
@@ -128,7 +150,9 @@ function getAllCRMData(id) {
 					org: org,
 					orgDiv: orgDiv,
 					loc: loc,
-					executive: executive
+					executive: executive,
+					allKeyRoles: allKeyRoles
+					
 				},
 				async: true,
 				success: function(response) {
@@ -144,18 +168,28 @@ function getAllCRMData(id) {
 							gridOptions1.api.setRowData(allData);
 						}
 					}
+				
+					
+					
 					$("#myGrid1").show();
 					$("#totalLead").show();
+					$("#totalLeadExport").show();
 					$("#myGrid2").hide().empty();
 					$("#totalSQl").hide();
+					$("#totalSQlExport").hide();
 					$("#myGrid3").hide().empty();
 					$("#totalOpportunity").hide();
+					$("#totalOpportunityExport").hide();
 					$("#myGrid4").hide().empty();
 					$("#totalProposal").hide();
+					$("#totalProposalExport").hide();
 					$("#myGrid5").hide().empty();
 					$("#totalNegotiation").hide();
+					$("#totalNegotiationExport").hide();
 					$("#myGrid6").hide().empty();
 					$("#totalWin").hide();
+					$("#totalWinExport").hide();
+					
 				},
 				error: function(data) {
 					console.log(data);
@@ -190,16 +224,22 @@ function getAllCRMData(id) {
 					}
 					$("#myGrid1").show();
 					$("#totalLead").show();
+					$("#totalLeadExport").show();
 					$("#myGrid2").hide().empty();
 					$("#totalSQl").hide();
+					$("#totalSQlExport").hide();
 					$("#myGrid3").hide().empty();
 					$("#totalOpportunity").hide();
+					$("#totalOpportunityExport").hide();
 					$("#myGrid4").hide().empty();
 					$("#totalProposal").hide();
+					$("#totalProposalExport").hide();
 					$("#myGrid5").hide().empty();
 					$("#totalNegotiation").hide();
+					$("#totalNegotiationExport").hide();
 					$("#myGrid6").hide().empty();
 					$("#totalWin").hide();
+					$("#totalWinExport").hide();
 				},
 				error: function(data) {
 					console.log(data);
@@ -230,7 +270,8 @@ function getAllCRMData(id) {
 					org: org,
 					orgDiv: orgDiv,
 					loc: loc,
-					executive: executive
+					executive: executive,
+					allKeyRoles: allKeyRoles
 				},
 				async: true,
 				success: function(response) {
@@ -248,20 +289,26 @@ function getAllCRMData(id) {
 							gridOptions2.api.setRowData(allData);
 						}
 					}
+										
+					
 					$("#myGrid2").show();
 					$("#totalSQl").show();
-					
+					$("#totalSQlExport").show();
 					$("#totalLead").hide();
+					$("#totalLeadExport").hide();
 					$("#myGrid1").hide().empty();					
 					$("#myGrid3").hide().empty();
 					$("#totalOpportunity").hide();
+					$("#totalOpportunityExport").hide();
 					$("#myGrid4").hide().empty();
 					$("#totalProposal").hide();
+					$("#totalProposalExport").hide();
 					$("#myGrid5").hide().empty();
 					$("#totalNegotiation").hide();
+					$("#totalNegotiationExport").hide();
 					$("#myGrid6").hide().empty();
 					$("#totalWin").hide();
-
+					$("#totalWinExport").hide();
 
 				},
 				error: function(data) {
@@ -300,18 +347,22 @@ function getAllCRMData(id) {
 					}
 					$("#myGrid2").show();
 					$("#totalSQl").show();
-					
+					$("#totalSQlExport").show();
 					$("#totalLead").hide();
+					$("#totalLeadExport").hide();
 					$("#myGrid1").hide().empty();					
 					$("#myGrid3").hide().empty();
 					$("#totalOpportunity").hide();
+					$("#totalOpportunityExport").hide();
 					$("#myGrid4").hide().empty();
 					$("#totalProposal").hide();
+					$("#totalProposalExport").hide();
 					$("#myGrid5").hide().empty();
 					$("#totalNegotiation").hide();
+					$("#totalNegotiationExport").hide();
 					$("#myGrid6").hide().empty();
 					$("#totalWin").hide();
-
+					$("#totalWinExport").hide();
 
 				},
 				error: function(data) {
@@ -340,7 +391,8 @@ function getAllCRMData(id) {
 					org: org,
 					orgDiv: orgDiv,
 					loc: loc,
-					executive: executive
+					executive: executive,
+					allKeyRoles: allKeyRoles
 				},
 				async: true,
 				success: function(response) {
@@ -357,25 +409,27 @@ function getAllCRMData(id) {
 							gridOptions3.api.setRowData(allData);
 						}
 					}
+								
 					
 					$("#myGrid3").show();
 					$("#totalOpportunity").show();
-					
+					$("#totalOpportunityExport").show();
 					$("#myGrid1").hide().empty();
 					$("#totalLead").hide();
+					$("#totalLeadExport").hide();
 					
 					$("#myGrid2").hide().empty();
 					$("#totalSQl").hide();
-					
+					$("#totalSQlExport").hide();
 					$("#myGrid4").hide().empty();
 					$("#totalProposal").hide();
-					
+					$("#totalProposalExport").hide();
 					$("#myGrid5").hide().empty();
 					$("#totalNegotiation").hide();
-					
+					$("#totalNegotiationExport").hide();
 					$("#myGrid6").hide().empty();
 					$("#totalWin").hide();
-
+					$("#totalWinExport").hide();
 
 				},
 				error: function(data) {
@@ -413,22 +467,23 @@ function getAllCRMData(id) {
 					
 					$("#myGrid3").show();
 					$("#totalOpportunity").show();
-					
+					$("#totalOpportunityExport").show();
 					$("#myGrid1").hide().empty();
 					$("#totalLead").hide();
+					$("#totalLeadExport").hide();
 					
 					$("#myGrid2").hide().empty();
 					$("#totalSQl").hide();
-					
+					$("#totalSQlExport").hide();
 					$("#myGrid4").hide().empty();
 					$("#totalProposal").hide();
-					
+					$("#totalProposalExport").hide();
 					$("#myGrid5").hide().empty();
 					$("#totalNegotiation").hide();
-					
+					$("#totalNegotiationExport").hide();
 					$("#myGrid6").hide().empty();
 					$("#totalWin").hide();
-
+					$("#totalWinExport").hide();
 
 				},
 				error: function(data) {
@@ -456,7 +511,8 @@ function getAllCRMData(id) {
 					org: org,
 					orgDiv: orgDiv,
 					loc: loc,
-					executive: executive
+					executive: executive,
+					allKeyRoles: allKeyRoles
 				},
 				async: true,
 				success: function(response) {
@@ -476,17 +532,23 @@ function getAllCRMData(id) {
 					
 					$("#myGrid4").show();
 					$("#totalProposal").show();
-					
+					$("#totalProposalExport").show();
 					$("#myGrid1").hide().empty();
 					$("#totalLead").hide();
+					$("#totalLeadExport").hide();
+					
 					$("#myGrid2").hide().empty();
 					$("#totalSQl").hide();
+					$("#totalSQlExport").hide();
 					$("#myGrid3").hide().empty();
 					$("#totalOpportunity").hide();
+					$("#totalOpportunityExport").hide();
 					$("#myGrid5").hide().empty();
 					$("#totalNegotiation").hide();
+					$("#totalNegotiationExport").hide();
 					$("#myGrid6").hide().empty();
 					$("#totalWin").hide();
+					$("#totalWinExport").hide();
 
 				},
 				error: function(data) {
@@ -524,17 +586,23 @@ function getAllCRMData(id) {
 					
 					$("#myGrid4").show();
 					$("#totalProposal").show();
-					
+					$("#totalProposalExport").show();
 					$("#myGrid1").hide().empty();
 					$("#totalLead").hide();
+					$("#totalLeadExport").hide();
+					
 					$("#myGrid2").hide().empty();
 					$("#totalSQl").hide();
+					$("#totalSQlExport").hide();
 					$("#myGrid3").hide().empty();
 					$("#totalOpportunity").hide();
+					$("#totalOpportunityExport").hide();
 					$("#myGrid5").hide().empty();
 					$("#totalNegotiation").hide();
+					$("#totalNegotiationExport").hide();
 					$("#myGrid6").hide().empty();
 					$("#totalWin").hide();
+					$("#totalWinExport").hide();
 
 				},
 				error: function(data) {
@@ -564,7 +632,8 @@ function getAllCRMData(id) {
 					org: org,
 					orgDiv: orgDiv,
 					loc: loc,
-					executive: executive
+					executive: executive,
+					allKeyRoles: allKeyRoles
 				},
 				async: true,
 				success: function(response) {
@@ -582,22 +651,26 @@ function getAllCRMData(id) {
 							gridOptions5.api.setRowData(allData);
 						}
 					}
+									
 					
 					$("#myGrid5").show();
 					$("#totalNegotiation").show();
-					
+					$("#totalNegotiationExport").show();
 					$("#myGrid1").hide().empty();
 					$("#totalLead").hide();
+					$("#totalLeadExport").hide();
 					$("#myGrid2").hide().empty();
 					$("#totalSQl").hide();
+					$("#totalSQlExport").hide();
 					$("#myGrid3").hide().empty();
 					$("#totalOpportunity").hide();
+					$("#totalOpportunityExport").hide();
 					$("#myGrid4").hide().empty();
 					$("#totalProposal").hide();
-					
+					$("#totalProposalExport").hide();
 					$("#myGrid6").hide().empty();
 					$("#totalWin").hide();
-
+					$("#totalWinExport").hide();
 				},
 				error: function(data) {
 					console.log(data);
@@ -635,18 +708,22 @@ function getAllCRMData(id) {
 					
 					$("#myGrid5").show();
 					$("#totalNegotiation").show();
-					
+					$("#totalNegotiationExport").show();
 					$("#myGrid1").hide().empty();
 					$("#totalLead").hide();
+					$("#totalLeadExport").hide();
 					$("#myGrid2").hide().empty();
 					$("#totalSQl").hide();
+					$("#totalSQlExport").hide();
 					$("#myGrid3").hide().empty();
 					$("#totalOpportunity").hide();
+					$("#totalOpportunityExport").hide();
 					$("#myGrid4").hide().empty();
 					$("#totalProposal").hide();
-					
+					$("#totalProposalExport").hide();
 					$("#myGrid6").hide().empty();
 					$("#totalWin").hide();
+					$("#totalWinExport").hide();
 
 				},
 				error: function(data) {
@@ -674,7 +751,8 @@ function getAllCRMData(id) {
 					org: org,
 					orgDiv: orgDiv,
 					loc: loc,
-					executive: executive
+					executive: executive,
+					allKeyRoles: allKeyRoles
 				},
 				async: true,
 				success: function(response) {
@@ -693,20 +771,25 @@ function getAllCRMData(id) {
 						}
 					}
 					
+					
 					$("#myGrid6").show();
 					$("#totalWin").show();
-					
+					$("#totalWinExport").show();
 					$("#myGrid1").hide().empty();
 					$("#totalLead").hide();
+					$("#totalLeadExport").hide();
 					$("#myGrid2").hide().empty();
 					$("#totalSQl").hide();
+					$("#totalSQlExport").hide();
 					$("#myGrid3").hide().empty();
 					$("#totalOpportunity").hide();
+					$("#totalOpportunityExport").hide();
 					$("#myGrid4").hide().empty();
 					$("#totalProposal").hide();
+					$("#totalProposalExport").hide();
 					$("#myGrid5").hide().empty();
 					$("#totalNegotiation").hide();
-					
+					$("#totalNegotiationExport").hide();
 
 				}, error: function(data) {
 					console.log(data);
@@ -745,18 +828,22 @@ function getAllCRMData(id) {
 					
 					$("#myGrid6").show();
 					$("#totalWin").show();
-					
+					$("#totalWinExport").show();
 					$("#myGrid1").hide().empty();
 					$("#totalLead").hide();
+					$("#totalLeadExport").hide();
 					$("#myGrid2").hide().empty();
 					$("#totalSQl").hide();
+					$("#totalSQlExport").hide();
 					$("#myGrid3").hide().empty();
 					$("#totalOpportunity").hide();
+					$("#totalOpportunityExport").hide();
 					$("#myGrid4").hide().empty();
 					$("#totalProposal").hide();
+					$("#totalProposalExport").hide();
 					$("#myGrid5").hide().empty();
 					$("#totalNegotiation").hide();
-					
+					$("#totalNegotiationExport").hide();
 
 				}, error: function(data) {
 					console.log(data);
@@ -779,6 +866,24 @@ function getOperationalCountDataWithExecutive(executive){
 	var orgDiv = $("#divisionCrmOpr").find('option:selected').text();
 	var loc = $("#locationCrmOpr").val();
 	var executive = $("#executiveOprId").val();
+	
+	if (!fromDate || !toDate) {
+	   var today = new Date();
+   		if (today.getMonth() < 2
+   				|| (today.getMonth() === 2 && today.getDate() < 31)) {
+   			var fromYear = today.getFullYear() - 1;
+   		} else {
+   			var fromYear = today.getFullYear();
+   		}
+
+   		 fromDate = ('0' + 1).slice(-2) + '-' + ('0' + 4).slice(-2) + '-'
+   				+ fromYear;
+   	     toDate = ('0' + today.getDate()).slice(-2) + '-'
+   				+ ('0' + (today.getMonth() + 1)).slice(-2) + '-'
+   				+ today.getFullYear();
+   				
+   			
+	}
 
 	$.ajax({
 		type: "GET",
@@ -874,17 +979,22 @@ function getOperationalTableDataWithExecutive(executive){
 					}
 					$("#myGrid1").show();
 					$("#totalLead").show();
+					$("#totalLeadExport").hide();
 					$("#myGrid2").hide().empty();
 					$("#totalSQl").hide();
+					$("#totalSQlExport").hide();
 					$("#myGrid3").hide().empty();
 					$("#totalOpportunity").hide();
+					$("#totalOpportunityExport").hide();
 					$("#myGrid4").hide().empty();
 					$("#totalProposal").hide();
+					$("#totalProposalExport").hide();
 					$("#myGrid5").hide().empty();
 					$("#totalNegotiation").hide();
+					$("#totalNegotiationExport").hide();
 					$("#myGrid6").hide().empty();
 					$("#totalWin").hide();
-					
+					$("#totalWinExport").hide();
 
 
 				},
@@ -930,17 +1040,22 @@ function getOperationalTableDataWithExecutive(executive){
 					}
 					$("#myGrid2").show();
 					$("#totalSQl").show();
-					
+					$("#totalSQlExport").show();
 					$("#totalLead").hide();
+					$("#totalLeadExport").hide();
 					$("#myGrid1").hide().empty();					
 					$("#myGrid3").hide().empty();
 					$("#totalOpportunity").hide();
+					$("#totalOpportunityExport").hide();
 					$("#myGrid4").hide().empty();
 					$("#totalProposal").hide();
+					$("#totalProposalExport").hide();
 					$("#myGrid5").hide().empty();
 					$("#totalNegotiation").hide();
+					$("#totalNegotiationExport").hide();
 					$("#myGrid6").hide().empty();
 					$("#totalWin").hide();
+					$("#totalWinExport").hide();
 
 
 				},
@@ -986,21 +1101,22 @@ function getOperationalTableDataWithExecutive(executive){
 					
 					$("#myGrid3").show();
 					$("#totalOpportunity").show();
-					
+					$("#totalOpportunityExport").show();
 					$("#myGrid1").hide().empty();
 					$("#totalLead").hide();
-					
+					$("#totalLeadExport").hide();
 					$("#myGrid2").hide().empty();
 					$("#totalSQl").hide();
-					
+					$("#totalSQlExport").hide();
 					$("#myGrid4").hide().empty();
 					$("#totalProposal").hide();
-					
+					$("#totalProposalExport").hide();
 					$("#myGrid5").hide().empty();
 					$("#totalNegotiation").hide();
-					
+					$("#totalNegotiationExport").hide();
 					$("#myGrid6").hide().empty();
 					$("#totalWin").hide();
+					$("#totalWinExport").hide();
 
 
 				},
@@ -1046,17 +1162,23 @@ function getOperationalTableDataWithExecutive(executive){
 					
 					$("#myGrid4").show();
 					$("#totalProposal").show();
-					
+					$("#totalProposalExport").show();
 					$("#myGrid1").hide().empty();
 					$("#totalLead").hide();
+					$("#totalLeadExport").hide();
 					$("#myGrid2").hide().empty();
 					$("#totalSQl").hide();
+					$("#totalSQlExport").hide();
 					$("#myGrid3").hide().empty();
 					$("#totalOpportunity").hide();
+					$("#totalOpportunityExport").hide();
 					$("#myGrid5").hide().empty();
 					$("#totalNegotiation").hide();
+					$("#totalNegotiationExport").hide();
+					
 					$("#myGrid6").hide().empty();
 					$("#totalWin").hide();
+					$("#totalWinExport").hide();
 
 				},
 				error: function(data) {
@@ -1102,18 +1224,22 @@ function getOperationalTableDataWithExecutive(executive){
 					
 					$("#myGrid5").show();
 					$("#totalNegotiation").show();
-					
+					$("#totalNegotiationExport").show();
 					$("#myGrid1").hide().empty();
 					$("#totalLead").hide();
+					$("#totalLeadExport").hide();
 					$("#myGrid2").hide().empty();
 					$("#totalSQl").hide();
+					$("#totalSQlExport").hide();
 					$("#myGrid3").hide().empty();
 					$("#totalOpportunity").hide();
+					$("#totalOpportunityExport").hide();
 					$("#myGrid4").hide().empty();
 					$("#totalProposal").hide();
-					
+					$("#totalProposalExport").hide();
 					$("#myGrid6").hide().empty();
 					$("#totalWin").hide();
+					$("#totalWinExport").hide();
 
 				},
 				error: function(data) {
@@ -1159,18 +1285,22 @@ function getOperationalTableDataWithExecutive(executive){
 					
 					$("#myGrid6").show();
 					$("#totalWin").show();
-					
+					$("#totalWinExport").show();
 					$("#myGrid1").hide().empty();
 					$("#totalLead").hide();
-					$("#myGrid2").hide().empty();
+					$("#totalLeadExport").hide();
+					$("#myGrid2").hide().empty();					
 					$("#totalSQl").hide();
+					$("#totalSQlExport").hide();
 					$("#myGrid3").hide().empty();
 					$("#totalOpportunity").hide();
+					$("#totalOpportunityExport").hide();
 					$("#myGrid4").hide().empty();
 					$("#totalProposal").hide();
+					$("#totalProposalExport").hide();
 					$("#myGrid5").hide().empty();
 					$("#totalNegotiation").hide();
-					
+					$("#totalNegotiationExport").hide();
 
 				}, error: function(data) {
 					console.log(data);
@@ -1227,7 +1357,13 @@ const columnDefs6 = [
 	},
 	
 	
-	
+	{
+		headerName: "EXECUTIVE NAME",
+		field: 'executiveName',
+		width: 180,
+		cellStyle: { textAlign: 'left' }
+
+	},
 	
 	{
 		headerName: "PRODUCT NAME",
@@ -1402,6 +1538,16 @@ const columnDefs1 = [
 	},
 	
 	{
+		headerName: "Customer Name",
+		field: 'customerName',
+		width: 180,
+		cellStyle: { textAlign: 'left' }
+
+	},
+	
+	
+	
+	{
 		headerName: "LEAD'S EXECUTIVE",
 		field: 'leadOwner',
 		width: 180,
@@ -1516,6 +1662,14 @@ const columnDefs2 = [
 		width: 180,
 		cellStyle: { textAlign: 'left' },
 
+
+	},
+	
+	{
+		headerName: "Customer Name",
+		field: 'customerName',
+		width: 180,
+		cellStyle: { textAlign: 'left' }
 
 	},
 	
@@ -1637,6 +1791,14 @@ const columnDefs3 = [
 	},
 	
 	{
+		headerName: "Customer Name",
+		field: 'customerName',
+		width: 180,
+		cellStyle: { textAlign: 'left' }
+
+	},
+	
+	{
 		headerName: "LEAD'S EXECUTIVE",
 		field: 'leadOwner',
 		width: 180,
@@ -1746,6 +1908,13 @@ const columnDefs4 = [
 
 	},
 	
+	{
+		headerName: "EXECUTIVE NAME",
+		field: 'executiveName',
+		width: 180,
+		cellStyle: { textAlign: 'left' }
+
+	},
 	
 	
 	{
@@ -1789,6 +1958,8 @@ const columnDefs4 = [
 				return '<div style="color:#0642f5">Pending</div>';
 			} else if (params.data.approvalStatus == '1') {
 				return '<div style="color:#0642f5">Approved</div>';
+			} else if (params.data.approvalStatus == '2') {
+				return '<div style="color:#0642f5">Revised</div>';
 			}
 		}
 	},
@@ -1871,7 +2042,13 @@ const columnDefs5 = [
 		pinned: 'left'
 	},
 	
-	
+	{
+		headerName: "EXECUTIVE NAME",
+		field: 'executiveName',
+		width: 180,
+		cellStyle: { textAlign: 'left' }
+
+	},
 	
 	
 	{

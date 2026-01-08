@@ -470,7 +470,7 @@ function viewLeadAggridData() {
 				pages = filteredData[0].totalPageno;
 			}
 
-			createPagination(pages, pageno);
+		//	createPagination(pages, pageno);
 		} else {
 			gridOptionsLead.api.setRowData([]);
 		}

@@ -1,8 +1,6 @@
 
 /**
  * Dashboard Reports Datas
- * @author: Sourav Mehta
- * Created on: 16-04-2024
  */
  
  
@@ -28,7 +26,7 @@ var columnDefs = [
 	{
 		headerName: 'Call Id',		
 		field: "callId",
-		width: 100,
+		width: 120,
 		pinned: 'left',
 		cellStyle: {
 			textAlign: 'left'
@@ -37,7 +35,7 @@ var columnDefs = [
 	{
 		headerName: "Subject",
 		field: "subject",
-		width: 200,
+		width: 240,
 		pinned: 'left',
 		cellStyle: {
 			textAlign: 'left'
@@ -56,14 +54,18 @@ var columnDefs = [
 		cellStyle: {
 			textAlign: 'left'
 		}
-	},{
+	},
+	
+	/*{
 		headerName: "Contact Name",
 		field: "contactName",
 		width: 150,
 		cellStyle: {
 			textAlign: 'left'
 		}
-	}, {
+	},*/
+	
+	 {
 		headerName: "Call Type",
 		field: "calltype",
 		width: 120,
@@ -147,7 +149,7 @@ var columnDefs = [
 	{
 		headerName: "Meeting Title",
 		field: "meetingName",
-		width: 200,
+		width: 240,
 		pinned: 'left',
 		cellStyle: {
 			textAlign: 'left'
@@ -166,7 +168,9 @@ var columnDefs = [
 		cellStyle: {
 			textAlign: 'left'
 		}
-	}, {
+	},
+	
+	/* {
 		headerName: "Company Name",
 		field: "companyName",
 		width: 180,
@@ -174,6 +178,7 @@ var columnDefs = [
 			textAlign: 'left'
 		}
 	},
+	*/
 	{
 		headerName: "Frequency",
 		field: "frequency",
@@ -233,14 +238,14 @@ var columnDefs = [
 			textAlign: 'left'
 		}
 	},
-	{
+	/*{
 		headerName: "Agenda",
 		field: "agenda",
 		width: 120,
 		cellStyle: {
 			textAlign: 'left'
 		}
-	},
+	},*/
 	{
 		headerName: "Status",
 		field: "meetingStatus",
@@ -285,7 +290,7 @@ var columnDefs = [
 	{
 		headerName: "Subject",
 		field: "subject",
-		width: 200,
+		width: 240,
 		pinned: 'left',
 		cellStyle: {
 			textAlign: 'left'
@@ -294,27 +299,27 @@ var columnDefs = [
 	{
 		headerName: "Lead Name",
 		field: "leadName",
-		width: 160,
+		width: 200,
 		cellStyle: {
 			textAlign: 'left'
 		}
 	},{
 		headerName: "Executive Name",
 		field: "executiveName",
-		width: 150,
+		width:200,
 		cellStyle: {
 			textAlign: 'left'
 		}
 	},
 	
-	{
+	/*{
 		headerName: "Company Name",
 		field: "companyName",
 		width: 160,
 		cellStyle: {
 			textAlign: 'left'
 		}
-	},
+	},*/
 	 {
 		headerName: "Task Due Date",
 		field: "dueDate",
@@ -327,15 +332,6 @@ var columnDefs = [
 		headerName: "Task Priority",
 		field: "priority",
 		width: 150,
-		cellStyle: {
-			textAlign: 'left'
-		}
-	},
-	
-	{
-		headerName: "Lead Executive",
-		field: "leadExecutive",
-		width: 160,
 		cellStyle: {
 			textAlign: 'left'
 		}
@@ -377,6 +373,7 @@ function activityHighChart(){
 	var orgDiv = $("#divisionCrmActivities").find('option:selected').text();
 	var loc = $("#locationCrmActivities").val();
 	var executive = $("#executiveActivitiesId").val();
+	var allKeyRoles = $("#allKeyRoles").val();
 	
 	$.ajax({
 		type: "GET",
@@ -387,7 +384,8 @@ function activityHighChart(){
 			org: org,
 			orgDiv: orgDiv,
 			loc: loc,
-			executive: executive
+			executive: executive,
+			allKeyRoles: allKeyRoles
 		},
 		async: true,
 		success: function(response) {
@@ -419,7 +417,8 @@ function activityHighChart(){
 			org: org,
 			orgDiv: orgDiv,
 			loc: loc,
-			executive: executive
+			executive: executive,
+			allKeyRoles: allKeyRoles
 		},
 		async: true,
 		success: function(response) {
@@ -442,7 +441,8 @@ function activityHighChart(){
 			org: org,
 			orgDiv: orgDiv,
 			loc: loc,
-			executive: executive
+			executive: executive,
+			allKeyRoles: allKeyRoles
 		},
 		async: true,
 		success: function(response) {
@@ -465,7 +465,8 @@ function activityHighChart(){
 			org: org,
 			orgDiv: orgDiv,
 			loc: loc,
-			executive: executive
+			executive: executive,
+			allKeyRoles: allKeyRoles
 		},
 		async: true,
 		success: function(response) {
