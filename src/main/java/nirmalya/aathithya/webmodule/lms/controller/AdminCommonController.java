@@ -13,6 +13,8 @@ import java.util.HashMap;
 
  import javax.servlet.http.HttpSession;
 
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -545,7 +547,86 @@ resp = restTemplate.getForObject(env.getHisUrl() + "rest-subscription-student-vi
 	    logger.info("Method : getAllBlogs ends => " + resp);
 	    return resp;
 	}
-
+	
+	
+	/*
+	 * @SuppressWarnings("unchecked")
+	 * 
+	 * @PostMapping("subscription-save-enrollment-details") public @ResponseBody
+	 * Object saveEnrollmentData(HttpSession session, @RequestBody String data) {
+	 * logger.info("Method :saveEnrollmentData starts"+data);
+	 * 
+	 * JsonResponse<Object> resp = new JsonResponse<Object>();
+	 * 
+	 * String userId = ""; String orgName = ""; String orgDivision = ""; try {
+	 * userId = (String) session.getAttribute("USER_ID"); orgName = (String)
+	 * session.getAttribute("ORGANIZATION"); orgDivision = (String)
+	 * session.getAttribute("ORGANIZATION_DIVISION"); } catch (Exception e) {
+	 * e.printStackTrace(); } logger.info("url"+env.getMasterUrl() +
+	 * "rest-save-enrollment-data?orgName=" + orgName + "&orgDivision=" +
+	 * orgDivision + "&userId=" + userId, data, JsonResponse.class); try { resp =
+	 * restTemplate.postForObject(env.getMasterUrl() +
+	 * "rest-save-enrollment-data?orgName=" + orgName + "&orgDivision=" +
+	 * orgDivision + "&userId=" + userId, data, JsonResponse.class);
+	 * 
+	 * } catch (Exception e) { e.printStackTrace(); }
+	 * 
+	 * logger.info("Method :saveEnrollmentData ends"); return resp; }
+	 */
 	
 
-}
+	@PostMapping("subscription-save-enrollment-details")
+	public @ResponseBody Object saveEnrollmentData(HttpSession session, @RequestBody String data) {
+	    logger.info("Method :saveEnrollmentData starts, raw data: " + data);
+
+	    JsonResponse<Object> resp = new JsonResponse<>();
+
+	    String orgName = (String) session.getAttribute("ORGANIZATION");
+	    String orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+
+	    // We will extract enrolledBy (student ID) from the JSON sent by frontend
+	    String enrolledBy = null;
+
+	    try {
+	        JSONObject json = new JSONObject(data);
+
+	        // Extract the enrolledBy sent from frontend (this is the STUDENT's ID)
+	        if (json.has("enrolledBy")) {
+	            enrolledBy = json.getString("enrolledBy").trim();
+	        }
+
+	        // Optional: Remove it if you don't want to send it again (or keep it, doesn't matter)
+	        // json.remove("enrolledBy"); // if you want clean payload
+
+	        String modifiedData = json.toString();
+
+	        logger.info("Using enrolledBy (student ID) from request: {}", enrolledBy);
+	        logger.info("Final payload sent to master: {}", modifiedData);
+
+	        if (enrolledBy == null || enrolledBy.isEmpty()) {
+	            resp.setCode("failed");
+	            resp.setMessage("enrolledBy (student ID) is missing");
+	            return resp;
+	        }
+
+	        // Build URL using the student's ID as userId parameter
+	        String url = env.getMasterUrl() + "rest-save-enrollment-data?orgName=" +
+	                     orgName + "&orgDivision=" + orgDivision + "&userId=" + enrolledBy;
+
+	        resp = restTemplate.postForObject(url, modifiedData, JsonResponse.class);
+
+	    } catch (JSONException e) {
+	        logger.error("Invalid JSON format", e);
+	        resp.setCode("failed");
+	        resp.setMessage("Invalid JSON format");
+	        return resp;
+	    } catch (Exception e) {
+	        logger.error("Error calling master service", e);
+	        resp.setCode("failed");
+	        resp.setMessage("Failed to save enrollment data");
+	        return resp;
+	    }
+
+	    logger.info("Method :saveEnrollmentData ends");
+	    return resp;
+	}}

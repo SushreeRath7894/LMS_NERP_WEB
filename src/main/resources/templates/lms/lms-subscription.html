@@ -261,6 +261,60 @@
 	color: #6b7280;
 	font-size: 1.1rem;
 }
+
+ .course-card {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 15px 20px;
+        margin-bottom: 12px;
+        background-color: #f9f9f9;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+    .course-header {
+        font-size: 18px;
+        font-weight: bold;
+        color: #007bff;
+        margin-bottom: 8px;
+    }
+    .training-list {
+        list-style-type: disc;
+        padding-left: 20px;
+        margin: 0;
+    }
+    .training-list li {
+        margin-bottom: 4px;
+        font-size: 15px;
+        color: #333;
+    }
+    
+   .dropdown-search { position: relative; margin-bottom: 1.5rem; }
+    .dropdown-list {
+      position: absolute;
+      top: 100%; left: 0; right: 0;
+      background: white;
+      border: 1px solid #ced4da;
+      border-top: none;
+      max-height: 300px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+      border-radius: 0 0 0.375rem 0.375rem;
+    }
+    .dropdown-item {
+      padding: 10px 15px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .dropdown-item:hover { background-color: #f1f3f5; }
+    .dropdown-item.active {
+      background-color: #0d6efd;
+      color: white;
+    }
+    .dropdown-list::-webkit-scrollbar { width: 8px; }
+    .dropdown-list::-webkit-scrollbar-track { background: #f1f1f1; }
+    .dropdown-list::-webkit-scrollbar-thumb { background: #c0c0c0; border-radius: 4px; }
+    .dropdown-list::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 </style>
 
 <script type="text/javascript">
@@ -382,6 +436,23 @@ window.gridOptionsCourse = params.api;
 onSelectionChanged: onSelectionChanged,
 };
 
+//Define the checkbox column once (to reuse)
+const checkboxCol = {
+    headerCheckboxSelection: true,
+    headerCheckboxSelectionFilteredOnly: true,
+    checkboxSelection: true,
+    width: 50,
+    minWidth: 50,
+    maxWidth: 50,
+    sortable: false,
+    filter: false,
+    resizable: false,
+    pinned: 'left',
+    lockPosition: true,
+    suppressMenu: true,
+    cellClass: 'ag-checkbox-column'
+};
+
 $(document).ready(function() {
 var gridDivm = document.querySelector('#mygrid');
 new agGrid.Grid(gridDivm, gridOptions);
@@ -414,8 +485,9 @@ var selectedData = selectedNodes.map(node => node.data);
 
 if (selectedData.length > 0) {
 updateStudentProfile(selectedData[0]);
-var enrollId = selectedData[0].enrollId;
+var enrollId = selectedData[0].studentId;
 getTheCourseDetails(enrollId);
+getCourseDetails();
   } else {
 // Show empty state if no row is selected
 document.getElementById('student-profile-container').innerHTML = `
@@ -502,80 +574,91 @@ function updateStudentProfile(studentData) {
 
     document.getElementById('student-profile-container').innerHTML = profileHtml;
 }
-
 function getStudentDetails(tb) {
-    Promise.resolve(
-        agGrid.simpleHttpRequest({ url: "subscription-student-view?id=" + tb })
-
-    ).then(function(response) {
+    agGrid.simpleHttpRequest({
+        url: "subscription-student-view?id=" + tb
+    })
+    .then(function (response) {
         if (response.message === "Success") {
             const responseBody = JSON.parse(response.body);
             fullStudentData = responseBody.studentData || [];
 
+            // ✅ Sort using studentId
             fullStudentData.sort((a, b) => {
-                const numA = parseInt(a.enrollId.replace(/\D/g, ""), 10);
-                const numB = parseInt(b.enrollId.replace(/\D/g, ""), 10);
+                const numA = parseInt(a.studentId.replace(/\D/g, ""), 10);
+                const numB = parseInt(b.studentId.replace(/\D/g, ""), 10);
                 return numB - numA;
             });
 
-            // Load data for the current tab type
             filterGridData(tb);
         }
-    }).catch(console.error);
+    })
+    .catch(console.error);
 }
+
 
 function filterGridData(type) {
 
-    let filtered = fullStudentData.filter(row => {
-        return row.type.startsWith(type);
-    });
+    // ✅ Allow empty type rows
+    let filtered = fullStudentData.filter(row =>
+        !row.type || row.type === type
+    );
 
-    // Base Column Defs
-    let columnDefs = [
-        { headerName: "Enroll ID", field: "enrollId", width: 150 },
-        { headerName: "Student Name", field: "studentName", width: 180 },
-        { headerName: "Email", field: "email", width: 200 },
-        { headerName: "Phone", field: "phoneNo", width: 150 },
-        { headerName: "Course ID", field: "courseId", width: 150 },
-        { headerName: "Course Name", field: "courseName", width: 250 }
-    ];
+    let columnDefs = [checkboxCol];
 
-    // ⭐ ADD EXTRA COLUMNS ONLY FOR PUBLIC BATCHES
+    // ✅ Enroll ID mapped to studentId
+    columnDefs.push(
+        {
+            headerName: "Enroll ID",
+            field: "studentId",   // ⭐ FIX HERE
+            width: 150
+        },
+        {
+            headerName: "Student Name",
+            field: "studentName",
+            width: 180
+        },
+        {
+            headerName: "Email",
+            field: "email",
+            width: 220
+        },
+        {
+            headerName: "Phone",
+            field: "phoneNo",
+            width: 150
+        },
+        {
+            headerName: "Course Name",
+            field: "courseName",
+            width: 350,
+            tooltipField: "courseName"
+        }
+    );
+
     if (type === "Public Batches") {
-
         columnDefs.push(
             { headerName: "Batch Title", field: "batchTitle", width: 200 },
-            { headerName: "Batch To Time", field: "batchToTime", width: 170 },
             { headerName: "Batch Start Date", field: "batchStartDate", width: 180 },
             { headerName: "Batch End Date", field: "batchEndDate", width: 180 },
-            { headerName: "Batch From Time", field: "batchFromTime", width: 170 },
-            { headerName: "Student Name", field: "studentName", width: 200 } // duplicate allowed if needed
+            { headerName: "From Time", field: "batchFromTime", width: 140 },
+            { headerName: "To Time", field: "batchToTime", width: 140 }
         );
     }
 
-    // Apply columns to grid
     window.gridApi.setColumnDefs(columnDefs);
-
-    // Set data
     window.gridApi.setRowData(filtered);
 
-    // Handle empty result
-    if (filtered.length === 0) {
-        document.getElementById('student-profile-container').innerHTML = `
-            <div class="no-selection">
-                <p>No students found in this category.</p>
-            </div>
-        `;
-        $('#courseCard').empty().html('<p class="text-muted">No course data.</p>');
-    } else {
-        // Auto-select first row
+    if (filtered.length > 0) {
         window.gridApi.deselectAll();
-        window.gridApi.forEachNode(node => {
-            if (node.rowIndex === 0) node.setSelected(true);
-        });
+        window.gridApi.getDisplayedRowAtIndex(0).setSelected(true);
+    } else {
+        document.getElementById('student-profile-container').innerHTML =
+            `<div class="no-selection">
+                <p>No students found in this category.</p>
+             </div>`;
     }
 }
-
 
 
 function enableCourse(status) {
@@ -621,63 +704,512 @@ function enterToSearch(event) {
         onQuickFilterChanged();
     }
 }
+//JS Function
 function getTheCourseDetails(enrollId) {
     $.ajax({
         url: 'subscription-get-course-details?enrollId=' + enrollId,
         type: 'GET',
         success: function (response) {
-            console.log('Course details fetched successfully:', response);
+            const body = typeof response.body === 'string'
+                ? JSON.parse(response.body)
+                : response.body;
 
-            // Parse JSON string if needed
-            const data = typeof response.body === 'string' ? JSON.parse(response.body) : response.body;
-
-            // Clear existing content
             $('#courseCard').empty();
 
-            // Course Header
-            const courseHeader = `
-                <div class="d-flex align-items-center mb-3 border-bottom pb-2">
-                    <img src="${data.image}" alt="${data.courseTitle}" class="me-3" style="width:80px; height:80px; border-radius:8px; object-fit:cover;">
-                    <div>
-                        <h4 class="mb-1 fw-bold text-primary">${data.courseTitle}</h4>
-                        <p class="text-muted mb-0">${data.categoryName} › ${data.subCategoryName}</p>
-                    </div>
-                </div>
-            `;
-            $('#courseCard').append(courseHeader);
+            if (!body.enrollCourses || body.enrollCourses.length === 0) {
+                $('#courseCard').html('<p class="text-muted">No courses found.</p>');
+                return;
+            }
 
-            // Trainings List
-            data.courseCategoryType.forEach(training => {
-                const priceText = training.trainingPrice && training.trainingPrice !== ""
-                    ? `<span class="fw-semibold text-success">₹${training.trainingPrice}</span>`
-                    : `<span class="text-muted">Contact for price</span>`;
+            // Use a map to avoid duplicate courses
+            const courseMap = new Map();
 
-                const trainingHTML = `
-                    <div class="border rounded p-3 mb-3 bg-light">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h5 class="mb-0 text-dark">${training.trainingCategory}</h5>
-                            ${priceText}
-                        </div>
-                        <p class="mb-1 small text-secondary">${training.trainingDescription}</p>
-                        <div class="text-end">
-                            <button class="btn btn-sm btn-outline-primary mt-2">Learn More</button>
-                        </div>
-                    </div>
-                `;
-                $('#courseCard').append(trainingHTML);
+            body.enrollCourses.forEach(course => {
+                const key = course.courseName;
+                if (!courseMap.has(key)) {
+                    courseMap.set(key, course.trainingDetails || []);
+                } else {
+                    // Merge trainings if course already exists
+                    const existingTrainings = courseMap.get(key);
+                    course.trainingDetails.forEach(tr => {
+                        if (!existingTrainings.some(e => e.trainingCategory === tr.trainingCategory)) {
+                            existingTrainings.push(tr);
+                        }
+                    });
+                    courseMap.set(key, existingTrainings);
+                }
+            });
+
+            // Render courses
+            courseMap.forEach((trainings, courseName) => {
+                const courseDiv = $('<div class="course-card"></div>');
+
+                // Course header
+                const courseHeader = $(`<div class="course-header">${courseName}</div>`);
+                courseDiv.append(courseHeader);
+
+                // Training list
+                if (trainings.length > 0) {
+                    const trainingList = $('<ul class="training-list"></ul>');
+                    trainings.forEach(training => {
+                        const li = $('<li></li>').text(training.trainingCategory);
+                        trainingList.append(li);
+                    });
+                    courseDiv.append(trainingList);
+                } else {
+                    courseDiv.append('<p class="text-muted">No trainings available.</p>');
+                }
+
+                $('#courseCard').append(courseDiv);
             });
         },
-        error: function (xhr, status, error) {
-            console.error('Error fetching course details:', error);
+        error: function () {
             $('#courseCard').html('<p class="text-danger">Failed to load course details.</p>');
         }
     });
 }
+
 function nextTab(id) {
 const tabElement = document.querySelector('#' + id + ' a');
 const tab = new bootstrap.Tab(tabElement);
 tab.show();
 }
+
+let selectedCourseId = null;
+let selectedTrainingRefId = null;
+
+// Global variables to store event listeners for cleanup
+let trainingInputListener = null;
+let trainingListListener = null;
+let trainingKeydownListener = null;
+let trainingFocusListener = null;
+
+function getCourseDetails() {
+    agGrid.simpleHttpRequest({
+      url: "academic-course-view"
+    }).then(function (response) {
+      if (response.message === "Success") {
+        let courseData = [];
+        try {
+          const responseBody = JSON.parse(response.body);
+          courseData = responseBody.courseData || [];
+        } catch (e) {
+          console.error("JSON parse error:", e);
+          courseData = [];
+        }
+
+        const allowedCategories = ["ICAT0006", "ICAT0015"];
+        const filteredCourses = courseData
+          .filter(course => course.status === "Active" && allowedCategories.includes(course.parentCategoryId))
+          .map(course => ({
+            key: course.courseId,
+            name: course.courseTittle.trim()
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        const container = document.getElementById("courseTraining");
+        container.innerHTML = `
+          <h4 class="mb-4">Select Course & Training</h4>
+
+          <label for="courseSearchInput" class="form-label fw-bold">1. Select Course</label>
+          <div class="dropdown-search">
+            <input type="text" class="form-control" id="courseSearchInput" placeholder="Type to search course..." autocomplete="off" />
+            <div id="courseDropdownList" class="dropdown-list"></div>
+          </div>
+
+          <div id="trainingSection" style="display: none;">
+            <label for="trainingSearchInput" class="form-label fw-bold">2. Select Training Type</label>
+            <div class="dropdown-search">
+              <input type="text" class="form-control" id="trainingSearchInput" placeholder="Type to search training..." autocomplete="off" />
+              <div id="trainingDropdownList" class="dropdown-list"></div>
+            </div>
+
+            <div class="mt-3">
+              <label class="form-label">Training Price:</label>
+              <input type="text" class="form-control" id="trainingPriceDisplay" readonly placeholder="Select a training to see price" />
+            </div>
+
+            <div class="mt-3">
+              <strong>Selected Training:</strong>
+              <span id="selectedTrainingDisplay" class="text-primary fw-semibold">None</span>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <strong>Selected Course:</strong>
+            <span id="selectedCourseDisplay" class="text-success fw-semibold">None</span>
+          </div>
+
+          <!-- ASSIGN BUTTON MOVED HERE SO IT EXISTS WHEN WE CALL updateAssignButton() -->
+          <div class="d-flex justify-content-end border p-2 rounded mt-4">
+            <button class="btn btn-success m-0 edit-btn" type="button" id="assignTrainingBtn">
+              Assign Training
+            </button>
+          </div>
+        `;
+
+        // Now the button exists → safe to control it
+        updateAssignButton(); // Initially hide
+
+        // === Course Dropdown Logic ===
+        const courseInput = document.getElementById("courseSearchInput");
+        const courseList = document.getElementById("courseDropdownList");
+        const selectedCourseDisplay = document.getElementById("selectedCourseDisplay");
+        const trainingSection = document.getElementById("trainingSection");
+
+        function renderCourseList(courses) {
+          if (courses.length === 0) {
+            courseList.innerHTML = `<div class="dropdown-item text-muted text-center py-3">No courses found</div>`;
+          } else {
+            courseList.innerHTML = courses.map((c, i) => `
+              <div class="dropdown-item ${i === 0 ? 'active' : ''}" data-key="${c.key}">${c.name}</div>
+            `).join("");
+          }
+          courseList.style.display = "block";
+          const active = courseList.querySelector(".active");
+          if (active) active.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
+
+        renderCourseList(filteredCourses);
+
+        courseInput.addEventListener("input", () => {
+          const q = courseInput.value.toLowerCase().trim();
+          const matched = filteredCourses.filter(c => c.name.toLowerCase().includes(q));
+          renderCourseList(matched);
+        });
+
+        courseList.addEventListener("click", (e) => {
+          const item = e.target.closest(".dropdown-item");
+          if (!item || item.textContent.includes("No courses")) return;
+          const key = item.getAttribute("data-key");
+          const name = item.textContent.trim();
+          selectedCourseId = key;
+          courseInput.value = name;
+          selectedCourseDisplay.textContent = `${name} (${key})`;
+          courseList.style.display = "none";
+          getTrainingDetails(key);
+          updateAssignButton(); // Update after course selected
+        });
+
+        // Keyboard navigation for course (unchanged)
+        courseInput.addEventListener("keydown", (e) => {
+          const items = courseList.querySelectorAll(".dropdown-item");
+          if (items.length === 0) return;
+          let idx = Array.from(items).findIndex(it => it.classList.contains("active"));
+
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            items.forEach(i => i.classList.remove("active"));
+            idx = (idx + 1) % items.length;
+            items[idx].classList.add("active");
+            items[idx].scrollIntoView({ block: "nearest" });
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            items.forEach(i => i.classList.remove("active"));
+            idx = (idx - 1 + items.length) % items.length;
+            items[idx].classList.add("active");
+            items[idx].scrollIntoView({ block: "nearest" });
+          } else if (e.key === "Enter" && idx >= 0) {
+            e.preventDefault();
+            items[idx].click();
+          }
+        });
+
+        courseInput.addEventListener("focus", () => renderCourseList(filteredCourses));
+        document.addEventListener("click", (e) => {
+          if (!container.contains(e.target)) courseList.style.display = "none";
+        });
+
+      
+      }
+    }).catch(err => {
+      console.error("Failed to load courses:", err);
+      document.getElementById("courseTraining").innerHTML = `<div class="alert alert-danger">Failed to load courses.</div>`;
+    });
+}
+
+function getTrainingDetails(courseId) {
+    console.log("Loading trainings for course:", courseId);
+
+    const trainingInput = document.getElementById("trainingSearchInput");
+    const trainingList = document.getElementById("trainingDropdownList");
+
+    if (!trainingInput || !trainingList) {
+        console.error("Dropdown elements missing");
+        return;
+    }
+
+    // Cleanup old listeners
+    if (trainingInputListener) trainingInput.removeEventListener("input", trainingInputListener);
+    if (trainingListListener) trainingList.removeEventListener("click", trainingListListener);
+    if (trainingKeydownListener) trainingInput.removeEventListener("keydown", trainingKeydownListener);
+    if (trainingFocusListener) trainingInput.removeEventListener("focus", trainingFocusListener);
+
+    fetch("academic-training-view?id=" + courseId)
+        .then(response => {
+            if (!response.ok) throw new Error("Network error: " + response.status);
+            return response.json();
+        })
+        .then(data => {
+            const trainingSection = document.getElementById("trainingSection");
+            const priceDisplay = document.getElementById("trainingPriceDisplay");
+            const selectedTrainingDisplay = document.getElementById("selectedTrainingDisplay");
+
+            let trainingData = [];
+            if (data.message === "Success" && data.body && data.body.length > 0) {
+                try {
+                    const jsonString = data.body[0];
+                    const parsed = JSON.parse(jsonString);
+                    trainingData = parsed.courseCategoryType || [];
+                } catch (e) {
+                    console.error("Parse error:", e);
+                }
+            }
+
+            const trainings = trainingData.map(t => ({
+                key: t.trainingRefId,
+                name: t.trainingCategory ? t.trainingCategory.trim() : "Unknown",
+                price: t.trainingPrice && t.trainingPrice !== "" ? t.trainingPrice : "N/A"
+            }));
+
+            trainingSection.style.display = "block";
+            trainingInput.value = "";
+            priceDisplay.value = "";
+            selectedTrainingDisplay.textContent = "None";
+            selectedTrainingRefId = null;
+
+            // Hide button initially when trainings load
+            updateAssignButton();
+
+            function renderTrainingList(list) {
+                if (list.length === 0) {
+                    trainingList.innerHTML = `<div class="dropdown-item text-muted text-center py-3">No trainings available</div>`;
+                } else {
+                    trainingList.innerHTML = list.map((t, i) => `
+                        <div class="dropdown-item ${i === 0 ? 'active' : ''}"
+                             data-key="${t.key}"
+                             data-price="${t.price}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>${t.name}</span>
+                                ${t.price !== "N/A" ? `<span class="badge bg-success price-badge">₹${t.price}</span>` : ''}
+                            </div>
+                        </div>
+                    `).join("");
+                }
+                trainingList.style.display = "block";
+                const active = trainingList.querySelector(".dropdown-item.active");
+                if (active) active.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            }
+            renderTrainingList(trainings);
+
+            trainingInputListener = () => {
+                const q = trainingInput.value.toLowerCase().trim();
+                const matched = trainings.filter(t => t.name.toLowerCase().includes(q));
+                renderTrainingList(matched);
+            };
+            trainingInput.addEventListener("input", trainingInputListener);
+
+            trainingListListener = (e) => {
+                const item = e.target.closest(".dropdown-item");
+                if (!item || item.textContent.includes("No trainings")) return;
+
+                const key = item.getAttribute("data-key");
+                const price = item.getAttribute("data-price");
+                const name = item.querySelector("span:first-child").textContent.trim();
+
+                selectedTrainingRefId = key;
+                trainingInput.value = name;
+                priceDisplay.value = price !== "N/A" ? "₹" + price : "";
+                priceDisplay.placeholder = price === "N/A" ? "No price available" : "";
+                selectedTrainingDisplay.textContent = `${name} (${key})`;
+                trainingList.style.display = "none";
+
+                // This is the critical fix – show button after training selected
+                updateAssignButton();
+            };
+            trainingList.addEventListener("click", trainingListListener);
+
+            // Keyboard navigation (unchanged)
+            trainingKeydownListener = (e) => {
+                const items = trainingList.querySelectorAll(".dropdown-item");
+                if (items.length === 0) return;
+                let idx = Array.from(items).findIndex(it => it.classList.contains("active"));
+
+                if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    items.forEach(i => i.classList.remove("active"));
+                    idx = (idx + 1) % items.length;
+                    items[idx].classList.add("active");
+                    items[idx].scrollIntoView({ block: "nearest", behavior: "smooth" });
+                } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    items.forEach(i => i.classList.remove("active"));
+                    idx = (idx - 1 + items.length) % items.length;
+                    items[idx].classList.add("active");
+                    items[idx].scrollIntoView({ block: "nearest", behavior: "smooth" });
+                } else if (e.key === "Enter" && idx >= 0) {
+                    e.preventDefault();
+                    items[idx].click();
+                }
+            };
+            trainingInput.addEventListener("keydown", trainingKeydownListener);
+
+            trainingFocusListener = () => renderTrainingList(trainings);
+            trainingInput.addEventListener("focus", trainingFocusListener);
+
+        })
+        .catch(error => {
+            console.error("Fetch failed:", error);
+            const trainingSection = document.getElementById("trainingSection");
+            if (trainingSection) {
+                trainingSection.style.display = "block";
+                trainingSection.innerHTML += `<div class="alert alert-danger mt-3">Failed to load trainings: ${error.message}</div>`;
+            }
+            updateAssignButton(); // Hide on error
+        });
+}
+function updateAssignButton() {
+	alert("hyy")
+    const btn = document.getElementById("assignTrainingBtn");
+    if (btn) {
+        if (selectedCourseId && selectedTrainingRefId) {
+            btn.style.display = "inline-block"; // or "block", but inline-block matches .btn
+        } else {
+            btn.style.display = "none";
+        }
+    }
+}
+
+function onCourseSelected(courseId, courseName) {
+    selectedCourseId = courseId;
+    document.getElementById("selectedCourseDisplay").textContent = `${courseName} (${courseId})`;
+    updateAssignButton();
+}
+
+function onTrainingSelected(trainingRefId, trainingName, price) {
+    selectedTrainingRefId = trainingRefId;
+    document.getElementById("selectedTrainingDisplay").textContent = `${trainingName} (${trainingRefId})`;
+
+    const priceDisplay = document.getElementById("trainingPriceDisplay");
+    if (price && price !== "N/A") {
+        priceDisplay.value = "₹" + price;
+    } else {
+        priceDisplay.value = "";
+        priceDisplay.placeholder = "No price";
+    }
+
+    updateAssignButton();
+}
+//✅ Use event delegation since button is dynamic
+document.addEventListener("click", function(e) {
+  if (e.target && e.target.id === "assignTrainingBtn") {
+    // Get selected student
+    const selectedNodes = window.gridApi?.getSelectedNodes() || [];
+    const student = selectedNodes.length ? selectedNodes[0].data : null;
+    const enrolledBy = student ? student.studentId : null;
+
+    if (!selectedCourseId || !selectedTrainingRefId) {
+      Swal.fire("Warning", "Please select both Course and Training", "warning");
+      return;
+    }
+
+    if (!enrolledBy) {
+      Swal.fire("Error", "No student selected.", "error");
+      return;
+    }
+
+    // ✅ Retrieve trainingCategory from the DOM or stored data
+    // We stored it in the dropdown item as text → extract it
+    const trainingInput = document.getElementById("trainingSearchInput");
+    const trainingCategory = trainingInput.value.trim(); // This is the visible name (e.g., "ducisgroupLmsAccess")
+
+    // ✅ Build combined trainingId: "PRD000061_tr007-ducisgroupLmsAccess"
+    const trainingId = selectedTrainingRefId + "-" + trainingCategory.replace(/\s+/g, ''); // Remove spaces if any
+
+    // ✅ Final payload format expected by backend
+    const enrollmentData = {
+      productIds: [selectedCourseId],  // Must be array
+      trainingId: trainingId,          // Combined ID
+      enrolledBy: enrolledBy,
+      paymentMethod: "none"
+    };
+
+    console.log("Sending enrollment:", enrollmentData);
+    saveEnrollmentData(enrollmentData);
+  }
+});
+// ✅ Updated updateAssignButton (without alert)
+function updateAssignButton() {
+  const btn = document.getElementById("assignTrainingBtn");
+  if (btn) {
+    if (selectedCourseId && selectedTrainingRefId) {
+      btn.style.display = "inline-block";
+    } else {
+      btn.style.display = "none";
+    }
+  }
+}
+// Final Checkout Function (Updated as per your request)
+function proceedToCheckOut() {
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    
+    if (cart.length === 0) {
+        Swal.fire("Empty Cart", "Please assign at least one training", "warning");
+        return;
+    }
+
+    // Extract only needed fields
+    const items = cart.map(item => ({
+        courseId: item.courseId,
+        trainingRefId: item.trainingRefId,
+        enrolledBy: item.enrolledBy
+    }));
+
+    const paymentMethod = "none"; // As requested
+
+    const paymentData = {
+        items: items,              // Send array of items
+        paymentMethod: paymentMethod
+    };
+
+    console.log('Final Checkout Data:', paymentData);
+
+    saveEnrollmentData(paymentData);
+}
+
+function saveEnrollmentData(data) {
+    console.log("Sending to server:", data);
+
+    $.ajax({
+        type: "POST",
+        url: "subscription-save-enrollment-details",
+        dataType: "json",
+        contentType: "application/json",
+        data: JSON.stringify(data),
+        success: function(response) {
+            console.log("Server Response:", response);
+            if (response.code === "success") {
+                localStorage.setItem('cart', JSON.stringify([])); // Clear cart
+                Swal.fire({
+                    title: 'Enrollment Successful!',
+                    text: response.message || 'Your courses have been enrolled successfully.',
+                    icon: 'success',
+                //    confirmButtonText: 'Go to Dashboard'
+                }).then(() => {
+                 //   localStorage.setItem("activity", "ACT0891");
+                 //   window.location.href = 'student/dashboard';
+                });
+            } else {
+                Swal.fire('Error', response.message || 'Enrollment failed.', 'error');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error("AJAX Error:", error);
+            Swal.fire('Error', 'Something went wrong. Please try again.', 'error');
+        }
+    });
+}
+
 </script>
 </head>
 
@@ -754,6 +1286,9 @@ tab.show();
 													class="nav-link" data-bs-toggle="pill"
 													href="#courseDetails" aria-selected="true" role="tab">Course
 														Details</a></li>
+												<li class="nav-item" role="presentation" id="course-training"><a
+													class="nav-link" data-bs-toggle="pill"
+													href="#courseTraining" aria-selected="true" role="tab">Add Training </a></li>		
 												<!-- <li class="nav-item" role="presentation"
 id="pendingPoints-tab"><a class="nav-link active"
 data-bs-toggle="pill" href="#pendingPoints"
@@ -793,8 +1328,28 @@ aria-selected="false" role="tab">Agenda</a></li> -->
 												<div class="d-flex justify-content-end">
 													<button class="btn m-0 edit-btn" type="button"
 														onclick="nextTab('student-profile')">Previous</button>
+														<button class="btn m-0 edit-btn" type="button"
+														onclick="nextTab('course-training')">Next</button>
 												</div>
-												<div class="card m-2 p-3 shadow-sm" id="courseCard"></div>
+												<div id="courseCard" class="container mt-3" style="max-height: 500px; overflow-y: auto;"></div>
+											</div>
+										</div>
+										
+										<div class="tab-pane show p-2 h-100" id="courseTraining"
+											role="tabpanel">
+											<div class="requisition-tbl d-flex flex-column h-100">
+												<div class="d-flex justify-content-end">
+													<button class="btn m-0 edit-btn" type="button"
+														onclick="nextTab('course-details')">Previous</button>
+												</div>
+												
+												<div id="courseTraining" class="container mt-3" style="max-height: 500px; overflow-y: auto;">
+												
+												
+												
+												
+												</div>
+										
 											</div>
 										</div>
 									</div>
