@@ -1,1687 +1,1476 @@
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org"
-    xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/master}">
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/master}">
 
 <script src="https://cdn.ckeditor.com/4.22.1/standard/ckeditor.js"></script>
 
 <head>
-    <style type="text/css">
-        .ag-theme-alpine {
-            height: calc(100vh - 100px);
-        }
-
-        .subject-card {
-            background-color: #bf05ff;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 15px;
-            color: white;
-        }
-
-        input[type=radio] {
-            margin-right: 5px;
-            position: relative;
-            top: 5px;
-            float: left;
-        }
-
-        .subject-card p {
-            margin-top: 0;
-            margin-bottom: 0;
-            font-size: 12px;
-            font-weight: 400;
-            color: #ffffff9e;
-        }
-
-        .subject-card h5 {
-            margin: 0 0 5px;
-            color: white;
-        }
-
-        .nav-pills {
-            gap: 3px;
-        }
-
-        .step-line {
-            background: #e0e0e0;
-            height: 2px;
-            width: 35vw;
-            position: absolute;
-            top: 30px;
-            z-index: 1;
-        }
-
-        .nav-pills.custom li {
-            background: transparent;
-            margin: 0 30px;
-            z-index: 2;
-        }
-
-        .nav-link.active.custom {
-            background-color: #bf05ff;
-            color: white;
-        }
-
-        .nav-link.custom {
-            color: inherit;
-            border: 1px solid #bf05ff;
-            width: 93px;
-        }
-
-        .coupon .kanan {
-            border-left: 1px dashed #ddd;
-            width: 40% !important;
-            position: relative;
-        }
-
-        .coupon .kanan .info::after,
-        .coupon .kanan .info::before {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background: #dedede;
-            border-radius: 100%;
-        }
-
-        .coupon .kanan .info::before {
-            top: -10px;
-            left: -10px;
-        }
-
-        .coupon .kanan .info::after {
-            bottom: -10px;
-            left: -10px;
-        }
-
-        .coupon .time {
-            font-size: 1.6rem;
-        }
-
-        /* Added for proper tab display */
-        .tab-content>.tab-pane {
-            display: none;
-        }
-
-        .tab-content>.active {
-            display: block;
-        }
-
-        #uploadedWarrDiv_0 i {
-            font-size: 20px;
-            font-weight: 500;
-            cursor: pointer;
-        }
-    </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script type="text/javascript">
-
-
-        let descriptionEditor = null;
-        $(document).ready(function () {
-            function initCKEditor() {
-                if (descriptionEditor) {
-                    try { descriptionEditor.destroy(); } catch (e) { }
-                    descriptionEditor = null;
-                }
-
-                if (!document.getElementById('description')) return;
-
-                descriptionEditor = CKEDITOR.replace('description', {
-                    height: 150,
-                    toolbar: 'Full'
-                });
-
-                // Optional: More reliable ready check
-                descriptionEditor.on('instanceReady', function () {
-                    console.log('CKEditor ready');
-                });
-            }
-
-            function destroyCKEditor() {
-                if (descriptionEditor) {
-                    try { descriptionEditor.destroy(); } catch (e) { }
-                    descriptionEditor = null;
-                }
-            }
-
-            $("#marketingCheck").on("change", function () {
-                if (this.checked) {
-                    $("#marketingCard").show();
-                    $("#couponCard").hide();
-                    initCKEditor();
-                }
-            });
-
-            $("#couponCheck").on("change", function () {
-                if (this.checked) {
-                    $("#couponCard").show();
-                    $("#marketingCard").hide();
-                    destroyCKEditor();
-                }
-            });
-
-            // Initialize grids and other elements
-            var gridDiv = document.querySelector('#myGrid');
-            new agGrid.Grid(gridDiv, gridOptions);
-            viewCoupon();
-
-            var activityGrid = document.querySelector('#activity');
-            new agGrid.Grid(activityGrid, activityOptions);
-
-            /*  var courseGrid = document.querySelector('#myGrid1');
-             new agGrid.Grid(courseGrid, gridOptionsCourse); */
-
-            // Initialize form elements
-            $("#couponForm").hide();
-            $("#cancelBtn").hide();
-            $("#courseDiv").hide();
-            $('#deleteChild').attr("disabled", true);
-            /*  $("#courseAllocation").hide(); */
-
-            // Initialize datetime pickers
-            var dateFormat = 'd-m-Y H:i:s';
-            localStorage.setItem("dateFormat", dateFormat);
-
-            $("#validFromCalendarDate").datetimepicker({
-                format: dateFormat,
-                closeOnDateSelect: true,
-                timepicker: true,
-            }).on("change", function () {
-                $('#validFrom').val($(this).val());
-            });
-
-            $("#validToCalendarDate").datetimepicker({
-                format: dateFormat,
-                closeOnDateSelect: true,
-                timepicker: true,
-            }).on("change", function () {
-                $('#validTo').val($(this).val());
-            });
-
-            // Tab click handlers
-            $('a[data-bs-toggle="pill"]').on('shown.bs.tab', function (e) {
-                var target = $(e.target).attr("href");
-                handleTabClick(target);
-            });
-
-            // Show first tab by default
-            $('#courseDetails a').tab('show');
-
-            
-
-
-            const couponCheck = document.getElementById("couponCheck");
-            const marketingCheck = document.getElementById("marketingCheck");
-            const couponCard = document.getElementById("couponCard");
-            const marketingCard = document.getElementById("marketingCard");
-
-            // Initial state
-            couponCard.style.display = "block";
-            marketingCard.style.display = "none";
-
-            // Toggle logic
-            couponCheck.addEventListener("change", () => {
-                if (couponCheck.checked) {
-                    couponCard.style.display = "block";
-                    marketingCard.style.display = "none";
-                    marketingCheck.checked = false;
-                } else {
-                    couponCard.style.display = "none";
-                }
-            });
-
-            marketingCheck.addEventListener("change", () => {
-                if (marketingCheck.checked) {
-                    marketingCard.style.display = "block";
-                    couponCard.style.display = "none";
-                    couponCheck.checked = false;
-                } else {
-                    marketingCard.style.display = "none";
-                }
-            });
-
-
-
-
-        });
-
-        // Simplified tab handling
-        function handleTabClick(target) {
-            if (target === "#course-overview") {
-                $("#course-overview").show();
-                $("#course-allocation").hide();
-                $("#nextTabBtn").show();
-                $("#prevTabBtn").hide();
-            } else if (target === "#course-allocation") {
-                $("#course-overview").hide();
-                $("#course-allocation").show();
-                $("#nextTabBtn").hide();
-                $("#prevTabBtn").show();
-            }
-        }
-
-        function nextTab(tabId) {
-            $('a[href="#' + tabId + '"]').tab('show');
-        }
-
-        function parseDate(dateStr) {
-            if (!dateStr) return null;
-            let parts = dateStr.split(' ');
-            let datePart = parts[0];
-            let timePart = parts.length > 1 ? parts[1].split(':').map(Number) : [0, 0, 0];
-            let dateParts = datePart.split('-');
-            if (dateParts.length === 3) {
-                if (dateParts[0].length === 4) { // YYYY-MM-DD
-                    return new Date(dateParts[0], dateParts[1] - 1, dateParts[2], ...timePart);
-                } else { // DD-MM-YYYY
-                    return new Date(dateParts[2], dateParts[1] - 1, dateParts[0], ...timePart);
-                }
-            }
-            return null;
-        }
-
-        // Grid and other functions remain the same
-        var columnDefs = [{
-            headerCheckboxSelection: false,
-            headerCheckboxSelectionFilteredOnly: true,
-            checkboxSelection: true,
-            width: 10,
-            sortable: false,
-            filter: false,
-            resizable: true,
-            pinned: 'left'
-        }, {
-            headerName: "Coupon Id",
-            field: "couponId",
-            pinned: 'left',
-            width: 140,
-        }, {
-            headerName: 'Coupon Code',
-            field: "couponNo",
-            width: 135,
-        }, {
-            headerName: 'Status',
-            field: "status",
-            width: 150,
-            cellStyle: { textAlign: 'center' },
-            cellRenderer: function (params) {
-                const status = params.value ? params.value.toLowerCase() : '';
-                const badgeColor = status === 'active' ? 'green' : 'red';
-                const badgeText = status === 'active' ? 'Active' : 'Inactive';
-
-                return `<span>${badgeText}</span>`;
-            }
-        }
-            , {
-            headerName: 'Minimum Price',
-            field: "price",
-            width: 200,
-        }, {
-            headerName: 'Coupon Offer(%)',
-            field: "discount",
-            width: 200,
-        }, {
-            headerName: 'Valid From Date',
-            field: "validFrom",
-            width: 200,
-        }, {
-            headerName: 'Valid To Date',
-            field: "validTo",
-            width: 160,
-        }, {
-            headerName: 'Document',
-            field: "document",
-            width: 150,
-            cellRenderer: function (params) {
-                if (params.value) {
-                    const url = `/document/image/${params.value}`;
-                    let ext = params.value.split('.').pop().toLowerCase();
-                    if (ext === 'pdf') {
-                        return `<button class="btn btn-sm btn-outline-primary" onclick="window.open('${url}', '_blank')">View PDF</button>`;
-                    } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
-                        return `<img src="${url}" alt="Document" style="max-width: 50px; max-height: 50px; border-radius: 3px; cursor: pointer;" onclick="window.open('${url}', '_blank')" />`;
-                    } else {
-                        return `<button class="btn btn-sm btn-outline-secondary" onclick="window.open('${url}', '_blank')">View File</button>`;
-                    }
-                }
-                return '<span class="text-muted">No Document</span>';
-            }
-        },
-        {
-            headerName: 'Description',
-            field: "description",
-            width: 300,
-            cellRenderer: function (params) {
-                if (!params.value) return '<span class="text-muted">—</span>';
-                // Simple HTML sanitisation – CKEditor output is safe
-                return '<div style="white-space: normal; word-wrap: break-word;">' +
-                    params.value + '</div>';
-            }
-        },{
-                headerName: 'Url',
-                field: "trackingUrl",
-                width: 300,
-            
-        }];
-
-        var gridOptions = {
-            columnDefs: columnDefs,
-            rowSelection: 'single',
-            groupSelectsChildren: true,
-            suppressRowClickSelection: true,
-            suppressAggFuncInHeader: true,
-            pagination: true,
-            paginationPageSize: 15,
-            defaultColDef: {
-                sortable: true,
-                filter: true,
-                resizable: true,
-                width: 251,
-                height: 10
-            },
-            onSelectionChanged: rowSelect,
-        };
-
-
-        // for activity table
-        var activityDefs = [
-            {
-                headerCheckboxSelection: true,
-                headerCheckboxSelectionFilteredOnly: true,
-                checkboxSelection: true,
-                sortable: false,
-                filter: false,
-                resizable: true,
-                width: 30,
-                pinned: 'left'
-            },
-            {
-                headerName: "Course ID",
-                field: "courseId",
-                pinned: 'left',
-                hide: true
-            }, {
-                headerName: "Course Name",
-                field: "courseName",
-                pinned: 'left',
-            }, {
-                headerName: "Duration",
-                field: "duration"
-            }, {
-                headerName: "Start Date",
-                field: "startDate",
-                width: 110,
-            }, {
-                headerName: "End Date",
-                field: "endDate"
-            }, {
-                headerName: "Status",
-                field: "patientStatus"
-            }];
-
-
-        // let the grid know which columns and what data to use product table
-        var activityOptions = {
-            columnDefs: activityDefs,
-            rowSelection: 'multiple',
-            groupSelectsChildren: true,
-            suppressRowClickSelection: true,
-            suppressAggFuncInHeader: true,
-            defaultColDef: {
-                sortable: true,
-                filter: true,
-                resizable: true,
-                width: 200
-            },
-            onSelectionChanged: onSelectionChangeChild,
-
-        };
-
-        //var childid = "";
-        function onSelectionChangeChild() {
-            var selectedNodes = activityOptions.api.getSelectedNodes();
-            var selectedData = selectedNodes.map(node => node.data);
-            // childid= selectedData.map(node => node.slnoId);
-            var selectedRows = activityOptions.api.getSelectedRows();
-            var rowCount = 0;
-            selectedRows.forEach(function (i) {
-                rowCount = rowCount + 1;
-            });
-            if (rowCount > 0) {
-                $('#newchild').attr("disabled", false);
-                $('#deleteChild').attr("disabled", true);
-
-            } else {
-                $('#newchild').attr("disabled", true);
-                $('#deleteChild').attr("disabled", false);
-            }
-        }
-var couponId = "";
-        function rowSelect() {
-            var selectedRows = gridOptions.api.getSelectedRows();
-            if (selectedRows.length > 0) {
-                $('#dltBtn').show();
-                $("#couponDiv").show();
-                $("#couponForm").hide();
-                $("#cancelBtn").hide();
-                $("#addBtn").show();
-
-                var rowData = selectedRows[0];
-                var isMarketing = (!rowData.discount || rowData.discount === null || rowData.discount === '');
-                getCourseDetails(rowData.couponId);
-                // Set title
-                $('.lead').text(isMarketing ? rowData.couponNo : 'Coupon Detail goes here');
-
-                // Set short info dynamically
-                const shortInfoElement = document.querySelector('.text-muted.mb-0');
-                if (isMarketing) {
-                    shortInfoElement.textContent = 'Marketing promotion details';
-                } else {
-                    shortInfoElement.textContent = 'Short info about voucher';
-                }
-
-                // Set status
-                $("#ststusBadge").text(rowData.status);
-
-                // Calculate days left/valid
-                let daysText;
-                if (rowData.daysValid) {
-                    daysText = rowData.daysValid + " Days";
-                } else {
-                    const from = parseDate(rowData.validFrom);
-                    const to = parseDate(rowData.validTo);
-                    if (from && to) {
-                        const diff = Math.ceil((to - from) / (1000 * 60 * 60 * 24));
-                        daysText = diff + " days";
-                    } else {
-                        daysText = "0 days";
-                    }
-                }
-                $("#daysleft").text(daysText);
-
-                // Handle QR or Document in icon-container
-                const qrImg = document.getElementById("qrImage");
-                if (!isMarketing) {
-                    // Generate QR for coupon
-                    var qrData = JSON.stringify({
-                        CouponNo: rowData.couponNo,
-                        Minimum_Price: rowData.price,
-                        Discount: rowData.discount,
-                        ValidFrom: rowData.validFrom,
-                        ValidTo: rowData.validTo,
-                        couponId : rowData.couponId,
-                        
-                    });
-                    
-                 
-
-                    var tempContainer = document.createElement("div");
-                    new QRCode(tempContainer, {
-                        text: qrData,
-                        width: 150,
-                        height: 150,
-                        colorDark: "#000000",
-                        colorLight: "#ffffff",
-                        correctLevel: QRCode.CorrectLevel.H
-                    });
-
-                    setTimeout(function () {
-                        var generatedImg = tempContainer.querySelector('img');
-                        if (generatedImg) {
-                            qrImg.src = generatedImg.src;
-                        }
-                    }, 100);
-                    qrImg.alt = "QR Code";
-                } else if (rowData.document) {
-                    // Show document preview for marketing
-                    const docUrl = `/document/image/${rowData.document}`;
-                    let ext = rowData.document.split('.').pop().toLowerCase();
-                    if (ext === 'pdf') {
-                        qrImg.src = '/images/pdf-icon.png'; // Assume you have a pdf icon
-                        qrImg.alt = "PDF Document";
-                    } else {
-                        qrImg.src = docUrl;
-                        qrImg.alt = "Document";
-                    }
-                } else {
-                    qrImg.src = '/images/default.png';
-                    qrImg.alt = "No Document";
-                }
-                
-
-                // Document preview below - always ensure it's visible and updated
-                const docPreview = document.getElementById('documentPreview');
-                docPreview.innerHTML = '';
-                docPreview.style.display = 'block'; // Ensure visibility
-                if (rowData.document) {
-                    const url = `/document/image/${rowData.document}`;
-                    let ext = rowData.document.split('.').pop().toLowerCase();
-                    let html;
-                    if (ext === 'pdf') {
-                        html = `<a href="${url}" target="_blank" class="btn btn-primary btn-sm">View PDF</a>`;
-                    } else {
-                        html = `<img src="${url}" alt="Document" style="max-width: 200px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;" onclick="window.open('${url}', '_blank')" />`;
-                    }
-                    docPreview.innerHTML = html;
-                } else {
-                    docPreview.innerHTML = '<span class="text-muted">No Document Available</span>';
-                }
-            } else {
-                $('#dltBtn').hide();
-                add();
-            }
-            
-            couponId = "";
-        }
-
-        function add() {
-            $('.formValidation').remove();
-            enableFields();
-            $("#couponDiv").hide();
-            $("#couponForm").show();
-            $("#saveBtn").show();
-            $("#cancelBtn").show();
-            $("#addBtn").hide();
-            $("#dltBtn").hide();
-            $("#couponId").val('');
-            $("#marketingTrackUrl").val('');
-            $("#trackUrl").val('');
-            $("#couponNo").val('');
-            $("#discount").val('');
-            $("#price").val('');
-            $("#validFrom").val('');
-            $("#validTo").val('');
-            $("#status").val('');
-            $("#marketingId").val('');
-            $("#marketName").val('');
-            $("#starmarketNametDate").val('');
-            $("#endDate").val('');
-            $("#marketingStatus").val('');
-            // Clear document preview
-            clearFileUploadFields();
-            document.getElementById('documentPreview').innerHTML = '';
-            if (descriptionEditor) descriptionEditor.setData('');
-        }
-
-        function cancelCoupon() {
-            $("#couponDiv").show();
-            $("#couponForm").hide();
-            $("#saveBtn").hide();
-            $("#cancelBtn").hide();
-            $("#addBtn").show();
-            $("#dltBtn").show();
-            if (descriptionEditor) descriptionEditor.setData('');
-            viewCoupon();
-        }
-
-        function enableFields() {
-            let fieldIds = ["validTo", "validFrom", "discount", "couponNo", "price", "status","trackUrl"];
-            fieldIds.forEach(id => {
-                $("#" + id).prop("disabled", false);
-            });
-        }
-
-        function viewCoupon() {
-            $('.loader').show();
-            agGrid.simpleHttpRequest({
-                url: 'promotion-marketing-view'
-            }).then(function (data) {
-                $("#course-overview").show();
-                var jsonData = JSON.parse(data.body);
-                var allData = jsonData.coupon;
-                gridOptions.api.setRowData(allData);
-                var firstRow = gridOptions.api.getDisplayedRowAtIndex(0);
-                if (firstRow) {
-                    gridOptions.api.selectNode(firstRow, true);
-                }
-            });
-            $('.loader').hide();
-        }
-
-        function addCoupon() {
-            gridOptions.api.deselectAll();
-        }
-
-
-        function saveFile(event) {
-            const fileInput = $("#uploadWarDoc_0")[0];
-            const uFile = fileInput.files[0];
-            if (!uFile) return;
-
-            let fileName = uFile.name;
-            const extension = fileName.split(".").pop().toLowerCase();
-            const iURL = URL.createObjectURL(uFile);
-
-            // Define valid image extensions
-            const imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp"];
-
-            // Clear old preview
-            $("#uploadedWarrDiv_0").html("");
-
-            // Check if the file is an image
-            if (imageExtensions.includes(extension)) {
-                // Load image to check dimensions
-                const img = new Image();
-                img.src = iURL;
-
-                img.onload = function () {
-                    if (img.width !== 1920 || img.height !== 1080) {
-                        // Invalid dimensions, show error and reset
-                        alert("Image must be 1920x1080 pixels. Please upload a valid image.");
-                        clearFileUploadFields();
-                        return;
-                    }
-
-                    // Valid image dimensions, proceed with preview
-                    displayFilePreview(iURL, fileName, extension);
-                };
-
-                img.onerror = function () {
-                    alert("Failed to load image. Please try another file.");
-                    clearFileUploadFields();
-                };
-            } else {
-                // Non-image file (e.g., PDF), proceed without dimension check
-                displayFilePreview(iURL, fileName, extension);
-            }
-        }
-
-        // Helper function to display file preview
-        function displayFilePreview(iURL, fileName, extension) {
-            // Choose icon
-            let docIcon;
-            if (extension === "pdf") {
-                docIcon = '<i class="bi bi-file-earmark-pdf" style="font-size:30px; color:#d32f2f;"></i>';
-            } else {
-                docIcon = '<i class="bi bi-image" style="font-size:30px; color:#28a745;"></i>';
-            }
-
-            // Show icon as clickable preview
-            $("#uploadedWarrDiv_0").html('<a href="' + iURL + '" target="_blank">' + docIcon + '</a>');
-            $("#imageWarrName_0").text(fileName);
-
-            // Add remove (X) icon
-            $("#imageRemoveBtn_0").html(
-                '<i class="bi bi-x-lg" style="color:red; cursor:pointer;" onclick="clearFileUploadFields();"></i>'
-            );
-
-            // Optionally send file to backend
-            /*
-            const formData = new FormData();
-            formData.append('file', uFile);
-            fetch('/upload', { method: 'POST', body: formData })
-              .then(res => res.json())
-              .then(data => console.log('Uploaded:', data))
-              .catch(err => console.error('Upload error:', err));
-            */
-        }
-
-        // Reset UI on remove
-        function clearFileUploadFields() {
-            $("#uploadWarDoc_0").val("");
-            $("#uploadedWarrDiv_0").html(
-                '<i class="ti-plus" id="addIcon_0" style="color:#000; cursor:pointer; font-size:22px" onclick="$(\'#uploadWarDoc_0\').click();"></i>'
-            ).removeData("original-file");
-            $("#imageWarrName_0").text("");
-            $("#imageRemoveBtn_0").html("");
-        }
-        function editPromotion() {
-            var selectedRows = gridOptions.api.getSelectedRows();
-            var selectedNodes = gridOptions.api.getSelectedNodes();
-            var selectedData = selectedNodes.map(node => node.data);
-            var itemId = selectedData[0].couponId;
-
-            $.ajax({
-                url: 'promotion-marketing-edit?couponId=' + itemId,
-                method: 'GET',
-                success: function (response) {
-                    if (response.code === "success") {
-                        $("#couponDiv").hide();
-                        $("#couponForm").show();
-                        $("#saveBtn").show();
-                        $("#cancelBtn").show();
-                        $("#addBtn").hide();
-                        $("#dltBtn").hide();
-
-                        var parsedBody = JSON.parse(response.body)[0];
-                        var isMarketing = (!parsedBody.discount || parsedBody.discount === null || parsedBody.discount === '');
-
-                        if (isMarketing) {
-                            // === MARKETING MODE ===
-                            $("#marketingCheck").prop("checked", true).trigger("change");
-                            $("#couponCheck").prop("checked", false);
-
-                            $("#marketingId").val(parsedBody.couponId);
-                            $("#marketName").val(parsedBody.couponNo);
-                            $("#starmarketNametDate").val(parsedBody.validFrom.split(' ')[0]);
-                            $("#endDate").val(parsedBody.validTo.split(' ')[0]);
-                            $("#marketingStatus").val(parsedBody.status);
-                            $("#marketingTrackUrl").val(parsedBody.trackingUrl);
-                            //$("#description").val(parsedBody.description);
-                            CKEDITOR.instances['description'].setData(parsedBody.description);
-
-
-                            // === FIX 1: Properly init + set CKEditor ===
-                           // destroyCKEditor(); // Ensure clean state
-                          //  initCKEditor();
-
-                            // Wait for instanceReady event
-                            // setTimeout(() => {
-                            //     if (descriptionEditor) {
-                            //         descriptionEditor.setData(parsedBody.description || "");
-                            //     }
-                            // }, 500);
-
-                            // === FIX 2: Restore Document with Remove Button ===
-                            clearFileUploadFields(); // Reset UI
-                            if (parsedBody.document) {
-                                const url = `/document/image/${parsedBody.document}`;
-                                const fileName = parsedBody.document;
-                                const ext = fileName.split('.').pop().toLowerCase();
-
-                                // Store original filename in hidden field or data attr if needed
-                                $("#uploadedWarrDiv_0").data("original-file", fileName);
-
-                                const icon = ext === 'pdf'
-                                    ? '<i class="bi bi-file-earmark-pdf" style="font-size:30px; color:#d32f2f;"></i>'
-                                    : '<i class="bi bi-image" style="font-size:30px; color:#28a745;"></i>';
-
-                                $("#uploadedWarrDiv_0").html(`<a href="${url}" target="_blank">${icon}</a>`);
-                                $("#imageWarrName_0").text(fileName);
-                                $("#imageRemoveBtn_0").html(
-                                    '<i class="bi bi-x-lg" style="color:red; cursor:pointer;" onclick="clearFileUploadFields();"></i>'
-                                );
-                            }
-
-                        } else {
-                            // === COUPON MODE ===
-                            $("#couponCheck").prop("checked", true).trigger("change");
-                            $("#marketingCheck").prop("checked", false);
-
-                            $("#couponId").val(parsedBody.couponId);
-                            $("#couponNo").val(parsedBody.couponNo);
-                            $("#discount").val(parsedBody.discount);
-                            $("#price").val(parsedBody.price);
-                            $("#validFrom").val(parsedBody.validFrom);
-                            $("#validTo").val(parsedBody.validTo);
-                            $("#status").val(parsedBody.status);
-                            $("#trackUrl").val(parsedBody.trackingUrl);
-                            
-                            clearFileUploadFields();
-                            destroyCKEditor();
-                        }
-                    }
-                },
-                error: function (xhr, status, error) {
-                    console.error('AJAX Error:', status, error);
-                }
-            });
-        }
-        //
-        function deleteCoupon() {
-
-            var selectedRows = gridOptions.api.getSelectedRows();
-            var selectedNodes = gridOptions.api.getSelectedNodes();
-            var selectedData = selectedNodes.map(node => node.data);
-
-            var couponId = selectedData[0].couponId;
-
-
-            $.ajax({
-                type: "GET",
-                url: "promotion-marketing-delete?couponId=" + couponId,
-                async: false,
-                success: function (response) {
-                    if (response.code === "success") {
-                        toastr.success(response.message);
-
-                        viewCoupon();
-                        setTimeout(() => {
-                            if (gridOptions.api) {
-                                gridOptions.api.getDisplayedRowAtIndex(0)?.setSelected(true);
-                            }
-                        }, 300);
-                    }
-                },
-                error: function (data) {
-                    console.error('Delete AJAX error:', data);
-                }
-            });
-        }
-
-        var shouldHideNextTabBtn = false;
-        // function saveCoupon() {
-        //     let allRowData = [];
-        //     var validation = true;
-
-        //     var couponId = $("#couponId").val();
-        //     var couponNo = $("#couponNo").val();
-        //     var discount = $("#discount").val();
-        //     var price = $("#price").val();
-        //     var validFrom = $("#validFrom").val();
-        //     var validTo = $("#validTo").val();
-        //     var status = $("#status").val();
-
-        //     activityOptions.api.forEachNode(function (node) {
-        //         let rowData = {};
-
-        //         activityDefs.forEach(function (column) {  // use 'activityDefs' directly
-        //             const field = column.field;
-        //             if (field) { // some columns (like checkbox column) have no 'field'
-        //                 rowData[field] = node.data[field] || "";
-        //             }
-        //         });
-
-        //         allRowData.push(rowData);
-        //     });
-
-
-
-        //     if (couponNo === "") {
-        //         toastr.error("Coupon Code is required");
-        //         return;
-        //     }
-        //     if (discount === "") {
-        //         toastr.error("Discount is required");
-        //         return;
-        //     }
-        //     if (isNaN(discount) || Number(discount) <= 0) {
-        //         toastr.error("Please enter a valid Discount (%) greater than 0");
-        //         return;
-        //     }
-        //     if (price === "") {
-        //         toastr.error("Minimum Purchase Price is required");
-        //         return;
-        //     }
-        //     if (isNaN(price) || Number(price) < 0) {
-        //         toastr.error("Please enter a valid Minimum Purchase Price (>= 0)");
-        //         return;
-        //     }
-        //     if (validFrom === "") {
-        //         toastr.error("Valid From date is required");
-        //         return;
-        //     }
-        //     if (validTo === "") {
-        //         toastr.error("Valid To date is required");
-        //         return;
-        //     }
-        //     if (status === "") {
-        //         toastr.error("Status must be selected");
-        //         return;
-        //     }
-        //     let recordJsonData = {
-        //         couponId: couponId,
-        //         couponNo: couponNo,
-        //         discount: discount,
-        //         price: price,
-        //         validFrom: validFrom,
-        //         validTo: validTo,
-        //         status: status,
-        //         rows: allRowData
-
-        //     };
-
-        //     let jsonData = JSON.stringify(recordJsonData);
-        //     console.log("Record Ag Grid Data======>", jsonData);
-
-
-
-
-        //     // AJAX call to save the data
-        //     $.ajax({
-        //         url: 'promotion-marketing-save-data',
-        //         type: 'POST',
-        //         contentType: 'application/json',
-        //         data: jsonData,
-        //         success: function (response) {
-        //             if (response.code == "success") {
-        //                 toastr.success(response.message);
-        //                 cancelCoupon();
-        //                 shouldHideNextTabBtn = true; // tell the tab function not to show it
-        //                 const tabElement = document.querySelector('#' + "courseDetails" + ' a');
-        //                 tabElement.click();
-        //             }
-        //         },
-        //         error: function (xhr, status, error) {
-        //             console.log("Error saving data:", error);
-        //         }
-        //     });
-
-        // }
-
-
-        function saveCoupon() {
-            let isMarketing = $("#marketingCheck").is(":checked");
-            let recordJsonData = {};
-
-            if (isMarketing) {
-                var marketingId = $("#marketingId").val();
-                var marketName = $("#marketName").val().trim();
-                var startDate = $("#starmarketNametDate").val();
-                var endDate = $("#endDate").val();
-                var marketingStatus = $("#marketingStatus").val();
-                var trackingUrl = $("#marketingTrackUrl").val();
-
-                // === Get CKEditor Data Safely ===
-                let description = "";
-                if (descriptionEditor && typeof descriptionEditor.getData === 'function') {
-                    description = descriptionEditor.getData();
-                } else {
-                    toastr.error("Description editor not ready");
-                    return;
-                }
-
-                if (!marketName) return toastr.error("Marketing Name is required");
-                if (!startDate) return toastr.error("Start Date is required");
-                if (!endDate) return toastr.error("End Date is required");
-                if (!marketingStatus) return toastr.error("Status is required");
-                if (!description.trim()) return toastr.error("Description is required");
-
-                recordJsonData = {
-                    type: "marketing",
-                    marketingId: marketingId,
-                    marketName: marketName,
-                    startDate: startDate,
-                    endDate: endDate,
-                    status: marketingStatus,
-                    description: description,
-                    trackingUrl: trackingUrl,
-                    originalDocument: $("#uploadedWarrDiv_0").data("original-file") || "" // Send old filename
-                };
-
-            } else {
-            	
-            	    let allRowData = [];
-            	    var validation = true;
-
-            	    var couponId = $("#couponId").val();
-            	    var couponNo = $("#couponNo").val();
-            	    var discount = $("#discount").val();
-            	    var price = $("#price").val();
-            	    var validFrom = $("#validFrom").val();
-            	    var validTo = $("#validTo").val();
-            	    var status = $("#status").val();
-            	    var trackingUrl = $("#trackUrl").val();
-
-            	    activityOptions.api.forEachNode(function (node) {
-            	        let rowData = {};
-
-            	        activityDefs.forEach(function (column) {
-            	            const field = column.field;
-            	            if (field) {
-            	                rowData[field] = node.data[field] || "";
-            	            }
-            	        });
-
-            	        allRowData.push(rowData);
-            	    });
-
-            	    if (couponNo === "") return toastr.error("Coupon Code is required");
-            	    if (discount === "") return toastr.error("Discount is required");
-            	    if (isNaN(discount) || Number(discount) <= 0)
-            	        return toastr.error("Please enter a valid Discount (%) greater than 0");
-            	    if (price === "") return toastr.error("Minimum Purchase Price is required");
-            	    if (isNaN(price) || Number(price) < 0)
-            	        return toastr.error("Please enter a valid Minimum Purchase Price (>= 0)");
-            	    if (validFrom === "") return toastr.error("Valid From date is required");
-            	    if (validTo === "") return toastr.error("Valid To date is required");
-            	    if (status === "") return toastr.error("Status must be selected");
-
-            	    // ✅ Add type: "coupon" here
-            	    recordJsonData = {
-            	        type: "coupon",
-            	        couponId: couponId,
-            	        couponNo: couponNo,
-            	        discount: discount,
-            	        price: price,
-            	        validFrom: validFrom,
-            	        validTo: validTo,
-            	        status: status,
-            	        trackingUrl: trackingUrl,
-            	        rows: allRowData
-            	    };
-            	
-            
-            }
-
-            // === FormData with Conditional File ===
-            let formData = new FormData();
-            formData.append('data', JSON.stringify(recordJsonData));
-
-            if (isMarketing) {
-                const fileInput = $("#uploadWarDoc_0")[0];
-                if (fileInput.files[0]) {
-                    // New file selected → send it
-                    formData.append('file', fileInput.files[0]);
-                }
-                // If no new file, backend should keep original (based on originalDocument)
-            }
-
-            $.ajax({
-                url: 'promotion-marketing-save-data',
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function (response) {
-                    if (response.code === "success") {
-                        toastr.success(response.message);
-                        cancelCoupon();
-                        $('#courseDetails a').tab('show');
-                    } else {
-                        toastr.error(response.message || "Save failed");
-                    }
-                },
-                error: function () {
-                    toastr.error("Save failed");
-                }
-            });
-        }
-
-        function getCourseDetails(couponId) {
-            agGrid.simpleHttpRequest({
-                url: "promotion-marketing-course-view?id=" +couponId,
-                
-            }).then(function (response) {
-                if (response.code === "success") {
-                    const responseBody = JSON.parse(response.body);
-                    const courseData = responseBody.viewCourses;
-                    activityOptions.api.setRowData(courseData);
-                    
-                    activityOptions.api.setRowData(courseData);
-                    console.log('Loaded quizzes:', courseData);
-
-                    if (couponId) {
-                    	activityOptions.api.forEachNode(function(node) {
-                            if (node.data && node.data.couponId === couponId) {
-                                node.setSelected(true);
-                            }
-                        });
-                    } else {
-                        // No course: deselect all
-                        activityOptions.api.deselectAll();
-                    }
-                    
-                } else {
-                    console.error("Failed to fetch data");
-                }
-            });
-        }
-
-        // Other functions remain the same...
-        
-        
-        
-        // Save Quiz function - Keep current selections (now saved), just disable edit
-function openBrowseCourse() {
-        	
-	   var selectedRowsGrid = gridOptions.api.getSelectedRows();
-       var selectedNodesGrid = gridOptions.api.getSelectedNodes();
-       var selectedDataGrid = selectedNodesGrid.map(node => node.data);
-
-       var couponId = selectedDataGrid[0].couponId;   	
-        	
-        	
-        	
-    // Stop any editing if needed
-    activityOptions.api.stopEditing();
-    
-    // Get CURRENT selected rows (user's edited selections)
-    const selectedNodes = activityOptions.api.getSelectedNodes();
-    const selectedData = selectedNodes.map(node => node.data);
-    
-    // Extract quiz codes/IDs
-    const selectedActive = selectedData.map(course => course.courseId); // Adjust field if needed
-    
-  //  const couponId = $("#couponId").val();
-    alert(couponId)
-    if (!couponId) {
-        toastr.error("No coupon selected. Please select a coupon first.");
-        return;
-    }
-    
-    // Optional: Warn if no selections
-    if (selectedActive.length === 0) {
-        if (!confirm("No Course selected. This will unmap all Courses from the coupon. Proceed?")) {
-            return;
-        }
-    }
-    
-    // Prepare payload - send the CURRENT selections to update mappings
-    let payload = {
-    		couponId: couponId,
-        activityMappings: selectedActive.map(courseId => ({
-        	couponId: couponId,
-        	courseId: courseId,
-            status: 'active' // Or whatever default status
-        }))
-    };
-    
-    console.log("Saving :", payload);
-    
-    // AJAX call (adjust endpoint/payload as per backend)
-    $.ajax({
-        url: 'promotion-marketing-coupon-save', // Replace with your actual save endpoint
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify(payload),
-        success: function (response) {
-            if (response.code === "Success" || response.message === "Success") {
-                toastr.success(response.message || "Allocated successfully!");
-                
-                
-            } else {
-                toastr.error(response.message || "Failed to allocate.");
-            }
-        },
-        error: function (xhr, status, error) {
-            console.error("Error s:", xhr.responseText);
-            toastr.error("Error " + (xhr.responseText || "Unknown error"));
-        }
-    });
-}
-
-function editCourseDetails(courseId) {
-    $.ajax({
-        type: "GET",
-        url: "academic-course-edit?Id=" + courseId,
-        async: false,
-        success: function (response) {
-            if (response.code === "success") {
-                const courseDetails = JSON.parse(response.body);
-                
-                if (courseDetails == null) {
-                    // Handle null case
-                } else {
-                    console.log('dddddddddddd', courseDetails);
-                    
-                    // Use direct object properties since courseDetails is an object, not an array
-                    $("#courseId").val(courseDetails.courseId || "");
-                    $("#courseTittle").val(courseDetails.courseTitle || "");  // Note: Response uses "courseTitle", not "courseTittle"
-                    $("#price").val(courseDetails.price || "");  // Assuming "price" exists; add if missing in response
-                    $("#startDate").val(courseDetails.startDate || "");
-                    $("#endDate").val(courseDetails.endDate || "");
-                    $("#patientStatus").val(courseDetails.patientStatusId || "");  // Assuming this exists
-                    
-                    // FIXED: 'dec' is plain escaped HTML (not base64), so no atob needed - use directly
-                    let decodedDesc = courseDetails.dec || courseDetails.courseDesc || "";
-                    if (CKEDITOR.instances.courseDesc) {
-                        CKEDITOR.instances.courseDesc.setData(decodedDesc);
-                    } else {
-                        console.error("CKEditor instance for 'courseDesc' not found.");
-                    }
-                    
-                    // Handle document preview
-                    if (!courseDetails.documentURL || courseDetails.documentURL === '') {
-                        $("#uploadedWarrDiv_0").html("");
-                        $("#imageWarrName_0").html("");
-                        $("#imageRemoveBtn_0").empty();
-                    } else {
-                        $("#uploadedWarrDiv_0").html("");
-                        var LightImg = "<div class='uploadicon position-l'><a class='example-image-link' href='" + courseDetails.documentURL + "' title='" + (courseDetails.fileName || '') + "' target='_blank'><i class='fa fa-file-o' style='color: blue'></i></a></div>";
-                        $("#uploadedWarrDiv_0").html(LightImg);
-                        $("#imageWarrName_0").html(courseDetails.fileName || "");
-                        /* $("#imageRemoveBtn_0").html('<i style="color: red; cursor: pointer;" class="bi bi-x-lg" onclick="clearFileUploadFields();"></i>'); */
-                    }
-                    
-                    $("#rate").val(courseDetails.rate || "");
-                    $("#currencySymbol").val(courseDetails.currencySymbol || "");
-                    $("#level").val(courseDetails.level || "");
-                    $("#priceType").val(courseDetails.priceType || "B2C");
-                    $("#customers").val(courseDetails.customers ? JSON.parse(courseDetails.customers) : "");
-                    
-                    // Handle duration parsing
-                    var duration = courseDetails.duration || "";
-                    var hours = 0;
-                    var minutes = 0;
-                    if (duration) {
-                        var parts = duration.split(" ");
-                        for (var part of parts) {
-                            if (part.endsWith("h")) {
-                                hours = parseInt(part.replace("h", "")) || 0;
-                            } else if (part.endsWith("m")) {
-                                minutes = parseInt(part.replace("m", "")) || 0;
-                            }
-                        }
-                    }
-                    $("#durationHours").val(hours);
-                    $("#durationMinutes").val(minutes);
-                    togglePriceFields();
-                    
-                    // FIXED: Handle Category and Subcategory setting by matching names (since IDs may be missing in response)
-                    const categoryName = courseDetails.categoryName || '';
-                    if (categoryName) {
-                        // Find option by text and set value to its key (ID)
-                        const categoryOption = $('#parentCategory option').filter(function() {
-                            return $(this).text().trim() === categoryName.trim();
-                        }).first();
-                        if (categoryOption.length > 0) {
-                            const categoryId = categoryOption.val();
-                            $("#parentCategory").val(categoryId);
-                            // FIXED: Load subcategories WITHOUT passing subcategory name as ID (load all, then set by name below)
-                            getsubcategoryList(categoryId, '');
-                        } else {
-                            console.warn('Category name "' + categoryName + '" not found in options');
-                            // Fallback: If category not found, still try to load subcategories if possible (e.g., from existing ID)
-                            if (courseDetails.parentCategoryId) {
-                                getsubcategoryList(courseDetails.parentCategoryId, '');
-                            }
-                        }
-                    }
-                    
-                    // Set subcategory after parent loads (increased delay for AJAX completion; set by name matching)
-                    const subCategoryName = courseDetails.subCategoryName || '';
-                    if (subCategoryName) {
-                        setTimeout(() => {
-                            const subOption = $('#subcategory option').filter(function() {
-                                return $(this).text().trim() === subCategoryName.trim();
-                            }).first();
-                            if (subOption.length > 0) {
-                                $("#subcategory").val(subOption.val()).trigger('change');
-                                console.log('Subcategory set successfully:', subCategoryName);
-                            } else {
-                                console.warn('Subcategory name "' + subCategoryName + '" not found in options');
-                            }
-                        }, 300);  // Increased timeout to 300ms for AJAX to complete
-                    }
-                    
-                    // Optional: Load training details if courseCategoryType exists
-                    if (courseDetails.courseCategoryType && Array.isArray(courseDetails.courseCategoryType)) {
-                        getTrainingDetails(courseId);  // Assuming this function exists to populate training tabs
-                    }
-                    
-                    // Optional: Handle image if "image" field exists
-                    if (courseDetails.image) {
-                        // Set preview for course image if needed
-                        console.log('Course Image URL:', courseDetails.image);
-                    }
-                    
-                    // Optional: Populate structured description fields if separate sections exist
-                    if (courseDetails.courseOverview) {
-                        // Assuming additional CKEditor instances for sections; adjust as needed
-                        // e.g., if (CKEDITOR.instances.courseOverview) CKEDITOR.instances.courseOverview.setData(courseDetails.courseOverview);
-                    }
-                    if (courseDetails.targetGroup) {
-                        // e.g., if (CKEDITOR.instances.targetGroup) CKEDITOR.instances.targetGroup.setData(courseDetails.targetGroup);
-                    }
-                    if (courseDetails.conceptsCovered) {
-                        // e.g., if (CKEDITOR.instances.conceptsCovered) CKEDITOR.instances.conceptsCovered.setData(courseDetails.conceptsCovered);
-                    }
-                    if (courseDetails.examAndPrerequisite) {
-                        // e.g., if (CKEDITOR.instances.examAndPrerequisite) CKEDITOR.instances.examAndPrerequisite.setData(courseDetails.examAndPrerequisite);
-                    }
-                }
-            }
-        },
-        error: function (error) {
-            console.error("Error fetching course details:", error);
-        }
-    });
-}  
-        
-    </script>
+	<style type="text/css">
+		.ag-theme-alpine {
+			height: calc(100vh - 100px);
+		}
+
+		.subject-card {
+			background-color: #bf05ff;
+			border-radius: 10px;
+			padding: 15px;
+			margin-bottom: 15px;
+			color: white;
+		}
+
+		input[type=radio] {
+			margin-right: 5px;
+			position: relative;
+			top: 5px;
+			float: left;
+		}
+
+		.subject-card p {
+			margin-top: 0;
+			margin-bottom: 0;
+			font-size: 12px;
+			font-weight: 400;
+			color: #ffffff9e;
+		}
+
+		.subject-card h5 {
+			margin: 0 0 5px;
+			color: white;
+		}
+
+		.nav-pills {
+			gap: 3px;
+		}
+
+		.step-line {
+			background: #e0e0e0;
+			height: 2px;
+			width: 35vw;
+			position: absolute;
+			top: 30px;
+			z-index: 1;
+		}
+
+		.nav-pills.custom li {
+			background: transparent;
+			margin: 0 30px;
+			z-index: 2;
+		}
+
+		.nav-link.active.custom {
+			background-color: #bf05ff;
+			color: white;
+		}
+
+		.nav-link.custom {
+			color: inherit;
+			border: 1px solid #bf05ff;
+			width: 93px;
+		}
+
+		.coupon .kanan {
+			border-left: 1px dashed #ddd;
+			width: 40% !important;
+			position: relative;
+		}
+
+		.coupon .kanan .info::after,
+		.coupon .kanan .info::before {
+			content: '';
+			position: absolute;
+			width: 20px;
+			height: 20px;
+			background: #dedede;
+			border-radius: 100%;
+		}
+
+		.coupon .kanan .info::before {
+			top: -10px;
+			left: -10px;
+		}
+
+		.coupon .kanan .info::after {
+			bottom: -10px;
+			left: -10px;
+		}
+
+		.coupon .time {
+			font-size: 1.6rem;
+		}
+
+		/* Added for proper tab display */
+		.tab-content>.tab-pane {
+			display: none;
+		}
+
+		.tab-content>.active {
+			display: block;
+		}
+
+		#uploadedWarrDiv_0 i {
+			font-size: 20px;
+			font-weight: 500;
+			cursor: pointer;
+		}
+
+		/* =========================
+		   Enhanced upload UI
+		   ========================= */
+		.upload-container {
+			padding: 10px 12px;
+			border: 1px solid #e7e7e7;
+			border-radius: 10px;
+			background: #fafafa;
+		}
+
+		#uploadedWarrDiv_0 {
+			width: 56px;
+			height: 56px;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			border: 2px dashed #cfcfcf;
+			border-radius: 12px;
+			background: #fff;
+			transition: all .2s ease;
+			cursor: pointer;
+			box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+		}
+
+		#uploadedWarrDiv_0:hover {
+			border-color: #bf05ff;
+			transform: translateY(-1px);
+			box-shadow: 0 6px 16px rgba(0, 0, 0, .08);
+		}
+
+		.upload-thumb {
+			width: 52px;
+			height: 52px;
+			border-radius: 10px;
+			object-fit: cover;
+			display: block;
+		}
+
+		#imageWarrName_0 {
+			max-width: 380px;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		#uploadHint_0 {
+			display: block;
+			margin-top: 6px;
+			font-size: 12px;
+		}
+
+		.upload-hint-info {
+			color: #6c757d;
+		}
+
+		.upload-hint-warn {
+			color: #b26a00;
+		}
+
+		.upload-hint-error {
+			color: #c62828;
+		}
+
+		.upload-hint-ok {
+			color: #2e7d32;
+		}
+	</style>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+	<script type="text/javascript">
+		let descriptionEditor = null;
+
+		$(document).ready(function () {
+			function initCKEditor() {
+				if (descriptionEditor) {
+					try { descriptionEditor.destroy(); } catch (e) { }
+					descriptionEditor = null;
+				}
+
+				if (!document.getElementById('description')) return;
+
+				descriptionEditor = CKEDITOR.replace('description', {
+					height: 150,
+					toolbar: 'Full'
+				});
+
+				descriptionEditor.on('instanceReady', function () {
+					console.log('CKEditor ready');
+				});
+			}
+
+			function destroyCKEditor() {
+				if (descriptionEditor) {
+					try { descriptionEditor.destroy(); } catch (e) { }
+					descriptionEditor = null;
+				}
+			}
+
+			$("#marketingCheck").on("change", function () {
+				if (this.checked) {
+					$("#marketingCard").show();
+					$("#couponCard").hide();
+					initCKEditor();
+				}
+			});
+
+			$("#couponCheck").on("change", function () {
+				if (this.checked) {
+					$("#couponCard").show();
+					$("#marketingCard").hide();
+					destroyCKEditor();
+				}
+			});
+
+			// Initialize grids and other elements
+			var gridDiv = document.querySelector('#myGrid');
+			new agGrid.Grid(gridDiv, gridOptions);
+			viewCoupon();
+
+			var activityGrid = document.querySelector('#activity');
+			new agGrid.Grid(activityGrid, activityOptions);
+
+			// Initialize form elements
+			$("#couponForm").hide();
+			$("#cancelBtn").hide();
+			$("#courseDiv").hide();
+			$('#deleteChild').attr("disabled", true);
+
+			// Initialize datetime pickers
+			var dateFormat = 'd-m-Y H:i:s';
+			localStorage.setItem("dateFormat", dateFormat);
+
+			$("#validFromCalendarDate").datetimepicker({
+				format: dateFormat,
+				closeOnDateSelect: true,
+				timepicker: true,
+			}).on("change", function () {
+				$('#validFrom').val($(this).val());
+			});
+
+			$("#validToCalendarDate").datetimepicker({
+				format: dateFormat,
+				closeOnDateSelect: true,
+				timepicker: true,
+			}).on("change", function () {
+				$('#validTo').val($(this).val());
+			});
+
+			// Tab click handlers
+			$('a[data-bs-toggle="pill"]').on('shown.bs.tab', function (e) {
+				var target = $(e.target).attr("href");
+				handleTabClick(target);
+			});
+
+			// Show first tab by default
+			$('#courseDetails a').tab('show');
+
+			const couponCheck = document.getElementById("couponCheck");
+			const marketingCheck = document.getElementById("marketingCheck");
+			const couponCard = document.getElementById("couponCard");
+			const marketingCard = document.getElementById("marketingCard");
+
+			// Initial state
+			couponCard.style.display = "block";
+			marketingCard.style.display = "none";
+
+			// Toggle logic
+			couponCheck.addEventListener("change", () => {
+				if (couponCheck.checked) {
+					couponCard.style.display = "block";
+					marketingCard.style.display = "none";
+					marketingCheck.checked = false;
+				} else {
+					couponCard.style.display = "none";
+				}
+			});
+
+			marketingCheck.addEventListener("change", () => {
+				if (marketingCheck.checked) {
+					marketingCard.style.display = "block";
+					couponCard.style.display = "none";
+					couponCheck.checked = false;
+				} else {
+					marketingCard.style.display = "none";
+				}
+			});
+
+			// Set default hint for upload
+			setUploadHint(
+				"Recommended: rectangular (landscape) image. Best: 1920×1080 (16:9). Low-resolution images may look blurry.",
+				"info"
+			);
+		});
+
+		// Simplified tab handling
+		function handleTabClick(target) {
+			if (target === "#course-overview") {
+				$("#course-overview").show();
+				$("#course-allocation").hide();
+				$("#nextTabBtn").show();
+				$("#prevTabBtn").hide();
+			} else if (target === "#course-allocation") {
+				$("#course-overview").hide();
+				$("#course-allocation").show();
+				$("#nextTabBtn").hide();
+				$("#prevTabBtn").show();
+			}
+		}
+
+		function nextTab(tabId) {
+			$('a[href="#' + tabId + '"]').tab('show');
+		}
+
+		function parseDate(dateStr) {
+			if (!dateStr) return null;
+			let parts = dateStr.split(' ');
+			let datePart = parts[0];
+			let timePart = parts.length > 1 ? parts[1].split(':').map(Number) : [0, 0, 0];
+			let dateParts = datePart.split('-');
+			if (dateParts.length === 3) {
+				if (dateParts[0].length === 4) { // YYYY-MM-DD
+					return new Date(dateParts[0], dateParts[1] - 1, dateParts[2], ...timePart);
+				} else { // DD-MM-YYYY
+					return new Date(dateParts[2], dateParts[1] - 1, dateParts[0], ...timePart);
+				}
+			}
+			return null;
+		}
+
+		// Grid and other functions remain the same
+		var columnDefs = [{
+			headerCheckboxSelection: false,
+			headerCheckboxSelectionFilteredOnly: true,
+			checkboxSelection: true,
+			width: 10,
+			sortable: false,
+			filter: false,
+			resizable: true,
+			pinned: 'left'
+		}, {
+			headerName: "Coupon Id",
+			field: "couponId",
+			pinned: 'left',
+			width: 140,
+		}, {
+			headerName: 'Coupon Code',
+			field: "couponNo",
+			width: 135,
+		}, {
+			headerName: 'Status',
+			field: "status",
+			width: 150,
+			cellStyle: { textAlign: 'center' },
+			cellRenderer: function (params) {
+				const status = params.value ? params.value.toLowerCase() : '';
+				const badgeText = status === 'active' ? 'Active' : 'Inactive';
+				return `<span>${badgeText}</span>`;
+			}
+		}, {
+			headerName: 'Minimum Price',
+			field: "price",
+			width: 200,
+		}, {
+			headerName: 'Coupon Offer(%)',
+			field: "discount",
+			width: 200,
+		}, {
+			headerName: 'Valid From Date',
+			field: "validFrom",
+			width: 200,
+		}, {
+			headerName: 'Valid To Date',
+			field: "validTo",
+			width: 160,
+		}, {
+			headerName: 'Document',
+			field: "document",
+			width: 150,
+			cellRenderer: function (params) {
+				if (params.value) {
+					const url = `/document/image/${params.value}`;
+					let ext = params.value.split('.').pop().toLowerCase();
+					if (ext === 'pdf') {
+						return `<button class="btn btn-sm btn-outline-primary" onclick="window.open('${url}', '_blank')">View PDF</button>`;
+					} else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+						return `<img src="${url}" alt="Document" style="max-width: 50px; max-height: 50px; border-radius: 3px; cursor: pointer;" onclick="window.open('${url}', '_blank')" />`;
+					} else {
+						return `<button class="btn btn-sm btn-outline-secondary" onclick="window.open('${url}', '_blank')">View File</button>`;
+					}
+				}
+				return '<span class="text-muted">No Document</span>';
+			}
+		}, {
+			headerName: 'Description',
+			field: "description",
+			width: 300,
+			cellRenderer: function (params) {
+				if (!params.value) return '<span class="text-muted">—</span>';
+				return '<div style="white-space: normal; word-wrap: break-word;">' + params.value + '</div>';
+			}
+		}, {
+			headerName: 'Url',
+			field: "trackingUrl",
+			width: 300,
+		}];
+
+		var gridOptions = {
+			columnDefs: columnDefs,
+			rowSelection: 'single',
+			groupSelectsChildren: true,
+			suppressRowClickSelection: true,
+			suppressAggFuncInHeader: true,
+			pagination: true,
+			paginationPageSize: 15,
+			defaultColDef: {
+				sortable: true,
+				filter: true,
+				resizable: true,
+				width: 251,
+				height: 10
+			},
+			onSelectionChanged: rowSelect,
+		};
+
+		// for activity table
+		var activityDefs = [
+			{
+				headerCheckboxSelection: true,
+				headerCheckboxSelectionFilteredOnly: true,
+				checkboxSelection: true,
+				sortable: false,
+				filter: false,
+				resizable: true,
+				width: 30,
+				pinned: 'left'
+			},
+			{
+				headerName: "Course ID",
+				field: "courseId",
+				pinned: 'left',
+				hide: true
+			}, {
+				headerName: "Course Name",
+				field: "courseName",
+				pinned: 'left',
+			}, {
+				headerName: "Duration",
+				field: "duration"
+			}, {
+				headerName: "Start Date",
+				field: "startDate",
+				width: 110,
+			}, {
+				headerName: "End Date",
+				field: "endDate"
+			}, {
+				headerName: "Status",
+				field: "patientStatus"
+			}];
+
+		var activityOptions = {
+			columnDefs: activityDefs,
+			rowSelection: 'multiple',
+			groupSelectsChildren: true,
+			suppressRowClickSelection: true,
+			suppressAggFuncInHeader: true,
+			defaultColDef: {
+				sortable: true,
+				filter: true,
+				resizable: true,
+				width: 200
+			},
+			onSelectionChanged: onSelectionChangeChild,
+		};
+
+		function onSelectionChangeChild() {
+			var selectedRows = activityOptions.api.getSelectedRows();
+			var rowCount = 0;
+			selectedRows.forEach(function () { rowCount = rowCount + 1; });
+
+			if (rowCount > 0) {
+				$('#newchild').attr("disabled", false);
+				$('#deleteChild').attr("disabled", true);
+			} else {
+				$('#newchild').attr("disabled", true);
+				$('#deleteChild').attr("disabled", false);
+			}
+		}
+
+		var couponId = "";
+
+		function rowSelect() {
+			var selectedRows = gridOptions.api.getSelectedRows();
+			if (selectedRows.length > 0) {
+				$('#dltBtn').show();
+				$("#couponDiv").show();
+				$("#couponForm").hide();
+				$("#cancelBtn").hide();
+				$("#addBtn").show();
+
+				var rowData = selectedRows[0];
+				var isMarketing = (!rowData.discount || rowData.discount === null || rowData.discount === '');
+				getCourseDetails(rowData.couponId);
+
+				$('.lead').text(isMarketing ? rowData.couponNo : 'Coupon Detail goes here');
+
+				const shortInfoElement = document.querySelector('.text-muted.mb-0');
+				shortInfoElement.textContent = isMarketing ? 'Marketing promotion details' : 'Short info about voucher';
+
+				$("#ststusBadge").text(rowData.status);
+
+				let daysText;
+				if (rowData.daysValid) {
+					daysText = rowData.daysValid + " Days";
+				} else {
+					const from = parseDate(rowData.validFrom);
+					const to = parseDate(rowData.validTo);
+					if (from && to) {
+						const diff = Math.ceil((to - from) / (1000 * 60 * 60 * 24));
+						daysText = diff + " days";
+					} else {
+						daysText = "0 days";
+					}
+				}
+				$("#daysleft").text(daysText);
+
+				const qrImg = document.getElementById("qrImage");
+				if (!isMarketing) {
+					var qrData = JSON.stringify({
+						CouponNo: rowData.couponNo,
+						Minimum_Price: rowData.price,
+						Discount: rowData.discount,
+						ValidFrom: rowData.validFrom,
+						ValidTo: rowData.validTo,
+						couponId: rowData.couponId,
+					});
+
+					var tempContainer = document.createElement("div");
+					new QRCode(tempContainer, {
+						text: qrData,
+						width: 150,
+						height: 150,
+						colorDark: "#000000",
+						colorLight: "#ffffff",
+						correctLevel: QRCode.CorrectLevel.H
+					});
+
+					setTimeout(function () {
+						var generatedImg = tempContainer.querySelector('img');
+						if (generatedImg) {
+							qrImg.src = generatedImg.src;
+						}
+					}, 100);
+					qrImg.alt = "QR Code";
+				} else if (rowData.document) {
+					const docUrl = `/document/image/${rowData.document}`;
+					let ext = rowData.document.split('.').pop().toLowerCase();
+					if (ext === 'pdf') {
+						qrImg.src = '/images/pdf-icon.png';
+						qrImg.alt = "PDF Document";
+					} else {
+						qrImg.src = docUrl;
+						qrImg.alt = "Document";
+					}
+				} else {
+					qrImg.src = '/images/default.png';
+					qrImg.alt = "No Document";
+				}
+
+				const docPreview = document.getElementById('documentPreview');
+				if (docPreview) {
+					docPreview.innerHTML = '';
+					docPreview.style.display = 'block';
+					if (rowData.document) {
+						const url = `/document/image/${rowData.document}`;
+						let ext = rowData.document.split('.').pop().toLowerCase();
+						let html;
+						if (ext === 'pdf') {
+							html = `<a href="${url}" target="_blank" class="btn btn-primary btn-sm">View PDF</a>`;
+						} else {
+							html = `<img src="${url}" alt="Document" style="max-width: 200px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;" onclick="window.open('${url}', '_blank')" />`;
+						}
+						docPreview.innerHTML = html;
+					} else {
+						docPreview.innerHTML = '<span class="text-muted">No Document Available</span>';
+					}
+				}
+			} else {
+				$('#dltBtn').hide();
+				add();
+			}
+
+			couponId = "";
+		}
+
+		function add() {
+			$('.formValidation').remove();
+			enableFields();
+			$("#couponDiv").hide();
+			$("#couponForm").show();
+			$("#saveBtn").show();
+			$("#cancelBtn").show();
+			$("#addBtn").hide();
+			$("#dltBtn").hide();
+			$("#couponId").val('');
+			$("#marketingTrackUrl").val('');
+			$("#trackUrl").val('');
+			$("#couponNo").val('');
+			$("#discount").val('');
+			$("#price").val('');
+			$("#validFrom").val('');
+			$("#validTo").val('');
+			$("#status").val('');
+			$("#marketingId").val('');
+			$("#marketName").val('');
+			$("#starmarketNametDate").val('');
+			$("#endDate").val('');
+			$("#marketingStatus").val('');
+
+			clearFileUploadFields();
+			document.getElementById('documentPreview') && (document.getElementById('documentPreview').innerHTML = '');
+			if (descriptionEditor) descriptionEditor.setData('');
+		}
+
+		function cancelCoupon() {
+			$("#couponDiv").show();
+			$("#couponForm").hide();
+			$("#saveBtn").hide();
+			$("#cancelBtn").hide();
+			$("#addBtn").show();
+			$("#dltBtn").show();
+			if (descriptionEditor) descriptionEditor.setData('');
+			viewCoupon();
+		}
+
+		function enableFields() {
+			let fieldIds = ["validTo", "validFrom", "discount", "couponNo", "price", "status", "trackUrl"];
+			fieldIds.forEach(id => {
+				$("#" + id).prop("disabled", false);
+			});
+		}
+
+		function viewCoupon() {
+			$('.loader').show();
+			agGrid.simpleHttpRequest({
+				url: 'promotion-marketing-view'
+			}).then(function (data) {
+				$("#course-overview").show();
+				var jsonData = JSON.parse(data.body);
+				var allData = jsonData.coupon;
+				gridOptions.api.setRowData(allData);
+				var firstRow = gridOptions.api.getDisplayedRowAtIndex(0);
+				if (firstRow) {
+					gridOptions.api.selectNode(firstRow, true);
+				}
+			});
+			$('.loader').hide();
+		}
+
+		function addCoupon() {
+			gridOptions.api.deselectAll();
+		}
+
+		/* ==========================================================
+		   Upload: remove strict 1920x1080 validation.
+		   - Enforce: rectangular (landscape) image (width > height)
+		   - Warn: low quality (low resolution / heavy compression)
+		   ========================================================== */
+
+		function setUploadHint(message, type) {
+			const hintEl = document.getElementById("uploadHint_0");
+			if (!hintEl) return;
+
+			hintEl.classList.remove("upload-hint-info", "upload-hint-warn", "upload-hint-error", "upload-hint-ok");
+			if (type === "warn") hintEl.classList.add("upload-hint-warn");
+			else if (type === "error") hintEl.classList.add("upload-hint-error");
+			else if (type === "ok") hintEl.classList.add("upload-hint-ok");
+			else hintEl.classList.add("upload-hint-info");
+
+			hintEl.textContent = message;
+		}
+
+		function analyzeImageQuality(file, w, h) {
+			const warnings = [];
+			const sizeKB = Math.round((file.size / 1024) * 10) / 10;
+			const bpp = file.size / (w * h); // bytes per pixel (rough signal of compression)
+
+			// Resolution warning (not blocking)
+			if (w < 1200 || h < 600) {
+				warnings.push(`Low resolution (${w}×${h}). Recommended 1920×1080 (or higher) for sharp display.`);
+			}
+
+			// Compression warning (not blocking)
+			if (bpp < 0.12 && (w * h) >= 800 * 450) {
+				warnings.push(`Image looks highly compressed (may appear blurry). Try a higher-quality export.`);
+			}
+
+			// Very small file warning (not blocking)
+			if (sizeKB < 80 && (w * h) >= 800 * 450) {
+				warnings.push(`File size is small (${sizeKB}KB). It may lose quality on large screens.`);
+			}
+
+			// Very large file warning (not blocking)
+			if (sizeKB > 10240) {
+				warnings.push(`File is large (${Math.round(sizeKB / 1024)}MB). Consider compressing for faster load.`);
+			}
+
+			return warnings;
+		}
+
+		function saveFile(event) {
+			const fileInput = $("#uploadWarDoc_0")[0];
+			const uFile = fileInput.files[0];
+			if (!uFile) return;
+
+			let fileName = uFile.name || "file";
+			const extension = fileName.split(".").pop().toLowerCase();
+
+			const imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp", "webp"];
+
+			// Clear old preview
+			$("#uploadedWarrDiv_0").html("");
+
+			// Create object URL
+			const iURL = URL.createObjectURL(uFile);
+
+			// If image: check rectangular + quality warnings (no strict dimension validation)
+			if (imageExtensions.includes(extension)) {
+				const img = new Image();
+				img.src = iURL;
+
+				img.onload = function () {
+					// Require rectangular landscape (width > height)
+					if (img.width <= img.height) {
+						toastr.error("Please upload a rectangular (landscape) image. Portrait/square images are not allowed.");
+						setUploadHint("Please upload a rectangular (landscape) image. Recommended: 1920×1080 (16:9).", "error");
+						clearFileUploadFields();
+						URL.revokeObjectURL(iURL);
+						return;
+					}
+
+					// Quality warnings (not blocking)
+					const warnings = analyzeImageQuality(uFile, img.width, img.height);
+					if (warnings.length > 0) {
+						toastr.warning(warnings[0]);
+						setUploadHint(warnings.join(" "), "warn");
+					} else {
+						setUploadHint(`Looks good (${img.width}×${img.height}). Recommended: 1920×1080 (16:9).`, "ok");
+					}
+
+					// Show thumbnail preview
+					displayFilePreview(iURL, fileName, extension, true);
+
+					// Keep object URL until user removes / new selection
+					// (we revoke when clearing)
+				};
+
+				img.onerror = function () {
+					toastr.error("Failed to read image. Please try another file.");
+					setUploadHint("Failed to read image. Please try another file.", "error");
+					clearFileUploadFields();
+					URL.revokeObjectURL(iURL);
+				};
+
+			} else {
+				// Non-image file (PDF) -> no dimension/quality check
+				if (extension !== "pdf") {
+					toastr.error("Only JPG, PNG, or PDF files are allowed.");
+					setUploadHint("Only JPG, PNG, or PDF files are allowed.", "error");
+					clearFileUploadFields();
+					URL.revokeObjectURL(iURL);
+					return;
+				}
+
+				setUploadHint("PDF selected. If you want a banner, upload a rectangular (landscape) image.", "info");
+				displayFilePreview(iURL, fileName, extension, false);
+				// Keep object URL until user removes / new selection
+			}
+		}
+
+		// Helper function to display file preview
+		function displayFilePreview(iURL, fileName, extension, isImage) {
+			// Show clickable preview (thumbnail for image, icon for pdf)
+			let previewHtml = "";
+			if (isImage) {
+				previewHtml = `<a href="${iURL}" target="_blank" title="Preview">
+								<img class="upload-thumb" src="${iURL}" alt="Image Preview"/>
+							   </a>`;
+			} else if (extension === "pdf") {
+				previewHtml = `<a href="${iURL}" target="_blank" title="Preview PDF">
+								<i class="bi bi-file-earmark-pdf" style="font-size:30px; color:#d32f2f;"></i>
+							   </a>`;
+			} else {
+				previewHtml = `<a href="${iURL}" target="_blank" title="Preview">
+								<i class="bi bi-file-earmark" style="font-size:30px; color:#6c757d;"></i>
+							   </a>`;
+			}
+
+			$("#uploadedWarrDiv_0").html(previewHtml);
+			$("#imageWarrName_0").text(fileName);
+
+			$("#imageRemoveBtn_0").html(
+				'<i class="bi bi-x-lg" style="color:red; cursor:pointer;" onclick="clearFileUploadFields(true);"></i>'
+			);
+		}
+
+		// Reset UI on remove
+		function clearFileUploadFields(revokeUrl) {
+			// If current preview is an object URL thumbnail, revoke it
+			try {
+				if (revokeUrl) {
+					const img = $("#uploadedWarrDiv_0 img").attr("src");
+					if (img && img.startsWith("blob:")) URL.revokeObjectURL(img);
+
+					const link = $("#uploadedWarrDiv_0 a").attr("href");
+					if (link && link.startsWith("blob:")) URL.revokeObjectURL(link);
+				}
+			} catch (e) { }
+
+			$("#uploadWarDoc_0").val("");
+			$("#uploadedWarrDiv_0").html(
+				'<i class="ti-plus" id="addIcon_0" style="color:#000; cursor:pointer; font-size:22px" onclick="$(\'#uploadWarDoc_0\').click();"></i>'
+			).removeData("original-file");
+
+			$("#imageWarrName_0").text("");
+			$("#imageRemoveBtn_0").html("");
+
+			setUploadHint(
+				"Recommended: rectangular (landscape) image. Best: 1920×1080 (16:9). Low-resolution images may look blurry.",
+				"info"
+			);
+		}
+
+		function editPromotion() {
+			var selectedRows = gridOptions.api.getSelectedRows();
+			var selectedNodes = gridOptions.api.getSelectedNodes();
+			var selectedData = selectedNodes.map(node => node.data);
+			var itemId = selectedData[0].couponId;
+
+			$.ajax({
+				url: 'promotion-marketing-edit?couponId=' + itemId,
+				method: 'GET',
+				success: function (response) {
+					if (response.code === "success") {
+						$("#couponDiv").hide();
+						$("#couponForm").show();
+						$("#saveBtn").show();
+						$("#cancelBtn").show();
+						$("#addBtn").hide();
+						$("#dltBtn").hide();
+
+						var parsedBody = JSON.parse(response.body)[0];
+						var isMarketing = (!parsedBody.discount || parsedBody.discount === null || parsedBody.discount === '');
+
+						if (isMarketing) {
+							$("#marketingCheck").prop("checked", true).trigger("change");
+							$("#couponCheck").prop("checked", false);
+
+							$("#marketingId").val(parsedBody.couponId);
+							$("#marketName").val(parsedBody.couponNo);
+							$("#starmarketNametDate").val(parsedBody.validFrom.split(' ')[0]);
+							$("#endDate").val(parsedBody.validTo.split(' ')[0]);
+							$("#marketingStatus").val(parsedBody.status);
+							$("#marketingTrackUrl").val(parsedBody.trackingUrl);
+
+							CKEDITOR.instances['description'].setData(parsedBody.description);
+
+							// Restore Document with Remove Button
+							clearFileUploadFields(); // Reset UI
+							if (parsedBody.document) {
+								const url = `/document/image/${parsedBody.document}`;
+								const fileName = parsedBody.document;
+								const ext = fileName.split('.').pop().toLowerCase();
+
+								$("#uploadedWarrDiv_0").data("original-file", fileName);
+
+								const icon = ext === 'pdf'
+									? '<i class="bi bi-file-earmark-pdf" style="font-size:30px; color:#d32f2f;"></i>'
+									: '<i class="bi bi-image" style="font-size:30px; color:#28a745;"></i>';
+
+								$("#uploadedWarrDiv_0").html(`<a href="${url}" target="_blank">${icon}</a>`);
+								$("#imageWarrName_0").text(fileName);
+								$("#imageRemoveBtn_0").html(
+									'<i class="bi bi-x-lg" style="color:red; cursor:pointer;" onclick="clearFileUploadFields();"></i>'
+								);
+
+								setUploadHint("Existing document attached. If uploading image, use a rectangular (landscape) image.", "info");
+							}
+
+						} else {
+							$("#couponCheck").prop("checked", true).trigger("change");
+							$("#marketingCheck").prop("checked", false);
+
+							$("#couponId").val(parsedBody.couponId);
+							$("#couponNo").val(parsedBody.couponNo);
+							$("#discount").val(parsedBody.discount);
+							$("#price").val(parsedBody.price);
+							$("#validFrom").val(parsedBody.validFrom);
+							$("#validTo").val(parsedBody.validTo);
+							$("#status").val(parsedBody.status);
+							$("#trackUrl").val(parsedBody.trackingUrl);
+
+							clearFileUploadFields();
+						}
+					}
+				},
+				error: function (xhr, status, error) {
+					console.error('AJAX Error:', status, error);
+				}
+			});
+		}
+
+		function deleteCoupon() {
+			var selectedNodes = gridOptions.api.getSelectedNodes();
+			var selectedData = selectedNodes.map(node => node.data);
+			var couponId = selectedData[0].couponId;
+
+			$.ajax({
+				type: "GET",
+				url: "promotion-marketing-delete?couponId=" + couponId,
+				async: false,
+				success: function (response) {
+					if (response.code === "success") {
+						toastr.success(response.message);
+						viewCoupon();
+						setTimeout(() => {
+							if (gridOptions.api) {
+								gridOptions.api.getDisplayedRowAtIndex(0)?.setSelected(true);
+							}
+						}, 300);
+					}
+				},
+				error: function (data) {
+					console.error('Delete AJAX error:', data);
+				}
+			});
+		}
+
+		var shouldHideNextTabBtn = false;
+
+		function saveCoupon() {
+			let isMarketing = $("#marketingCheck").is(":checked");
+			let recordJsonData = {};
+
+			if (isMarketing) {
+				var marketingId = $("#marketingId").val();
+				var marketName = $("#marketName").val().trim();
+				var startDate = $("#starmarketNametDate").val();
+				var endDate = $("#endDate").val();
+				var marketingStatus = $("#marketingStatus").val();
+				var trackingUrl = $("#marketingTrackUrl").val();
+
+				let description = "";
+				if (descriptionEditor && typeof descriptionEditor.getData === 'function') {
+					description = descriptionEditor.getData();
+				} else {
+					toastr.error("Description editor not ready");
+					return;
+				}
+
+				if (!marketName) return toastr.error("Marketing Name is required");
+				if (!startDate) return toastr.error("Start Date is required");
+				if (!endDate) return toastr.error("End Date is required");
+				if (!marketingStatus) return toastr.error("Status is required");
+				if (!description.trim()) return toastr.error("Description is required");
+
+				recordJsonData = {
+					type: "marketing",
+					marketingId: marketingId,
+					marketName: marketName,
+					startDate: startDate,
+					endDate: endDate,
+					status: marketingStatus,
+					description: description,
+					trackingUrl: trackingUrl,
+					originalDocument: $("#uploadedWarrDiv_0").data("original-file") || ""
+				};
+
+			} else {
+				let allRowData = [];
+
+				var couponId = $("#couponId").val();
+				var couponNo = $("#couponNo").val();
+				var discount = $("#discount").val();
+				var price = $("#price").val();
+				var validFrom = $("#validFrom").val();
+				var validTo = $("#validTo").val();
+				var status = $("#status").val();
+				var trackingUrl = $("#trackUrl").val();
+
+				activityOptions.api.forEachNode(function (node) {
+					let rowData = {};
+					activityDefs.forEach(function (column) {
+						const field = column.field;
+						if (field) rowData[field] = node.data[field] || "";
+					});
+					allRowData.push(rowData);
+				});
+
+				if (couponNo === "") return toastr.error("Coupon Code is required");
+				if (discount === "") return toastr.error("Discount is required");
+				if (isNaN(discount) || Number(discount) <= 0)
+					return toastr.error("Please enter a valid Discount (%) greater than 0");
+				if (price === "") return toastr.error("Minimum Purchase Price is required");
+				if (isNaN(price) || Number(price) < 0)
+					return toastr.error("Please enter a valid Minimum Purchase Price (>= 0)");
+				if (validFrom === "") return toastr.error("Valid From date is required");
+				if (validTo === "") return toastr.error("Valid To date is required");
+				if (status === "") return toastr.error("Status must be selected");
+
+				recordJsonData = {
+					type: "coupon",
+					couponId: couponId,
+					couponNo: couponNo,
+					discount: discount,
+					price: price,
+					validFrom: validFrom,
+					validTo: validTo,
+					status: status,
+					trackingUrl: trackingUrl,
+					rows: allRowData
+				};
+			}
+
+			let formData = new FormData();
+			formData.append('data', JSON.stringify(recordJsonData));
+
+			if (isMarketing) {
+				const fileInput = $("#uploadWarDoc_0")[0];
+				if (fileInput.files[0]) {
+					formData.append('file', fileInput.files[0]);
+				}
+			}
+
+			$.ajax({
+				url: 'promotion-marketing-save-data',
+				type: 'POST',
+				data: formData,
+				processData: false,
+				contentType: false,
+				success: function (response) {
+					if (response.code === "success") {
+						toastr.success(response.message);
+						cancelCoupon();
+						$('#courseDetails a').tab('show');
+					} else {
+						toastr.error(response.message || "Save failed");
+					}
+				},
+				error: function () {
+					toastr.error("Save failed");
+				}
+			});
+		}
+
+		function getCourseDetails(couponId) {
+			agGrid.simpleHttpRequest({
+				url: "promotion-marketing-course-view?id=" + couponId,
+			}).then(function (response) {
+				if (response.code === "success") {
+					const responseBody = JSON.parse(response.body);
+					const courseData = responseBody.viewCourses;
+					activityOptions.api.setRowData(courseData);
+					console.log('Loaded quizzes:', courseData);
+
+					if (couponId) {
+						activityOptions.api.forEachNode(function (node) {
+							if (node.data && node.data.couponId === couponId) {
+								node.setSelected(true);
+							}
+						});
+					} else {
+						activityOptions.api.deselectAll();
+					}
+
+				} else {
+					console.error("Failed to fetch data");
+				}
+			});
+		}
+
+		// Save Quiz function - Keep current selections (now saved), just disable edit
+		function openBrowseCourse() {
+			var selectedNodesGrid = gridOptions.api.getSelectedNodes();
+			var selectedDataGrid = selectedNodesGrid.map(node => node.data);
+			var couponId = selectedDataGrid[0].couponId;
+
+			activityOptions.api.stopEditing();
+
+			const selectedNodes = activityOptions.api.getSelectedNodes();
+			const selectedData = selectedNodes.map(node => node.data);
+			const selectedActive = selectedData.map(course => course.courseId);
+
+			alert(couponId)
+			if (!couponId) {
+				toastr.error("No coupon selected. Please select a coupon first.");
+				return;
+			}
+
+			if (selectedActive.length === 0) {
+				if (!confirm("No Course selected. This will unmap all Courses from the coupon. Proceed?")) {
+					return;
+				}
+			}
+
+			let payload = {
+				couponId: couponId,
+				activityMappings: selectedActive.map(courseId => ({
+					couponId: couponId,
+					courseId: courseId,
+					status: 'active'
+				}))
+			};
+
+			console.log("Saving :", payload);
+
+			$.ajax({
+				url: 'promotion-marketing-coupon-save',
+				type: 'POST',
+				contentType: 'application/json',
+				data: JSON.stringify(payload),
+				success: function (response) {
+					if (response.code === "Success" || response.message === "Success") {
+						toastr.success(response.message || "Allocated successfully!");
+					} else {
+						toastr.error(response.message || "Failed to allocate.");
+					}
+				},
+				error: function (xhr, status, error) {
+					console.error("Error s:", xhr.responseText);
+					toastr.error("Error " + (xhr.responseText || "Unknown error"));
+				}
+			});
+		}
+
+		/* Note: editCourseDetails(...) stays unchanged (kept as you provided) */
+	</script>
 </head>
 
 <body>
-    <div layout:fragment="content" class="maincontent">
-        <div class="container-fluid">
-            <div class="d-flex">
-                <div class="maincontentsec">
-                    <div class="d-flex flex-column flex-lg-row">
-                        <!--Left Sec Start-->
-                        <div class="box-sec" id="collapseWidthR1">
-                            <div class="out-box">
-                                <div class="d-flex justify-content-between bdr-line p-2">
-                                    <div class="col-md-8 col-12">
-                                        <div class="d-flex search-sec">
-                                            <input class="form-control me-2" type="text" placeholder="Search"
-                                                id="quickFilter" autocomplete="off">
-                                            <button class="btn go-btn" type="button" id="goBtn">Go</button>
-                                            &nbsp;
-                                            <button class="btn go-btn w-auto" type="button" id="resetBtn">Reset</button>
-                                        </div>
-                                    </div>
-                                    <button class="btn btn-primary max-btn" id="collapseButtonR1"
-                                        onclick="triggerExpansionR(1)" data-bs-toggle="tooltip" data-bs-placement="top"
-                                        title="Expand">
-                                        <i class="fa-solid fa-maximize" id="expandIconR1"></i> <i
-                                            class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
-                                    </button>
-                                </div>
-                                <div class="card m-2 p-2">
-                                    <div id="myGrid" class="ag-theme-alpine"></div>
-                                </div>
-                            </div>
-                        </div>
+	<div layout:fragment="content" class="maincontent">
+		<div class="container-fluid">
+			<div class="d-flex">
+				<div class="maincontentsec">
+					<div class="d-flex flex-column flex-lg-row">
+						<!--Left Sec Start-->
+						<div class="box-sec" id="collapseWidthR1">
+							<div class="out-box">
+								<div class="d-flex justify-content-between bdr-line p-2">
+									<div class="col-md-8 col-12">
+										<div class="d-flex search-sec">
+											<input class="form-control me-2" type="text" placeholder="Search" id="quickFilter"
+												autocomplete="off">
+											<button class="btn go-btn" type="button" id="goBtn">Go</button>
+											&nbsp;
+											<button class="btn go-btn w-auto" type="button" id="resetBtn">Reset</button>
+										</div>
+									</div>
+									<button class="btn btn-primary max-btn" id="collapseButtonR1" onclick="triggerExpansionR(1)"
+										data-bs-toggle="tooltip" data-bs-placement="top" title="Expand">
+										<i class="fa-solid fa-maximize" id="expandIconR1"></i>
+										<i class="fa-solid fa-minimize d-none" id="shrinkIconR1"></i>
+									</button>
+								</div>
+								<div class="card m-2 p-2">
+									<div id="myGrid" class="ag-theme-alpine"></div>
+								</div>
+							</div>
+						</div>
 
-                        <!--Right Sec Start-->
-                        <div class="box-sec" id="collapseWidthL1">
-                            <div class="out-box">
-                                <div
-                                    class="d-flex justify-content-between flex-row-reverse align-items-center p-2 bdr-line">
-                                    <button class="btn btn-primary max-btn" id="collapseButtonL1" type="button"
-                                        onclick="triggerExpansionL(1)" data-bs-toggle="tooltip" data-bs-placement="top"
-                                        title="Expand">
-                                        <i class="fa-solid fa-maximize" id="expandIconL1"></i> <i
-                                            class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
-                                    </button>
+						<!--Right Sec Start-->
+						<div class="box-sec" id="collapseWidthL1">
+							<div class="out-box">
+								<div class="d-flex justify-content-between flex-row-reverse align-items-center p-2 bdr-line">
+									<button class="btn btn-primary max-btn" id="collapseButtonL1" type="button"
+										onclick="triggerExpansionL(1)" data-bs-toggle="tooltip" data-bs-placement="top" title="Expand">
+										<i class="fa-solid fa-maximize" id="expandIconL1"></i>
+										<i class="fa-solid fa-minimize d-none" id="shrinkIconL1"></i>
+									</button>
 
-                                    <!--Right Inner Tab Start-->
-                                    <div class="d-flex gap-2">
-                                        <ul class="nav nav-pills newtab" role="tablist">
-                                            <li class="nav-item" role="presentation" id="courseDetails">
-                                                <a class="nav-link active" data-bs-toggle="pill" href="#course-overview"
-                                                    aria-selected="true" role="tab">Coupon
-                                                    Overview</a>
-                                            </li>
-                                            <li class="nav-item" role="presentation" id="courseAllocation"><a
-                                                    class="nav-link" data-bs-toggle="pill" href="#course-allocation"
-                                                    aria-selected="false" role="tab">Coupon Allocation</a></li>
-                                        </ul>
-                                    </div>
-                                </div>
+									<!--Right Inner Tab Start-->
+									<div class="d-flex gap-2">
+										<ul class="nav nav-pills newtab" role="tablist">
+											<li class="nav-item" role="presentation" id="courseDetails">
+												<a class="nav-link active" data-bs-toggle="pill" href="#course-overview" aria-selected="true"
+													role="tab">Coupon Overview</a>
+											</li>
+											<li class="nav-item" role="presentation" id="courseAllocation">
+												<a class="nav-link" data-bs-toggle="pill" href="#course-allocation" aria-selected="false"
+													role="tab">Coupon Allocation</a>
+											</li>
+										</ul>
+									</div>
+								</div>
 
-                                <!-- Tab panes -->
-                                <div class="tab-content flex-fill">
-                                    <!-- Coupon Overview Tab -->
-                                    <div id="course-overview" class="tab-pane active show p-2 h-100" role="tabpanel">
-                                        <div class="requisition-tbl d-flex flex-column h-100">
-                                            <div class="mb-2">
-                                                <table class="table table-bordered mb-0" width="100%">
-                                                    <tbody>
-                                                        <tr valign="middle">
-                                                            <td width="80%"><strong id="programNameDisplay"></strong>
-                                                            </td>
-                                                            <td>
-                                                                <div class="d-flex justify-content-end">
-                                                                    <div class="ml-3">
-                                                                        <button class="btn btn-primary edit-btn"
-                                                                            id="addBtn" type="button"
-                                                                            onclick="addCoupon()">ADD</button>
-                                                                    </div>
-                                                                    <div class="mr-2">
-                                                                        <button class="btn btn-primary edit-btn"
-                                                                            id="dltBtn" type="button"
-                                                                            onclick="deleteCoupon()">Delete</button>
-                                                                    </div>
-                                                                    <div class="mr-2">
-                                                                        <button class="btn btn-primary edit-btn"
-                                                                            id="nextTabBtn" type="button"
-                                                                            onclick="nextTab('course-allocation')">Next</button>
-                                                                    </div>
-                                                                    <div class="mr-2">
-                                                                        <button class="btn btn-primary edit-btn"
-                                                                            id="cancelBtn" type="button"
-                                                                            onclick="cancelCoupon()">Cancel</button>
-                                                                    </div>
+								<!-- Tab panes -->
+								<div class="tab-content flex-fill">
+									<!-- Coupon Overview Tab -->
+									<div id="course-overview" class="tab-pane active show p-2 h-100" role="tabpanel">
+										<div class="requisition-tbl d-flex flex-column h-100">
+											<div class="mb-2">
+												<table class="table table-bordered mb-0" width="100%">
+													<tbody>
+														<tr valign="middle">
+															<td width="80%"><strong id="programNameDisplay"></strong></td>
+															<td>
+																<div class="d-flex justify-content-end">
+																	<div class="ml-3">
+																		<button class="btn btn-primary edit-btn" id="addBtn" type="button"
+																			onclick="addCoupon()">ADD</button>
+																	</div>
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn" id="dltBtn" type="button"
+																			onclick="deleteCoupon()">Delete</button>
+																	</div>
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn" id="nextTabBtn" type="button"
+																			onclick="nextTab('course-allocation')">Next</button>
+																	</div>
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn" id="cancelBtn" type="button"
+																			onclick="cancelCoupon()">Cancel</button>
+																	</div>
 
-                                                                    <div class="mr-2">
-                                                                        <button class="btn btn-primary edit-btn"
-                                                                            id="saveBtn" type="button"
-                                                                            onclick="saveCoupon()">Save</button>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    </tbody>
-                                                </table>
-                                            </div>
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn" id="saveBtn" type="button"
+																			onclick="saveCoupon()">Save</button>
+																	</div>
+																</div>
+															</td>
+														</tr>
+													</tbody>
+												</table>
+											</div>
 
-                                            <div class="card p-2" id="couponDiv">
-                                                <!-- Coupon display content -->
-                                                <div class="row">
-                                                    <div class="col-sm-12">
-                                                        <div
-                                                            class="coupon bg-white rounded mb-3 d-flex justify-content-between">
-                                                            <div class="kiri p-3">
-                                                                <div class="icon-container">
-                                                                    <div class="icon-container_box">
-                                                                        <img id="qrImage"
-                                                                            th:src="@{/images/default.png}" width="150"
-                                                                            alt="QR Code" />
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div class="tengah py-3 d-flex w-100 justify-content-start">
-                                                                <div>
-                                                                    <span class="badge badge-success">Valid</span>
-                                                                    <h3 class="lead">Coupon Detail goes here</h3>
-                                                                    <p class="text-muted mb-0">Short info about voucher
-                                                                    </p>
-                                                                    <span class="badge bg-close"
-                                                                        style="width: 70px; display: inline-block; text-align: center;"
-                                                                        id="ststusBadge"></span>
-                                                                </div>
-                                                            </div>
-                                                            <div class="kanan">
-                                                                <div class="info m-3 d-flex align-items-center">
-                                                                    <div class="w-100">
-                                                                        <div class="block">
-                                                                            <span class="time font-weight-light"> <span
-                                                                                    id="daysleft">0 days</span>
-                                                                            </span>
-                                                                        </div>
-                                                                        <button class="btn btn-primary edit-btn"
-                                                                            type="button" onclick="editPromotion()"
-                                                                            style="background: linear-gradient(45deg, #09063b 0%, #4a00e0 100%); color: white; border: none; transition: 0.3s;">
-                                                                            View</button>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <!--  <div id="documentPreview" class="text-center mt-3"></div> -->
-                                            </div>
+											<div class="card p-2" id="couponDiv">
+												<div class="row">
+													<div class="col-sm-12">
+														<div class="coupon bg-white rounded mb-3 d-flex justify-content-between">
+															<div class="kiri p-3">
+																<div class="icon-container">
+																	<div class="icon-container_box">
+																		<img id="qrImage" th:src="@{/images/default.png}" width="150" alt="QR Code" />
+																	</div>
+																</div>
+															</div>
+															<div class="tengah py-3 d-flex w-100 justify-content-start">
+																<div>
+																	<span class="badge badge-success">Valid</span>
+																	<h3 class="lead">Coupon Detail goes here</h3>
+																	<p class="text-muted mb-0">Short info about voucher</p>
+																	<span class="badge bg-close"
+																		style="width: 70px; display: inline-block; text-align: center;" id="ststusBadge"></span>
+																</div>
+															</div>
+															<div class="kanan">
+																<div class="info m-3 d-flex align-items-center">
+																	<div class="w-100">
+																		<div class="block">
+																			<span class="time font-weight-light">
+																				<span id="daysleft">0 days</span>
+																			</span>
+																		</div>
+																		<button class="btn btn-primary edit-btn" type="button" onclick="editPromotion()"
+																			style="background: linear-gradient(45deg, #09063b 0%, #4a00e0 100%); color: white; border: none; transition: 0.3s;">
+																			View</button>
+																	</div>
+																</div>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
 
-                                            <div class="card p-2" id="couponForm">
-                                                <!-- Coupon form content -->
-                                                <!-- <div
-                                                    class="card-header d-flex align-items-center justify-content-between">
-                                                    <h5>Coupon Details</h5>
-                                                </div> -->
-                                                <div>
-                                                    <h6>Type</h6>
-                                                    <div class="d-flex gap-4 align-items-center">
-                                                        <label> <input type="radio" name="type" value="coupon"
-                                                                id="couponCheck" checked> Coupon
-                                                        </label> <label> <input type="radio" name="type"
-                                                                value="marketing" id="marketingCheck"> Marketing
-                                                        </label>
-                                                    </div>
-                                                </div>
+											<div class="card p-2" id="couponForm">
+												<div>
+													<h6>Type</h6>
+													<div class="d-flex gap-4 align-items-center">
+														<label>
+															<input type="radio" name="type" value="coupon" id="couponCheck" checked> Coupon
+														</label>
+														<label>
+															<input type="radio" name="type" value="marketing" id="marketingCheck"> Marketing
+														</label>
+													</div>
+												</div>
 
+												<div class="card-body p-0 mt-2" id="couponCard">
+													<input type="hidden" id="couponId">
+													<div class="row">
+														<div class="col-md-6">
+															<div class="form-group">
+																<label for="instiname">Coupon Code<span class="mandatory">*</span></label>
+																<input type="text" id="couponNo" class="form-control" onblur="removeValid(event);">
+															</div>
+														</div>
+														<div class="col-md-6">
+															<div class="form-group">
+																<label for="instiname">Coupon Offer(%)<span class="mandatory">*</span></label>
+																<input type="text" id="discount" class="form-control" onblur="removeValid(event);">
+															</div>
+														</div>
+														<div class="col-md-6">
+															<div class="form-group">
+																<label for="instiname">Minimum Purchase Price<span class="mandatory">*</span></label>
+																<input type="text" id="price" class="form-control" onblur="removeValid(event);">
+															</div>
+														</div>
+														<div class="col-md-6">
+															<div class="form-group">
+																<label for="instiname">Tracking URL</label>
+																<input type="text" id="trackUrl" class="form-control" onblur="removeValid(event);">
+															</div>
+														</div>
+														<div class="col-md-6">
+															<div class="form-group calendar_box">
+																<label>Valid From </label>
+																<input type="text" id="validFrom" class="form-control"
+																	th:attr="onkeyup=|formatDate('validFrom','${session.DATEFORMAT_JS}')|" readonly>
+																<i class="ti-calendar picker_calendar" id="validFromCalendarDate"></i>
+															</div>
+														</div>
+														<div class="col-md-6">
+															<div class="form-group calendar_box">
+																<label>Valid To </label>
+																<input type="text" id="validTo" class="form-control"
+																	th:attr="onkeyup=|formatDate('validTo','${session.DATEFORMAT_JS}')|" readonly>
+																<i class="ti-calendar picker_calendar" id="validToCalendarDate"></i>
+															</div>
+														</div>
+														<div class="col-md-6">
+															<label for="mode" class="form-label">Status<span class="mandatory">*</span></label>
+															<select class="form-select" id="status" name="status">
+																<option value="">Select</option>
+																<option value="active">Active</option>
+																<option value="In-active">In-active</option>
+															</select>
+														</div>
+													</div>
+												</div>
 
-                                                <div class="card-body p-0 mt-2" id="couponCard">
-                                                    <input type="hidden" id="couponId">
-                                                    <div class="row">
+												<div id="marketingCard" class="card-body p-0 mt-3" style="display: none;">
+													<input type="hidden" id="marketingId">
+													<div class="row">
+														<div class="col-md-6">
+															<div class="form-group">
+																<label>Name<span class="text-danger">*</span></label>
+																<input type="text" id="marketName" class="form-control">
+															</div>
+														</div>
+														<div class="col-md-6">
+															<div class="form-group">
+																<label>Start Date<span class="text-danger">*</span></label>
+																<input type="date" id="starmarketNametDate" class="form-control">
+															</div>
+														</div>
+														<div class="col-md-6">
+															<div class="form-group">
+																<label>End Date<span class="text-danger">*</span></label>
+																<input type="date" id="endDate" class="form-control">
+															</div>
+														</div>
+														<div class="col-md-6">
+															<div class="form-group">
+																<label for="instiname">Tracking URL</label>
+																<input type="text" id="marketingTrackUrl" class="form-control" onblur="removeValid(event);">
+															</div>
+														</div>
+														<div class="col-md-6">
+															<label>Status<span class="text-danger">*</span></label>
+															<select class="form-select" id="marketingStatus">
+																<option value="">Select</option>
+																<option value="active">Active</option>
+																<option value="inactive">Inactive</option>
+															</select>
+														</div>
+														<div class="col-md-12">
+															<label>Description<span class="text-danger">*</span></label>
+															<div id="description"></div>
+														</div>
 
-                                                        <div class="col-md-6">
-                                                            <div class="form-group">
-                                                                <label for="instiname">Coupon Code<span
-                                                                        class="mandatory">*</span></label> <input
-                                                                    type="text" id="couponNo" class="form-control"
-                                                                    onblur="removeValid(event);">
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6">
-                                                            <div class="form-group">
-                                                                <label for="instiname">Coupon Offer(%)<span
-                                                                        class="mandatory">*</span></label> <input
-                                                                    type="text" id="discount" class="form-control"
-                                                                    onblur="removeValid(event);">
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6">
-                                                            <div class="form-group">
-                                                                <label for="instiname">Minimum Purchase Price<span
-                                                                        class="mandatory">*</span></label> <input
-                                                                    type="text" id="price" class="form-control"
-                                                                    onblur="removeValid(event);">
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6">
-                                                            <div class="form-group">
-                                                                <label for="instiname">Tracking URL</label> <input
-                                                                    type="text" id="trackUrl" class="form-control"
-                                                                    onblur="removeValid(event);">
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6">
-                                                            <div class="form-group calendar_box">
-                                                                <label>Valid From </label> <input type="text"
-                                                                    id="validFrom" class="form-control"
-                                                                    th:attr="onkeyup=|formatDate('validFrom','${session.DATEFORMAT_JS}')|"
-                                                                    readonly> <i class="ti-calendar picker_calendar"
-                                                                    id="validFromCalendarDate"></i>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6">
-                                                            <div class="form-group calendar_box">
-                                                                <label>Valid To </label> <input type="text" id="validTo"
-                                                                    class="form-control"
-                                                                    th:attr="onkeyup=|formatDate('validTo','${session.DATEFORMAT_JS}')|"
-                                                                    readonly> <i class="ti-calendar picker_calendar"
-                                                                    id="validToCalendarDate"></i>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6">
-                                                            <label for="mode" class="form-label">Status<span
-                                                                    class="mandatory">*</span></label> <select
-                                                                class="form-select" id="status" name="status">
-                                                                <option value="">Select</option>
-                                                                <option value="active">Active</option>
-                                                                <option value="In-active">In-active</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div id="marketingCard" class="card-body p-0 mt-3"
-                                                    style="display: none;">
-                                                    <input type="hidden" id="marketingId">
-                                                    <div class="row">
-                                                        <div class="col-md-6">
-                                                            <div class="form-group">
-                                                                <label>Name<span class="text-danger">*</span></label>
-                                                                <input type="text" id="marketName" class="form-control">
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6">
-                                                            <div class="form-group">
-                                                                <label>Start Date<span
-                                                                        class="text-danger">*</span></label>
-                                                                <input type="date" id="starmarketNametDate"
-                                                                    class="form-control">
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6">
-                                                            <div class="form-group">
-                                                                <label>End Date<span
-                                                                        class="text-danger">*</span></label>
-                                                                <input type="date" id="endDate" class="form-control">
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6">
-                                                            <div class="form-group">
-                                                                <label for="instiname">Tracking URL</label> <input
-                                                                    type="text" id="marketingTrackUrl" class="form-control"
-                                                                    onblur="removeValid(event);">
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6">
-                                                            <label>Status<span class="text-danger">*</span></label>
-                                                            <select class="form-select" id="marketingStatus">
-                                                                <option value="">Select</option>
-                                                                <option value="active">Active</option>
-                                                                <option value="inactive">Inactive</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="col-md-12">
-                                                            <label>Description<span class="text-danger">*</span></label>
-                                                            <div id="description"></div>
-                                                        </div>
-                                                        <div class="col-md-6">
-                                                            <h6 class="mt-2">Document</h6>
-                                                            <div
-                                                                class="upload-container d-flex gap-2 align-items-center">
-                                                                <!-- Hidden file input -->
-                                                                <input type="file" id="uploadWarDoc_0" name="userImage"
-                                                                    accept=".jpeg, .jpg, .png, .pdf"
-                                                                    style="display: none;" onchange="saveFile(event)">
+														<div class="col-md-6">
+															<h6 class="mt-2">Document</h6>
 
-                                                                <!-- Plus icon (clickable) -->
-                                                                <div id="uploadedWarrDiv_0">
-                                                                    <i class="ti-plus" id="addIcon_0"
-                                                                        onclick="$('#uploadWarDoc_0').click();"></i>
-                                                                </div>
+															<div class="upload-container d-flex gap-2 align-items-center">
+																<input type="file" id="uploadWarDoc_0" name="userImage" accept=".jpeg, .jpg, .png, .pdf"
+																	style="display: none;" onchange="saveFile(event)">
 
-                                                                <!-- File name + remove button -->
-                                                                <div id="imageWarrName_0" style="font-weight: 500;">
-                                                                </div>
-                                                                <div id="imageRemoveBtn_0"></div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+																<div id="uploadedWarrDiv_0" onclick="$('#uploadWarDoc_0').click();">
+																	<i class="ti-plus" id="addIcon_0" onclick="$('#uploadWarDoc_0').click();"></i>
+																</div>
 
-                                    <!-- Coupon Allocation Tab -->
-                                    <div id="course-allocation" class="tab-pane fade p-2 h-100" role="tabpanel">
-                                        <div class="requisition-tbl d-flex flex-column h-100">
-                                            <div class="mb-2">
-                                                <table class="table table-bordered mb-0" width="100%">
-                                                    <tbody>
-                                                        <tr valign="middle">
-                                                            <td width="50%"><span class="head-user-name ml-5"
-                                                                    id="employeeNameTop2"></span></td>
-                                                            <td>
-                                                                <div class="d-flex justify-content-end flxwrap">
-                                                                    <div class="mr-2">
-                                                                        <button class="btn btn-primary edit-btn"
-                                                                            id="prevTabBtn" type="button"
-                                                                            onclick="nextTab('course-overview')">Prev</button>
-                                                                    </div>
+																<div>
+																	<div id="imageWarrName_0" style="font-weight: 600;"></div>
+																	<small id="uploadHint_0" class="upload-hint-info"></small>
+																</div>
 
+																<div id="imageRemoveBtn_0"></div>
+															</div>
+														</div>
 
-                                                                    <div class="ml-3">
-                                                                        <button class="btn btn-primary edit-btn"
-                                                                            id="deleteChild" type="button"
-                                                                            onclick="deleteDetails()">Delete</button>
-                                                                    </div>
-                                                                    <div class="mr-2">
-                                                                        <button class="btn btn-primary edit-btn"
-                                                                            id="newchild" type="button"
-                                                                            onclick="openBrowseCourse()">Allocate</button>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    </tbody>
-                                                </table>
-                                            </div>
+													</div>
+												</div>
 
-                                            <div class="card p-2" id="courseAllocate">
-                                                <div class="innercontent">
-                                                    <h5 class="mb-2">Course Details</h5>
+											</div>
+										</div>
+									</div>
 
-                                                    <div id="activity" style="width: 100%; height: 500px;"
-                                                        class="ag-theme-alpine"></div>
+									<!-- Coupon Allocation Tab -->
+									<div id="course-allocation" class="tab-pane fade p-2 h-100" role="tabpanel">
+										<div class="requisition-tbl d-flex flex-column h-100">
+											<div class="mb-2">
+												<table class="table table-bordered mb-0" width="100%">
+													<tbody>
+														<tr valign="middle">
+															<td width="50%">
+																<span class="head-user-name ml-5" id="employeeNameTop2"></span>
+															</td>
+															<td>
+																<div class="d-flex justify-content-end flxwrap">
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn" id="prevTabBtn" type="button"
+																			onclick="nextTab('course-overview')">Prev</button>
+																	</div>
 
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+																	<div class="ml-3">
+																		<button class="btn btn-primary edit-btn" id="deleteChild" type="button"
+																			onclick="deleteDetails()">Delete</button>
+																	</div>
+																	<div class="mr-2">
+																		<button class="btn btn-primary edit-btn" id="newchild" type="button"
+																			onclick="openBrowseCourse()">Allocate</button>
+																	</div>
+																</div>
+															</td>
+														</tr>
+													</tbody>
+												</table>
+											</div>
+
+											<div class="card p-2" id="courseAllocate">
+												<div class="innercontent">
+													<h5 class="mb-2">Course Details</h5>
+													<div id="activity" style="width: 100%; height: 500px;" class="ag-theme-alpine"></div>
+												</div>
+											</div>
+										</div>
+									</div>
+
+								</div><!-- tab-content -->
+							</div><!-- out-box -->
+						</div><!-- box-sec -->
+					</div><!-- flex -->
+				</div><!-- maincontentsec -->
+			</div><!-- d-flex -->
+		</div><!-- container-fluid -->
+	</div><!-- fragment -->
 </body>
 
 </html>
