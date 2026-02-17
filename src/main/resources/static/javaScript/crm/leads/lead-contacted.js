@@ -3106,11 +3106,11 @@ function addMeetingInfo() {
 			return false;
 		}
 	}
-	if (participants.length === 0) {
+/*	if (participants.length === 0) {
 		toastr.error("At least one participant is required");
 		validation = false;
 		return false;
-	}
+	}*/
 	/* FORM VALIDATION ENDS*/
 	if (validation) {
 		$('.loader').show();
