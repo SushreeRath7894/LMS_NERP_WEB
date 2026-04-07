@@ -629,4 +629,65 @@ resp = restTemplate.getForObject(env.getHisUrl() + "rest-subscription-student-vi
 
 	    logger.info("Method :saveEnrollmentData ends");
 	    return resp;
-	}}
+	}
+
+	
+
+
+	@PostMapping("subscription-remove-enrollment-training")
+public @ResponseBody Object removeEnrollmentTraining(HttpSession session, @RequestBody String data) {
+    logger.info("Method : removeEnrollmentTraining starts, raw data: {}", data);
+
+    JsonResponse<Object> resp = new JsonResponse<>();
+
+    String orgName = (String) session.getAttribute("ORGANIZATION");
+    String orgDivision = (String) session.getAttribute("ORGANIZATION_DIVISION");
+
+    // Admin/user performing action (best effort)
+    String updatedBy = null;
+    Object u1 = session.getAttribute("USER_ID");
+    if (u1 == null) u1 = session.getAttribute("USERID");
+    if (u1 == null) u1 = session.getAttribute("USER");
+    if (u1 != null) updatedBy = String.valueOf(u1);
+
+    try {
+        JSONObject json = new JSONObject(data);
+
+        String enrolledBy = json.optString("enrolledBy", "").trim(); // student id
+        if (enrolledBy.isEmpty()) {
+            resp.setCode("failed");
+            resp.setMessage("enrolledBy (student ID) is missing");
+            return resp;
+        }
+
+        String modifiedData = json.toString();
+
+        // Build master URL: userId=enrolledBy, updatedBy=admin session user (optional)
+        String url = env.getMasterUrl()
+                + "rest-remove-enrollment-training?orgName=" + orgName
+                + "&orgDivision=" + orgDivision
+                + "&userId=" + enrolledBy;
+
+        if (updatedBy != null && !updatedBy.trim().isEmpty()) {
+            url += "&updatedBy=" + updatedBy.trim();
+        }
+
+        resp = restTemplate.postForObject(url, modifiedData, JsonResponse.class);
+
+    } catch (JSONException e) {
+        logger.error("Invalid JSON format", e);
+        resp.setCode("failed");
+        resp.setMessage("Invalid JSON format");
+        return resp;
+    } catch (Exception e) {
+        logger.error("Error calling master service", e);
+        resp.setCode("failed");
+        resp.setMessage("Failed to remove training");
+        return resp;
+    }
+
+    logger.info("Method : removeEnrollmentTraining ends");
+    return resp;
+}
+
+}
